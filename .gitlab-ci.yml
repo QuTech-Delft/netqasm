@@ -1,0 +1,51 @@
+image: adahlberg/nlblueprintci:18.04
+
+.source_venv: &venv
+    before_script:
+        - source venv/bin/activate
+
+stages:
+    - install
+    - lint
+    - tests
+    - examples
+    - deploy
+
+install:
+    stage: install
+    artifacts:
+        paths:
+            - venv
+        expire_in: 1 hour
+    before_script:
+        - pip3 install virtualenv
+        - virtualenv venv
+        - source venv/bin/activate
+    script: make install
+    only:
+        - master
+        - merge_requests
+
+lint:
+    <<: *venv
+    stage: lint
+    script: make lint
+    only:
+        - master
+        - merge_requests
+
+test:
+    <<: *venv
+    stage: tests
+    script: make tests
+    only:
+        - master
+        - merge_requests
+
+examples:
+    <<: *venv
+    stage: examples
+    script: make examples
+    only:
+        - master
+        - merge_requests

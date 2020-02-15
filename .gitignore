@@ -1,0 +1,10 @@
+*.pyc
+*.DS_Store
+*.out
+/docs/build/*
+/build/*
+/dist/*
+/*.egg-info/*
+htmlcov/
+.coverage
+.idea/*
