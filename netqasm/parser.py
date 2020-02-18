@@ -1,8 +1,11 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from itertools import count
 
 from .string_util import group_by_word, is_variable_name, is_number
 from .util import NetQASMSyntaxError, NetQASMInstrError
+
+
+Subroutine = namedtuple("Subroutine", ["app_id", "netqasm_version", "instructions"])
 
 
 class Parser:
@@ -20,6 +23,10 @@ class Parser:
     PREAMBLE_APPID = 'APPID'
     PREAMBLE_DEFINE = 'DEFINE'
     PREAMBLE_DEFINE_BRACKETS = r'{}'
+
+    BUILT_IN_VARIABLES = {
+        'sm': 0,  # Shared memory
+    }
 
     def __init__(self, subroutine):
         """ Parses a given subroutine written in NetQASM.
@@ -162,11 +169,19 @@ class Parser:
 
     def _parse_body(self, body_lines):
         """Parses the body lines"""
+        # Apply built in variables
+        body_lines = self._apply_built_in_variables(body_lines)
+        print(body_lines)
+
         # Handle branch variables
         body_lines = self._assign_branch_variables(body_lines)
 
         # Handle address variables
         body_lines = self._assign_address_variables(body_lines)
+        return body_lines
+
+    def _apply_built_in_variables(self, body_lines):
+        body_lines = self._update_variables(body_lines, self.__class__.BUILT_IN_VARIABLES, add_address_start=True)
         return body_lines
 
     def _assign_branch_variables(self, body_lines):
@@ -240,7 +255,7 @@ class Parser:
         return current_addresses
 
     def _is_address(self, address):
-        return address[0] == self.__class__.ADDRESS_START
+        return (address[0] == self.__class__.ADDRESS_START) and is_number(address[1:])
 
     @staticmethod
     def _split_name_and_index(word):
@@ -290,6 +305,8 @@ class Parser:
             # Split of indexing
             address, index = self._split_name_and_index(word)
             if address == variable:
+                if variable == 'sm':
+                    print("HELLO")
                 new_word = f"{value}{index}"
                 if add_address_start:
                     new_word = self.__class__.ADDRESS_START + new_word

@@ -1,7 +1,7 @@
 import pytest
 import logging
 
-from netqasm.processor import FromStringProcessor, OutputData
+from netqasm.processor import Processor, OutputData
 
 
 @pytest.mark.parametrize("subroutine, expected_output", [
@@ -44,10 +44,8 @@ def test_processor(subroutine, expected_output):
     logging.getLogger().setLevel(logging.DEBUG)
     print(subroutine)
 
-    processor = FromStringProcessor()
-    processor.put_subroutine(subroutine=subroutine)
-
-    processor.execute_next_subroutine()
+    processor = Processor()
+    processor.execute_subroutine(subroutine=subroutine)
     output_data = processor.output_data
     print(f"Out-data: {output_data}")
     assert output_data == expected_output

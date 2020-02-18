@@ -1,12 +1,12 @@
-import abc
 import logging
-from queue import Queue
 from enum import Enum, auto
+from types import GeneratorType
 from collections import namedtuple
 
 from netqasm.parser import Parser
 from netqasm.encoder import Instruction
 from netqasm.string_util import group_by_word
+from netqasm.sdk.shared_memory import get_memory, SHARED_MEMORY_SIZE
 
 
 class AddressMode(Enum):
@@ -19,9 +19,9 @@ Operand = namedtuple("Operand", ["mode", "value", "index"])
 OutputData = namedtuple("OutputData", ["address", "data"])
 
 
-class Processor(abc.ABC):
+class Processor:
 
-    def __init__(self, num_qubits=5):
+    def __init__(self, name=None, num_qubits=5):
         """Executes a sequence of NetQASM instructions.
 
         This is an abstract class where the method `get_next_subroutine` is required to be implemented.
@@ -38,31 +38,38 @@ class Processor(abc.ABC):
 
         Parameters
         ----------
+        name : str or None
+            Optionally give a name to the processor for logging purposes.
+            If `None`, the name is set to be the name of the class.
         num_qubits : int
             The number of qubits for the processor to use
         """
+
+        if name is None:
+            self._name = self.__class__.__name__
+        else:
+            self._name = name
+
         self._instruction_handlers = self._get_instruction_handlers()
 
-        self._classical_registers = {}
+        shared_memory_address = 0
+        self._classical_registers = {
+            shared_memory_address: self._allocate_new_classical_register(
+                address=shared_memory_address,
+                num_entries=SHARED_MEMORY_SIZE,
+            ),
+        }
         self._quantum_registers = {}
 
         self._outputted_data = []
 
         self._program_counter = 0
 
+        self._logger = logging.getLogger(f"{self.__class__.__name__}({self._name})")
+
     @property
     def output_data(self):
         return self._outputted_data
-
-    @abc.abstractmethod
-    def get_next_subroutine(self):
-        """Fetches the next subroutine to be executed
-
-        Returns
-        -------
-        list : The list of instructions
-        """
-        pass
 
     def reset(self):
         """Resets the program counter"""
@@ -84,33 +91,42 @@ class Processor(abc.ABC):
             Instruction.MEAS: self._instr_meas,
 
             Instruction.BEQ: self._instr_beq,
+
+            Instruction.CFREE: self._instr_cfree,
+            Instruction.QFREE: self._instr_qfree,
         }
         return instruction_handlers
 
-    def execute_next_subroutine(self):
-        """Executes the next subroutine given to the processor"""
+    def execute_instructions(self, instructions):
+        """Executes the a subroutine given to the processor"""
         self.reset()
-        subroutine = self.get_next_subroutine()
-        self._execute_subroutine(subroutine)
+        output = self._execute_instructions(instructions)
+        if not isinstance(output, GeneratorType):
+            raise TypeError
+        yield from output
 
-    def _execute_subroutine(self, subroutine):
+    def _execute_instructions(self, instructions):
         """Executes a given subroutine"""
-        while self._program_counter < len(subroutine):
-            instruction = subroutine[self._program_counter]
-            self._execute_instruction(instruction)
+        while self._program_counter < len(instructions):
+            instruction = instructions[self._program_counter]
+            output = self._execute_instruction(instruction)
+            if not isinstance(output, GeneratorType):
+                raise TypeError
+            yield from output
 
     def _execute_instruction(self, instruction):
         """Executes a single instruction and returns the new program counter"""
         instr, args, operands = self._parse_instruction(instruction)
         if instr not in self._instruction_handlers:
             raise RuntimeError(f"Unknown instruction identifier {instr} from {instruction}")
-        # TODO
-        # try:
-        self._instruction_handlers[instr](args, operands)
-        # except TypeError as err:
-        #     raise TypeError(f"Could not handle the instruction {instruction}, "
-        #                     "was the number of arguments and operands correct? "
-        #                     f"The error was: {err}")
+        try:
+            output = self._instruction_handlers[instr](args, operands)
+            if isinstance(output, GeneratorType):
+                yield from output
+        except TypeError as err:
+            raise TypeError(f"Could not handle the instruction {instruction}, "
+                            "was the number of arguments and operands correct? "
+                            f"The error was: {err}")
 
     def _parse_instruction(self, instruction):
         # TODO should be handled differently when there is a binary encoding
@@ -171,8 +187,8 @@ class Processor(abc.ABC):
 
         if address in self._classical_registers:
             raise RuntimeError(f"Classical register with address {address} already exists")
-        logging.debug(f"Adding a new classical register at address {address}")
-        self._classical_registers[address] = self._allocate_new_classical_register(num_entries)
+        self._logger.debug(f"Adding a new classical register at address {address}")
+        self._classical_registers[address] = self._allocate_new_classical_register(address, num_entries)
         self._program_counter += 1
 
     def _instr_qreg(self, args, operands):
@@ -183,7 +199,7 @@ class Processor(abc.ABC):
 
         if address in self._quantum_registers:
             raise RuntimeError(f"Quantum register with address {address} already exists")
-        logging.debug(f"Adding a new quantum register at address {address}")
+        self._logger.debug(f"Adding a new quantum register at address {address}")
         self._quantum_registers[address] = self._allocate_new_quantum_register(num_entries)
         self._program_counter += 1
 
@@ -194,14 +210,14 @@ class Processor(abc.ABC):
         self._program_counter += 1
 
     def _output_data(self, address):
-        logging.debug(f"Outputting data from register at address {address}")
+        self._logger.debug(f"Outputting data from register at address {address}")
         register = self._get_allocated_register(address, quantum=False)
         output_data = OutputData(address=address, data=register)
         # TODO should we copy?
         self._outputted_data.append(output_data)
 
     def _instr_init(self, args, operands):
-        self._handle_single_qubit_instr(Instruction.INIT, args, operands)
+        yield from self._handle_single_qubit_instr(Instruction.INIT, args, operands)
         self._program_counter += 1
 
     def _instr_add(self, args, operands):
@@ -209,11 +225,11 @@ class Processor(abc.ABC):
         self._program_counter += 1
 
     def _instr_h(self, args, operands):
-        self._handle_single_qubit_instr(Instruction.H, args, operands)
+        yield from self._handle_single_qubit_instr(Instruction.H, args, operands)
         self._program_counter += 1
 
     def _instr_x(self, args, operands):
-        self._handle_single_qubit_instr(Instruction.X, args, operands)
+        yield from self._handle_single_qubit_instr(Instruction.X, args, operands)
         self._program_counter += 1
 
     def _instr_meas(self, args, operands):
@@ -226,17 +242,17 @@ class Processor(abc.ABC):
         q_index = operands[0].index
         c_index = operands[1].index
         if q_index is None and c_index is None:
-            logging.debug(f"Measuring all qubits in register with address {q_address}, "
-                          f"placing the outcome at {c_address}")
+            self._logger.debug(f"Measuring all qubits in register with address {q_address}, "
+                               f"placing the outcome at {c_address}")
             self._do_many_meas(q_address, c_address)
         else:
             if q_index is None:
                 q_index = c_index
             if c_index is None:
                 c_index = q_index
-            logging.debug(f"Measuring the qubit with index {q_index} in register with address {q_address}, "
-                          f"placing the outcome at {c_address} with index {c_index}")
-            self._do_many_meas(q_address, c_index, c_address, c_index)
+            self._logger.debug(f"Measuring the qubit with index {q_index} in register with address {q_address}, "
+                               f"placing the outcome at {c_address} with index {c_index}")
+            self._do_single_meas(q_address, c_index, c_address, c_index)
 
         self._program_counter += 1
 
@@ -274,6 +290,28 @@ class Processor(abc.ABC):
         else:
             self._program_counter += 1
 
+    def _instr_cfree(self, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=1, modes=[AddressMode.DIRECT], indexing=[False])
+        address = operands[0].value
+
+        register = self._classical_registers.pop(address, None)
+        if register is None:
+            raise RuntimeError(f"The address {address} has no allocated classical register")
+        self._logger.debug(f"Freeing classical register at address {address}")
+        self._program_counter += 1
+
+    def _instr_qfree(self, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=1, modes=[AddressMode.DIRECT], indexing=[False])
+        address = operands[0].value
+
+        register = self._quantum_registers.pop(address, None)
+        if register is None:
+            raise RuntimeError(f"The address {address} has no allocated quantum register")
+        self._logger.debug(f"Freeing quantum register at address {address}")
+        self._program_counter += 1
+
     def _get_address_value(self, operand):
         if operand.mode == AddressMode.IMMEDIATE:
             return operand.value
@@ -284,8 +322,13 @@ class Processor(abc.ABC):
                 raise RuntimeError("index needs to be set")
             return classical_register[operand.index]
 
-    def _allocate_new_classical_register(self, num_entries):
-        return [0] * num_entries
+    def _allocate_new_classical_register(self, address, num_entries):
+        return _ClassicalRegister(
+            node_name=self._name,
+            address=address,
+            num_entries=num_entries,
+        )
+        # return [0] * num_entries
 
     def _allocate_new_quantum_register(self, num_entries):
         return [None] * num_entries
@@ -296,16 +339,16 @@ class Processor(abc.ABC):
         address = operands[0].value
         index = operands[0].index
         if index is None:
-            logging.debug(f"Performing {instr} on all qubits in register at address {address}")
-            self._do_many_single_qubit_instr(instr, address)
+            self._logger.debug(f"Performing {instr} on all qubits in register at address {address}")
+            yield from self._do_many_single_qubit_instr(instr, address)
         else:
-            logging.debug(f"Performing {instr} on the qubit at index {index} in register at address {address}")
-            self._do_one_single_qubit_instr(instr, address, index)
+            self._logger.debug(f"Performing {instr} on the qubit at index {index} in register at address {address}")
+            yield from self._do_one_single_qubit_instr(instr, address, index)
 
     def _do_many_single_qubit_instr(self, instr, address):
         register = self._get_allocated_register(address, quantum=True)
         for index in range(len(register)):
-            self._do_one_single_qubit_instr(instr, address, index)
+            yield from self._do_one_single_qubit_instr(instr, address, index)
 
     def _do_one_single_qubit_instr(self, instr, address, index):
         """Performs a single qubit gate"""
@@ -319,8 +362,8 @@ class Processor(abc.ABC):
         b = self._get_address_value(operands[2])
         value = self._compute_binary_classical_instr(instr, a, b)
         self._set_address_value(operands[0].value, operands[0].index, value=value)
-        logging.debug(f"Performing {instr} of a={a} and b={b} "
-                      f"and storing the value at address {operands[0].value}")
+        self._logger.debug(f"Performing {instr} of a={a} and b={b} "
+                           f"and storing the value at address {operands[0].value}")
 
     def _compute_binary_classical_instr(self, instr, a, b):
         if instr == Instruction.ADD:
@@ -356,15 +399,21 @@ class Processor(abc.ABC):
                         raise TypeError("Expected operand without indexing")
 
 
-class FromStringProcessor(Processor):
-    def __init__(self, subroutine="", num_qubits=5):
-        super().__init__(num_qubits=num_qubits)
-        self._subroutines = Queue()
+class _ClassicalRegister:
+    def __init__(self, node_name, address, num_entries):
+        self._num_entries = num_entries
+        self._address = address
+        self._shared_memory = get_memory(node_name)
 
-    def put_subroutine(self, subroutine):
-        self._subroutines.put(subroutine)
+    def __len__(self):
+        return self._num_entries
 
-    def get_next_subroutine(self):
-        subroutine = self._subroutines.get()
-        parser = Parser(subroutine)
-        return parser.instructions
+    def __setitem__(self, index, value):
+        self._shared_memory[(self._address, index)] = value
+
+    def __getitem__(self, index):
+        value = self._shared_memory.get(self._address, index)
+        if value is None:
+            # This means that the value has not been set yet, return default 0
+            return 0
+        return value
