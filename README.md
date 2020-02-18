@@ -33,7 +33,7 @@ x q!
 EXIT:
 // this is also a comment
 ```
-which can be found [here](https://gitlab.tudelft.nl/qinc-wehner/NetQASM/NetQASM/blob/master/examples/netqasm_files/simple_measure.nqasm), run the following:
+which can be found [here](https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm/blob/master/examples/netqasm_files/simple_measure.nqasm), run the following:
 ```sh
 netqasm execute simple_measure.nqasm
 ```
