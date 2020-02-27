@@ -4,7 +4,7 @@ from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 from netqasm.parser import Subroutine
 from .meas_outcome import MeasurementOutcome
-from .shared_memory import get_memory
+from .shared_memory import get_shared_memory
 
 
 class Qubit(qubit):
@@ -28,18 +28,22 @@ class Qubit(qubit):
     def _conn(self, value):
         self._cqc = value
 
-    def measure(self):
+    def measure(self, outcome_address=None):
         self.check_active()
 
-        classical_reg_index = self._conn._get_new_classical_reg_index()
-        self._conn.put_command(self._qID, CQC_CMD_MEASURE, classical_reg_index=classical_reg_index)
+        if outcome_address is None:
+            outcome_address = self._conn._get_new_classical_address()
+        self._conn.put_command(self._qID, CQC_CMD_MEASURE, outcome_address=outcome_address)
 
-        address = self._conn._current_quantum_register_address
-        memory = get_memory(self._conn.name)
+        self._set_active(False)
+
+        memory = get_shared_memory(
+            node_name=self._conn.name,
+            key=self._conn._appID,
+        )
         return MeasurementOutcome(
             memory=memory,
-            address=address,
-            index=classical_reg_index,
+            address=outcome_address,
         )
 
 

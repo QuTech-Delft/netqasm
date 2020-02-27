@@ -83,16 +83,15 @@ class MeasurementOutcome(int):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, memory, address, index):
+    def __init__(self, memory, address):
         self._value = None
         self._memory = memory
         self._address = address
-        self._index = index
 
     def __str__(self):
         value = self.value
         if value is None:
-            return (f"Measurement outcome which will be stored at address={self._address} with index={self._index}\n"
+            return (f"Measurement outcome which will be stored at address={self._address}\n"
                     "To access the value, the subroutine must first be executed which can be done by flushing.")
         else:
             return str(value)
@@ -104,20 +103,14 @@ class MeasurementOutcome(int):
     def value(self):
         if self._value is not None:
             return self._value
-        # TODO
-        if self._memory is None:
-            return None
-        value = self._memory.get(self._key())
+        value = self._memory[self._address]
         if value is not None:
             self._value = value
         return value
 
-    def _key(self):
-        return (self._address, self._index)
-
 
 def test_measurement_outcome():
-    m = MeasurementOutcome(None, address=0, index=0)
+    m = MeasurementOutcome(None, address=0)
     print(m)
     try:
         print(m * 2)

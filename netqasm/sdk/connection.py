@@ -1,7 +1,7 @@
 import abc
 import logging
 from itertools import count
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 
 from cqc.pythonLib import CQCHandler
 from cqc.cqcHeader import (
@@ -14,8 +14,10 @@ from cqc.cqcHeader import (
 )
 
 from netqasm import NETQASM_VERSION
-from netqasm.parser import Parser, Subroutine
+from netqasm.parser import Parser
 from netqasm.encoder import Instruction, instruction_to_string
+from netqasm.string_util import is_number
+from netqasm.sdk.shared_memory import get_shared_memory
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
@@ -31,32 +33,30 @@ _CQC_TO_NETQASM_INSTR = {
 
 
 class NetQASMConnection(CQCHandler, abc.ABC):
-    def __init__(self, name, app_id=None):
+    def __init__(self, name, app_id=None, max_qubits=5):
         super().__init__(name=name, app_id=app_id)
 
+        self._used_classical_addresses = []
 
-        self._used_quantum_addresses = []
-
-        self._used_quantum_reg_indices = defaultdict(list)
-        self._used_classical_reg_indices = defaultdict(list)
-
-        self._unallocated_qubit_indices = []
-
-        self._current_quantum_register_address = self._get_new_quantum_register_address()
-        self._current_classical_register_address = self._get_shared_classical_register_address()
+        self._init_new_app(max_qubits=max_qubits)
 
         self._pending_commands = []
 
+        self._pending_subroutine = None
+
+        self._shared_memory = get_shared_memory(self.name, key=self._appID)
+
         self._logger = logging.getLogger(f"{self.__class__.__name__}({self.name})")
+
+    @property
+    def shared_memory(self):
+        return self._shared_memory
 
     def close(self, release_qubits=True, release_bits=True):
         super().close(release_qubits=release_qubits)
 
     def new_qubitID(self):
-        return (
-            self._current_quantum_register_address,
-            self._get_new_quantum_reg_index(),
-        )
+        return self._get_new_qubit_address()
 
     def _handle_create_qubits(self, num_qubits):
         raise NotImplementedError
@@ -64,23 +64,27 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def return_meas_outcome(self):
         raise NotImplementedError
 
+    def _init_new_app(self, max_qubits):
+        """Informs the backend of the new application and how many qubits it will maximally use"""
+        pass
+
     def put_command(self, qID, command, **kwargs):
         self._logger.debug(f"Put new command={command_to_string(command)} for qubit qID={qID} with kwargs={kwargs}")
         self._pending_commands.append(_Command(qID=qID, command=command, kwargs=kwargs))
 
     def flush(self, block=True):
-        if len(self._pending_commands) == 0:
+        subroutine = self._pop_pending_subroutine()
+        if subroutine is None:
             return
-        # Build sub-routine
-        subroutine = ""
-        subroutine += self._get_subroutine_preamble()
-        # Create a single quantum register for these qubits
-        # subroutine += self._classical_register_command()
-        subroutine += self._quantum_register_command()
-        for command in self._pop_pending_commands():
-            netqasm_command = self._get_netqasm_command(command)
-            subroutine += netqasm_command
 
+        preamble = self._get_subroutine_preamble()
+        subroutine = preamble + subroutine
+
+        self._commit_subroutine(subroutine=subroutine, block=block)
+
+    def _commit_subroutine(self, subroutine, block=True):
+        # For logging
+        print(subroutine)
         indented_subroutine = '\n'.join(f"    {line}" for line in subroutine.split('\n'))
         self._logger.debug(f"Flushing subroutine:\n{indented_subroutine}")
 
@@ -90,65 +94,42 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Commit the subroutine to the quantum device
         self.commit(subroutine, block=block)
 
-        self._post_flush()
+    def _put_subroutine(self, subroutine):
+        """Stores a subroutine to be flushed"""
+        self._pending_subroutine = subroutine
 
-    def _post_flush(self):
-        # Move to a new qubit register
-        self._current_quantum_register_address = self._get_new_quantum_register_address()
+    def _subroutine_from_commands(self, commands):
+        # Build sub-routine
+        subroutine = ""
+        for command in commands:
+            netqasm_command = self._get_netqasm_command(command)
+            subroutine += netqasm_command
+        return subroutine
+
+    def _pop_pending_subroutine(self):
+        if len(self._pending_commands) > 0 and self._pending_subroutine is not None:
+            raise RuntimeError("There's both a pending subroutine and pending commands")
+        if self._pending_subroutine is not None:
+            subroutine = self._pending_subroutine
+            self._pending_subroutine = None
+        elif len(self._pending_commands) > 0:
+            commands = self._pop_pending_commands()
+            subroutine = self._subroutine_from_commands(commands)
+        else:
+            subroutine = None
+        return subroutine
 
     def _pop_pending_commands(self):
-        pending_commands = self._pending_commands
+        commands = self._pending_commands
         self._pending_commands = []
-        return pending_commands
+        return commands
 
     def _pre_process_subroutine(self, subroutine):
         """Parses and assembles the subroutine.
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        parser = Parser(subroutine)
-        subroutine = Subroutine(
-            netqasm_version=parser.netqasm_version,
-            app_id=parser.app_id,
-            instructions=parser.instructions,
-        )
-        return subroutine
-
-    # def _classical_register_command(self):
-    #     address = self._get_classical_register_address()
-    #     for index in self._used_classical_reg_indices:
-    #         if not self._allocated_classical_reg_indices[index]:
-    #             num_bits += 1
-    #     num_bits = len(self._used_classical_reg_indices)
-    #     if num_bits == 0:
-    #         return ""
-    #     instr_str = instruction_to_string(Instruction.CREG)
-
-    #     for index in self._used_classical_reg_indices:
-    #         self._allocated_classical_reg_indices[index] = True
-
-    #     return f"{instr_str}({num_bits}) @{address}\n"
-
-    def _quantum_register_command(self):
-        # Check how many qubits are not allocated for the current address
-        num_qubits = len(self._unallocated_qubit_indices)
-        if num_qubits == 0:
-            return ""
-        self._unallocated_qubit_indices = []
-        address = self._current_quantum_register_address
-        instr_str = instruction_to_string(Instruction.QREG)
-
-        return f"{instr_str}({num_qubits}) @{address}\n"
-
-    def _get_new_quantum_register_address(self):
-        for address in count(0):
-            if address not in self._used_quantum_addresses:
-                self._current_quantum_register_address = address
-                return address
-
-    def _get_shared_classical_register_address(self):
-        # 'sm' is a keyword for the shared memory and has address 0
-        return 'sm'
+        return Parser(subroutine).subroutine
 
     @abc.abstractmethod
     def commit(self, msg):
@@ -162,13 +143,21 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _get_netqasm_command(self, command):
         instr = _CQC_TO_NETQASM_INSTR[command.command]
         if command.command == CQC_CMD_MEASURE:
-            c_address = self._current_classical_register_address
-            q_address, q_index = command.qID
-            c_index = command.kwargs['classical_reg_index']
-            return f"{instr} @{q_address}[{q_index}] {c_address}[{c_index}]"
+            c_address = command.kwargs['outcome_address']
+            if isinstance(c_address, int) or is_number(c_address):
+                c_address = Parser.ADDRESS_START + str(c_address)
+            q_address = command.qID
+            meas = f"{instr} {Parser.ADDRESS_START}{q_address} {c_address}\n"
+            qfree = f"qfree {Parser.ADDRESS_START}{q_address}\n"
+            return meas + qfree
+        if command.command == CQC_CMD_NEW:
+            address = command.qID
+            qtake = f"qtake {Parser.ADDRESS_START}{address}\n"
+            init = f"init {Parser.ADDRESS_START}{address}\n"
+            return qtake + init
         else:
-            address, index = command.qID
-            return f"{instr} @{address}[{index}]\n"
+            address = command.qID
+            return f"{instr} {Parser.ADDRESS_START}{address}\n"
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
         raise NotImplementedError
@@ -182,22 +171,55 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def readMessage(self):
         raise NotImplementedError
 
-    def _get_new_quantum_reg_index(self):
-        index = self._get_new_reg_index(tp="quantum")
-        self._unallocated_qubit_indices.append(index)
-        return index
+    def _get_new_qubit_address(self):
+        qubit_addresses_in_use = [q._qID for q in self.active_qubits]
+        for address in count(0):
+            if address not in qubit_addresses_in_use:
+                return address
 
-    def _get_new_classical_reg_index(self):
-        return self._get_new_reg_index(tp="classical")
+    def _get_new_classical_address(self):
+        used_addresses = self._used_classical_addresses
+        for address in count(0):
+            if address not in used_addresses:
+                used_addresses.append(address)
+                return address
 
-    def _get_new_reg_index(self, tp):
-        if tp == "quantum":
-            address = self._current_quantum_register_address
-            used_ids = self._used_quantum_reg_indices[address]
-        elif tp == "classical":
-            address = self._current_classical_register_address
-            used_ids = self._used_classical_reg_indices[address]
-        for virtual_id in count(0):
-            if virtual_id not in used_ids:
-                used_ids.append(virtual_id)
-                return virtual_id
+    def loop(self, body, end, start=0, var_address='i'):
+        body(self)
+        body_subroutine = self._pop_pending_subroutine()
+        current_branch_variables = Parser._find_current_branch_variables(body_subroutine)
+        loop_start, loop_end = self._get_loop_commands(
+            start=start,
+            end=end,
+            var_address=var_address,
+            current_branch_variables=current_branch_variables,
+        )
+        subroutine = loop_start + body_subroutine + loop_end
+
+        self._put_subroutine(subroutine=subroutine)
+
+    def _get_loop_commands(self, start, end, var_address, current_branch_variables):
+        loop_variable = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
+        exit_variable = self._find_unused_variable(start_with="EXIT", current_variables=current_branch_variables)
+        start_loop = f"""store {var_address} {start}
+{loop_variable}:
+beq {var_address} {end} {exit_variable}
+"""
+        end_loop = f"""add {var_address} {var_address} 1
+beq 0 0 {loop_variable}
+{exit_variable}:
+"""
+        return start_loop, end_loop
+
+    def _find_unused_variable(self, start_with="", current_variables=None):
+        if current_variables is None:
+            current_variables = set([])
+        else:
+            current_variables = set(current_variables)
+        if start_with not in current_variables:
+            return start_with
+        else:
+            for i in count(1):
+                var_name = f"{start_with}{i}"
+                if var_name not in current_variables:
+                    return var_name

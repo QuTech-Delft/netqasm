@@ -11,10 +11,11 @@ Subroutine = namedtuple("Subroutine", ["app_id", "netqasm_version", "instruction
 class Parser:
 
     COMMENT_START = '//'
-    INDEX_BRACKETS = '[]'
     BRANCH_END = ':'
     MACRO_END = '!'
     ADDRESS_START = '@'
+    DEREF_START = '*'
+    INDIRECT_START = DEREF_START + ADDRESS_START
     ARGS_BRACKETS = '()'
     ARGS_DELIM = ','
 
@@ -46,7 +47,7 @@ class Parser:
 
     @property
     def app_id(self):
-        return self._preamble_data[self.__class__.PREAMBLE_APPID][0][0]
+        return int(self._preamble_data[self.__class__.PREAMBLE_APPID][0][0])
 
     @property
     def preamble_data(self):
@@ -64,6 +65,14 @@ class Parser:
     def address_variables(self):
         return self._address_variables
 
+    @property
+    def subroutine(self):
+        return Subroutine(
+            netqasm_version=self.netqasm_version,
+            app_id=self.app_id,
+            instructions=self.instructions,
+        )
+
     def __str__(self):
         to_return = f"Parsed NetQASM subroutine (NETQASM: {self.netqasm_version}, APPID: {self.app_id}):\n\n"
         to_return += "\n".join([f"\t{instr}" for instr in self._instructions])
@@ -77,7 +86,8 @@ class Parser:
         instructions = self._parse_body(body_lines)
         return preamble_data, instructions
 
-    def _split_preamble_body(self, subroutine):
+    @staticmethod
+    def _split_preamble_body(subroutine):
         """Splits the preamble from the body of the subroutine"""
         is_preamble = True
         preamble_lines = []
@@ -85,10 +95,10 @@ class Parser:
         for line in subroutine.split('\n'):
             # Remove surrounding whitespace and comments
             line = line.strip()
-            line = self._remove_comments_from_line(line)
+            line = Parser._remove_comments_from_line(line)
             if line == '':  # Ignore empty lines
                 continue
-            if line.startswith(self.__class__.PREAMBLE_START):
+            if line.startswith(Parser.PREAMBLE_START):
                 if not is_preamble:  # Should not go out of preamble and in again
                     raise NetQASMSyntaxError("Cannot have a preamble line after instructions")
                 line = line[1:].strip()
@@ -107,9 +117,10 @@ class Parser:
             body = body.replace(f"{macro_key}{self.__class__.MACRO_END}", macro_value)
         return list(body.split('\n'))
 
-    def _remove_comments_from_line(self, line):
+    @staticmethod
+    def _remove_comments_from_line(line):
         """Removes comments from a line"""
-        return line.split(self.__class__.COMMENT_START)[0]
+        return line.split(Parser.COMMENT_START)[0]
 
     def _parse_preamble(self, preamble_lines):
         """Parses the preamble lines"""
@@ -171,7 +182,6 @@ class Parser:
         """Parses the body lines"""
         # Apply built in variables
         body_lines = self._apply_built_in_variables(body_lines)
-        print(body_lines)
 
         # Handle branch variables
         body_lines = self._assign_branch_variables(body_lines)
@@ -191,7 +201,7 @@ class Parser:
         while line_number < len(body_lines):
             line = body_lines[line_number]
             # A line defining a branch variable should end with BRANCH_END
-            if line[-1] != self.__class__.BRANCH_END:
+            if not line.endswith(self.__class__.BRANCH_END):
                 line_number += 1
                 continue
             branch_variable = line[:-1]
@@ -206,6 +216,21 @@ class Parser:
         self._branch_variables = branch_variables
         return body_lines
 
+    @staticmethod
+    def _find_current_branch_variables(subroutine):
+        """Finds the current branch variables in a subroutine and returns these as a list"""
+        # NOTE preamble definitions are ignored
+        # NOTE there is no checking here for valid and unique variable names
+        preamble_lines, body_lines = Parser._split_preamble_body(subroutine)
+
+        branch_variables = []
+        for line in body_lines:
+            # A line defining a branch variable should end with BRANCH_END
+            if line.endswith(Parser.BRANCH_END):
+                branch_variables.append(line[:-1])
+
+        return branch_variables
+
     def _assign_address_variables(self, body_lines):
         """Finds the address variables in a subroutine"""
         current_addresses = self._find_current_addresses(body_lines)
@@ -216,7 +241,7 @@ class Parser:
             if variable is None:  # No more variables
                 break
             new_address = self._get_unused_address(current_addresses)
-            current_addresses.append(new_address)
+            current_addresses.add(new_address)
             address_variables[variable] = new_address
             body_lines = self._update_variables(body_lines, {variable: new_address},
                                                 from_line=var_line_number,
@@ -233,34 +258,43 @@ class Parser:
             line = body_lines[line_number]
             words = group_by_word(line)
             for word in words[1:]:
-                # Split of indexing
-                address, _ = self._split_name_and_index(word)
+                address = self._ignore_deref(word)
                 if is_variable_name(address):
                     return address, line_number
         return None, -1
 
+    @staticmethod
+    def _ignore_deref(address):
+        if address.startswith(Parser.DEREF_START):
+            return address[1:]
+        else:
+            return address
+
     def _find_current_addresses(self, body_lines):
         """Finds the used addresses in the body lines"""
-        current_addresses = []
+        current_addresses = set([])
         for line in body_lines:
             words = group_by_word(line)
             for word in words[1:]:
-                # Split of indexing
-                address, _ = self._split_name_and_index(word)
-                if not self._is_address(address):
+                address = self._ignore_address_mode(word)
+                if address is None:
                     continue
-                address = address[1:]
                 if is_number(address):
-                    current_addresses.append(int(address))
+                    current_addresses.add(int(address))
         return current_addresses
 
     def _is_address(self, address):
-        return (address[0] == self.__class__.ADDRESS_START) and is_number(address[1:])
+        address = self._ignore_address_mode(address)
+        return is_number(address)
 
-    @staticmethod
-    def _split_name_and_index(word):
-        address, index = Parser._split_of_bracket(word, brackets=Parser.INDEX_BRACKETS)
-        return address, index
+    def _ignore_address_mode(self, address):
+        if address.startswith(self.__class__.ADDRESS_START):
+            return address[1:]
+        elif address.startswith(self.__class__.INDIRECT_START):
+            return address[2:]
+        else:
+            # IMMEDIATE mode (not an address)
+            return None
 
     @staticmethod
     def _split_instr_and_args(word):
@@ -302,13 +336,17 @@ class Parser:
 
     def _update_variables_in_word(self, word, variables, add_address_start=False):
         for variable, value in variables.items():
-            # Split of indexing
-            address, index = self._split_name_and_index(word)
+            if word.startswith(self.__class__.DEREF_START):
+                deref = self.__class__.DEREF_START
+                address = word[1:]
+            else:
+                deref = ''
+                address = word
             if address == variable:
-                if variable == 'sm':
-                    print("HELLO")
-                new_word = f"{value}{index}"
                 if add_address_start:
-                    new_word = self.__class__.ADDRESS_START + new_word
+                    new_word = self.__class__.ADDRESS_START + str(value)
+                else:
+                    new_word = str(value)
+                new_word = deref + new_word
                 return new_word
         return word

@@ -2,11 +2,13 @@ from enum import Enum, auto
 
 
 class Instruction(Enum):
-    CREG = auto()
-    QREG = auto()
-    OUTPUT = auto()  # Other name?
+    # CREG = auto()
+    # QREG = auto()
+    # OUTPUT = auto()  # Other name?
+    QTAKE = auto()
 
     INIT = auto()
+    STORE = auto()
 
     ADD = auto()
 
@@ -21,10 +23,12 @@ class Instruction(Enum):
 
 
 _INSTRUCTION_TO_STRING = {
-    Instruction.QREG: "qreg",
-    Instruction.CREG: "creg",
-    Instruction.OUTPUT: "output",
+    # Instruction.QREG: "qreg",
+    # Instruction.CREG: "creg",
+    # Instruction.OUTPUT: "output",
+    Instruction.QTAKE: "qtake",
     Instruction.INIT: "init",
+    Instruction.STORE: "store",
     Instruction.ADD: "add",
     Instruction.H: "h",
     Instruction.X: "x",

@@ -10,15 +10,14 @@ def test_split_preamble():
 # APPID 0
 # DEFINE op h
 # DEFINE q @0
-creg(1) m
-qreg(1) q!
+qtake q!
 init q!
 op! q! // this is a comment
 meas q! m
-beq m[0] 0 EXIT
+beq m 0 EXIT
+// this is also a comment
 x q!
 EXIT:
-// this is also a comment
 """
 
     nqparser = Parser(subroutine)
@@ -41,3 +40,7 @@ EXIT:
 def test_faulty_preamble(subroutine, error):
     with pytest.raises(error):
         Parser(subroutine)
+
+
+if __name__ == '__main__':
+    test_split_preamble()
