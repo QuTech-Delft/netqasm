@@ -2,30 +2,19 @@ from enum import Enum, auto
 
 
 class Instruction(Enum):
-    # CREG = auto()
-    # QREG = auto()
-    # OUTPUT = auto()  # Other name?
     QTAKE = auto()
-
     INIT = auto()
     STORE = auto()
-
     ADD = auto()
-
     H = auto()
     X = auto()
     MEAS = auto()
-
     BEQ = auto()
-
     CFREE = auto()
     QFREE = auto()
 
 
 _INSTRUCTION_TO_STRING = {
-    # Instruction.QREG: "qreg",
-    # Instruction.CREG: "creg",
-    # Instruction.OUTPUT: "output",
     Instruction.QTAKE: "qtake",
     Instruction.INIT: "init",
     Instruction.STORE: "store",
@@ -44,6 +33,16 @@ def instruction_to_string(instr):
     if instr_str is None:
         raise ValueError(f"Unknown instruction {instr}")
     return instr_str
+
+
+_STRING_TO_INSTRUCTION = {instr_str: instr for instr, instr_str in _INSTRUCTION_TO_STRING.items()}
+
+
+def string_to_instruction(instr_str):
+    instr = _STRING_TO_INSTRUCTION.get(instr_str)
+    if instr is None:
+        raise ValueError(f"Unknown instruction {instr_str}")
+    return instr
 
 
 class Encoder:

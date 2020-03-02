@@ -4,8 +4,8 @@ from types import GeneratorType
 from collections import namedtuple, defaultdict
 from itertools import count
 
-from netqasm.parser import Parser
-from netqasm.encoder import Instruction
+from netqasm.parser import Parser, Command, Qubit, Address, Array
+from netqasm.encoder import Instruction, string_to_instruction
 from netqasm.string_util import group_by_word
 from netqasm.sdk.shared_memory import get_shared_memory
 
@@ -14,6 +14,14 @@ class AddressMode(Enum):
     DIRECT = auto()
     INDIRECT = auto()
     IMMEDIATE = auto()
+
+
+class OperandType(Enum):
+    """Types of operands that a command can have"""
+    QUBIT = auto()
+    READ = auto()
+    WRITE = auto()
+    ADDRESS = auto()
 
 
 Operand = namedtuple("Operand", ["mode", "value"])
@@ -115,7 +123,7 @@ class Processor:
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
         self.reset_program_counter(subroutine_id)
-        output = self._execute_instructions(subroutine_id, subroutine.instructions)
+        output = self._execute_commands(subroutine_id, subroutine.commands)
         if isinstance(output, GeneratorType):
             yield from output
 
@@ -124,77 +132,78 @@ class Processor:
             if subroutine_id not in self._subroutines:
                 return subroutine_id
 
-    def _execute_instructions(self, subroutine_id, instructions):
+    def _execute_commands(self, subroutine_id, commands):
         """Executes a given subroutine"""
-        while self._program_counters[subroutine_id] < len(instructions):
-            instruction = instructions[self._program_counters[subroutine_id]]
-            output = self._execute_instruction(subroutine_id, instruction)
+        while self._program_counters[subroutine_id] < len(commands):
+            command = commands[self._program_counters[subroutine_id]]
+            output = self._execute_command(subroutine_id, command)
             if isinstance(output, GeneratorType):
                 yield from output
 
-    def _execute_instruction(self, subroutine_id, instruction):
+    def _execute_command(self, subroutine_id, command):
         """Executes a single instruction"""
-        instr, args, operands = self._parse_instruction(instruction)
-        if instr not in self._instruction_handlers:
-            raise RuntimeError(f"Unknown instruction identifier {instr} from {instruction}")
-        output = self._instruction_handlers[instr](subroutine_id, args, operands)
+        if not isinstance(command, Command):
+            raise TypeError(f"Expected a Command, not {type(command)}")
+        instr = string_to_instruction(command.instruction)
+        output = self._instruction_handlers[instr](subroutine_id, command.args, command.operands)
         if isinstance(output, GeneratorType):
             yield from output
 
-    def _parse_instruction(self, instruction):
-        # TODO should be handled differently when there is a binary encoding
-        instr_args, *operands = group_by_word(instruction)
-        instr, args = Parser._split_instr_and_args(instr_args)
-        args = self._parse_args(args)
-        instr = self._parse_instruction_id(instr)
-        operands = self._parse_operands(operands)
-        return instr, args, operands
+    # def _parse_instruction(self, instruction):
+    #     # TODO should be handled differently when there is a binary encoding
+    #     instr_args, *operands = group_by_word(instruction)
+    #     instr, args = Parser._split_instr_and_args(instr_args)
+    #     args = self._parse_args(args)
+    #     instr = self._parse_instruction_id(instr)
+    #     operands = self._parse_operands(operands)
+    #     return instr, args, operands
 
-    def _parse_instruction_id(self, instr):
-        # TODO should be handled differently when there is a binary encoding
-        instructions = {
-            "qtake": Instruction.QTAKE,
-            "init": Instruction.INIT,
-            "store": Instruction.STORE,
-            "add": Instruction.ADD,
-            "h": Instruction.H,
-            "x": Instruction.X,
-            "meas": Instruction.MEAS,
-            "beq": Instruction.BEQ,
-            "qfree": Instruction.QFREE,
-            }
-        if instr not in instructions:
-            raise RuntimeError(f"Instruction '{instr}' is not a known instruction")
-        return instructions[instr]
+    # def _parse_instruction_id(self, instr):
+    #     # TODO should be handled differently when there is a binary encoding
+    #     instructions = {
+    #         "qtake": Instruction.QTAKE,
+    #         "init": Instruction.INIT,
+    #         "store": Instruction.STORE,
+    #         "add": Instruction.ADD,
+    #         "h": Instruction.H,
+    #         "x": Instruction.X,
+    #         "meas": Instruction.MEAS,
+    #         "beq": Instruction.BEQ,
+    #         "qfree": Instruction.QFREE,
+    #         }
+    #     if instr not in instructions:
+    #         raise RuntimeError(f"Instruction '{instr}' is not a known instruction")
+    #     return instructions[instr]
 
-    def _parse_operands(self, operands):
-        return [self._parse_operand(operand) for operand in operands]
+    # def _parse_operands(self, operands):
+    #     return [self._parse_operand(operand) for operand in operands]
 
-    def _parse_args(self, args):
-        # TODO should be handled differently when there is a binary encoding
-        if args == "":
-            return []
-        args = args[1:-1]
-        return [int(arg.strip()) for arg in args.split(Parser.ARGS_DELIM)]
+    # def _parse_args(self, args):
+    #     # TODO should be handled differently when there is a binary encoding
+    #     if args == "":
+    #         return []
+    #     args = args[1:-1]
+    #     return [int(arg.strip()) for arg in args.split(Parser.ARGS_DELIM)]
 
-    def _parse_operand(self, operand):
-        # TODO should be handled differently when there is a binary encoding
-        if operand.startswith(Parser.INDIRECT_START):
-            mode = AddressMode.INDIRECT
-            value = int(operand[2:])
-        elif operand.startswith(Parser.ADDRESS_START):
-            mode = AddressMode.DIRECT
-            value = int(operand[1:])
-        else:
-            mode = AddressMode.IMMEDIATE
-            value = int(operand)
-        return Operand(mode=mode, value=value)
+    # def _parse_operand(self, operand):
+    #     # TODO should be handled differently when there is a binary encoding
+    #     if operand.startswith(Parser.INDIRECT_START):
+    #         mode = AddressMode.INDIRECT
+    #         value = int(operand[2:])
+    #     elif operand.startswith(Parser.ADDRESS_START):
+    #         mode = AddressMode.DIRECT
+    #         value = int(operand[1:])
+    #     else:
+    #         mode = AddressMode.IMMEDIATE
+    #         value = int(operand)
+    #     return Operand(mode=mode, value=value)
 
     @inc_program_counter
     def _instr_qtake(self, subroutine_id, args, operands):
+        breakpoint()
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=1,
-                              modes=[AddressMode.DIRECT])
+                              types=[Qubit])
         address = operands[0].value
         self._allocate_physical_qubit(subroutine_id, address)
         self._logger.debug(f"Taking qubit at address {address}")
@@ -205,6 +214,7 @@ class Processor:
 
     @inc_program_counter
     def _instr_store(self, subroutine_id, args, operands):
+        breakpoint()
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=2, modes=[
             [AddressMode.DIRECT, AddressMode.INDIRECT],
@@ -405,13 +415,30 @@ class Processor:
         if not len(args) == num:
             raise TypeError(f"Expected {num} arguments, got {len(args)}")
 
-    def _assert_operands(self, operands, num, modes):
+    def _assert_operands(self, operands, num, types):
+        if isinstance(types, OperandType):
+            types = [types] * num
         if not len(operands) == num:
             raise TypeError(f"Expected {num} operands, got {len(operands)}")
-        for operand, mode in zip(operands, modes):
-            if mode is not None:
-                if not (operand.mode == mode or operand.mode in mode):
-                    raise TypeError(f"Expected operand in mode {mode} but got {operand.mode}")
+        for operand, type in zip(operands, types):
+            self._assert_operand(operand, type)
+
+    def _assert_operand(self, operand, type):
+        if type == OperandType.QUBIT:
+            if not isinstance(operand, Qubit):
+                raise TypeError(f"Expected operand of type Qubit but got {type(operand)}")
+        elif type == OperandType.READ:
+            if not (isinstance(operand, Address) or isinstance(operand, Array)):
+                raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
+            pass
+        elif type == OperandType.WRITE:
+            pass
+        elif type == OperandType.ADDRESS:
+            if not (isinstance(operand, Address) or isinstance(operand, Array)):
+                raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
+        else:
+            if not (operand.mode == mode or operand.mode in mode):
+                raise TypeError(f"Expected operand in mode {mode} but got {operand.mode}")
 
     def _get_app_id(self, subroutine_id):
         """Returns the app ID for the given subroutine"""

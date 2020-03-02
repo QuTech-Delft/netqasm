@@ -2,24 +2,10 @@ from enum import Enum, auto
 from typing import List, Union
 from itertools import count
 from dataclasses import dataclass
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 
-from netqasm.string_util import group_by_word, is_variable_name, is_number
+from netqasm.string_util import group_by_word, is_variable_name, is_number, rspaces
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
-
-
-Subroutine = namedtuple("Subroutine", ["app_id", "netqasm_version", "instructions"])
-
-
-class OperandType(Enum):
-    VALUE = auto()
-    QUBIT = auto()
-    ARRAY = auto()
-
-
-class OffsetType(Enum):
-    NONE = auto()
-    INDEX = auto()
 
 
 class AddressMode(Enum):
@@ -28,32 +14,43 @@ class AddressMode(Enum):
     INDIRECT = auto()
 
 
-# @dataclass
-# class Offset:
-#     base: int
-#     offset: int
-
-
 @dataclass
 class Address:
     address: Union[int, str]
     mode: AddressMode
 
-
-# @dataclass
-# class Value:
-#     address: int
+    def __str__(self):
+        if self.mode == AddressMode.IMMEDIATE:
+            return str(self.address)
+        elif self.mode == AddressMode.DIRECT:
+            if isinstance(self.address, int):
+                return Parser.ADDRESS_START + str(self.address)
+            else:
+                return self.address
+        elif self.mode == AddressMode.INDIRECT:
+            if isinstance(self.address, int):
+                return Parser.INDIRECT_START + str(self.address)
+            else:
+                return Parser.DEREF_START + self.address
+        else:
+            RuntimeError(f"Unknown addressing mode {self.mode}")
 
 
 @dataclass
 class Qubit:
     address: Union[str, int]
 
+    def __str__(self):
+        return Parser.QUBIT_START + str(self.address)
+
 
 @dataclass
 class Array:
     address: Address
     index: Union[None, Address]
+
+    def __str__(self):
+        return str(self.address) + Parser.INDEX_BRACKETS[0] + str(self.index) + Parser.INDEX_BRACKETS[1]
 
 
 # @dataclass
@@ -67,10 +64,22 @@ class Command:
     args: List[int]
     operands: List[Union[Address, Qubit, Array]]
 
+    def __str__(self):
+        if len(self.args) == 0:
+            args = ''
+        else:
+            args = Parser.ARGS_DELIM.join(str(arg) for arg in self.args)
+            args = Parser.ARGS_BRACKETS[0] + args + Parser.ARGS_BRACKETS[1]
+        operands = ' '.join(str(operand) for operand in self.operands)
+        return f"{self.instruction}{args} {operands}"
+
 
 @dataclass
 class BranchVariable:
     name: str
+
+    def __str__(self):
+        return self.name + Parser.BRANCH_END
 
 
 @dataclass
@@ -78,6 +87,12 @@ class Subroutine:
     netqasm_version: str
     app_id: int
     commands: List[Union[Command, BranchVariable]]
+
+    def __str__(self):
+        to_return = f"Subroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
+        for i, command in enumerate(self.commands):
+            to_return += f"{rspaces(i)} {command}\n"
+        return to_return
 
 
 class Parser:
@@ -110,9 +125,9 @@ class Parser:
         subroutine : str
             A string with NetQASM instructions separated by line-breaks.
         """
-        self._subroutine = self._parse_subroutine(subroutine)
         self._branch_variables = None
         self._address_variables = None
+        self._subroutine = self._parse_subroutine(subroutine)
 
     @property
     def netqasm_version(self):
@@ -133,6 +148,14 @@ class Parser:
     @property
     def address_variables(self):
         return self._address_variables
+
+    @property
+    def qubit_address_variables(self):
+        return self._address_variables.get("qubit")
+
+    @property
+    def classical_address_variables(self):
+        return self._address_variables.get("classical")
 
     @property
     def subroutine(self):
@@ -156,18 +179,20 @@ class Parser:
     def _create_subroutine(preamble_data, body_lines):
         commands = []
         for line in body_lines:
-            words = group_by_word(line)
-            # A command defining a branch variable should end with BRANCH_END
-            # TODO
-            instr, args = Parser._split_instr_and_args(words[0])
-            args = Parser._parse_args(args)
-            operands = Parser._parse_operands(words[1:])
-            command = Command(
-                instruction=instr,
-                args=args,
-                operands=operands,
-            )
-            commands.append(command)
+            if line.endswith(Parser.BRANCH_END):
+                # A command defining a branch variable should end with BRANCH_END
+                commands.append(BranchVariable(line.rstrip(Parser.BRANCH_END)))
+            else:
+                words = group_by_word(line)
+                instr, args = Parser._split_instr_and_args(words[0])
+                args = Parser._parse_args(args)
+                operands = Parser._parse_operands(words[1:])
+                command = Command(
+                    instruction=instr,
+                    args=args,
+                    operands=operands,
+                )
+                commands.append(command)
 
         return Subroutine(
             netqasm_version=preamble_data[Parser.PREAMBLE_NETQASM][0][0],
@@ -390,15 +415,15 @@ class Parser:
     def _assign_address_variables(self, subroutine):
         """Finds the address variables in a subroutine"""
         current_addresses = self.__class__._find_current_addresses(subroutine)
-        address_variables = {}
+        address_variables = defaultdict(dict)
         command_number = 0
         while command_number < len(subroutine.commands):
-            variable, var_command_number = self.__class__._find_next_variable(subroutine, command_number)
+            variable, var_command_number, var_type = self.__class__._find_next_variable(subroutine, command_number)
             if variable is None:  # No more variables
                 break
-            new_address = self.__class__._get_unused_address(current_addresses)
-            current_addresses.add(new_address)
-            address_variables[variable] = new_address
+            new_address = self.__class__._get_unused_address(current_addresses[var_type])
+            current_addresses[var_type].add(new_address)
+            address_variables[var_type][variable] = new_address
             self.__class__._update_variables(subroutine, {variable: new_address},
                                              from_command=var_command_number)
             # Next time we search from where we found a variable
@@ -413,14 +438,16 @@ class Parser:
             command = subroutine.commands[command_number]
             for operand in command.operands:
                 address = Parser._get_address_from_operand(operand)
+                if address is None:
+                    continue
                 if isinstance(address, int):
                     continue
                 if is_variable_name(address):
-                    return address, command_number
+                    type = "qubit" if isinstance(operand, Qubit) else "classical"
+                    return address, command_number, type
                 else:
-                    breakpoint()
                     raise NetQASMSyntaxError(f"Not a valid variable name {address}")
-        return None, -1
+        return None, -1, None
 
     @staticmethod
     def _ignore_deref(address):
@@ -429,7 +456,10 @@ class Parser:
     @staticmethod
     def _get_address_from_operand(operand):
         if isinstance(operand, Address):
-            return operand.address
+            if operand.mode == AddressMode.IMMEDIATE:
+                return None
+            else:
+                return operand.address
         elif isinstance(operand, Qubit):
             return operand.address
         elif isinstance(operand, Array):
@@ -451,12 +481,13 @@ class Parser:
     @staticmethod
     def _find_current_addresses(subroutine):
         """Finds the used addresses in the body lines"""
-        current_addresses = set([])
+        current_addresses = defaultdict(set)
         for command in subroutine.commands:
             for operand in command.operands:
                 address = Parser._get_address_from_operand(operand)
                 if isinstance(address, int):
-                    current_addresses.add(address)
+                    type = "qubit" if isinstance(operand, Qubit) else "classical"
+                    current_addresses[type].add(address)
         return current_addresses
 
     @staticmethod
@@ -501,7 +532,8 @@ class Parser:
     def _update_variables(subroutine, variables, from_command=0, mode=None):
         """Updates variables in a subroutine with given values"""
         for command in subroutine.commands[from_command:]:
-            Parser._update_variables_in_command(command, variables, mode=mode)
+            if isinstance(command, Command):
+                Parser._update_variables_in_command(command, variables, mode=mode)
 
     @staticmethod
     def _update_variables_in_command(command, variables, mode=None):
@@ -514,8 +546,8 @@ class Parser:
             address = Parser._get_address_from_operand(operand)
             if address == variable:
                 Parser._set_address_for_operand(operand, value)
-            if mode is not None:
-                operand.mode = mode
+                if mode is not None:
+                    operand.mode = mode
 
 
 def test():
@@ -524,6 +556,8 @@ def test():
 store @0 1
 store *@0 1
 store m 0
+init q0
+init q
 array(4) ms
 add m m 1
 add ms[0] m 1
@@ -531,10 +565,55 @@ beq 0 0 EXIT
 EXIT:
 """
 
+    expected = Subroutine(
+        netqasm_version="0.0",
+        app_id=0,
+        commands=[
+            Command(instruction="store", args=[], operands=[
+                Address(0, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Address(0, AddressMode.INDIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Address(1, AddressMode.DIRECT),
+                Address(0, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="init", args=[], operands=[
+                Qubit(0),
+            ]),
+            Command(instruction="init", args=[], operands=[
+                Qubit(1),
+            ]),
+            Command(instruction="array", args=[4], operands=[
+                Address(2, AddressMode.DIRECT),
+            ]),
+            Command(instruction="add", args=[], operands=[
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="add", args=[], operands=[
+                Array(address=Address(2, AddressMode.DIRECT), index=Address(0, AddressMode.IMMEDIATE)),
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="beq", args=[], operands=[
+                Address(0, AddressMode.IMMEDIATE),
+                Address(0, AddressMode.IMMEDIATE),
+                Address(9, AddressMode.IMMEDIATE),
+            ]),
+        ])
+
+    # print(subroutine)
     parser = Parser(subroutine)
-    print(parser.subroutine)
-    for command in parser.subroutine.commands:
-        print(command)
+    assert parser.subroutine == expected
+    # print(repr(parser.subroutine))
+    # print(parser.subroutine)
+    # print(parser.branch_variables)
+    # print(parser.address_variables)
 
 
 if __name__ == '__main__':

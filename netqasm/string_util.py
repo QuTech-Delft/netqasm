@@ -40,7 +40,12 @@ def is_variable_name(variable):
 
 
 def is_number(number):
-    return set(number) <= set(NUM)
+    return len(number) > 0 and set(number) <= set(NUM)
+
+
+def rspaces(val, min_chars=4):
+    val = str(val)
+    return ' ' * (min_chars - len(val)) + val
 
 
 def _assert_valid_seperator(seperator):
