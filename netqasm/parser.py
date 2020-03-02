@@ -1,11 +1,83 @@
-from collections import defaultdict, namedtuple
+from enum import Enum, auto
+from typing import List, Union
 from itertools import count
+from dataclasses import dataclass
+from collections import defaultdict, namedtuple
 
-from .string_util import group_by_word, is_variable_name, is_number
-from .util import NetQASMSyntaxError, NetQASMInstrError
+from netqasm.string_util import group_by_word, is_variable_name, is_number
+from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
 
 
 Subroutine = namedtuple("Subroutine", ["app_id", "netqasm_version", "instructions"])
+
+
+class OperandType(Enum):
+    VALUE = auto()
+    QUBIT = auto()
+    ARRAY = auto()
+
+
+class OffsetType(Enum):
+    NONE = auto()
+    INDEX = auto()
+
+
+class AddressMode(Enum):
+    IMMEDIATE = auto()
+    DIRECT = auto()
+    INDIRECT = auto()
+
+
+# @dataclass
+# class Offset:
+#     base: int
+#     offset: int
+
+
+@dataclass
+class Address:
+    address: Union[int, str]
+    mode: AddressMode
+
+
+# @dataclass
+# class Value:
+#     address: int
+
+
+@dataclass
+class Qubit:
+    address: Union[str, int]
+
+
+@dataclass
+class Array:
+    address: Address
+    index: Union[None, Address]
+
+
+# @dataclass
+# class Operand:
+#     operand: Union[Value, Qubit, Array]
+
+
+@dataclass
+class Command:
+    instruction: str
+    args: List[int]
+    operands: List[Union[Address, Qubit, Array]]
+
+
+@dataclass
+class BranchVariable:
+    name: str
+
+
+@dataclass
+class Subroutine:
+    netqasm_version: str
+    app_id: int
+    commands: List[Union[Command, BranchVariable]]
 
 
 class Parser:
@@ -18,6 +90,8 @@ class Parser:
     INDIRECT_START = DEREF_START + ADDRESS_START
     ARGS_BRACKETS = '()'
     ARGS_DELIM = ','
+    INDEX_BRACKETS = '[]'
+    QUBIT_START = 'q'
 
     PREAMBLE_START = '#'
     PREAMBLE_NETQASM = 'NETQASM'
@@ -26,7 +100,6 @@ class Parser:
     PREAMBLE_DEFINE_BRACKETS = r'{}'
 
     BUILT_IN_VARIABLES = {
-        'sm': 0,  # Shared memory
     }
 
     def __init__(self, subroutine):
@@ -37,25 +110,21 @@ class Parser:
         subroutine : str
             A string with NetQASM instructions separated by line-breaks.
         """
-        self._preamble_data, self._instructions = self._parse_subroutine(subroutine)
+        self._subroutine = self._parse_subroutine(subroutine)
         self._branch_variables = None
         self._address_variables = None
 
     @property
     def netqasm_version(self):
-        return self._preamble_data[self.__class__.PREAMBLE_NETQASM][0][0]
+        return self._subroutine.netqasm_version
 
     @property
     def app_id(self):
-        return int(self._preamble_data[self.__class__.PREAMBLE_APPID][0][0])
+        return self._subroutine.app_id
 
     @property
-    def preamble_data(self):
-        return self._preamble_data
-
-    @property
-    def instructions(self):
-        return self._instructions
+    def commands(self):
+        return self._subroutine.commands
 
     @property
     def branch_variables(self):
@@ -67,11 +136,7 @@ class Parser:
 
     @property
     def subroutine(self):
-        return Subroutine(
-            netqasm_version=self.netqasm_version,
-            app_id=self.app_id,
-            instructions=self.instructions,
-        )
+        return self._subroutine
 
     def __str__(self):
         to_return = f"Parsed NetQASM subroutine (NETQASM: {self.netqasm_version}, APPID: {self.app_id}):\n\n"
@@ -80,11 +145,92 @@ class Parser:
 
     def _parse_subroutine(self, subroutine):
         """Parses a subroutine and splits the preamble and body into separate parts."""
-        preamble_lines, body_lines = self._split_preamble_body(subroutine)
-        preamble_data = self._parse_preamble(preamble_lines)
-        body_lines = self._apply_macros(body_lines, preamble_data[self.__class__.PREAMBLE_DEFINE])
-        instructions = self._parse_body(body_lines)
-        return preamble_data, instructions
+        preamble_lines, body_lines = self.__class__._split_preamble_body(subroutine)
+        preamble_data = self.__class__._parse_preamble(preamble_lines)
+        body_lines = self.__class__._apply_macros(body_lines, preamble_data[self.__class__.PREAMBLE_DEFINE])
+        subroutine = self.__class__._create_subroutine(preamble_data, body_lines)
+        self._parse_body(subroutine)
+        return subroutine
+
+    @staticmethod
+    def _create_subroutine(preamble_data, body_lines):
+        commands = []
+        for line in body_lines:
+            words = group_by_word(line)
+            # A command defining a branch variable should end with BRANCH_END
+            # TODO
+            instr, args = Parser._split_instr_and_args(words[0])
+            args = Parser._parse_args(args)
+            operands = Parser._parse_operands(words[1:])
+            command = Command(
+                instruction=instr,
+                args=args,
+                operands=operands,
+            )
+            commands.append(command)
+
+        return Subroutine(
+            netqasm_version=preamble_data[Parser.PREAMBLE_NETQASM][0][0],
+            app_id=int(preamble_data[Parser.PREAMBLE_APPID][0][0]),
+            commands=commands,
+        )
+
+    @staticmethod
+    def _parse_args(args):
+        if args == "":
+            return []
+        else:
+            return [int(arg.strip())
+                    for arg in args.strip(Parser.ARGS_BRACKETS)
+                    .split(Parser.ARGS_DELIM)]
+
+    @staticmethod
+    def _parse_operands(words):
+        operands = []
+        for word in words:
+            operand = Parser._parse_operand(word)
+            operands.append(operand)
+
+        return operands
+
+    @staticmethod
+    def _parse_operand(word):
+        if word.startswith(Parser.QUBIT_START):
+            # Qubit
+            address = word.lstrip(Parser.QUBIT_START)
+            if is_number(address):
+                return Qubit(int(address))
+            else:
+                return Qubit(word)
+        elif Parser.INDEX_BRACKETS[0] in word:
+            # Array
+            array, index = Parser._split_of_bracket(word, Parser.INDEX_BRACKETS)
+            if index == Parser.INDEX_BRACKETS:
+                index = None
+            else:
+                index = Parser._parse_value(index.strip(Parser.INDEX_BRACKETS))
+            array = Parser._parse_value(array)
+            return Array(array, index)
+        else:
+            return Parser._parse_value(word)
+
+    @staticmethod
+    def _parse_value(word):
+        if word.startswith(Parser.DEREF_START):
+            address = word.lstrip(Parser.INDIRECT_START)
+            if is_number(address):
+                address = int(address)
+            return Address(address=address, mode=AddressMode.INDIRECT)
+        elif word.startswith(Parser.ADDRESS_START):
+            address = word.lstrip(Parser.ADDRESS_START)
+            if not is_number(address):
+                raise NetQASMSyntaxError("Expected number for address {address}")
+            return Address(address=int(address), mode=AddressMode.DIRECT)
+        elif is_number(word):
+            return Address(address=int(word), mode=AddressMode.IMMEDIATE)
+        else:
+            # Direct mode with a variable
+            return Address(address=word, mode=AddressMode.DIRECT)
 
     @staticmethod
     def _split_preamble_body(subroutine):
@@ -101,8 +247,8 @@ class Parser:
             if line.startswith(Parser.PREAMBLE_START):
                 if not is_preamble:  # Should not go out of preamble and in again
                     raise NetQASMSyntaxError("Cannot have a preamble line after instructions")
-                line = line[1:].strip()
-                if line == '':  # Ignore lines with only a '#' character
+                line = line.lstrip(Parser.PREAMBLE_START).strip()
+                if line == Parser.PREAMBLE_START:  # Ignore lines with only a '#' character
                     continue
                 preamble_lines.append(line)
             else:
@@ -110,11 +256,12 @@ class Parser:
                 body_lines.append(line)
         return preamble_lines, body_lines
 
-    def _apply_macros(self, body_lines, macros):
+    @staticmethod
+    def _apply_macros(body_lines, macros):
         """Applies macros to the body lines"""
         body = "\n".join(body_lines)
         for macro_key, macro_value in macros:
-            body = body.replace(f"{macro_key}{self.__class__.MACRO_END}", macro_value)
+            body = body.replace(f"{macro_key}{Parser.MACRO_END}", macro_value)
         return list(body.split('\n'))
 
     @staticmethod
@@ -122,23 +269,25 @@ class Parser:
         """Removes comments from a line"""
         return line.split(Parser.COMMENT_START)[0]
 
-    def _parse_preamble(self, preamble_lines):
+    @staticmethod
+    def _parse_preamble(preamble_lines):
         """Parses the preamble lines"""
         preamble_instructions = defaultdict(list)
         for line in preamble_lines:
             try:
-                instr, *operands = group_by_word(line, brackets=self.__class__.PREAMBLE_DEFINE_BRACKETS)
+                instr, *operands = group_by_word(line, brackets=Parser.PREAMBLE_DEFINE_BRACKETS)
             except ValueError as err:
                 raise NetQASMSyntaxError(f"Could not parse preamble instruction, since: {err}")
             preamble_instructions[instr].append(operands)
-        self._assert_valid_preamble_instructions(preamble_instructions)
+        Parser._assert_valid_preamble_instructions(preamble_instructions)
         return preamble_instructions
 
-    def _assert_valid_preamble_instructions(self, preamble_instructions):
+    @staticmethod
+    def _assert_valid_preamble_instructions(preamble_instructions):
         preamble_assertions = {
-            self.__class__.PREAMBLE_NETQASM: self._assert_valid_preamble_instr_netqasm,
-            self.__class__.PREAMBLE_APPID: self._assert_valid_preamble_instr_appid,
-            self.__class__.PREAMBLE_DEFINE: self._assert_valid_preamble_instr_define,
+            Parser.PREAMBLE_NETQASM: Parser._assert_valid_preamble_instr_netqasm,
+            Parser.PREAMBLE_APPID: Parser._assert_valid_preamble_instr_appid,
+            Parser.PREAMBLE_DEFINE: Parser._assert_valid_preamble_instr_define,
         }
         for instr, list_of_operands in preamble_instructions.items():
             preamble_assertion = preamble_assertions.get(instr)
@@ -146,19 +295,22 @@ class Parser:
                 raise NetQASMInstrError(f"The instruction {instr} is not a valid preamble instruction")
             preamble_assertion(list_of_operands)
 
-    def _assert_valid_preamble_instr_netqasm(self, list_of_operands):
-        self._assert_single_preamble_instr(list_of_operands, self.__class__.PREAMBLE_NETQASM)
-        self._assert_single_preamble_arg(list_of_operands, self.__class__.PREAMBLE_NETQASM)
+    @staticmethod
+    def _assert_valid_preamble_instr_netqasm(list_of_operands):
+        Parser._assert_single_preamble_instr(list_of_operands, Parser.PREAMBLE_NETQASM)
+        Parser._assert_single_preamble_arg(list_of_operands, Parser.PREAMBLE_NETQASM)
 
-    def _assert_valid_preamble_instr_appid(self, list_of_operands):
-        self._assert_single_preamble_instr(list_of_operands, self.__class__.PREAMBLE_APPID)
-        self._assert_single_preamble_arg(list_of_operands, self.__class__.PREAMBLE_APPID)
+    @staticmethod
+    def _assert_valid_preamble_instr_appid(list_of_operands):
+        Parser._assert_single_preamble_instr(list_of_operands, Parser.PREAMBLE_APPID)
+        Parser._assert_single_preamble_arg(list_of_operands, Parser.PREAMBLE_APPID)
 
-    def _assert_valid_preamble_instr_define(self, list_of_operands):
+    @staticmethod
+    def _assert_valid_preamble_instr_define(list_of_operands):
         macro_keys = []
         for operands in list_of_operands:
             if len(operands) != 2:
-                raise NetQASMSyntaxError(f"Preamble instruction {self.__class__.PREAMBLE_DEFINE} should contain "
+                raise NetQASMSyntaxError(f"Preamble instruction {Parser.PREAMBLE_DEFINE} should contain "
                                          "exactly two argument, "
                                          f"not {len(operands)} as in '{operands}'")
             macro_key, macro_value = operands
@@ -168,130 +320,156 @@ class Parser:
         if len(set(macro_keys)) < len(macro_keys):
             raise NetQASMInstrError(f"Macro keys need to be unique, not {macro_keys}")
 
-    def _assert_single_preamble_instr(self, list_of_operands, instr):
+    @staticmethod
+    def _assert_single_preamble_instr(list_of_operands, instr):
         if len(list_of_operands) != 1:
             raise NetQASMInstrError(f"Preamble should contain exactly one f{instr} instruction")
 
-    def _assert_single_preamble_arg(self, list_of_operands, instr):
+    @staticmethod
+    def _assert_single_preamble_arg(list_of_operands, instr):
         for operands in list_of_operands:
             if len(operands) != 1:
                 raise NetQASMSyntaxError(f"Preamble instruction {instr} should contain exactly one argument, "
                                          f"not {len(operands)} as in '{operands}'")
 
-    def _parse_body(self, body_lines):
+    def _parse_body(self, subroutine):
         """Parses the body lines"""
         # Apply built in variables
-        body_lines = self._apply_built_in_variables(body_lines)
+        self.__class__._apply_built_in_variables(subroutine)
 
         # Handle branch variables
-        body_lines = self._assign_branch_variables(body_lines)
+        self._assign_branch_variables(subroutine)
 
         # Handle address variables
-        body_lines = self._assign_address_variables(body_lines)
-        return body_lines
+        self._assign_address_variables(subroutine)
+        return subroutine
 
-    def _apply_built_in_variables(self, body_lines):
-        body_lines = self._update_variables(body_lines, self.__class__.BUILT_IN_VARIABLES, add_address_start=True)
-        return body_lines
+    @staticmethod
+    def _apply_built_in_variables(subroutine):
+        Parser._update_variables(subroutine, Parser.BUILT_IN_VARIABLES)
 
-    def _assign_branch_variables(self, body_lines):
+    def _assign_branch_variables(self, subroutine):
         """Finds the branch variables in a subroutine"""
         branch_variables = {}
-        line_number = 0
-        while line_number < len(body_lines):
-            line = body_lines[line_number]
-            # A line defining a branch variable should end with BRANCH_END
-            if not line.endswith(self.__class__.BRANCH_END):
-                line_number += 1
+        command_number = 0
+        commands = subroutine.commands
+        while command_number < len(commands):
+            command = commands[command_number]
+            # A command defining a branch variable should end with BRANCH_END
+            if not isinstance(command, BranchVariable):
+                command_number += 1
                 continue
-            branch_variable = line[:-1]
-            if not is_variable_name(line[:-1]):
+            branch_variable = command.name
+            if not is_variable_name(branch_variable):
                 raise NetQASMSyntaxError(f"{branch_variable} is not a valid branch variable")
             if branch_variable in branch_variables:
                 raise NetQASMSyntaxError("branch variables need to be unique, name {branch_variable} already used")
-            branch_variables[branch_variable] = line_number
-            body_lines = body_lines[:line_number] + body_lines[line_number + 1:]
-        body_lines = self._update_variables(body_lines, branch_variables)
+            branch_variables[branch_variable] = command_number
+            commands = commands[:command_number] + commands[command_number + 1:]
+        subroutine.commands = commands
+        self.__class__._update_variables(subroutine, branch_variables, mode=AddressMode.IMMEDIATE)
 
         self._branch_variables = branch_variables
-        return body_lines
 
     @staticmethod
     def _find_current_branch_variables(subroutine):
         """Finds the current branch variables in a subroutine and returns these as a list"""
         # NOTE preamble definitions are ignored
         # NOTE there is no checking here for valid and unique variable names
+        # TODO
         preamble_lines, body_lines = Parser._split_preamble_body(subroutine)
 
         branch_variables = []
         for line in body_lines:
             # A line defining a branch variable should end with BRANCH_END
             if line.endswith(Parser.BRANCH_END):
-                branch_variables.append(line[:-1])
+                branch_variables.append(line.rstrip(Parser.BRANCH_END))
 
         return branch_variables
 
-    def _assign_address_variables(self, body_lines):
+    def _assign_address_variables(self, subroutine):
         """Finds the address variables in a subroutine"""
-        current_addresses = self._find_current_addresses(body_lines)
+        current_addresses = self.__class__._find_current_addresses(subroutine)
         address_variables = {}
-        line_number = 0
-        while line_number < len(body_lines):
-            variable, var_line_number = self._find_next_variable(body_lines, line_number)
+        command_number = 0
+        while command_number < len(subroutine.commands):
+            variable, var_command_number = self.__class__._find_next_variable(subroutine, command_number)
             if variable is None:  # No more variables
                 break
-            new_address = self._get_unused_address(current_addresses)
+            new_address = self.__class__._get_unused_address(current_addresses)
             current_addresses.add(new_address)
             address_variables[variable] = new_address
-            body_lines = self._update_variables(body_lines, {variable: new_address},
-                                                from_line=var_line_number,
-                                                add_address_start=True)
+            self.__class__._update_variables(subroutine, {variable: new_address},
+                                             from_command=var_command_number)
             # Next time we search from where we found a variable
             # NOTE that there can be more than one per line
-            line_number = var_line_number
+            command_number = var_command_number
 
         self._address_variables = address_variables
-        return body_lines
 
-    def _find_next_variable(self, body_lines, start_line_number):
-        for line_number in range(start_line_number, len(body_lines)):
-            line = body_lines[line_number]
-            words = group_by_word(line)
-            for word in words[1:]:
-                address = self._ignore_deref(word)
+    @staticmethod
+    def _find_next_variable(subroutine, start_command_number):
+        for command_number in range(start_command_number, len(subroutine.commands)):
+            command = subroutine.commands[command_number]
+            for operand in command.operands:
+                address = Parser._get_address_from_operand(operand)
+                if isinstance(address, int):
+                    continue
                 if is_variable_name(address):
-                    return address, line_number
+                    return address, command_number
+                else:
+                    breakpoint()
+                    raise NetQASMSyntaxError(f"Not a valid variable name {address}")
         return None, -1
 
     @staticmethod
     def _ignore_deref(address):
-        if address.startswith(Parser.DEREF_START):
-            return address[1:]
-        else:
-            return address
+        return address.lstrip(Parser.DEREF_START)
 
-    def _find_current_addresses(self, body_lines):
+    @staticmethod
+    def _get_address_from_operand(operand):
+        if isinstance(operand, Address):
+            return operand.address
+        elif isinstance(operand, Qubit):
+            return operand.address
+        elif isinstance(operand, Array):
+            return operand.address.address
+        else:
+            raise TypeError(f"Unknown operand type {type(operand)}")
+
+    @staticmethod
+    def _set_address_for_operand(operand, address):
+        if isinstance(operand, Address):
+            operand.address = address
+        elif isinstance(operand, Qubit):
+            operand.address = address
+        elif isinstance(operand, Array):
+            operand.address.address = address
+        else:
+            raise TypeError(f"Unknown operand type {type(operand)}")
+
+    @staticmethod
+    def _find_current_addresses(subroutine):
         """Finds the used addresses in the body lines"""
         current_addresses = set([])
-        for line in body_lines:
-            words = group_by_word(line)
-            for word in words[1:]:
-                address = self._ignore_address_mode(word)
-                if address is None:
-                    continue
-                if is_number(address):
-                    current_addresses.add(int(address))
+        for command in subroutine.commands:
+            for operand in command.operands:
+                address = Parser._get_address_from_operand(operand)
+                if isinstance(address, int):
+                    current_addresses.add(address)
         return current_addresses
 
-    def _is_address(self, address):
-        address = self._ignore_address_mode(address)
+    @staticmethod
+    def _is_address(address):
+        address = Parser._ignore_address_mode(address)
         return is_number(address)
 
-    def _ignore_address_mode(self, address):
-        if address.startswith(self.__class__.ADDRESS_START):
-            return address[1:]
-        elif address.startswith(self.__class__.INDIRECT_START):
-            return address[2:]
+    @staticmethod
+    def _ignore_address_mode(address):
+        if address.startswith(Parser.ADDRESS_START):
+            return address.lstrip(Parser.ADDRESS_START)
+        elif address.startswith(Parser.INDIRECT_START):
+            return address.lstrip(Parser.INDIRECT_START)
         else:
             # IMMEDIATE mode (not an address)
             return None
@@ -313,40 +491,51 @@ class Parser:
         content = word[start:]
         return address, content
 
-    def _get_unused_address(self, current_addresses):
+    @staticmethod
+    def _get_unused_address(current_addresses):
         for address in count(0):
             if address not in current_addresses:
                 return address
 
-    def _update_variables(self, body_lines, variables, from_line=0, add_address_start=False):
+    @staticmethod
+    def _update_variables(subroutine, variables, from_command=0, mode=None):
         """Updates variables in a subroutine with given values"""
-        new_body_lines = body_lines[:from_line]
-        for line in body_lines[from_line:]:
-            line = self._update_variables_in_line(line, variables, add_address_start=add_address_start)
-            new_body_lines.append(line)
-        return new_body_lines
+        for command in subroutine.commands[from_command:]:
+            Parser._update_variables_in_command(command, variables, mode=mode)
 
-    def _update_variables_in_line(self, line, variables, add_address_start=False):
-        words = group_by_word(line)
-        new_words = []
-        for word in words:
-            word = self._update_variables_in_word(word, variables, add_address_start=add_address_start)
-            new_words.append(word)
-        return ' '.join(new_words)
+    @staticmethod
+    def _update_variables_in_command(command, variables, mode=None):
+        for operand in command.operands:
+            Parser._update_variables_in_operand(operand, variables, mode=mode)
 
-    def _update_variables_in_word(self, word, variables, add_address_start=False):
+    @staticmethod
+    def _update_variables_in_operand(operand, variables, mode=None):
         for variable, value in variables.items():
-            if word.startswith(self.__class__.DEREF_START):
-                deref = self.__class__.DEREF_START
-                address = word[1:]
-            else:
-                deref = ''
-                address = word
+            address = Parser._get_address_from_operand(operand)
             if address == variable:
-                if add_address_start:
-                    new_word = self.__class__.ADDRESS_START + str(value)
-                else:
-                    new_word = str(value)
-                new_word = deref + new_word
-                return new_word
-        return word
+                Parser._set_address_for_operand(operand, value)
+            if mode is not None:
+                operand.mode = mode
+
+
+def test():
+    subroutine = """# NETQASM 0.0
+# APPID 0
+store @0 1
+store *@0 1
+store m 0
+array(4) ms
+add m m 1
+add ms[0] m 1
+beq 0 0 EXIT
+EXIT:
+"""
+
+    parser = Parser(subroutine)
+    print(parser.subroutine)
+    for command in parser.subroutine.commands:
+        print(command)
+
+
+if __name__ == '__main__':
+    test()
