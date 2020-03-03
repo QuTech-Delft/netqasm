@@ -1,6 +1,11 @@
 _MEMORIES = {}
 
 
+def reset_memories():
+    for key in list(_MEMORIES.keys()):
+        _MEMORIES.pop(key)
+
+
 def get_shared_memory(node_name, key=None):
     absolute_key = (node_name, key)
     memory = _MEMORIES.get(absolute_key)
@@ -44,12 +49,13 @@ class SharedMemory:
             index, array_index = index
         else:
             array_index = None
-        if index >= len(self):
-            raise IndexError(f"Trying to get a value at address {index} which is outside "
-                             f"the size ({len(self)}) of the shared memory")
         if not isinstance(value, list):
             self._assert_within_width(value)
-        current = self._memory[index]
+        try:
+            current = self._memory[index]
+        except IndexError:
+            raise IndexError(f"Trying to get a value at address {index} which is outside "
+                             f"the size ({len(self)}) of the shared memory")
         if array_index is None:
             if not ((current is None) or isinstance(current, int)):
                 raise RuntimeError(f"Expected an address ({index}) position containing an int or uninitialized"
@@ -58,27 +64,30 @@ class SharedMemory:
         else:
             if not isinstance(current, list):
                 raise RuntimeError(f"Expected an address ({index}) position containing a list, not {current}")
-            if array_index >= len(current):
+            try:
+                current[array_index] = value
+            except IndexError:
                 raise IndexError(f"Index {array_index} is outside the array at address {index}")
-            current[array_index] = value
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
             index, array_index = index
         else:
             array_index = None
-        if index >= len(self):
+        try:
+            current = self._memory[index]
+        except IndexError:
             raise IndexError(f"Trying to get a value at address {index} which is outside "
                              f"the size ({len(self)}) of the shared memory")
-        current = self._memory[index]
         if array_index is None:
             return current
         else:
             if not isinstance(current, list):
                 raise RuntimeError(f"Expected an address ({index}) position containing a list, not {current}")
-            if array_index >= len(current):
+            try:
+                return current[array_index]
+            except IndexError:
                 raise IndexError(f"Index {array_index} is outside the array at address {index}")
-            return current[array_index]
 
     def _assert_within_width(self, value):
         min_value = -2**self.width

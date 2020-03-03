@@ -294,6 +294,7 @@ class Processor:
             indirect_address = shared_memory[address]
             if not isinstance(indirect_address, int):
                 raise TypeError(f"Expected an int at address {address}, not {indirect_address}")
+            return indirect_address
         else:
             raise TypeError(f"Unknown address mode {operand.mode}")
 

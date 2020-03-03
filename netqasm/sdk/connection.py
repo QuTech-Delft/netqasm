@@ -52,9 +52,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def shared_memory(self):
         return self._shared_memory
 
-    def close(self, release_qubits=True, release_bits=True):
-        super().close(release_qubits=release_qubits)
-
     def new_qubitID(self):
         return self._get_new_qubit_address()
 
