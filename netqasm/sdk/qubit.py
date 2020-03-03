@@ -1,10 +1,7 @@
-import logging
-
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
-from netqasm.parser import Subroutine
-from .meas_outcome import MeasurementOutcome
-from .shared_memory import get_shared_memory
+from netqasm.sdk.meas_outcome import MeasurementOutcome
+from netqasm.sdk.shared_memory import get_shared_memory
 
 
 class Qubit(qubit):
@@ -45,42 +42,3 @@ class Qubit(qubit):
             memory=memory,
             address=outcome_address,
         )
-
-
-# TODO tests
-from .connection import NetQASMConnection
-
-storage = []
-
-
-class DebugConnection(NetQASMConnection):
-    def commit(self, subroutine):
-        storage.append(subroutine)
-
-
-def test():
-    logging.basicConfig(level=logging.DEBUG)
-    with DebugConnection("Alice") as alice:
-        q1 = Qubit(alice)
-        q2 = Qubit(alice)
-        q1.H()
-        q2.X()
-        q1.X()
-        q2.H()
-
-    assert len(storage) == 1
-    subroutine = storage[0]
-    expected = Subroutine(netqasm_version='0.0', app_id='0', instructions=[
-        "qreg(2) @0",
-        "init @0[0]",
-        "init @0[1]",
-        "h @0[0]",
-        "x @0[1]",
-        "x @0[0]",
-        "h @0[1]",
-    ])
-    assert subroutine == expected
-
-
-if __name__ == '__main__':
-    test()

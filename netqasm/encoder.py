@@ -2,7 +2,7 @@ from enum import Enum, auto
 
 
 class Instruction(Enum):
-    QTAKE = auto()
+    QALLOC = auto()
     INIT = auto()
     STORE = auto()
     ARRAY = auto()
@@ -16,7 +16,7 @@ class Instruction(Enum):
 
 
 _INSTRUCTION_TO_STRING = {
-    Instruction.QTAKE: "qtake",
+    Instruction.QALLOC: "qalloc",
     Instruction.INIT: "init",
     Instruction.STORE: "store",
     Instruction.ARRAY: "array",

@@ -37,7 +37,7 @@ class Address:
 
 
 @dataclass
-class Qubit:
+class QubitAddress:
     address: Union[str, int]
 
     def __str__(self):
@@ -53,16 +53,11 @@ class Array:
         return str(self.address) + Parser.INDEX_BRACKETS[0] + str(self.index) + Parser.INDEX_BRACKETS[1]
 
 
-# @dataclass
-# class Operand:
-#     operand: Union[Value, Qubit, Array]
-
-
 @dataclass
 class Command:
     instruction: str
     args: List[int]
-    operands: List[Union[Address, Qubit, Array]]
+    operands: List[Union[Address, QubitAddress, Array]]
 
     def __str__(self):
         if len(self.args) == 0:
@@ -162,9 +157,7 @@ class Parser:
         return self._subroutine
 
     def __str__(self):
-        to_return = f"Parsed NetQASM subroutine (NETQASM: {self.netqasm_version}, APPID: {self.app_id}):\n\n"
-        to_return += "\n".join([f"\t{instr}" for instr in self._instructions])
-        return to_return
+        return f"Parser with parsed subroutine:\n{self.subroutine}"
 
     def _parse_subroutine(self, subroutine):
         """Parses a subroutine and splits the preamble and body into separate parts."""
@@ -201,6 +194,11 @@ class Parser:
         )
 
     @staticmethod
+    def _split_instr_and_args(word):
+        instr, args = Parser._split_of_bracket(word, brackets=Parser.ARGS_BRACKETS)
+        return instr, args
+
+    @staticmethod
     def _parse_args(args):
         if args == "":
             return []
@@ -221,12 +219,12 @@ class Parser:
     @staticmethod
     def _parse_operand(word):
         if word.startswith(Parser.QUBIT_START):
-            # Qubit
+            # QubitAddress
             address = word.lstrip(Parser.QUBIT_START)
             if is_number(address):
-                return Qubit(int(address))
+                return QubitAddress(int(address))
             else:
-                return Qubit(word)
+                return QubitAddress(word)
         elif Parser.INDEX_BRACKETS[0] in word:
             # Array
             array, index = Parser._split_of_bracket(word, Parser.INDEX_BRACKETS)
@@ -238,6 +236,18 @@ class Parser:
             return Array(array, index)
         else:
             return Parser._parse_value(word)
+
+    @staticmethod
+    def _split_of_bracket(word, brackets):
+        start_bracket, end_bracket = brackets
+        start = word.find(start_bracket)
+        if start == -1:
+            return word, ""
+        if word[-1] != end_bracket:
+            raise NetQASMSyntaxError(f"No end bracket in {word}, expected '{end_bracket}'")
+        address = word[:start]
+        content = word[start:]
+        return address, content
 
     @staticmethod
     def _parse_value(word):
@@ -396,22 +406,6 @@ class Parser:
 
         self._branch_variables = branch_variables
 
-    @staticmethod
-    def _find_current_branch_variables(subroutine):
-        """Finds the current branch variables in a subroutine and returns these as a list"""
-        # NOTE preamble definitions are ignored
-        # NOTE there is no checking here for valid and unique variable names
-        # TODO
-        preamble_lines, body_lines = Parser._split_preamble_body(subroutine)
-
-        branch_variables = []
-        for line in body_lines:
-            # A line defining a branch variable should end with BRANCH_END
-            if line.endswith(Parser.BRANCH_END):
-                branch_variables.append(line.rstrip(Parser.BRANCH_END))
-
-        return branch_variables
-
     def _assign_address_variables(self, subroutine):
         """Finds the address variables in a subroutine"""
         current_addresses = self.__class__._find_current_addresses(subroutine)
@@ -443,15 +437,23 @@ class Parser:
                 if isinstance(address, int):
                     continue
                 if is_variable_name(address):
-                    type = "qubit" if isinstance(operand, Qubit) else "classical"
+                    type = "qubit" if isinstance(operand, QubitAddress) else "classical"
                     return address, command_number, type
                 else:
                     raise NetQASMSyntaxError(f"Not a valid variable name {address}")
         return None, -1, None
 
     @staticmethod
-    def _ignore_deref(address):
-        return address.lstrip(Parser.DEREF_START)
+    def _find_current_addresses(subroutine):
+        """Finds the used addresses in the body lines"""
+        current_addresses = defaultdict(set)
+        for command in subroutine.commands:
+            for operand in command.operands:
+                address = Parser._get_address_from_operand(operand)
+                if isinstance(address, int):
+                    type = "qubit" if isinstance(operand, QubitAddress) else "classical"
+                    current_addresses[type].add(address)
+        return current_addresses
 
     @staticmethod
     def _get_address_from_operand(operand):
@@ -460,7 +462,7 @@ class Parser:
                 return None
             else:
                 return operand.address
-        elif isinstance(operand, Qubit):
+        elif isinstance(operand, QubitAddress):
             return operand.address
         elif isinstance(operand, Array):
             return operand.address.address
@@ -471,56 +473,12 @@ class Parser:
     def _set_address_for_operand(operand, address):
         if isinstance(operand, Address):
             operand.address = address
-        elif isinstance(operand, Qubit):
+        elif isinstance(operand, QubitAddress):
             operand.address = address
         elif isinstance(operand, Array):
             operand.address.address = address
         else:
             raise TypeError(f"Unknown operand type {type(operand)}")
-
-    @staticmethod
-    def _find_current_addresses(subroutine):
-        """Finds the used addresses in the body lines"""
-        current_addresses = defaultdict(set)
-        for command in subroutine.commands:
-            for operand in command.operands:
-                address = Parser._get_address_from_operand(operand)
-                if isinstance(address, int):
-                    type = "qubit" if isinstance(operand, Qubit) else "classical"
-                    current_addresses[type].add(address)
-        return current_addresses
-
-    @staticmethod
-    def _is_address(address):
-        address = Parser._ignore_address_mode(address)
-        return is_number(address)
-
-    @staticmethod
-    def _ignore_address_mode(address):
-        if address.startswith(Parser.ADDRESS_START):
-            return address.lstrip(Parser.ADDRESS_START)
-        elif address.startswith(Parser.INDIRECT_START):
-            return address.lstrip(Parser.INDIRECT_START)
-        else:
-            # IMMEDIATE mode (not an address)
-            return None
-
-    @staticmethod
-    def _split_instr_and_args(word):
-        instr, args = Parser._split_of_bracket(word, brackets=Parser.ARGS_BRACKETS)
-        return instr, args
-
-    @staticmethod
-    def _split_of_bracket(word, brackets):
-        start_bracket, end_bracket = brackets
-        start = word.find(start_bracket)
-        if start == -1:
-            return word, ""
-        if word[-1] != end_bracket:
-            raise NetQASMSyntaxError(f"No end bracket in {word}, expected '{end_bracket}'")
-        address = word[:start]
-        content = word[start:]
-        return address, content
 
     @staticmethod
     def _get_unused_address(current_addresses):
@@ -549,72 +507,17 @@ class Parser:
                 if mode is not None:
                     operand.mode = mode
 
+    @staticmethod
+    def _find_current_branch_variables(subroutine: str):
+        """Finds the current branch variables in a subroutine (str) and returns these as a list"""
+        # NOTE preamble definitions are ignored
+        # NOTE there is no checking here for valid and unique variable names
+        preamble_lines, body_lines = Parser._split_preamble_body(subroutine)
 
-def test():
-    subroutine = """# NETQASM 0.0
-# APPID 0
-store @0 1
-store *@0 1
-store m 0
-init q0
-init q
-array(4) ms
-add m m 1
-add ms[0] m 1
-beq 0 0 EXIT
-EXIT:
-"""
+        branch_variables = []
+        for line in body_lines:
+            # A line defining a branch variable should end with BRANCH_END
+            if line.endswith(Parser.BRANCH_END):
+                branch_variables.append(line.rstrip(Parser.BRANCH_END))
 
-    expected = Subroutine(
-        netqasm_version="0.0",
-        app_id=0,
-        commands=[
-            Command(instruction="store", args=[], operands=[
-                Address(0, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
-            ]),
-            Command(instruction="store", args=[], operands=[
-                Address(0, AddressMode.INDIRECT),
-                Address(1, AddressMode.IMMEDIATE),
-            ]),
-            Command(instruction="store", args=[], operands=[
-                Address(1, AddressMode.DIRECT),
-                Address(0, AddressMode.IMMEDIATE),
-            ]),
-            Command(instruction="init", args=[], operands=[
-                Qubit(0),
-            ]),
-            Command(instruction="init", args=[], operands=[
-                Qubit(1),
-            ]),
-            Command(instruction="array", args=[4], operands=[
-                Address(2, AddressMode.DIRECT),
-            ]),
-            Command(instruction="add", args=[], operands=[
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
-            ]),
-            Command(instruction="add", args=[], operands=[
-                Array(address=Address(2, AddressMode.DIRECT), index=Address(0, AddressMode.IMMEDIATE)),
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
-            ]),
-            Command(instruction="beq", args=[], operands=[
-                Address(0, AddressMode.IMMEDIATE),
-                Address(0, AddressMode.IMMEDIATE),
-                Address(9, AddressMode.IMMEDIATE),
-            ]),
-        ])
-
-    # print(subroutine)
-    parser = Parser(subroutine)
-    assert parser.subroutine == expected
-    # print(repr(parser.subroutine))
-    # print(parser.subroutine)
-    # print(parser.branch_variables)
-    # print(parser.address_variables)
-
-
-if __name__ == '__main__':
-    test()
+        return branch_variables

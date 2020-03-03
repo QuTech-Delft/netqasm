@@ -1,2 +1,3 @@
 class NetQASMAssembler:
-    pass
+    def __init__(self):
+        raise NotImplementedError

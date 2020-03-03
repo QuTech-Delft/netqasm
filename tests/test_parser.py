@@ -1,27 +1,7 @@
 import pytest
 
-from netqasm.parser import Parser
+from netqasm.parser import Parser, Subroutine, Command, Address, AddressMode, QubitAddress, Array
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
-
-
-def test_split_preamble():
-    subroutine = """
-# NETQASM 1.0
-# APPID 0
-# DEFINE op h
-# DEFINE q @0
-qtake q!
-init q!
-op! q! // this is a comment
-meas q! m
-beq m 0 EXIT
-// this is also a comment
-x q!
-EXIT:
-"""
-
-    nqparser = Parser(subroutine)
-    print(nqparser)
 
 
 @pytest.mark.parametrize("subroutine, error", [
@@ -42,5 +22,62 @@ def test_faulty_preamble(subroutine, error):
         Parser(subroutine)
 
 
-if __name__ == '__main__':
-    test_split_preamble()
+def test_simple():
+    subroutine = """# NETQASM 0.0
+# APPID 0
+store @0 1
+store *@0 1
+store m 0
+init q0
+init q
+array(4) ms
+add m m 1
+add ms[0] m 1
+beq 0 0 EXIT
+EXIT:
+"""
+
+    expected = Subroutine(
+        netqasm_version="0.0",
+        app_id=0,
+        commands=[
+            Command(instruction="store", args=[], operands=[
+                Address(0, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Address(0, AddressMode.INDIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Address(1, AddressMode.DIRECT),
+                Address(0, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="init", args=[], operands=[
+                QubitAddress(0),
+            ]),
+            Command(instruction="init", args=[], operands=[
+                QubitAddress(1),
+            ]),
+            Command(instruction="array", args=[4], operands=[
+                Address(2, AddressMode.DIRECT),
+            ]),
+            Command(instruction="add", args=[], operands=[
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="add", args=[], operands=[
+                Array(address=Address(2, AddressMode.DIRECT), index=Address(0, AddressMode.IMMEDIATE)),
+                Address(1, AddressMode.DIRECT),
+                Address(1, AddressMode.IMMEDIATE),
+            ]),
+            Command(instruction="beq", args=[], operands=[
+                Address(0, AddressMode.IMMEDIATE),
+                Address(0, AddressMode.IMMEDIATE),
+                Address(9, AddressMode.IMMEDIATE),
+            ]),
+        ])
+
+    parser = Parser(subroutine)
+    assert parser.subroutine == expected

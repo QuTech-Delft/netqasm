@@ -1,19 +1,12 @@
 import logging
 from enum import Enum, auto
 from types import GeneratorType
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 from itertools import count
 
-from netqasm.parser import Parser, Command, Qubit, Address, Array, AddressMode
+from netqasm.parser import Command, QubitAddress, Address, Array, AddressMode
 from netqasm.encoder import Instruction, string_to_instruction
-from netqasm.string_util import group_by_word
 from netqasm.sdk.shared_memory import get_shared_memory
-
-
-# class AddressMode(Enum):
-#     DIRECT = auto()
-#     INDIRECT = auto()
-#     IMMEDIATE = auto()
 
 
 class OperandType(Enum):
@@ -22,11 +15,6 @@ class OperandType(Enum):
     READ = auto()
     WRITE = auto()
     ADDRESS = auto()
-
-
-Operand = namedtuple("Operand", ["mode", "value"])
-
-OutputData = namedtuple("OutputData", ["address", "data"])
 
 
 def inc_program_counter(method):
@@ -106,7 +94,7 @@ class Processor:
     def _get_instruction_handlers(self):
         """Creates the dictionary of instruction handlers"""
         instruction_handlers = {
-            Instruction.QTAKE: self._instr_qtake,
+            Instruction.QALLOC: self._instr_qalloc,
             Instruction.INIT: self._instr_init,
             Instruction.STORE: self._instr_store,
             Instruction.ARRAY: self._instr_array,
@@ -150,57 +138,8 @@ class Processor:
         if isinstance(output, GeneratorType):
             yield from output
 
-    # def _parse_instruction(self, instruction):
-    #     # TODO should be handled differently when there is a binary encoding
-    #     instr_args, *operands = group_by_word(instruction)
-    #     instr, args = Parser._split_instr_and_args(instr_args)
-    #     args = self._parse_args(args)
-    #     instr = self._parse_instruction_id(instr)
-    #     operands = self._parse_operands(operands)
-    #     return instr, args, operands
-
-    # def _parse_instruction_id(self, instr):
-    #     # TODO should be handled differently when there is a binary encoding
-    #     instructions = {
-    #         "qtake": Instruction.QTAKE,
-    #         "init": Instruction.INIT,
-    #         "store": Instruction.STORE,
-    #         "add": Instruction.ADD,
-    #         "h": Instruction.H,
-    #         "x": Instruction.X,
-    #         "meas": Instruction.MEAS,
-    #         "beq": Instruction.BEQ,
-    #         "qfree": Instruction.QFREE,
-    #         }
-    #     if instr not in instructions:
-    #         raise RuntimeError(f"Instruction '{instr}' is not a known instruction")
-    #     return instructions[instr]
-
-    # def _parse_operands(self, operands):
-    #     return [self._parse_operand(operand) for operand in operands]
-
-    # def _parse_args(self, args):
-    #     # TODO should be handled differently when there is a binary encoding
-    #     if args == "":
-    #         return []
-    #     args = args[1:-1]
-    #     return [int(arg.strip()) for arg in args.split(Parser.ARGS_DELIM)]
-
-    # def _parse_operand(self, operand):
-    #     # TODO should be handled differently when there is a binary encoding
-    #     if operand.startswith(Parser.INDIRECT_START):
-    #         mode = AddressMode.INDIRECT
-    #         value = int(operand[2:])
-    #     elif operand.startswith(Parser.ADDRESS_START):
-    #         mode = AddressMode.DIRECT
-    #         value = int(operand[1:])
-    #     else:
-    #         mode = AddressMode.IMMEDIATE
-    #         value = int(operand)
-    #     return Operand(mode=mode, value=value)
-
     @inc_program_counter
-    def _instr_qtake(self, subroutine_id, args, operands):
+    def _instr_qalloc(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
         address = operands[0].address
@@ -235,7 +174,6 @@ class Processor:
         current = shared_memory[address]
         if current is not None:
             raise ValueError(f"Address {address} for app with ID {app_id} is already initialized")
-        breakpoint()
         shared_memory[address] = [None] * length
 
     @inc_program_counter
@@ -312,7 +250,7 @@ class Processor:
         return position
 
     def _get_address_value(self, app_id, operand):
-        if operand.mode == AddressMode.IMMEDIATE:
+        if isinstance(operand, Address) and operand.mode == AddressMode.IMMEDIATE:
             return operand.address
         else:
             address = self._get_address(app_id=app_id, operand=operand)
@@ -372,13 +310,13 @@ class Processor:
             unit_module[address] = self._get_unused_physical_qubit(address)
         else:
             app_id = self._subroutines[subroutine_id].app_id
-            raise RuntimeError(f"Qubit at address {address} for application {app_id} is already allocated")
+            raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is already allocated")
 
     def _free_physical_qubit(self, subroutine_id, address):
         unit_module = self._get_unit_module(subroutine_id)
         if unit_module[address] is None:
             app_id = self._subroutines[subroutine_id].app_id
-            raise RuntimeError(f"Qubit at address {address} for application {app_id} is not allocated "
+            raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is not allocated "
                                "and cannot be freed")
         else:
             unit_module[address] = None
@@ -439,8 +377,8 @@ class Processor:
 
     def _assert_operand(self, operand, operand_type):
         if operand_type == OperandType.QUBIT:
-            if not isinstance(operand, Qubit):
-                raise TypeError(f"Expected operand of type Qubit but got {type(operand)}")
+            if not isinstance(operand, QubitAddress):
+                raise TypeError(f"Expected operand of type QubitAddress but got {type(operand)}")
         elif operand_type == OperandType.READ:
             if isinstance(operand, Address):
                 pass

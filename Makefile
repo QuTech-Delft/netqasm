@@ -1,8 +1,8 @@
 PYTHON3        = python3
 SOURCEDIR      = netqasm
-TESTS_DIR      = tests
-EXAMPLES_DIR   = examples
-RUNEXAMPLES    = ${EXAMPLES_DIR}/run_examples.py
+TESTDIR        = tests
+EXAMPLEDIR     = examples
+RUNEXAMPLES    = ${EXAMPLEDIR}/run_examples.py
 MINCOV         = 0
 
 help:

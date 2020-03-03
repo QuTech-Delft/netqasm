@@ -1,7 +1,7 @@
 import pytest
 import logging
 
-from netqasm.processor import Processor, OutputData
+from netqasm.processor import Processor
 from netqasm.parser import Parser
 
 
@@ -11,8 +11,8 @@ from netqasm.parser import Parser
         # NETQASM 1.0
         # APPID 0
         # DEFINE op h
-        # DEFINE q @0
-        qtake q!
+        # DEFINE q q0
+        qalloc q!
         init q!
         op! q! // this is a comment
         meas q! m
@@ -22,7 +22,7 @@ from netqasm.parser import Parser
         EXIT:
         qfree q!
         """,
-        1,
+        0,
         0,
     ),
     (

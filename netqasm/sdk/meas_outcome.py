@@ -103,24 +103,10 @@ class MeasurementOutcome(int):
     def value(self):
         if self._value is not None:
             return self._value
-        value = self._memory[self._address]
+        if self._memory is None:
+            value = None
+        else:
+            value = self._memory[self._address]
         if value is not None:
             self._value = value
         return value
-
-
-def test_measurement_outcome():
-    m = MeasurementOutcome(None, address=0)
-    print(m)
-    try:
-        print(m * 2)
-    except NoValueError as err:
-        print(f"Error: {err}")
-    m._value = 4
-    print(m)
-    print(m * 2)
-    assert False
-
-
-if __name__ == '__main__':
-    test_measurement_outcome()

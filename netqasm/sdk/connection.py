@@ -84,7 +84,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
     def _commit_subroutine(self, subroutine, block=True):
         # For logging
-        print(subroutine)
         indented_subroutine = '\n'.join(f"    {line}" for line in subroutine.split('\n'))
         self._logger.debug(f"Flushing subroutine:\n{indented_subroutine}")
 
@@ -147,17 +146,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             if isinstance(c_address, int) or is_number(c_address):
                 c_address = Parser.ADDRESS_START + str(c_address)
             q_address = command.qID
-            meas = f"{instr} {Parser.ADDRESS_START}{q_address} {c_address}\n"
-            qfree = f"qfree {Parser.ADDRESS_START}{q_address}\n"
+            meas = f"{instr} {Parser.QUBIT_START}{q_address} {c_address}\n"
+            qfree = f"qfree {Parser.QUBIT_START}{q_address}\n"
             return meas + qfree
         if command.command == CQC_CMD_NEW:
             address = command.qID
-            qtake = f"qtake {Parser.ADDRESS_START}{address}\n"
-            init = f"init {Parser.ADDRESS_START}{address}\n"
-            return qtake + init
+            qalloc = f"qalloc {Parser.QUBIT_START}{address}\n"
+            init = f"init {Parser.QUBIT_START}{address}\n"
+            return qalloc + init
         else:
             address = command.qID
-            return f"{instr} {Parser.ADDRESS_START}{address}\n"
+            return f"{instr} {Parser.QUBIT_START}{address}\n"
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
         raise NotImplementedError
