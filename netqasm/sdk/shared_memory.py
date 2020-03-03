@@ -34,12 +34,51 @@ class SharedMemory:
     def __len__(self):
         return self.size
 
+    def __str__(self):
+        return str(self._memory)
+
     def __setitem__(self, index, value):
-        self._assert_within_width(value)
-        self._memory[index] = value
+        if isinstance(index, tuple):
+            if isinstance(value, list):
+                raise RuntimeError("Cannot have nested arrays")
+            index, array_index = index
+        else:
+            array_index = None
+        if index >= len(self):
+            raise IndexError(f"Trying to get a value at address {index} which is outside "
+                             f"the size ({len(self)}) of the shared memory")
+        if not isinstance(value, list):
+            self._assert_within_width(value)
+        current = self._memory[index]
+        if array_index is None:
+            if not ((current is None) or isinstance(current, int)):
+                raise RuntimeError(f"Expected an address ({index}) position containing an int or uninitialized"
+                                   f", not {current}")
+            self._memory[index] = value
+        else:
+            if not isinstance(current, list):
+                raise RuntimeError(f"Expected an address ({index}) position containing a list, not {current}")
+            if array_index >= len(current):
+                raise IndexError(f"Index {array_index} is outside the array at address {index}")
+            current[array_index] = value
 
     def __getitem__(self, index):
-        return self._memory[index]
+        if isinstance(index, tuple):
+            index, array_index = index
+        else:
+            array_index = None
+        if index >= len(self):
+            raise IndexError(f"Trying to get a value at address {index} which is outside "
+                             f"the size ({len(self)}) of the shared memory")
+        current = self._memory[index]
+        if array_index is None:
+            return current
+        else:
+            if not isinstance(current, list):
+                raise RuntimeError(f"Expected an address ({index}) position containing a list, not {current}")
+            if array_index >= len(current):
+                raise IndexError(f"Index {array_index} is outside the array at address {index}")
+            return current[array_index]
 
     def _assert_within_width(self, value):
         min_value = -2**self.width

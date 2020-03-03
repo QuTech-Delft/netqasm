@@ -5,6 +5,7 @@ class Instruction(Enum):
     QTAKE = auto()
     INIT = auto()
     STORE = auto()
+    ARRAY = auto()
     ADD = auto()
     H = auto()
     X = auto()
@@ -18,6 +19,7 @@ _INSTRUCTION_TO_STRING = {
     Instruction.QTAKE: "qtake",
     Instruction.INIT: "init",
     Instruction.STORE: "store",
+    Instruction.ARRAY: "array",
     Instruction.ADD: "add",
     Instruction.H: "h",
     Instruction.X: "x",

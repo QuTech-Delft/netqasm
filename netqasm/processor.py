@@ -4,16 +4,16 @@ from types import GeneratorType
 from collections import namedtuple, defaultdict
 from itertools import count
 
-from netqasm.parser import Parser, Command, Qubit, Address, Array
+from netqasm.parser import Parser, Command, Qubit, Address, Array, AddressMode
 from netqasm.encoder import Instruction, string_to_instruction
 from netqasm.string_util import group_by_word
 from netqasm.sdk.shared_memory import get_shared_memory
 
 
-class AddressMode(Enum):
-    DIRECT = auto()
-    INDIRECT = auto()
-    IMMEDIATE = auto()
+# class AddressMode(Enum):
+#     DIRECT = auto()
+#     INDIRECT = auto()
+#     IMMEDIATE = auto()
 
 
 class OperandType(Enum):
@@ -109,6 +109,7 @@ class Processor:
             Instruction.QTAKE: self._instr_qtake,
             Instruction.INIT: self._instr_init,
             Instruction.STORE: self._instr_store,
+            Instruction.ARRAY: self._instr_array,
             Instruction.ADD: self._instr_add,
             Instruction.H: self._instr_h,
             Instruction.X: self._instr_x,
@@ -200,11 +201,9 @@ class Processor:
 
     @inc_program_counter
     def _instr_qtake(self, subroutine_id, args, operands):
-        breakpoint()
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=1,
-                              types=[Qubit])
-        address = operands[0].value
+        self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
+        address = operands[0].address
         self._allocate_physical_qubit(subroutine_id, address)
         self._logger.debug(f"Taking qubit at address {address}")
 
@@ -214,17 +213,30 @@ class Processor:
 
     @inc_program_counter
     def _instr_store(self, subroutine_id, args, operands):
-        breakpoint()
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=2, modes=[
-            [AddressMode.DIRECT, AddressMode.INDIRECT],
-            None,
-        ])
+        self._assert_operands(operands, num=2, operand_types=[OperandType.WRITE, OperandType.READ])
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        value = self._get_address_value(app_id=app_id, operand=operands[1])
+        self._set_address_value(app_id=app_id, operand=operands[0], value=value)
+        self._logger.debug(f"Storing value {value} at address given by operand {operands[0]}")
+
+    @inc_program_counter
+    def _instr_array(self, subroutine_id, args, operands):
+        self._assert_number_args(args, num=1)
+        length = args[0]
+        self._assert_operands(operands, num=1, operand_types=OperandType.ADDRESS)
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         address = self._get_address(app_id=app_id, operand=operands[0])
-        value = self._get_address_value(app_id=app_id, operand=operands[1])
-        self._set_address_value(app_id=app_id, address=address, value=value)
-        self._logger.debug(f"Storing value {value} at address {address}")
+        self._initialize_array(app_id=app_id, address=address, length=length)
+        self._logger.debug(f"Initializing an array of length {length} at address {address}")
+
+    def _initialize_array(self, app_id, address, length):
+        shared_memory = self._shared_memories[app_id]
+        current = shared_memory[address]
+        if current is not None:
+            raise ValueError(f"Address {address} for app with ID {app_id} is already initialized")
+        breakpoint()
+        shared_memory[address] = [None] * length
 
     @inc_program_counter
     def _instr_add(self, subroutine_id, args, operands):
@@ -241,36 +253,28 @@ class Processor:
     @inc_program_counter
     def _instr_meas(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=2,
-                              modes=[
-                                  [AddressMode.DIRECT, AddressMode.INDIRECT],
-                                  [AddressMode.DIRECT, AddressMode.INDIRECT]
-                              ])
-        q_address = operands[0].value
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        c_address = self._get_address(app_id=app_id, operand=operands[1])
-        self._logger.debug(f"Measuring the qubit at address {q_address}, "
-                           f"placing the outcome at address {c_address}")
-        self._do_meas(subroutine_id, q_address, c_address)
+        self._assert_operands(operands, num=2, operand_types=[OperandType.QUBIT, OperandType.WRITE])
+        self._logger.debug(f"Measuring the qubit at address {operands[0]}, "
+                           f"placing the outcome at address {operands[1]}")
+        self._do_meas(subroutine_id=subroutine_id, q_address=operands[0].address, c_operand=operands[1])
 
-    def _do_meas(self, subroutine_id, q_address, c_address):
+    def _do_meas(self, subroutine_id, q_address, c_operand):
         """Performs a measurement on a single qubit"""
         # Always give outcome zero in the default debug class
         outcome = 0
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         try:
-            self._set_address_value(app_id=app_id, address=c_address, value=outcome)
+            self._set_address_value(app_id=app_id, operand=c_operand, value=outcome)
         except IndexError:
             logging.warning("Measurement outcome dropped since no more entries in classical register")
 
     def _instr_beq(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=3,
-                              modes=[None, None, AddressMode.IMMEDIATE])
+        self._assert_operands(operands, num=3, operand_types=OperandType.READ)
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a = self._get_address_value(app_id=app_id, operand=operands[0])
         b = self._get_address_value(app_id=app_id, operand=operands[1])
-        jump_address = operands[2].value
+        jump_address = self._get_address_value(app_id=app_id, operand=operands[2])
         if a == b:
             self._logger.debug(f"Branching to line {jump_address} since {a} = {b} "
                                f"from address {operands[0]} and {operands[1]}")
@@ -283,8 +287,8 @@ class Processor:
     @inc_program_counter
     def _instr_qfree(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=1, modes=[AddressMode.DIRECT])
-        address = operands[0].value
+        self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
+        address = operands[0].address
 
         self._free_physical_qubit(subroutine_id, address)
         self._logger.debug(f"Freeing qubit at address {address}")
@@ -309,39 +313,51 @@ class Processor:
 
     def _get_address_value(self, app_id, operand):
         if operand.mode == AddressMode.IMMEDIATE:
-            return operand.value
-        elif operand.mode == AddressMode.DIRECT:
-            address = operand.value
-            shared_memory = self._shared_memories[app_id]
-            if address >= len(shared_memory):
-                raise IndexError(f"Trying to get a value at address {address} which is outside "
-                                 f"the size ({len(shared_memory)}) of the shared memory")
-            return shared_memory[address]
+            return operand.address
         else:
-            # AddressMode.INDIRECT
+            address = self._get_address(app_id=app_id, operand=operand)
             shared_memory = self._shared_memories[app_id]
-            value = operand.value
-            for _ in range(2):
-                address = value
-                if address >= len(shared_memory):
-                    raise IndexError(f"Trying to get a value at address {address} which is outside "
-                                     f"the size ({len(shared_memory)}) of the shared memory")
-                value = shared_memory[address]
+            value = shared_memory[address]
+            if not isinstance(value, int):
+                raise TypeError(f"Expected an int at address {address}, but got {value}")
             return value
 
+    def _get_unused_entry_of_array(self, app_id, array_address):
+        shared_memory = self._shared_memories[app_id]
+        array = shared_memory[array_address]
+        if not isinstance(array, list):
+            raise TypeError(f"Expected a list at address {array_address}, but got {array}")
+        if array is None:
+            raise ValueError(f"No array initialized at address {array_address} for app with ID {app_id}")
+        for index, entry in enumerate(array):
+            if entry is None:
+                return index
+        return None
+
     def _get_address(self, app_id, operand):
+        if isinstance(operand, Array):
+            array_address = self._get_address(app_id=app_id, operand=operand.address)
+            if operand.index is None:
+                index = self._get_unused_entry_of_array(app_id=app_id, array_address=array_address)
+                if index is None:
+                    raise RuntimeError(f"No unused index in the array at address {array_address} "
+                                       f"for app with ID {app_id}")
+            else:
+                index = self._get_address_value(app_id=app_id, operand=operand.index)
+            return array_address, index
         if operand.mode == AddressMode.IMMEDIATE:
             raise ValueError("Not an address mode")
         elif operand.mode == AddressMode.DIRECT:
-            return operand.value
-        else:
+            return operand.address
+        elif operand.mode == AddressMode.INDIRECT:
             # AddressMode.INDIRECT
-            address = operand.value
+            address = operand.address
             shared_memory = self._shared_memories[app_id]
-            if address >= len(shared_memory):
-                raise IndexError(f"Trying to get a value at address {address} which is outside "
-                                 f"the size ({len(shared_memory)}) of the shared memory")
-            return shared_memory[address]
+            indirect_address = shared_memory[address]
+            if not isinstance(indirect_address, int):
+                raise TypeError(f"Expected an int at address {address}, not {indirect_address}")
+        else:
+            raise TypeError(f"Unknown address mode {operand.mode}")
 
     def allocate_new_qubit_unit_module(self, app_id, num_qubits):
         unit_module = self._get_new_qubit_unit_module(num_qubits)
@@ -376,8 +392,8 @@ class Processor:
 
     def _handle_single_qubit_instr(self, instr, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=1, modes=[AddressMode.DIRECT])
-        address = operands[0].value
+        self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
+        address = operands[0].address
         self._logger.debug(f"Performing {instr} on the qubit at address {address}")
         output = self._do_single_qubit_instr(instr, subroutine_id, address)
         if isinstance(output, GeneratorType):
@@ -389,14 +405,14 @@ class Processor:
 
     def _handle_binary_classical_instr(self, instr, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=3, modes=[AddressMode.DIRECT, None, None])
+        self._assert_operands(operands, num=3, operand_types=[OperandType.WRITE, OperandType.READ, OperandType.READ])
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a = self._get_address_value(app_id=app_id, operand=operands[1])
         b = self._get_address_value(app_id=app_id, operand=operands[2])
         value = self._compute_binary_classical_instr(instr, a, b)
-        self._set_address_value(app_id=app_id, address=operands[0].value, value=value)
+        self._set_address_value(app_id=app_id, operand=operands[0], value=value)
         self._logger.debug(f"Performing {instr} of a={a} and b={b} "
-                           f"and storing the value at address {operands[0].value}")
+                           f"and storing the value at address {operands[0]}")
 
     def _compute_binary_classical_instr(self, instr, a, b):
         if instr == Instruction.ADD:
@@ -404,41 +420,54 @@ class Processor:
         else:
             raise RuntimeError("Unknown binary classical instructions {instr}")
 
-    def _set_address_value(self, app_id, address, value):
+    def _set_address_value(self, app_id, operand, value):
+        address = self._get_address(app_id=app_id, operand=operand)
         shared_memory = self._shared_memories[app_id]
-        if address >= len(shared_memory):
-            raise IndexError(f"Trying to set a value at address {address} which is outside "
-                             f"the size ({len(shared_memory)}) of the shared memory")
         shared_memory[address] = value
 
     def _assert_number_args(self, args, num):
         if not len(args) == num:
             raise TypeError(f"Expected {num} arguments, got {len(args)}")
 
-    def _assert_operands(self, operands, num, types):
-        if isinstance(types, OperandType):
-            types = [types] * num
+    def _assert_operands(self, operands, num, operand_types):
+        if isinstance(operand_types, OperandType):
+            operand_types = [operand_types] * num
         if not len(operands) == num:
             raise TypeError(f"Expected {num} operands, got {len(operands)}")
-        for operand, type in zip(operands, types):
-            self._assert_operand(operand, type)
+        for operand, operand_type in zip(operands, operand_types):
+            self._assert_operand(operand=operand, operand_type=operand_type)
 
-    def _assert_operand(self, operand, type):
-        if type == OperandType.QUBIT:
+    def _assert_operand(self, operand, operand_type):
+        if operand_type == OperandType.QUBIT:
             if not isinstance(operand, Qubit):
                 raise TypeError(f"Expected operand of type Qubit but got {type(operand)}")
-        elif type == OperandType.READ:
-            if not (isinstance(operand, Address) or isinstance(operand, Array)):
+        elif operand_type == OperandType.READ:
+            if isinstance(operand, Address):
+                pass
+            elif isinstance(operand, Array):
+                # If array, the index needs to be given
+                if operand.index is None:
+                    raise TypeError("When writing, an operand of type Array, needs a given index")
+            else:
                 raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
-            pass
-        elif type == OperandType.WRITE:
-            pass
-        elif type == OperandType.ADDRESS:
-            if not (isinstance(operand, Address) or isinstance(operand, Array)):
+        elif operand_type == OperandType.WRITE:
+            if isinstance(operand, Address):
+                address = operand
+            elif isinstance(operand, Array):
+                address = operand.address
+            else:
                 raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
+
+            if address.mode not in [AddressMode.DIRECT, AddressMode.INDIRECT]:
+                raise ValueError(f"Expected address (direct or indirect) not a scalar (immediate)")
+
+        elif operand_type == OperandType.ADDRESS:
+            if not isinstance(operand, Address):
+                raise TypeError(f"Expected operand of type Address but got {type(operand)}")
+            if operand.mode not in [AddressMode.DIRECT, AddressMode.INDIRECT]:
+                raise ValueError(f"Expected address (direct or indirect) not a scalar (immediate)")
         else:
-            if not (operand.mode == mode or operand.mode in mode):
-                raise TypeError(f"Expected operand in mode {mode} but got {operand.mode}")
+            raise TypeError(f"Unknown operand type {type}")
 
     def _get_app_id(self, subroutine_id):
         """Returns the app ID for the given subroutine"""
