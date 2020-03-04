@@ -1,4 +1,4 @@
-image: adahlberg/nlblueprintci:18.04
+image: adahlberg/nlblueprintci:19.04
 
 .source_venv: &venv
     before_script:
