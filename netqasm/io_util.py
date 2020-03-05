@@ -1,14 +1,15 @@
 import os
 
-from netqasm.processor import FromStringProcessor
+from netqasm.executioner import Executioner
 
 
 NETQASM_EXT = ".nqasm"
 
 
-def execute_subroutine(processor, netqasm_file, output_file=None):
-    if not isinstance(processor, FromStringProcessor):
-        raise TypeError("processor needs to be of class FromStringProcessor")
+# TODO
+def execute_subroutine(executioner, netqasm_file, output_file=None):
+    if not isinstance(executioner, Executioner):
+        raise TypeError("executioner needs to be of class Executioner")
     if not netqasm_file.endswith(NETQASM_EXT):
         raise ValueError("{netqasm_file} is not a NetQASM file, should have '{NETQASM_EXT}' extension")
     if output_file is None:
@@ -16,9 +17,9 @@ def execute_subroutine(processor, netqasm_file, output_file=None):
     with open(netqasm_file, 'r') as f:
         subroutine = f.read()
 
-    processor.put_subroutine(subroutine)
-    processor.execute_next_subroutine()
-    output_data = processor.output_data
+    executioner.put_subroutine(subroutine)
+    executioner.execute_next_subroutine()
+    output_data = executioner.output_data
 
     with open(output_file, 'w') as f:
         for data in output_data:

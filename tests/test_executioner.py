@@ -1,7 +1,7 @@
 import pytest
 import logging
 
-from netqasm.processor import Processor
+from netqasm.executioner import Executioner
 from netqasm.parser import Parser
 
 
@@ -40,13 +40,13 @@ from netqasm.parser import Parser
         10,
     ),
 ])
-def test_processor(subroutine_str, expected_address, expected_output):
+def test_executioner(subroutine_str, expected_address, expected_output):
     logging.basicConfig(level=logging.DEBUG)
     subroutine = Parser(subroutine_str).subroutine
 
     app_id = 0
-    processor = Processor()
-    processor.init_new_application(app_id=app_id, max_qubits=1)
+    executioner = Executioner()
+    executioner.init_new_application(app_id=app_id, max_qubits=1)
     for _ in range(10):
-        list(processor.execute_subroutine(subroutine=subroutine))
-        assert processor._shared_memories[app_id][expected_address] == expected_output
+        list(executioner.execute_subroutine(subroutine=subroutine))
+        assert executioner._shared_memories[app_id][expected_address] == expected_output

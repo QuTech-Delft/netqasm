@@ -9,9 +9,12 @@ class Instruction(Enum):
     ADD = auto()
     H = auto()
     X = auto()
+    CNOT = auto()
     MEAS = auto()
+    CREATE_EPR = auto()
+    RECV_EPR = auto()
     BEQ = auto()
-    CFREE = auto()
+    WAIT = auto()
     QFREE = auto()
 
 
@@ -23,9 +26,12 @@ _INSTRUCTION_TO_STRING = {
     Instruction.ADD: "add",
     Instruction.H: "h",
     Instruction.X: "x",
+    Instruction.CNOT: "cnot",
     Instruction.MEAS: "meas",
+    Instruction.CREATE_EPR: "create_epr",
+    Instruction.RECV_EPR: "recv_epr",
     Instruction.BEQ: "beq",
-    Instruction.CFREE: "cfree",
+    Instruction.WAIT: "wait",
     Instruction.QFREE: "qfree",
 }
 

@@ -176,7 +176,7 @@ class Parser:
                 # A command defining a branch variable should end with BRANCH_END
                 commands.append(BranchVariable(line.rstrip(Parser.BRANCH_END)))
             else:
-                words = group_by_word(line)
+                words = group_by_word(line, brackets=Parser.ARGS_BRACKETS)
                 instr, args = Parser._split_instr_and_args(words[0])
                 args = Parser._parse_args(args)
                 operands = Parser._parse_operands(words[1:])
@@ -294,8 +294,11 @@ class Parser:
     @staticmethod
     def _apply_macros(body_lines, macros):
         """Applies macros to the body lines"""
+        if len(body_lines) == 0:
+            return []
         body = "\n".join(body_lines)
         for macro_key, macro_value in macros:
+            macro_value = macro_value.strip(Parser.PREAMBLE_DEFINE_BRACKETS)
             body = body.replace(f"{macro_key}{Parser.MACRO_END}", macro_value)
         return list(body.split('\n'))
 

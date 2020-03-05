@@ -81,3 +81,28 @@ EXIT:
 
     parser = Parser(subroutine)
     assert parser.subroutine == expected
+
+
+def test_teleport():
+    subroutine = """
+# NETQASM 0.0
+# APPID 0
+array(1) epr_address
+store epr_address[0] 1
+array(1) entinfo
+qalloc q
+h q
+create_epr epr_address entinfo
+wait entinfo
+cnot q *epr_address[0]
+h q
+meas q m1
+meas *epr_address[0] m2
+"""
+
+    parser = Parser(subroutine)
+    print(parser)
+
+
+if __name__ == "__main__":
+    test_teleport()
