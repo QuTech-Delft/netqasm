@@ -259,7 +259,7 @@ class Parser:
         elif word.startswith(Parser.ADDRESS_START):
             address = word.lstrip(Parser.ADDRESS_START)
             if not is_number(address):
-                raise NetQASMSyntaxError("Expected number for address {address}")
+                raise NetQASMSyntaxError(f"Expected number for address {address}")
             return Address(address=int(address), mode=AddressMode.DIRECT)
         elif is_number(word):
             return Address(address=int(word), mode=AddressMode.IMMEDIATE)
