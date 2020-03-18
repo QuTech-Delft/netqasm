@@ -1,9 +1,8 @@
-# NETQASM 1.0
+# NETQASM 0.0
 # APPID 0
-creg(1) m
+store m 0
 LOOP:
-beq m[0] 10 EXIT
-add m[0] m[0] 1
+beq m 10 EXIT
+add m m 1
 beq 0 0 LOOP
 EXIT:
-output m

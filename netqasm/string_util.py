@@ -15,15 +15,20 @@ def group_by_word(line, seperator=' ', brackets=None):
         start_bracket, end_bracket = brackets
     words = []
     while len(line) > 0:
-        if brackets is not None and line[0] == start_bracket:
-            end_string = f"{end_bracket}{seperator}"
+        if brackets is not None:
+            first_seperator = line.find(seperator)
+            first_start_bracket = line.find(start_bracket)
+            if first_start_bracket != -1 and first_start_bracket < first_seperator:
+                end_string = f"{end_bracket}{seperator}"
+            else:
+                end_string = seperator
         else:
             end_string = seperator
         # Find the closing string
         end = line.find(end_string)
         if end == -1:
             raise ValueError("Not a valid string, could not find a closing bracket")
-        word = line[len(end_string) - 1:end]
+        word = line[:end + len(end_string) - 1]
         words.append(word)
         line = line[end + len(end_string):]
     return words

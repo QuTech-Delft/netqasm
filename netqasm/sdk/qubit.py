@@ -5,13 +5,14 @@ from netqasm.sdk.shared_memory import get_shared_memory
 
 
 class Qubit(qubit):
-    def __init__(self, conn):
+    def __init__(self, conn, put_new_command=True):
         self._conn = conn
         self._qID = self._conn.new_qubitID()
         # TODO this is needed to be backwards compatible
         self.notify = False
 
-        self._conn.put_command(self._qID, CQC_CMD_NEW)
+        if put_new_command:
+            self._conn.put_command(self._qID, CQC_CMD_NEW)
 
         self._active = None
         self._set_active(True)

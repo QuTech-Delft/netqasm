@@ -7,6 +7,7 @@ from itertools import count
 from netqasm.parser import Command, QubitAddress, Address, Array, AddressMode
 from netqasm.encoder import Instruction, string_to_instruction
 from netqasm.sdk.shared_memory import get_shared_memory
+from netqasm.network_stack import BaseNetworkStack
 
 
 class OperandType(Enum):
@@ -26,7 +27,7 @@ def inc_program_counter(method):
     return new_method
 
 
-class Processor:
+class Executioner:
 
     def __init__(self, name=None, num_qubits=5):
         """Executes a sequence of NetQASM instructions.
@@ -43,9 +44,9 @@ class Processor:
         Parameters
         ----------
         name : str or None
-            Give a name to the processor for logging purposes.
+            Give a name to the executioner for logging purposes.
         num_qubits : int
-            The number of qubits for the processor to use
+            The number of qubits for the executioner to use
         """
 
         if name is None:
@@ -68,7 +69,29 @@ class Processor:
         # Keep track of what physical qubit addresses are in use
         self._used_physical_qubit_addresses = []
 
+        # Keep track of the last create epr request without a returned create ID
+        self._last_create_epr_request = None
+
+        # Keep track of the create epr requests in progress
+        self._epr_create_requests = {}
+
+        # Keep track of the recv epr requests in progress
+        self._epr_recv_requests = defaultdict(list)
+
+        # Network stack
+        self._network_stack = None
+
         self._logger = logging.getLogger(f"{self.__class__.__name__}({self._name})")
+
+    @property
+    def network_stack(self):
+        return self._network_stack
+
+    @network_stack.setter
+    def network_stack(self, network_stack):
+        if not isinstance(network_stack, BaseNetworkStack):
+            raise TypeError(f"network_stack must be an instance of BaseNetworkStack, not {type(network_stack)}")
+        self._network_stack = network_stack
 
     def init_new_application(self, app_id, max_qubits):
         """Sets up a unit module and a shared memory for a new application"""
@@ -87,7 +110,7 @@ class Processor:
         self._program_counters.pop(subroutine_id, 0)
 
     def clear_subroutine(self, subroutine_id):
-        """Clears a subroutine from the processor"""
+        """Clears a subroutine from the executioner"""
         self.reset_program_counter()
         self._subroutines.pop(subroutine_id, 0)
 
@@ -101,14 +124,18 @@ class Processor:
             Instruction.ADD: self._instr_add,
             Instruction.H: self._instr_h,
             Instruction.X: self._instr_x,
+            Instruction.CNOT: self._instr_cnot,
             Instruction.MEAS: self._instr_meas,
+            Instruction.CREATE_EPR: self._instr_create_epr,
+            Instruction.RECV_EPR: self._instr_recv_epr,
             Instruction.BEQ: self._instr_beq,
+            Instruction.WAIT: self._instr_wait,
             Instruction.QFREE: self._instr_qfree,
         }
         return instruction_handlers
 
     def execute_subroutine(self, subroutine):
-        """Executes the a subroutine given to the processor"""
+        """Executes the a subroutine given to the executioner"""
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
         self.reset_program_counter(subroutine_id)
@@ -142,7 +169,8 @@ class Processor:
     def _instr_qalloc(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
-        address = operands[0].address
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        address = self._get_address_value(app_id=app_id, operand=operands[0])
         self._allocate_physical_qubit(subroutine_id, address)
         self._logger.debug(f"Taking qubit at address {address}")
 
@@ -189,12 +217,18 @@ class Processor:
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, args, operands)
 
     @inc_program_counter
+    def _instr_cnot(self, subroutine_id, args, operands):
+        yield from self._handle_two_qubit_instr(Instruction.CNOT, subroutine_id, args, operands)
+
+    @inc_program_counter
     def _instr_meas(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=2, operand_types=[OperandType.QUBIT, OperandType.WRITE])
         self._logger.debug(f"Measuring the qubit at address {operands[0]}, "
                            f"placing the outcome at address {operands[1]}")
-        self._do_meas(subroutine_id=subroutine_id, q_address=operands[0].address, c_operand=operands[1])
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address = self._get_address_value(app_id=app_id, operand=operands[0])
+        self._do_meas(subroutine_id=subroutine_id, q_address=q_address, c_operand=operands[1])
 
     def _do_meas(self, subroutine_id, q_address, c_operand):
         """Performs a measurement on a single qubit"""
@@ -205,6 +239,46 @@ class Processor:
             self._set_address_value(app_id=app_id, operand=c_operand, value=outcome)
         except IndexError:
             logging.warning("Measurement outcome dropped since no more entries in classical register")
+
+    @inc_program_counter
+    def _instr_create_epr(self, subroutine_id, args, operands):
+        self._assert_number_args(args, num=2)
+        remote_node_id = args[0]
+        purpose_id = args[1]
+        self._assert_operands(operands, num=3, operand_types=OperandType.ADDRESS)
+        self._logger.debug(f"Creating EPR pair using qubit addresses stored at {operands[0]}, "
+                           f"using arguments stored at {operands[1]}, "
+                           f"placing the entanglement information at address to be stored at {operands[2]}")
+        self._do_create_epr(
+            subroutine_id=subroutine_id,
+            remote_node_id=remote_node_id,
+            purpose_id=purpose_id,
+            q_address=operands[0].address,
+            arg_address=operands[1].address,
+            ent_info_address=operands[2].address,
+        )
+
+    def _do_create_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, arg_address, ent_info_address):
+        pass
+
+    @inc_program_counter
+    def _instr_recv_epr(self, subroutine_id, args, operands):
+        self._assert_number_args(args, num=2)
+        remote_node_id = args[0]
+        purpose_id = args[1]
+        self._assert_operands(operands, num=2, operand_types=OperandType.ADDRESS)
+        self._logger.debug(f"Receive EPR pair using qubit addresses stored at {operands[0]}, "
+                           f"placing the entanglement information at address to be stored at {operands[1]}")
+        self._do_recv_epr(
+            subroutine_id=subroutine_id,
+            remote_node_id=remote_node_id,
+            purpose_id=purpose_id,
+            q_address=operands[0].address,
+            ent_info_address=operands[1].address,
+        )
+
+    def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, ent_info_address):
+        pass
 
     def _instr_beq(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
@@ -223,10 +297,45 @@ class Processor:
             self._program_counters[subroutine_id] += 1
 
     @inc_program_counter
+    def _instr_wait(self, subroutine_id, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=1, operand_types=OperandType.READ)
+        operand = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        if isinstance(operand, Address) and operand.mode == AddressMode.IMMEDIATE:
+            num_wait = operand.address
+            self._logger.debug(f"Waiting {num_wait} times")
+            for _ in range(num_wait):
+                output = self._do_wait()
+                if isinstance(output, GeneratorType):
+                    yield from output
+        else:
+            self._logger.debug(f"Waiting for address {operands[0]} to become defined")
+            while True:
+                value = self._get_address_value(app_id=app_id, operand=operands[0], assert_int=False)
+                is_defined = True
+                if value is None:
+                    is_defined = False
+                if isinstance(value, list):
+                    if None in value:
+                        is_defined = False
+                if not is_defined:
+                    output = self._do_wait()
+                    if isinstance(output, GeneratorType):
+                        yield from output
+                else:
+                    break
+        self._logger.debug(f"Finished waiting")
+
+    def _do_wait(self):
+        pass
+
+    @inc_program_counter
     def _instr_qfree(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
-        address = operands[0].address
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        address = self._get_address_value(app_id=app_id, operand=operands[0])
 
         self._free_physical_qubit(subroutine_id, address)
         self._logger.debug(f"Freeing qubit at address {address}")
@@ -249,15 +358,18 @@ class Processor:
             raise RuntimeError(f"The qubit with address {address} was not allocated for app ID {app_id}")
         return position
 
-    def _get_address_value(self, app_id, operand):
+    def _get_address_value(self, app_id, operand, assert_int=True):
+        if isinstance(operand, QubitAddress):
+            return operand.address
         if isinstance(operand, Address) and operand.mode == AddressMode.IMMEDIATE:
             return operand.address
         else:
             address = self._get_address(app_id=app_id, operand=operand)
             shared_memory = self._shared_memories[app_id]
             value = shared_memory[address]
-            if not isinstance(value, int):
-                raise TypeError(f"Expected an int at address {address}, but got {value}")
+            if assert_int:
+                if not isinstance(value, int):
+                    raise TypeError(f"Expected an int at address {address}, but got {value}")
             return value
 
     def _get_unused_entry_of_array(self, app_id, array_address):
@@ -274,7 +386,7 @@ class Processor:
 
     def _get_address(self, app_id, operand):
         if isinstance(operand, Array):
-            array_address = self._get_address(app_id=app_id, operand=operand.address)
+            array_address = operand.address.address
             if operand.index is None:
                 index = self._get_unused_entry_of_array(app_id=app_id, array_address=array_address)
                 if index is None:
@@ -282,7 +394,15 @@ class Processor:
                                        f"for app with ID {app_id}")
             else:
                 index = self._get_address_value(app_id=app_id, operand=operand.index)
-            return array_address, index
+            array_entry_address = array_address, index
+            if operand.address.mode == AddressMode.DIRECT:
+                return array_entry_address
+            elif operand.address.mode == AddressMode.INDIRECT:
+                shared_memory = self._shared_memories[app_id]
+                indirect_address = shared_memory[array_entry_address]
+                if not isinstance(indirect_address, int):
+                    raise TypeError(f"Expected an int at address {array_entry_address}, not {indirect_address}")
+                return indirect_address
         if operand.mode == AddressMode.IMMEDIATE:
             raise ValueError("Not an address mode")
         elif operand.mode == AddressMode.DIRECT:
@@ -321,25 +441,43 @@ class Processor:
                                "and cannot be freed")
         else:
             unit_module[address] = None
+            self._used_physical_qubit_addresses.remove(address)
 
     def _get_unused_physical_qubit(self, address):
         # Assuming that the topology of the unit module is a complete graph
         # is does not matter which unused physical qubit we choose for now
         for physical_address in count(0):
             if physical_address not in self._used_physical_qubit_addresses:
+                self._used_physical_qubit_addresses.append(physical_address)
                 return physical_address
 
     def _handle_single_qubit_instr(self, instr, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
         self._assert_operands(operands, num=1, operand_types=OperandType.QUBIT)
-        address = operands[0].address
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        address = self._get_address_value(app_id=app_id, operand=operands[0])
         self._logger.debug(f"Performing {instr} on the qubit at address {address}")
         output = self._do_single_qubit_instr(instr, subroutine_id, address)
         if isinstance(output, GeneratorType):
             yield from output
 
-    def _do_single_qubit_instr(self, instr, app_id, address):
+    def _do_single_qubit_instr(self, instr, subroutine_id, address):
         """Performs a single qubit gate"""
+        pass
+
+    def _handle_two_qubit_instr(self, instr, subroutine_id, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=2, operand_types=OperandType.QUBIT)
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        address1 = self._get_address_value(app_id=app_id, operand=operands[0])
+        address2 = self._get_address_value(app_id=app_id, operand=operands[1])
+        self._logger.debug(f"Performing {instr} on the qubits at addresses {address1} and {address2}")
+        output = self._do_two_qubit_instr(instr, subroutine_id, address1, address2)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _do_two_qubit_instr(self, instr, subroutine_id, address1, address2):
+        """Performs a two qubit gate"""
         pass
 
     def _handle_binary_classical_instr(self, instr, subroutine_id, args, operands):
@@ -378,8 +516,12 @@ class Processor:
 
     def _assert_operand(self, operand, operand_type):
         if operand_type == OperandType.QUBIT:
-            if not isinstance(operand, QubitAddress):
-                raise TypeError(f"Expected operand of type QubitAddress but got {type(operand)}")
+            # Should either be a qubit or an address read from memory
+            try:
+                self._assert_operand(operand, OperandType.READ)
+            except TypeError:
+                if not isinstance(operand, QubitAddress):
+                    raise TypeError(f"Expected operand of type QubitAddress but got {type(operand)}")
         elif operand_type == OperandType.READ:
             if isinstance(operand, Address):
                 pass

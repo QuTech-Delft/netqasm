@@ -44,8 +44,6 @@ class SharedMemory:
 
     def __setitem__(self, index, value):
         if isinstance(index, tuple):
-            if isinstance(value, list):
-                raise RuntimeError("Cannot have nested arrays")
             index, array_index = index
         else:
             array_index = None
@@ -57,9 +55,9 @@ class SharedMemory:
             raise IndexError(f"Trying to get a value at address {index} which is outside "
                              f"the size ({len(self)}) of the shared memory")
         if array_index is None:
-            if not ((current is None) or isinstance(current, int)):
-                raise RuntimeError(f"Expected an address ({index}) position containing an int or uninitialized"
-                                   f", not {current}")
+            if not ((current is None) or isinstance(current, type(value))):
+                raise RuntimeError(f"Expected an address ({index}) position containing an "
+                                   f"{type(value)} or uninitialized, not {current}")
             self._memory[index] = value
         else:
             if not isinstance(current, list):

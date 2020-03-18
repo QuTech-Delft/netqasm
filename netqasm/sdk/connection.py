@@ -8,8 +8,11 @@ from cqc.cqcHeader import (
     CQC_CMD_NEW,
     CQC_CMD_X,
     CQC_CMD_H,
+    CQC_CMD_CNOT,
     CQC_CMD_MEASURE,
     CQC_CMD_RELEASE,
+    CQC_CMD_EPR,
+    CQC_CMD_EPR_RECV,
     command_to_string,
 )
 
@@ -18,6 +21,7 @@ from netqasm.parser import Parser
 from netqasm.encoder import Instruction, instruction_to_string
 from netqasm.string_util import is_number
 from netqasm.sdk.shared_memory import get_shared_memory
+from netqasm.sdk.qubit import Qubit
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
@@ -27,7 +31,10 @@ _CQC_TO_NETQASM_INSTR = {
     CQC_CMD_NEW: instruction_to_string(Instruction.INIT),
     CQC_CMD_X: instruction_to_string(Instruction.X),
     CQC_CMD_H: instruction_to_string(Instruction.H),
+    CQC_CMD_CNOT: instruction_to_string(Instruction.CNOT),
     CQC_CMD_MEASURE: instruction_to_string(Instruction.MEAS),
+    CQC_CMD_EPR: instruction_to_string(Instruction.CREATE_EPR),
+    CQC_CMD_EPR_RECV: instruction_to_string(Instruction.RECV_EPR),
     CQC_CMD_RELEASE: instruction_to_string(Instruction.QFREE),
 }
 
@@ -64,6 +71,61 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         pass
+
+    def createEPR(self, name, purpose_id=0, number=1):
+        """Creates EPR pair with a remote node""
+
+        Parameters
+        ----------
+        name : str
+            Name of the remote node
+        purpose_id : int
+            The purpose id for the entanglement generation
+        number : int
+            The number of pairs to create
+        """
+        remote_node_id = self._get_remote_node_id(name)
+        logging.debug(f"App {self.name} puts command to create EPR with {name}")
+        qubits = [Qubit(self, put_new_command=False) for _ in range(number)]
+        virtual_qubit_ids = [q._qID for q in qubits]
+        self.put_command(
+            qID=virtual_qubit_ids,
+            command=CQC_CMD_EPR,
+            remote_node_id=remote_node_id,
+            purpose_id=purpose_id,
+            number=number,
+        )
+
+        return qubits
+
+    def recvEPR(self, name, purpose_id=0, number=1):
+        """Receives EPR pair with a remote node""
+
+        Parameters
+        ----------
+        name : str
+            Name of the remote node
+        purpose_id : int
+            The purpose id for the entanglement generation
+        number : int
+            The number of pairs to recv
+        """
+        remote_node_id = self._get_remote_node_id(name)
+        logging.debug(f"App {self.name} puts command to recv EPR with {name}")
+        qubits = [Qubit(self, put_new_command=False) for _ in range(number)]
+        virtual_qubit_ids = [q._qID for q in qubits]
+        self.put_command(
+            qID=virtual_qubit_ids,
+            command=CQC_CMD_EPR_RECV,
+            remote_node_id=remote_node_id,
+            purpose_id=purpose_id,
+            number=number,
+        )
+
+        return qubits
+
+    def _get_remote_node_id(self, name):
+        raise NotImplementedError
 
     def put_command(self, qID, command, **kwargs):
         self._logger.debug(f"Put new command={command_to_string(command)} for qubit qID={qID} with kwargs={kwargs}")
@@ -137,23 +199,143 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 """
 
     def _get_netqasm_command(self, command):
-        instr = _CQC_TO_NETQASM_INSTR[command.command]
         if command.command == CQC_CMD_MEASURE:
-            c_address = command.kwargs['outcome_address']
-            if isinstance(c_address, int) or is_number(c_address):
-                c_address = Parser.ADDRESS_START + str(c_address)
-            q_address = command.qID
-            meas = f"{instr} {Parser.QUBIT_START}{q_address} {c_address}\n"
-            qfree = f"qfree {Parser.QUBIT_START}{q_address}\n"
-            return meas + qfree
+            return self._get_netqasm_meas_command(command)
         if command.command == CQC_CMD_NEW:
-            address = command.qID
-            qalloc = f"qalloc {Parser.QUBIT_START}{address}\n"
-            init = f"init {Parser.QUBIT_START}{address}\n"
-            return qalloc + init
+            return self._get_netqasm_new_command(command)
+        if command.command in [CQC_CMD_EPR, CQC_CMD_EPR_RECV]:
+            return self._get_netqasm_epr_command(command)
+        if command.command in [CQC_CMD_CNOT]:
+            return self._get_netqasm_two_qubit_command(command)
         else:
-            address = command.qID
-            return f"{instr} {Parser.QUBIT_START}{address}\n"
+            return self._get_netqasm_single_qubit_command(command)
+
+    def _get_netqasm_single_qubit_command(self, command):
+        address = command.qID
+        instr = _CQC_TO_NETQASM_INSTR[command.command]
+        return f"{instr} {Parser.QUBIT_START}{address}\n"
+
+    def _get_netqasm_two_qubit_command(self, command):
+        address1 = command.qID
+        address2 = command.kwargs["xtra_qID"]
+        instr = _CQC_TO_NETQASM_INSTR[command.command]
+        return f"{instr} {Parser.QUBIT_START}{address1} {Parser.QUBIT_START}{address2}\n"
+
+    def _get_netqasm_meas_command(self, command):
+        c_address = command.kwargs['outcome_address']
+        if isinstance(c_address, int) or is_number(c_address):
+            c_address = Parser.ADDRESS_START + str(c_address)
+        q_address = command.qID
+        meas = f"{instruction_to_string(Instruction.MEAS)} {Parser.QUBIT_START}{q_address} {c_address}\n"
+        qfree = f"{instruction_to_string(Instruction.QFREE)} {Parser.QUBIT_START}{q_address}\n"
+        return meas + qfree
+
+    def _get_netqasm_new_command(self, command):
+        address = command.qID
+        qalloc = f"{instruction_to_string(Instruction.QALLOC)} {Parser.QUBIT_START}{address}\n"
+        init = f"{instruction_to_string(Instruction.INIT)} {Parser.QUBIT_START}{address}\n"
+        return qalloc + init
+
+    def _get_netqasm_epr_command(self, command):
+        # TODO
+        # epr_address_var = "epr_address"
+        # ent_info_var = "ent_info"
+        # arg_address_var = "arg_address"
+        # TODO How to assign new classical addresses?
+        qubit_id_address = self._get_new_classical_address()
+        entinfo_address = self._get_new_classical_address()
+        arg_address = self._get_new_classical_address()
+
+        remote_node_id = command.kwargs["remote_node_id"]
+        purpose_id = command.kwargs["purpose_id"]
+        number = command.kwargs["number"]
+
+        # instructions to use
+        instr = _CQC_TO_NETQASM_INSTR[command.command]
+        virtual_qubit_ids = command.qID
+        store = instruction_to_string(Instruction.STORE)
+        array = instruction_to_string(Instruction.ARRAY)
+        wait = instruction_to_string(Instruction.WAIT)
+
+        at = Parser.ADDRESS_START
+
+        # qubit addresses
+        epr_address_cmds = f"{array}({number}) {at}{qubit_id_address}\n"
+        for i in range(number):
+            q_address = virtual_qubit_ids[i]
+            epr_address_cmds += f"{store} {at}{qubit_id_address}[{i}] {q_address}\n"
+
+        if command.command == CQC_CMD_EPR:
+            # arguments
+            # TODO
+            num_args = 20
+            args_cmds = f"{array}({num_args}) {at}{arg_address}\n"
+            args_cmds += f"{store} {at}{arg_address}[1] {number} // number\n"
+            arg_operand = f" {at}{arg_address}"
+        elif command.command == CQC_CMD_EPR_RECV:
+            args_cmds = ""
+            arg_operand = ""
+        else:
+            raise ValueError(f"Not an epr command {command}")
+
+        # entanglement information
+        ent_info_cmd = f"{array}({number}) {at}{entinfo_address}\n"
+
+        # epr command
+        epr_cmd = (
+            f"{instr}({remote_node_id}, {purpose_id}) "
+            f"{at}{qubit_id_address}{arg_operand} {at}{entinfo_address}\n"
+        )
+        wait_cmd = f"{wait} {at}{entinfo_address}\n"
+
+        return (
+            epr_address_cmds +
+            args_cmds +
+            ent_info_cmd +
+            epr_cmd +
+            wait_cmd
+        )
+
+    def _get_netqasm_recv_epr_command(self, command):
+        # TODO
+        # epr_address_var = "epr_address"
+        # ent_info_var = "ent_info"
+        # TODO How to assign new classical addresses?
+        epr_address_var = self._get_new_classical_address()
+        ent_info_var = self._get_new_classical_address()
+
+        virtual_qubit_ids = command.qID
+        remote_node_id = command.kwargs["remote_node_id"]
+        purpose_id = command.kwargs["purpose_id"]
+        number = command.kwargs["number"]
+
+        store = instruction_to_string(Instruction.STORE)
+        array = instruction_to_string(Instruction.ARRAY)
+        recv_epr = instruction_to_string(Instruction.RECV_EPR)
+        wait = instruction_to_string(Instruction.WAIT)
+
+        # qubit addresses
+        epr_address_cmds = f"{array}({number}) {epr_address_var}\n"
+        for i in range(number):
+            q_address = virtual_qubit_ids[i]
+            epr_address_cmds += f"{store} {epr_address_var}[{i}] {q_address}\n"
+
+        # entanglement information
+        ent_info_cmd = f"{array}({number}) {ent_info_var}\n"
+
+        # create epr
+        recv_epr_cmd = (
+            f"{recv_epr}({remote_node_id}, {purpose_id}) "
+            f"{epr_address_var} {ent_info_var}\n"
+        )
+        wait_cmd = f"{wait} {ent_info_var}\n"
+
+        return (
+            epr_address_cmds +
+            ent_info_cmd +
+            recv_epr_cmd +
+            wait_cmd
+        )
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
         raise NotImplementedError
