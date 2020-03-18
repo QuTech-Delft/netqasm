@@ -2,10 +2,7 @@ import logging
 from enum import Enum, auto
 from types import GeneratorType
 from collections import defaultdict
-from dataclasses import dataclass
 from itertools import count
-
-from netsquid_magic.link_layer import LinkLayerCreate, LinkLayerRecv, ReturnType, RequestType, get_creator_node_id
 
 from netqasm.parser import Command, QubitAddress, Address, Array, AddressMode
 from netqasm.encoder import Instruction, string_to_instruction
@@ -28,22 +25,6 @@ def inc_program_counter(method):
             yield from output
         self._program_counters[subroutine_id] += 1
     return new_method
-
-
-@dataclass
-class CreateData:
-    subroutine_id: int
-    ent_info_address: int
-    create_request: LinkLayerCreate
-    pairs_left: int
-
-
-@dataclass
-class RecvData:
-    subroutine_id: int
-    ent_info_address: int
-    recv_request: LinkLayerRecv
-    pairs_left: int
 
 
 class Executioner:
@@ -74,8 +55,6 @@ class Executioner:
             self._name = name
 
         self._instruction_handlers = self._get_instruction_handlers()
-
-        self._epr_response_handlers = self._get_epr_response_handlers()
 
         self._shared_memories = {}
 
@@ -154,17 +133,6 @@ class Executioner:
             Instruction.QFREE: self._instr_qfree,
         }
         return instruction_handlers
-
-    def _get_epr_response_handlers(self):
-        epr_response_handlers = {
-            # ReturnType.CREATE_ID: self._handle_epr_create_id_response,
-            ReturnType.ERR: self._handle_epr_err_response,
-            ReturnType.OK_K: self._handle_epr_ok_k_response,
-            ReturnType.OK_M: self._handle_epr_ok_m_response,
-            ReturnType.OK_R: self._handle_epr_ok_r_response,
-        }
-
-        return epr_response_handlers
 
     def execute_subroutine(self, subroutine):
         """Executes the a subroutine given to the executioner"""
@@ -291,44 +259,7 @@ class Executioner:
         )
 
     def _do_create_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, arg_address, ent_info_address):
-        if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has not network stack")
-        create_request = self._get_create_request(
-            subroutine_id=subroutine_id,
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-            arg_address=arg_address,
-        )
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        num_qubits = len(self._shared_memories[app_id][q_address])
-        assert num_qubits == create_request.number, "Not enough qubit addresses"
-        create_id = self.network_stack.put(remote_node_id=remote_node_id, request=create_request)
-        self._epr_create_requests[create_id] = CreateData(
-            subroutine_id=subroutine_id,
-            ent_info_address=ent_info_address,
-            create_request=create_request,
-            pairs_left=create_request.number,
-        )
-
-    def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_address):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        args = self._shared_memories[app_id][arg_address]
-        # NOTE remote_node_id and purpose_id comes as direct arguments
-        args = [remote_node_id, purpose_id] + args
-
-        # Use defaults if not specified
-        expected_num_args = len(LinkLayerCreate._fields)
-        if len(args) != expected_num_args:
-            raise ValueError(f"Expected {expected_num_args} arguments, but got {len(args)}")
-        kwargs = {}
-        for arg, field, default in zip(args, LinkLayerCreate._fields, LinkLayerCreate.__new__.__defaults__):
-            if arg is None:
-                kwargs[field] = default
-            else:
-                kwargs[field] = arg
-        kwargs["type"] = RequestType(kwargs["type"])
-
-        return LinkLayerCreate(**kwargs)
+        pass
 
     @inc_program_counter
     def _instr_recv_epr(self, subroutine_id, args, operands):
@@ -347,75 +278,7 @@ class Executioner:
         )
 
     def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, ent_info_address):
-        if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has not network stack")
-        recv_request = self._get_recv_request(
-            subroutine_id=subroutine_id,
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-        )
-        # Check number of qubit addresses
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        num_qubits = len(self._shared_memories[app_id][q_address])
-        self._epr_recv_requests[purpose_id].append(RecvData(
-            subroutine_id=subroutine_id,
-            ent_info_address=ent_info_address,
-            recv_request=recv_request,
-            pairs_left=num_qubits,
-        ))
-        self.network_stack.put(remote_node_id=remote_node_id, request=recv_request)
-
-    def _get_recv_request(self, subroutine_id, remote_node_id, purpose_id):
-        return LinkLayerRecv(
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-        )
-
-    def _handle_epr_response(self, response):
-        self._epr_response_handlers[response.type](response)
-
-    def _handle_epr_err_response(self, response):
-        raise RuntimeError(f"Got the following error from the network stack: {response}")
-
-    def _handle_epr_ok_k_response(self, response):
-        # NOTE this will probably be handled differently in an actual implementation
-        # but is done in a simple way for now to allow for simulation
-        # TODO cleanup this part
-        creator_node_id = get_creator_node_id(self._node.ID, response)
-        if creator_node_id == self._node.ID:
-            create_id = response.create_id
-            create_data = self._epr_create_requests[create_id]
-            create_data.pairs_left -= 1
-            if create_data.pairs_left == 0:
-                self._epr_create_requests.pop(create_id)
-            subroutine_id = create_data.subroutine_id
-            ent_info_address = create_data.ent_info_address
-        else:
-            purpose_id = response.purpose_id
-            recv_data = self._epr_recv_requests[purpose_id][0]
-            recv_data.pairs_left -= 1
-            if recv_data.pairs_left == 0:
-                self._epr_recv_requests[purpose_id].pop(0)
-            subroutine_id = recv_data.subroutine_id
-            ent_info_address = recv_data.ent_info_address
-        q_address = response.logical_qubit_id
-        self._allocate_physical_qubit(subroutine_id, q_address)
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        full_ent_info_address = self._get_address(
-            app_id=app_id,
-            operand=Array(
-                address=Address(address=ent_info_address, mode=AddressMode.DIRECT),
-                index=None,
-            ),
-        )
-        ent_info = [entry.value if isinstance(entry, Enum) else entry for entry in response]
-        self._shared_memories[app_id][full_ent_info_address] = ent_info
-
-    def _handle_epr_ok_m_response(self, response):
-        raise NotImplementedError
-
-    def _handle_epr_ok_r_response(self, response):
-        raise NotImplementedError
+        pass
 
     def _instr_beq(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=0)
