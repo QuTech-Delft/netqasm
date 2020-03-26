@@ -1,51 +1,34 @@
 image: adahlberg/nlblueprintci:19.04
 
-.source_venv: &venv
+.only_mr: &only_mr
+    only:
+        - master
+        - merge_requests
+
+.install: &install
     before_script:
-        - source venv/bin/activate
+        - make install
 
 stages:
-    - install
     - lint
     - tests
     - examples
     - deploy
 
-install:
-    stage: install
-    artifacts:
-        paths:
-            - venv
-        expire_in: 1 hour
-    before_script:
-        - pip3 install virtualenv
-        - virtualenv venv
-        - source venv/bin/activate
-    script: make install
-    only:
-        - master
-        - merge_requests
-
 lint:
-    <<: *venv
+    <<: *install
     stage: lint
     script: make lint
-    only:
-        - master
-        - merge_requests
+    <<: *only_mr
 
 test:
-    <<: *venv
+    <<: *install
     stage: tests
     script: make tests
-    only:
-        - master
-        - merge_requests
+    <<: *only_mr
 
 examples:
-    <<: *venv
+    <<: *install
     stage: examples
     script: make examples
-    only:
-        - master
-        - merge_requests
+    <<: *only_mr
