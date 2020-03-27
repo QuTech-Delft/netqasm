@@ -7,6 +7,7 @@ from cqc.pythonLib import CQCHandler
 from cqc.cqcHeader import (
     CQC_CMD_NEW,
     CQC_CMD_X,
+    CQC_CMD_Z,
     CQC_CMD_H,
     CQC_CMD_CNOT,
     CQC_CMD_MEASURE,
@@ -30,6 +31,7 @@ _Command = namedtuple("Command", ["qID", "command", "kwargs"])
 _CQC_TO_NETQASM_INSTR = {
     CQC_CMD_NEW: instruction_to_string(Instruction.INIT),
     CQC_CMD_X: instruction_to_string(Instruction.X),
+    CQC_CMD_Z: instruction_to_string(Instruction.Z),
     CQC_CMD_H: instruction_to_string(Instruction.H),
     CQC_CMD_CNOT: instruction_to_string(Instruction.CNOT),
     CQC_CMD_MEASURE: instruction_to_string(Instruction.MEAS),

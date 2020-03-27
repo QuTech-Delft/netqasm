@@ -124,6 +124,7 @@ class Executioner:
             Instruction.ADD: self._instr_add,
             Instruction.H: self._instr_h,
             Instruction.X: self._instr_x,
+            Instruction.Z: self._instr_z,
             Instruction.CNOT: self._instr_cnot,
             Instruction.MEAS: self._instr_meas,
             Instruction.CREATE_EPR: self._instr_create_epr,
@@ -215,6 +216,10 @@ class Executioner:
     @inc_program_counter
     def _instr_x(self, subroutine_id, args, operands):
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, args, operands)
+
+    @inc_program_counter
+    def _instr_z(self, subroutine_id, args, operands):
+        yield from self._handle_single_qubit_instr(Instruction.Z, subroutine_id, args, operands)
 
     @inc_program_counter
     def _instr_cnot(self, subroutine_id, args, operands):

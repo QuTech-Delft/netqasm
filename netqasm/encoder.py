@@ -9,6 +9,7 @@ class Instruction(Enum):
     ADD = auto()
     H = auto()
     X = auto()
+    Z = auto()
     CNOT = auto()
     MEAS = auto()
     CREATE_EPR = auto()
@@ -26,6 +27,7 @@ _INSTRUCTION_TO_STRING = {
     Instruction.ADD: "add",
     Instruction.H: "h",
     Instruction.X: "x",
+    Instruction.Z: "z",
     Instruction.CNOT: "cnot",
     Instruction.MEAS: "meas",
     Instruction.CREATE_EPR: "create_epr",
