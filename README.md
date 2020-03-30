@@ -15,26 +15,3 @@ make verify
 
 Examples
 --------
-
-To run a file (`examples/netqasm_files/simple_measure.nqasm`) containing the script:
-```
-# NETQASM 0.0
-# APPID 0
-# DEFINE op h
-# DEFINE q @0
-qalloc q!
-init q!
-op! q! // this is a comment
-meas q! m
-beq m 0 EXIT
-x q!
-EXIT:
-// this is also a comment
-```
-which can be found [here](https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm/blob/master/examples/netqasm_files/simple_measure.nqasm), run the following:
-```sh
-netqasm execute simple_measure.nqasm
-```
-the output can be then be found in the file `simple_measure.out` as triggered by the line `output m` which outputs the register `m`.
-
-Note that to actually perform quantum operations on simulated qubits you will need for example `squidasm`.

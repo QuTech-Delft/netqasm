@@ -22,7 +22,7 @@ test-deps:
 	@$(PYTHON3) -m pip install -r test_requirements.txt
 
 requirements python-deps:
-	@$(PYTHON3) -m pip install -r requirements.txt ${PIP_FLAGS}
+	@$(PYTHON3) -m pip install -r requirements.txt
 
 clean:
 	@/usr/bin/find . -name '*.pyc' -delete
