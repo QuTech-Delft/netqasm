@@ -1,6 +1,16 @@
 import pytest
 
-from netqasm.parser import Parser, Subroutine, Command, Address, AddressMode, QubitAddress, Array
+# from netqasm.parser import Parser, Subroutine, Command, Address, AddressMode, QubitAddress, Array
+from netqasm.subroutine import (
+    Constant,
+    RegisterName,
+    Register,
+    MemoryAddress,
+    Command,
+    BranchLabel,
+    Subroutine,
+)
+from netqasm.parser import parse_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
 
 
@@ -19,20 +29,24 @@ from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
 ])
 def test_faulty_preamble(subroutine, error):
     with pytest.raises(error):
-        Parser(subroutine)
+        parse_subroutine(subroutine)
 
 
 def test_simple():
-    subroutine = """# NETQASM 0.0
+    subroutine = """
+# NETQASM 0.0
 # APPID 0
-store @0 1
-store *@0 1
-store m 0
-init q0
-init q
-array(4) ms
-add m m 1
-add ms[0] m 1
+set R0 0
+store 1 @0
+store 1 @R0
+store R0 @1
+store R0 @R0
+store R0 @0[0]
+store R0 @R0[R1]
+set Q0 0
+init Q0
+array(4) @2
+add R1 R2 1
 beq 0 0 EXIT
 EXIT:
 """
@@ -41,68 +55,188 @@ EXIT:
         netqasm_version="0.0",
         app_id=0,
         commands=[
-            Command(instruction="store", args=[], operands=[
-                Address(0, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
+            Command(instruction="set", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                Constant(0),
             ]),
             Command(instruction="store", args=[], operands=[
-                Address(0, AddressMode.INDIRECT),
-                Address(1, AddressMode.IMMEDIATE),
+                Constant(1),
+                MemoryAddress(
+                    base_address=Constant(0),
+                    index=None,
+                ),
             ]),
             Command(instruction="store", args=[], operands=[
-                Address(1, AddressMode.DIRECT),
-                Address(0, AddressMode.IMMEDIATE),
+                Constant(1),
+                MemoryAddress(
+                    base_address=Register(RegisterName.R, Constant(0)),
+                    index=None,
+                ),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                MemoryAddress(
+                    base_address=Constant(1),
+                    index=None,
+                ),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                MemoryAddress(
+                    base_address=Register(RegisterName.R, Constant(0)),
+                    index=None,
+                ),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                MemoryAddress(
+                    base_address=Constant(0),
+                    index=Constant(0),
+                ),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                MemoryAddress(
+                    base_address=Register(RegisterName.R, Constant(0)),
+                    index=Register(RegisterName.R, Constant(1)),
+                ),
+            ]),
+            Command(instruction="set", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+                Constant(0),
             ]),
             Command(instruction="init", args=[], operands=[
-                QubitAddress(0),
+                Register(RegisterName.Q, Constant(0)),
             ]),
-            Command(instruction="init", args=[], operands=[
-                QubitAddress(1),
-            ]),
-            Command(instruction="array", args=[4], operands=[
-                Address(2, AddressMode.DIRECT),
-            ]),
-            Command(instruction="add", args=[], operands=[
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
+            Command(instruction="array", args=[Constant(4)], operands=[
+                MemoryAddress(
+                    base_address=Constant(2),
+                    index=None,
+                ),
             ]),
             Command(instruction="add", args=[], operands=[
-                Array(address=Address(2, AddressMode.DIRECT), index=Address(0, AddressMode.IMMEDIATE)),
-                Address(1, AddressMode.DIRECT),
-                Address(1, AddressMode.IMMEDIATE),
+                Register(RegisterName.R, Constant(1)),
+                Register(RegisterName.R, Constant(2)),
+                Constant(1),
             ]),
             Command(instruction="beq", args=[], operands=[
-                Address(0, AddressMode.IMMEDIATE),
-                Address(0, AddressMode.IMMEDIATE),
-                Address(9, AddressMode.IMMEDIATE),
+                Constant(0),
+                Constant(0),
+                Constant(12),
             ]),
         ])
 
-    parser = Parser(subroutine)
-    assert parser.subroutine == expected
+    subroutine = parse_subroutine(subroutine)
+    for i, command in enumerate(subroutine.commands):
+        exp_command = expected.commands[i]
+        print(command)
+        print(exp_command)
+        assert command == exp_command
+    print(repr(subroutine))
+    print(repr(expected))
+    assert subroutine == expected
 
 
-def test_teleport():
+def test_loop():
     subroutine = """
 # NETQASM 0.0
 # APPID 0
-array(1) epr_address
-store epr_address[0] 1
-array(1) entinfo
-qalloc q
-h q
-create_epr epr_address entinfo
-wait entinfo
-cnot q *epr_address[0]
-h q
-meas q m1
-meas *epr_address[0] m2
+# DEFINE ms @0
+// Setup classical registers
+set Q0 0
+array(10) ms!
+set R0 0
+
+// Loop entry
+LOOP:
+beq R0 10 EXIT
+
+// Loop body
+qalloc Q0
+init Q0
+h Q0
+meas Q0 M0
+
+// Store to array
+store M0 ms![R0]
+
+qfree Q0
+add R0 R0 1
+
+// Loop exit
+beq 0 0 LOOP
+EXIT:
 """
 
-    parser = Parser(subroutine)
-    print(parser)
+    expected = Subroutine(
+        netqasm_version="0.0",
+        app_id=0,
+        commands=[
+            Command(instruction="set", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+                Constant(0),
+            ]),
+            Command(instruction="array", args=[Constant(10)], operands=[
+                MemoryAddress(
+                    base_address=Constant(0),
+                    index=None,
+                ),
+            ]),
+            Command(instruction="set", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                Constant(0),
+            ]),
+            Command(instruction="beq", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                Constant(10),
+                Constant(12),
+            ]),
+            Command(instruction="qalloc", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+            ]),
+            Command(instruction="init", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+            ]),
+            Command(instruction="h", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+            ]),
+            Command(instruction="meas", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+                Register(RegisterName.M, Constant(0)),
+            ]),
+            Command(instruction="store", args=[], operands=[
+                Register(RegisterName.M, Constant(0)),
+                MemoryAddress(
+                    base_address=Constant(0),
+                    index=Register(RegisterName.R, Constant(0)),
+                ),
+            ]),
+            Command(instruction="qfree", args=[], operands=[
+                Register(RegisterName.Q, Constant(0)),
+            ]),
+            Command(instruction="add", args=[], operands=[
+                Register(RegisterName.R, Constant(0)),
+                Register(RegisterName.R, Constant(0)),
+                Constant(1),
+            ]),
+            Command(instruction="beq", args=[], operands=[
+                Constant(0),
+                Constant(0),
+                Constant(3),
+            ]),
+        ],
+    )
+    subroutine = parse_subroutine(subroutine)
+    for i, command in enumerate(subroutine.commands):
+        exp_command = expected.commands[i]
+        print(command)
+        print(exp_command)
+        assert command == exp_command
+    print(repr(subroutine))
+    print(repr(expected))
+    assert subroutine == expected
 
 
 if __name__ == "__main__":
-    test_teleport()
+    test_simple()
+    test_loop()
