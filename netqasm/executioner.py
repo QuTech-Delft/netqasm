@@ -1,4 +1,5 @@
 import logging
+import operator
 from enum import Enum, auto
 from types import GeneratorType
 from collections import defaultdict
@@ -117,21 +118,7 @@ class Executioner:
     def _get_instruction_handlers(self):
         """Creates the dictionary of instruction handlers"""
         instruction_handlers = {
-            Instruction.QALLOC: self._instr_qalloc,
-            Instruction.INIT: self._instr_init,
-            Instruction.STORE: self._instr_store,
-            Instruction.ARRAY: self._instr_array,
-            Instruction.ADD: self._instr_add,
-            Instruction.H: self._instr_h,
-            Instruction.X: self._instr_x,
-            Instruction.Z: self._instr_z,
-            Instruction.CNOT: self._instr_cnot,
-            Instruction.MEAS: self._instr_meas,
-            Instruction.CREATE_EPR: self._instr_create_epr,
-            Instruction.RECV_EPR: self._instr_recv_epr,
-            Instruction.BEQ: self._instr_beq,
-            Instruction.WAIT: self._instr_wait,
-            Instruction.QFREE: self._instr_qfree,
+            instr: getattr(self, f"_instr_{instr.value}") for instr in Instruction
         }
         return instruction_handlers
 
@@ -189,6 +176,14 @@ class Executioner:
         self._logger.debug(f"Storing value {value} at address given by operand {operands[0]}")
 
     @inc_program_counter
+    def _instr_unset(self, subroutine_id, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=1, operand_types=[OperandType.WRITE])
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._set_address_value(app_id=app_id, operand=operands[0], value=None)
+        self._logger.debug(f"Unset value at address given by operand {operands[0]}")
+
+    @inc_program_counter
     def _instr_array(self, subroutine_id, args, operands):
         self._assert_number_args(args, num=1)
         length = args[0]
@@ -205,25 +200,101 @@ class Executioner:
             raise ValueError(f"Address {address} for app with ID {app_id} is already initialized")
         shared_memory[address] = [None] * length
 
+    def _instr_beq(self, subroutine_id, args, operands):
+        self._handle_branch_instr(
+            instr=Instruction.BEQ,
+            subroutine_id=subroutine_id,
+            args=args,
+            operands=operands,
+        )
+
+    def _instr_bne(self, subroutine_id, args, operands):
+        self._handle_branch_instr(
+            instr=Instruction.BNE,
+            subroutine_id=subroutine_id,
+            args=args,
+            operands=operands,
+        )
+
+    def _instr_blt(self, subroutine_id, args, operands):
+        self._handle_branch_instr(
+            instr=Instruction.BLT,
+            subroutine_id=subroutine_id,
+            args=args,
+            operands=operands,
+        )
+
+    def _instr_bge(self, subroutine_id, args, operands):
+        self._handle_branch_instr(
+            instr=Instruction.BGE,
+            subroutine_id=subroutine_id,
+            args=args,
+            operands=operands,
+        )
+
+    def _handle_branch_instr(self, instr, subroutine_id, args, operands):
+        self._assert_number_args(args, num=0)
+        self._assert_operands(operands, num=3, operand_types=OperandType.READ)
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        a = self._get_address_value(app_id=app_id, operand=operands[0])
+        b = self._get_address_value(app_id=app_id, operand=operands[1])
+
+        condition_func = {
+            Instruction.BEQ: operator.eq,
+            Instruction.BNE: operator.ne,
+            Instruction.BLT: operator.lt,
+            Instruction.BGE: operator.ge,
+        }[instr]
+
+        if condition_func(a, b):
+            jump_address = self._get_address_value(app_id=app_id, operand=operands[2])
+            self._logger.debug(f"Branching to line {jump_address}, since {condition_func.__name__}(a={a}, b={b}) "
+                               f"is True, with 'a' from address {operands[0]} and 'b' from {operands[1]}")
+            self._program_counters[subroutine_id] = jump_address
+        else:
+            self._logger.debug(f"Don't branch, since {condition_func.__name__}(a={a}, b={b}) "
+                               f"is False, with 'a' from address {operands[0]} and 'b' from {operands[1]}")
+            self._program_counters[subroutine_id] += 1
+
     @inc_program_counter
     def _instr_add(self, subroutine_id, args, operands):
         self._handle_binary_classical_instr(Instruction.ADD, subroutine_id, args, operands)
 
     @inc_program_counter
-    def _instr_h(self, subroutine_id, args, operands):
-        yield from self._handle_single_qubit_instr(Instruction.H, subroutine_id, args, operands)
+    def _instr_sub(self, subroutine_id, args, operands):
+        self._handle_binary_classical_instr(Instruction.SUB, subroutine_id, args, operands)
 
     @inc_program_counter
     def _instr_x(self, subroutine_id, args, operands):
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, args, operands)
 
     @inc_program_counter
+    def _instr_y(self, subroutine_id, args, operands):
+        yield from self._handle_single_qubit_instr(Instruction.Y, subroutine_id, args, operands)
+
+    @inc_program_counter
     def _instr_z(self, subroutine_id, args, operands):
         yield from self._handle_single_qubit_instr(Instruction.Z, subroutine_id, args, operands)
 
     @inc_program_counter
+    def _instr_h(self, subroutine_id, args, operands):
+        yield from self._handle_single_qubit_instr(Instruction.H, subroutine_id, args, operands)
+
+    @inc_program_counter
+    def _instr_k(self, subroutine_id, args, operands):
+        yield from self._handle_single_qubit_instr(Instruction.K, subroutine_id, args, operands)
+
+    @inc_program_counter
+    def _instr_t(self, subroutine_id, args, operands):
+        yield from self._handle_single_qubit_instr(Instruction.T, subroutine_id, args, operands)
+
+    @inc_program_counter
     def _instr_cnot(self, subroutine_id, args, operands):
         yield from self._handle_two_qubit_instr(Instruction.CNOT, subroutine_id, args, operands)
+
+    @inc_program_counter
+    def _instr_cphase(self, subroutine_id, args, operands):
+        yield from self._handle_two_qubit_instr(Instruction.CPHASE, subroutine_id, args, operands)
 
     @inc_program_counter
     def _instr_meas(self, subroutine_id, args, operands):
@@ -284,22 +355,6 @@ class Executioner:
 
     def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, ent_info_address):
         pass
-
-    def _instr_beq(self, subroutine_id, args, operands):
-        self._assert_number_args(args, num=0)
-        self._assert_operands(operands, num=3, operand_types=OperandType.READ)
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        a = self._get_address_value(app_id=app_id, operand=operands[0])
-        b = self._get_address_value(app_id=app_id, operand=operands[1])
-        jump_address = self._get_address_value(app_id=app_id, operand=operands[2])
-        if a == b:
-            self._logger.debug(f"Branching to line {jump_address} since {a} = {b} "
-                               f"from address {operands[0]} and {operands[1]}")
-            self._program_counters[subroutine_id] = jump_address
-        else:
-            self._logger.debug(f"Don't branch, since {a} =! {b} "
-                               f"from address {operands[0]} and {operands[1]}")
-            self._program_counters[subroutine_id] += 1
 
     @inc_program_counter
     def _instr_wait(self, subroutine_id, args, operands):
@@ -486,21 +541,29 @@ class Executioner:
         pass
 
     def _handle_binary_classical_instr(self, instr, subroutine_id, args, operands):
-        self._assert_number_args(args, num=0)
+        if len(args) == 0:
+            mod = 1
+        elif len(args) == 1:
+            mod = args[0]
+            if not mod >= 1:
+                raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
+        else:
+            raise TypeError(f"Expected 0 or 1 arguments, got {len(args)}")
         self._assert_operands(operands, num=3, operand_types=[OperandType.WRITE, OperandType.READ, OperandType.READ])
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a = self._get_address_value(app_id=app_id, operand=operands[1])
         b = self._get_address_value(app_id=app_id, operand=operands[2])
-        value = self._compute_binary_classical_instr(instr, a, b)
+        value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
         self._set_address_value(app_id=app_id, operand=operands[0], value=value)
         self._logger.debug(f"Performing {instr} of a={a} and b={b} "
                            f"and storing the value at address {operands[0]}")
 
-    def _compute_binary_classical_instr(self, instr, a, b):
-        if instr == Instruction.ADD:
-            return a + b
-        else:
-            raise RuntimeError("Unknown binary classical instructions {instr}")
+    def _compute_binary_classical_instr(self, instr, a, b, mod=1):
+        op = {
+            Instruction.ADD: operator.add,
+            Instruction.SUB: operator.sub,
+        }[instr]
+        return op(a, b) % mod
 
     def _set_address_value(self, app_id, operand, value):
         address = self._get_address(app_id=app_id, operand=operand)

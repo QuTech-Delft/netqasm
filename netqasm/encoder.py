@@ -1,51 +1,54 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 class Instruction(Enum):
-    QALLOC = auto()
-    INIT = auto()
-    STORE = auto()
-    ARRAY = auto()
-    ADD = auto()
-    H = auto()
-    X = auto()
-    Z = auto()
-    CNOT = auto()
-    MEAS = auto()
-    CREATE_EPR = auto()
-    RECV_EPR = auto()
-    BEQ = auto()
-    WAIT = auto()
-    QFREE = auto()
-
-
-_INSTRUCTION_TO_STRING = {
-    Instruction.QALLOC: "qalloc",
-    Instruction.INIT: "init",
-    Instruction.STORE: "store",
-    Instruction.ARRAY: "array",
-    Instruction.ADD: "add",
-    Instruction.H: "h",
-    Instruction.X: "x",
-    Instruction.Z: "z",
-    Instruction.CNOT: "cnot",
-    Instruction.MEAS: "meas",
-    Instruction.CREATE_EPR: "create_epr",
-    Instruction.RECV_EPR: "recv_epr",
-    Instruction.BEQ: "beq",
-    Instruction.WAIT: "wait",
-    Instruction.QFREE: "qfree",
-}
+    # Allocation
+    QALLOC = "qalloc"
+    # Initialization
+    INIT = "init"
+    STORE = "store"
+    UNSET = "unset"
+    ARRAY = "array"
+    # Classical logic
+    BEQ = "beq"
+    BNE = "bne"
+    BLT = "blt"
+    BGE = "bge"
+    # Classical operations
+    ADD = "add"
+    SUB = "sub"
+    # Single-qubit gates
+    X = "X"
+    Y = "Y"
+    Z = "Z"
+    H = "H"
+    K = "K"
+    T = "T"
+    # Single-qubit rotations
+    ROT_X = "ROT_X"
+    ROT_Y = "ROT_Y"
+    ROT_Z = "ROT_Z"
+    # Two-qubit gates
+    CNOT = "CNOT"
+    CPHASE = "CPHASE"
+    # Measurement
+    MEAS = "MEAS"
+    # Entanglement generation
+    CREATE_EPR = "CREATE_EPR"
+    RECV_EPR = "RECV_EPR"
+    # Waiting
+    WAIT = "WAIT"
+    # Deallocation
+    QFREE = "QFREE"
 
 
 def instruction_to_string(instr):
-    instr_str = _INSTRUCTION_TO_STRING.get(instr)
-    if instr_str is None:
+    if not isinstance(instr, Instruction):
         raise ValueError(f"Unknown instruction {instr}")
-    return instr_str
+    return instr.value
 
 
-_STRING_TO_INSTRUCTION = {instr_str: instr for instr, instr_str in _INSTRUCTION_TO_STRING.items()}
+_STRING_TO_INSTRUCTION = {instr.value: instr for instr in Instruction}
 
 
 def string_to_instruction(instr_str):
