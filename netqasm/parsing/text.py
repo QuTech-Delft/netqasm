@@ -3,12 +3,12 @@ from collections import defaultdict
 
 from netqasm.string_util import group_by_word, is_variable_name, is_number
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
+from netqasm.encoding import RegisterName
 from netqasm.subroutine import (
     Constant,
     Label,
-    RegisterName,
     Register,
-    MemoryAddress,
+    Address,
     Command,
     BranchLabel,
     Subroutine,
@@ -16,7 +16,7 @@ from netqasm.subroutine import (
 )
 
 
-def parse_subroutine(subroutine, assign_branch_labels=True):
+def parse_text_subroutine(subroutine, assign_branch_labels=True):
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
     preamble_data = _parse_preamble(preamble_lines)
@@ -69,9 +69,11 @@ def _parse_args(args):
                 .split(Symbols.ARGS_DELIM)]
 
 
-def _parse_constant(constant):
+def _parse_constant(constant, return_int=False):
     if not is_number(constant):
         raise NetQASMSyntaxError(f"Expected constant, got {constant}")
+    if return_int:
+        return int(constant)
     return Constant(int(constant))
 
 
@@ -112,12 +114,15 @@ def _parse_label(label):
     return Label(label)
 
 
+_REGISTER_NAMES = {reg.name: reg for reg in RegisterName}
+
+
 def _parse_register(register):
     try:
-        register_name = RegisterName(register[0])
-    except ValueError:
+        register_name = _REGISTER_NAMES[register[0]]
+    except KeyError:
         raise NetQASMSyntaxError(f"{register[0]} is not a valid register name")
-    value = _parse_constant(register[1:])
+    value = _parse_constant(register[1:], return_int=True)
     return Register(register_name, value)
 
 
@@ -125,7 +130,7 @@ def _parse_address(address):
     base_address, index = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
     base_address = _parse_base_address(base_address)
     index = _parse_index(index)
-    return MemoryAddress(base_address, index)
+    return Address(base_address, index)
 
 
 def _parse_base_address(base_address):
