@@ -6,13 +6,18 @@ from netqasm.encoding import (
     RotationCommand,
     ClassicalOpCommand,
     ClassicalOpModCommand,
-    BranchCommand,
+    JumpCommand,
+    BranchUnaryCommand,
+    BranchBinaryCommand,
     SetCommand,
-    RegisterAddressCommand,
-    SingleAddressCommand,
+    LoadStoreCommand,
+    SingleArrayEntryCommand,
+    LeaCommand,
+    SingleRegisterCommand,
     ArrayCommand,
     CreateEPRCommand,
     RecvEPRCommand,
+    ReturnCommand,
 )
 
 
@@ -101,7 +106,14 @@ _COMMAND_GROUPS = {
         Instruction.ADDM,
         Instruction.SUBM,
     ],
-    BranchCommand: [
+    JumpCommand: [
+        Instruction.JMP,
+    ],
+    BranchUnaryCommand: [
+        Instruction.BEZ,
+        Instruction.BNZ,
+    ],
+    BranchBinaryCommand: [
         Instruction.BEQ,
         Instruction.BNE,
         Instruction.BLT,
@@ -110,14 +122,19 @@ _COMMAND_GROUPS = {
     SetCommand: [
         Instruction.SET,
     ],
-    RegisterAddressCommand: [
+    LoadStoreCommand: [
         Instruction.STORE,
         Instruction.LOAD,
+    ],
+    LeaCommand: [
         Instruction.LEA,
     ],
-    SingleAddressCommand: [
+    SingleArrayEntryCommand: [
         Instruction.UNDEF,
         Instruction.WAIT,
+    ],
+    SingleRegisterCommand: [
+        Instruction.RET_REG,
     ],
     ArrayCommand: [
         Instruction.ARRAY,
@@ -127,6 +144,9 @@ _COMMAND_GROUPS = {
     ],
     RecvEPRCommand: [
         Instruction.RECV_EPR,
+    ],
+    ReturnCommand: [
+        Instruction.RET_ARR,
     ],
 }
 
@@ -163,14 +183,3 @@ COMMAND_STRUCTS = {
     for command_group, instrs in _COMMAND_GROUPS.items()
     for instr in instrs
 }
-
-
-# TESTING
-
-from netqasm.encoding import Command
-
-
-def test_all_commmands():
-    for instr in Instruction:
-        command = COMMAND_STRUCTS[instr]
-        assert isinstance(command(), Command)

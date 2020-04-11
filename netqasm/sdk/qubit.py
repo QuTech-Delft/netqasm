@@ -26,20 +26,21 @@ class Qubit(qubit):
     def _conn(self, value):
         self._cqc = value
 
-    def measure(self, outcome_address=None):
+    def measure(self, outcome_reg=None):
         self.check_active()
 
-        if outcome_address is None:
-            outcome_address = self._conn._get_new_classical_address()
-        self._conn.put_command(self._qID, CQC_CMD_MEASURE, outcome_address=outcome_address)
+        if outcome_reg is None:
+            outcome_reg = self._conn._get_new_meas_outcome_reg()
+        self._conn.put_command(self._qID, CQC_CMD_MEASURE, outcome_reg=outcome_reg)
 
         self._set_active(False)
 
+        # TODO update how this is treated
         memory = get_shared_memory(
             node_name=self._conn.name,
             key=self._conn._appID,
         )
         return MeasurementOutcome(
             memory=memory,
-            address=outcome_address,
+            address=outcome_reg,
         )

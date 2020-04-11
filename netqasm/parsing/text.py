@@ -3,25 +3,39 @@ from collections import defaultdict
 
 from netqasm.string_util import group_by_word, is_variable_name, is_number
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
-from netqasm.encoding import RegisterName
+from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
     Constant,
     Label,
     Register,
     Address,
+    ArrayEntry,
+    ArraySlice,
     Command,
     BranchLabel,
     Subroutine,
     Symbols,
 )
+from netqasm.instructions import Instruction, string_to_instruction
 
 
-def parse_text_subroutine(subroutine, assign_branch_labels=True):
+def parse_text_subroutine(
+    subroutine,
+    assign_branch_labels=True,
+    make_args_operands=True,
+    replace_constants=True,
+):
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
     preamble_data = _parse_preamble(preamble_lines)
     body_lines = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
     subroutine = _create_subroutine(preamble_data, body_lines)
+    if make_args_operands:
+        _make_args_operands(subroutine)
+    if replace_constants:
+        current_registers = get_current_registers(subroutine)
+        _replace_constants(subroutine, current_registers)
+        _replace_explicit_addresses(subroutine, current_registers)
     if assign_branch_labels:
         _assign_branch_labels(subroutine)
     return subroutine
@@ -38,7 +52,8 @@ def _create_subroutine(preamble_data, body_lines):
             commands.append(BranchLabel(branch_label))
         else:
             words = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
-            instr, args = _split_instr_and_args(words[0])
+            instr_name, args = _split_instr_and_args(words[0])
+            instr = string_to_instruction(instr_name)
             args = _parse_args(args)
             operands = _parse_operands(words[1:])
             command = Command(
@@ -130,7 +145,13 @@ def _parse_address(address):
     base_address, index = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
     base_address = _parse_base_address(base_address)
     index = _parse_index(index)
-    return Address(base_address, index)
+    address = Address(base_address)
+    if index is None:
+        return address
+    elif isinstance(index, tuple):
+        return ArraySlice(address, start=index[0], end=index[1])
+    else:
+        return ArrayEntry(address, index)
 
 
 def _parse_base_address(base_address):
@@ -142,8 +163,12 @@ def _parse_base_address(base_address):
 def _parse_index(index):
     if index == "":
         return None
+    index = index.strip(Symbols.INDEX_BRACKETS)
+    if Symbols.SLICE_DELIM in index:
+        start, end = index.split(Symbols.SLICE_DELIM)
+        return _parse_value(start.strip()), _parse_value(end.strip())
     else:
-        return _parse_value(index.strip(Symbols.INDEX_BRACKETS))
+        return _parse_value(index)
 
 
 def _split_of_bracket(word, brackets):
@@ -341,3 +366,95 @@ def _find_current_branch_variables(subroutine: str):
             branch_variables.append(line.rstrip(Symbols.BRANCH_END))
 
         return branch_variables
+
+
+def _make_args_operands(subroutine):
+    for command in subroutine.commands:
+        if not isinstance(command, Command):
+            continue
+        command.operands = command.args + command.operands
+        command.args = []
+
+
+_REPLACE_CONSTANTS_EXCEPTION = [
+    (Instruction.SET, 1),
+    (Instruction.JMP, 0),
+    (Instruction.BEZ, 1),
+    (Instruction.BNZ, 1),
+    (Instruction.BEQ, 2),
+    (Instruction.BNE, 2),
+    (Instruction.BLT, 2),
+    (Instruction.BGE, 2),
+]
+
+
+def _replace_constants(subroutine, current_registers):
+    i = 0
+    while i < len(subroutine.commands):
+        command = subroutine.commands[i]
+        if not isinstance(command, Command):
+            i += 1
+            continue
+        reg_i = 2 ** REG_INDEX_BITS - 1
+        for j, operand in enumerate(command.operands):
+            if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
+                register = Register(RegisterName.R, reg_i)
+                if register in current_registers:
+                    raise RuntimeError("Could not replace constant since no registers left")
+                set_command = Command(
+                    instruction=Instruction.SET,
+                    args=[],
+                    operands=[register, operand],
+                )
+                subroutine.commands.insert(i, set_command)
+                command.operands[j] = register
+
+                reg_i -= 1
+                i += 1
+        i += 1
+
+
+def _replace_explicit_addresses(subroutine, current_registers):
+    i = 0
+    while i < len(subroutine.commands):
+        command = subroutine.commands[i]
+        if not isinstance(command, Command):
+            i += 1
+            continue
+        reg_i = 2 ** REG_INDEX_BITS - 1
+        for j, operand in enumerate(command.operands):
+            if isinstance(operand, ArrayEntry):
+                attrs = ["index"]
+            elif isinstance(operand, ArraySlice):
+                attrs = ["start", "end"]
+            else:
+                continue
+            for attr in attrs:
+                value = getattr(operand, attr)
+                if isinstance(value, Constant):
+                    register = Register(RegisterName.R, reg_i)
+                    if register in current_registers:
+                        raise RuntimeError("Could not replace constant since no registers left")
+                    set_command = Command(
+                        instruction=Instruction.SET,
+                        args=[],
+                        operands=[register, value],
+                    )
+                    subroutine.commands.insert(i, set_command)
+                    setattr(operand, attr, register)
+
+                    reg_i -= 1
+                    i += 1
+        i += 1
+
+
+def get_current_registers(subroutine):
+    current_registers = []
+    for command in subroutine.commands:
+        if not isinstance(command, Command):
+            continue
+        if command.instruction == Instruction.SET:
+            register = command.operands[0]
+            if register not in current_registers:
+                current_registers.append(register)
+    return current_registers

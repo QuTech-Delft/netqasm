@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List, Union
 from dataclasses import dataclass
 
@@ -6,19 +5,23 @@ from netqasm import encoding
 from netqasm.util import NetQASMInstrError
 from netqasm.encoding import RegisterName
 from netqasm.string_util import rspaces
-from netqasm.instructions import string_to_instruction, COMMAND_STRUCTS
+from netqasm.instructions import Instruction, COMMAND_STRUCTS, instruction_to_string
 
 
 @dataclass
 class Constant:
     value: int
 
+    def _assert_types(self):
+        assert isinstance(self.value, int)
+
     def __str__(self):
         return str(self.value)
 
     @property
     def cstruct(self):
-        return encoding.Value.from_buffer_copy(bytes(encoding.Constant(self.value)))
+        self._assert_types()
+        return encoding.CONSTANT(self.value)
 
     def __bytes__(self):
         return bytes(self.cstruct)
@@ -28,6 +31,9 @@ class Constant:
 class Label:
     name: str
 
+    def _assert_types(self):
+        assert isinstance(self.name, str)
+
     def __str__(self):
         return self.name
 
@@ -35,14 +41,19 @@ class Label:
 @dataclass
 class Register:
     name: RegisterName
-    value: int
+    index: int
+
+    def _assert_types(self):
+        assert isinstance(self.name, RegisterName)
+        assert isinstance(self.index, int)
 
     def __str__(self):
-        return f"{self.name.name}{self.value}"
+        return f"{self.name.name}{self.index}"
 
     @property
     def cstruct(self):
-        return encoding.Value.from_buffer_copy(bytes(encoding.Register(self.name.value, self.value)))
+        self._assert_types()
+        return encoding.Register(self.name.value, self.index)
 
     def __bytes__(self):
         return bytes(self.cstruct)
@@ -53,36 +64,96 @@ Value = Union[Constant, Register]
 
 @dataclass
 class Address:
-    base_address: Value
-    index: Union[None, Value]
+    address: Constant
+
+    def _assert_types(self):
+        assert isinstance(self.address, Constant)
 
     def __str__(self):
-        index = "" if self.index is None else f"{Symbols.INDEX_BRACKETS[0]}{self.index}{Symbols.INDEX_BRACKETS[1]}"
-        return f"{Symbols.ADDRESS_START}{self.base_address}{index}"
+        return f"{Symbols.ADDRESS_START}{self.address}"
 
     @property
     def cstruct(self):
-        if self.index is None:
-            return encoding.Address(
-                read_index=False,
-                address=self.base_address.cstruct,
-            )
-        else:
-            return encoding.Address(
-                read_index=True,
-                address=self.base_address.cstruct,
-                index=self.index.cstruct,
-            )
+        self._assert_types()
+        return encoding.Address(self.address.value)
 
     def __bytes__(self):
         return bytes(self.cstruct)
 
 
 @dataclass
+class ArrayEntry:
+    address: Address
+    index: Register
+
+    def _assert_types(self):
+        assert isinstance(self.address, Address)
+        assert isinstance(self.index, Register)
+
+    def __str__(self):
+        index = f"{Symbols.INDEX_BRACKETS[0]}{self.index}{Symbols.INDEX_BRACKETS[1]}"
+        return f"{self.address}{index}"
+
+    @property
+    def cstruct(self):
+        self._assert_types()
+        return encoding.ArrayEntry(
+            self.address.cstruct,
+            self.index.cstruct,
+        )
+
+    def __bytes__(self):
+        return bytes(self.cstruct)
+
+
+@dataclass
+class ArraySlice:
+    address: Address
+    start: Register
+    end: Register
+
+    def _assert_types(self):
+        assert isinstance(self.address, Address)
+        assert isinstance(self.start, Register)
+        assert isinstance(self.end, Register)
+
+    def __str__(self):
+        index = f"{Symbols.INDEX_BRACKETS[0]}{self.start}{Symbols.SLICE_DELIM}{self.end}{Symbols.INDEX_BRACKETS[1]}"
+        return f"{self.address}{index}"
+
+    @property
+    def cstruct(self):
+        self._assert_types()
+        return encoding.ArrayAccess(
+            self.address.cstruct,
+            self.start.cstruct,
+            self.end.cstruct,
+        )
+
+    def __bytes__(self):
+        return bytes(self.cstruct)
+
+
+_OPERAND_UNION = Union[
+    Constant,
+    Register,
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+]
+
+
+@dataclass
 class Command:
-    instruction: str
+    instruction: Instruction
     args: List[Constant]
-    operands: List[Union[Constant, Register, Address, Label]]
+    operands: List[_OPERAND_UNION]
+
+    def _assert_types(self):
+        assert isinstance(self.instruction, Instruction)
+        assert all(isinstance(arg, _OPERAND_UNION.__args__) for arg in self.args)
+        assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
 
     def __str__(self):
         if len(self.args) == 0:
@@ -91,31 +162,19 @@ class Command:
             args = Symbols.ARGS_DELIM.join(str(arg) for arg in self.args)
             args = Symbols.ARGS_BRACKETS[0] + args + Symbols.ARGS_BRACKETS[1]
         operands = ' '.join(str(operand) for operand in self.operands)
-        return f"{self.instruction}{args} {operands}"
+        instr_name = instruction_to_string(self.instruction)
+        return f"{instr_name}{args} {operands}"
 
     @property
     def cstruct(self):
-        instr = string_to_instruction(self.instruction)
-        command = COMMAND_STRUCTS[instr]
+        self._assert_types()
+        command = COMMAND_STRUCTS[self.instruction]
         args = [arg.cstruct for arg in self.args]
-        # if self.instruction == "array":
-        #     x1 = self.args[0]
-        #     x2 = x1.cstruct
-        #     x3 = bytes(x2)
-        #     x4 = encoding.Value.from_buffer_copy(x3)
-        #     x5 = x4.to_tp()
-        #     x6 = bytes(x5)
-        #     print(x1)
-        #     print(x2)
-        #     print(x3)
-        #     print(x4)
-        #     print(x5)
-        #     print(x6)
-        #     breakpoint()
         operands = [op.cstruct for op in self.operands]
         fields = args + operands
         if not len(fields) != len(command._fields_):
-            raise NetQASMInstrError("Unexpected number of fields for command {command}, expected {len(command._fields_)}, got {len(fields)}")
+            raise NetQASMInstrError(f"Unexpected number of fields for command {command}, "
+                                    f"expected {len(command._fields_)}, got {len(fields)}")
         return command(*fields)
 
     def __bytes__(self):
@@ -126,15 +185,29 @@ class Command:
 class BranchLabel:
     name: str
 
+    def _assert_types(self):
+        assert isinstance(self.name, str)
+
     def __str__(self):
         return self.name + Symbols.BRANCH_END
+
+
+_COMMAND_UNION = Union[
+    Command,
+    BranchLabel,
+]
 
 
 @dataclass
 class Subroutine:
     netqasm_version: str
     app_id: int
-    commands: List[Union[Command, BranchLabel]]
+    commands: List[_COMMAND_UNION]
+
+    def _assert_types(self):
+        assert isinstance(self.netqasm_version, str)
+        assert isinstance(self.app_id, int)
+        assert all(isinstance(command, _COMMAND_UNION.__args__) for command in self.commands)
 
     def __str__(self):
         to_return = f"Subroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
@@ -142,12 +215,12 @@ class Subroutine:
             to_return += f"{rspaces(i)} {command}\n"
         return to_return
 
-
     def __len__(self):
         return len(self.commands)
 
     @property
     def cstructs(self):
+        self._assert_types()
         return [command.cstruct for command in self.commands]
 
     def __bytes__(self):
@@ -162,6 +235,7 @@ class Symbols:
     ARGS_BRACKETS = '()'
     ARGS_DELIM = ','
     INDEX_BRACKETS = '[]'
+    SLICE_DELIM = ':'
 
     PREAMBLE_START = '#'
     PREAMBLE_NETQASM = 'NETQASM'

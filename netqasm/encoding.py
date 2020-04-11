@@ -1,41 +1,22 @@
 from enum import Enum, auto
 import ctypes
 
+CONSTANT = ctypes.c_uint32
 
-FIELD_TYPE = ctypes.c_uint8
-FIELD_BYTES = len(bytes(FIELD_TYPE()))
-NUM_FIELDS = 5
-COMMAND_BYTES = FIELD_BYTES * (NUM_FIELDS + 1)
+ADDRESS = ctypes.c_uint32
 
-# Num bits in field
-_FIELD_BITS = 8 * FIELD_BYTES
-# Num bits in tp of value
-_TP_BITS = 1
+INSTR_ID = ctypes.c_uint8
+
+REG_TYPE = ctypes.c_uint8
+REG_BITS = len(bytes(REG_TYPE())) * 8
 # Num bits in register name
-_REG_NAME_BITS = 2
+REG_NAME_BITS = 2
 # Num bits in register index
-_REG_INDEX_BITS = 4
+REG_INDEX_BITS = 4
 
+COMMAND_BYTES = 7
 
-class ValueType(Enum):
-    CONSTANT = 0
-    REGISTER = 1
-
-
-# CONSTANT = ctypes.c_int32
-
-
-class Constant(ctypes.Structure):
-    _fields_ = [
-        ('tp', FIELD_TYPE, _TP_BITS),
-        ('value', FIELD_TYPE, _FIELD_BITS - _TP_BITS),
-    ]
-
-    TP = ValueType.CONSTANT
-
-    def __init__(self, value=0):
-        super().__init__(self.__class__.TP.value)
-        self.value = value
+PADDING_FIELD = 'padding'
 
 
 class RegisterName(Enum):
@@ -51,77 +32,54 @@ class RegisterName(Enum):
 
 class Register(ctypes.Structure):
     _fields_ = [
-        ('tp', FIELD_TYPE, _TP_BITS),
-        ('register_name', FIELD_TYPE, _REG_NAME_BITS),
-        ('register_index', FIELD_TYPE, _REG_INDEX_BITS),
-        ('padding', FIELD_TYPE, _FIELD_BITS - _TP_BITS - _REG_NAME_BITS - _REG_INDEX_BITS),
+        ('register_name', REG_TYPE, REG_NAME_BITS),
+        ('register_index', REG_TYPE, REG_INDEX_BITS),
+        (PADDING_FIELD, REG_TYPE, REG_BITS - REG_NAME_BITS - REG_INDEX_BITS),
     ]
-
-    TP = ValueType.REGISTER
-
-    def __init__(self, register_name=0, register_index=0):
-        super().__init__(self.__class__.TP.value)
-        self.register_name = register_name
-        self.register_index = register_index
-
-
-class Value(ctypes.Structure):
-    # A constant or register
-    _fields_ = [
-        ('tp', FIELD_TYPE, _TP_BITS),
-        ('value', FIELD_TYPE, _FIELD_BITS - _TP_BITS),
-    ]
-
-    def __init__(self, value=None):
-        if value is None:
-            value = Constant()
-        self._assert_type(value)
-        value = int.from_bytes(bytes(value), 'little', signed=False)
-        super().__init__(value)
-
-    def _assert_type(self, value):
-        if not (isinstance(value, Constant) or
-                isinstance(value, Register) or
-                isinstance(value, Value)):
-            raise TypeError(f"expected Constant or Register, got {type(value)}")
-
-    def to_tp(self):
-        value_type = ValueType(self.tp)
-        if value_type == ValueType.CONSTANT:
-            return Constant.from_buffer_copy(bytes(self))
-        else:
-            return Register.from_buffer_copy(bytes(self))
 
 
 class Address(ctypes.Structure):
     _fields_ = [
-        ('read_index', ctypes.c_bool),
-        ('address', Value),
-        ('index', Value),
+        ('address', ADDRESS),
+    ]
+
+
+class ArrayEntry(ctypes.Structure):
+    _pack_ = 1
+    _fields_ = [
+        ('address', Address),
+        ('index', Register),
+    ]
+
+
+class ArraySlice(ctypes.Structure):
+    _pack_ = 1
+    _fields_ = [
+        ('address', Address),
+        ('start', Register),
+        ('end', Register),
     ]
 
 
 class Command(ctypes.Structure):
+    _pack_ = 1
     _fields_ = [
-        ('id', FIELD_TYPE),
+        ('id', INSTR_ID),
     ]
 
     ID = 0
-
-    # Number of args (non-operands)
-    num_args = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(self.ID, *args, **kwargs)
 
 
-PADDING_FIELD = 'padding'
-
-
 def add_padding(fields):
     """Used to add correct amount of padding for commands to make them fixed-length"""
-    current_num_bytes = len(bytes(Command()))
-    current_num_bytes += sum(len(bytes(field[1]())) for field in fields)
+    # TODO better way?
+    class TmpCommand(Command):
+        pass
+    TmpCommand._fields_ = fields
+    current_num_bytes = len(bytes(TmpCommand()))
     total_num_bytes = COMMAND_BYTES
     pad_num_bytes = total_num_bytes - current_num_bytes
     assert pad_num_bytes >= 0
@@ -133,110 +91,132 @@ def add_padding(fields):
 
 class SingleQubitCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Value),
+        ('qubit', Register),
     ])
 
 
 class TwoQubitCommand(Command):
     _fields_ = add_padding([
-        ('qubit1', Value),
-        ('qubit2', Value),
+        ('qubit1', Register),
+        ('qubit2', Register),
     ])
 
 
 class MeasCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Value),
-        ('outcome', Value),
+        ('qubit', Register),
+        ('outcome', Register),
     ])
 
 
 class RotationCommand(Command):
     _fields_ = add_padding([
-        ('angle', Value),
-        ('qubit', Value),
+        ('qubit', Register),
+        ('angle', Register),
     ])
-
-    num_args = 1
 
 
 class ClassicalOpCommand(Command):
     _fields_ = add_padding([
-        ('out', Value),
-        ('a', Value),
-        ('b', Value),
+        ('out', Register),
+        ('a', Register),
+        ('b', Register),
     ])
 
 
 class ClassicalOpModCommand(Command):
     _fields_ = add_padding([
-        ('mod', Value),
-        ('out', Value),
-        ('a', Value),
-        ('b', Value),
+        ('out', Register),
+        ('a', Register),
+        ('b', Register),
+        ('mod', Register),
     ])
 
-    num_args = 1
 
-
-class BranchCommand(Command):
+class JumpCommand(Command):
     _fields_ = add_padding([
-        ('a', Value),
-        ('b', Value),
-        ('line', Value),
+        ('line', CONSTANT),
+    ])
+
+
+class BranchUnaryCommand(Command):
+    _fields_ = add_padding([
+        ('a', Register),
+        ('line', CONSTANT),
+    ])
+
+
+class BranchBinaryCommand(Command):
+    _fields_ = add_padding([
+        ('a', Register),
+        ('b', Register),
+        ('line', CONSTANT),
     ])
 
 
 class SetCommand(Command):
     _fields_ = add_padding([
-        ('register', Value),
-        ('value', Value),
+        ('register', Register),
+        ('value', CONSTANT),
     ])
 
 
-class RegisterAddressCommand(Command):
+class LoadStoreCommand(Command):
     _fields_ = add_padding([
-        ('register', Value),
+        ('register', Register),
+        ('entry', ArrayEntry),
+    ])
+
+
+class LeaCommand(Command):
+    _fields_ = add_padding([
+        ('register', Register),
         ('address', Address),
     ])
 
 
-class SingleAddressCommand(Command):
+class SingleArrayEntryCommand(Command):
     _fields_ = add_padding([
-        ('address', Value),
+        ('address', ArrayEntry),
+    ])
+
+
+class ReturnCommand(Command):
+    _fields_ = add_padding([
+        ('address', ArraySlice),
+    ])
+
+
+class SingleRegisterCommand(Command):
+    _fields_ = add_padding([
+        ('register', Register),
     ])
 
 
 class ArrayCommand(Command):
     _fields_ = add_padding([
-        ('size', Value),
-        ('address', Value),
+        ('size', Register),
+        ('address', Address),
     ])
-
-    num_args = 1
 
 
 class CreateEPRCommand(Command):
     _fields_ = add_padding([
-        ('remote_node_id', Value),
-        ('purpose_id', Value),
-        ('qubit_address_array', Value),
-        ('arg_array', Value),
-        ('ent_info_array', Value),
+        ('remote_node_id', Register),
+        ('purpose_id', Register),
+        ('qubit_address_array', Register),
+        ('arg_array', Register),
+        ('ent_info_array', Register),
     ])
-
-    num_args = 2
 
 
 class RecvEPRCommand(Command):
     _fields_ = add_padding([
-        ('remote_node_id', Value),
-        ('purpose_id', Value),
-        ('qubit_address_array', Value),
-        ('ent_info_array', Value),
+        ('remote_node_id', Register),
+        ('purpose_id', Register),
+        ('qubit_address_array', Register),
+        ('ent_info_array', Register),
     ])
-
-    num_args = 2
 
 
 COMMANDS = [
@@ -245,25 +225,14 @@ COMMANDS = [
     MeasCommand,
     RotationCommand,
     ClassicalOpCommand,
-    BranchCommand,
+    JumpCommand,
+    BranchUnaryCommand,
+    BranchBinaryCommand,
     SetCommand,
-    RegisterAddressCommand,
-    SingleAddressCommand,
+    LoadStoreCommand,
+    SingleArrayEntryCommand,
+    SingleRegisterCommand,
     ArrayCommand,
     CreateEPRCommand,
     RecvEPRCommand,
 ]
-
-
-def test_command_length():
-    for command_class in COMMANDS:
-        length = len(bytes(command_class()))
-        print(f"{command_class.__name__}: {len(bytes(command_class()))}")
-        field_width = len(bytes(FIELD_TYPE()))
-        assert length == field_width * (NUM_FIELDS + 1)
-
-
-def test_constant_register_length():
-    len_constant = len(bytes(Constant()))
-    len_register = len(bytes(Register()))
-    assert len_constant == len_register

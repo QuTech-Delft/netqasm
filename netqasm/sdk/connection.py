@@ -18,26 +18,27 @@ from cqc.cqcHeader import (
 )
 
 from netqasm import NETQASM_VERSION
-from netqasm.parser import Parser
-from netqasm.encoder import Instruction, instruction_to_string
-from netqasm.string_util import is_number
+from netqasm.parsing.text import _find_current_branch_variables
+from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit
+from netqasm.subroutine import Symbols, Subroutine, Command, Register, Constant
+from netqasm.encoding import RegisterName
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
 
 
 _CQC_TO_NETQASM_INSTR = {
-    CQC_CMD_NEW: instruction_to_string(Instruction.INIT),
-    CQC_CMD_X: instruction_to_string(Instruction.X),
-    CQC_CMD_Z: instruction_to_string(Instruction.Z),
-    CQC_CMD_H: instruction_to_string(Instruction.H),
-    CQC_CMD_CNOT: instruction_to_string(Instruction.CNOT),
-    CQC_CMD_MEASURE: instruction_to_string(Instruction.MEAS),
-    CQC_CMD_EPR: instruction_to_string(Instruction.CREATE_EPR),
-    CQC_CMD_EPR_RECV: instruction_to_string(Instruction.RECV_EPR),
-    CQC_CMD_RELEASE: instruction_to_string(Instruction.QFREE),
+    CQC_CMD_NEW: Instruction.INIT,
+    CQC_CMD_X: Instruction.X,
+    CQC_CMD_Z: Instruction.Z,
+    CQC_CMD_H: Instruction.H,
+    CQC_CMD_CNOT: Instruction.CNOT,
+    CQC_CMD_MEASURE: Instruction.MEAS,
+    CQC_CMD_EPR: Instruction.CREATE_EPR,
+    CQC_CMD_EPR_RECV: Instruction.RECV_EPR,
+    CQC_CMD_RELEASE: Instruction.QFREE,
 }
 
 
@@ -138,33 +139,20 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         if subroutine is None:
             return
 
-        preamble = self._get_subroutine_preamble()
-        subroutine = preamble + subroutine
-
         self._commit_subroutine(subroutine=subroutine, block=block)
 
     def _commit_subroutine(self, subroutine, block=True):
-        # For logging
-        indented_subroutine = '\n'.join(f"    {line}" for line in subroutine.split('\n'))
-        self._logger.debug(f"Flushing subroutine:\n{indented_subroutine}")
+        self._logger.debug(f"Flushing subroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        subroutine = self._pre_process_subroutine(subroutine)
+        bin_subroutine = self._pre_process_subroutine(subroutine)
 
         # Commit the subroutine to the quantum device
-        self.commit(subroutine, block=block)
+        self.commit(bin_subroutine, block=block)
 
     def _put_subroutine(self, subroutine):
         """Stores a subroutine to be flushed"""
         self._pending_subroutine = subroutine
-
-    def _subroutine_from_commands(self, commands):
-        # Build sub-routine
-        subroutine = ""
-        for command in commands:
-            netqasm_command = self._get_netqasm_command(command)
-            subroutine += netqasm_command
-        return subroutine
 
     def _pop_pending_subroutine(self):
         if len(self._pending_commands) > 0 and self._pending_subroutine is not None:
@@ -179,6 +167,21 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             subroutine = None
         return subroutine
 
+    def _subroutine_from_commands(self, commands):
+        # Build sub-routine
+        all_netqasm_commands = []
+        for command in commands:
+            netqasm_commands = self._get_netqasm_command(command)
+            all_netqasm_commands += netqasm_commands
+        metadata = self._get_metadata()
+        return Subroutine(**metadata, commands=all_netqasm_commands)
+
+    def _get_metadata(self):
+        return {
+            "netqasm_version": NETQASM_VERSION,
+            "app_id": self._appID,
+        }
+
     def _pop_pending_commands(self):
         commands = self._pending_commands
         self._pending_commands = []
@@ -189,16 +192,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        return Parser(subroutine).subroutine
+        return bytes(subroutine)
 
     @abc.abstractmethod
     def commit(self, msg):
         pass
-
-    def _get_subroutine_preamble(self):
-        return f"""# NETQASM {NETQASM_VERSION}
-# APPID {self._appID}
-"""
 
     def _get_netqasm_command(self, command):
         if command.command == CQC_CMD_MEASURE:
@@ -213,32 +211,90 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return self._get_netqasm_single_qubit_command(command)
 
     def _get_netqasm_single_qubit_command(self, command):
-        address = command.qID
+        q_address = command.qID
+        register, set_command = self._get_set_qubit_reg_command(q_address)
+        # Construct the qubit command
         instr = _CQC_TO_NETQASM_INSTR[command.command]
-        return f"{instr} {Parser.QUBIT_START}{address}\n"
+        qubit_command = Command(
+            instruction=instr,
+            args=[],
+            operands=[
+                register,
+            ],
+        )
+        return [set_command, qubit_command]
+
+    def _get_set_qubit_reg_command(self, q_address, reg_index=0):
+        # Set the register with the qubit address
+        register = Register(RegisterName.Q, reg_index)
+        set_command = Command(
+            instruction=Instruction.SET,
+            args=[],
+            operands=[
+                register,
+                Constant(q_address),
+            ],
+        )
+        return register, set_command
 
     def _get_netqasm_two_qubit_command(self, command):
-        address1 = command.qID
-        address2 = command.kwargs["xtra_qID"]
+        q_address1 = command.qID
+        q_address2 = command.kwargs["xtra_qID"]
+        register1, set_command1 = self._get_set_qubit_reg_command(q_address1, reg_index=0)
+        register2, set_command2 = self._get_set_qubit_reg_command(q_address2, reg_index=1)
         instr = _CQC_TO_NETQASM_INSTR[command.command]
-        return f"{instr} {Parser.QUBIT_START}{address1} {Parser.QUBIT_START}{address2}\n"
+        qubit_command = Command(
+            instruction=instr,
+            args=[],
+            operands=[
+                register1,
+                register2,
+            ],
+        )
+        return [set_command1, set_command2, qubit_command]
 
     def _get_netqasm_meas_command(self, command):
-        c_address = command.kwargs['outcome_address']
-        if isinstance(c_address, int) or is_number(c_address):
-            c_address = Parser.ADDRESS_START + str(c_address)
+        outcome_reg = command.kwargs['outcome_reg']
         q_address = command.qID
-        meas = f"{instruction_to_string(Instruction.MEAS)} {Parser.QUBIT_START}{q_address} {c_address}\n"
-        qfree = f"{instruction_to_string(Instruction.QFREE)} {Parser.QUBIT_START}{q_address}\n"
-        return meas + qfree
+        qubit_reg, set_command = self._get_set_qubit_reg_command(q_address)
+        meas_command = Command(
+            instruction=Instruction.MEAS,
+            args=[],
+            operands=[
+                qubit_reg,
+                outcome_reg,
+            ],
+        )
+        free_command = Command(
+            instruction=Instruction.QFREE,
+            args=[],
+            operands=[
+                qubit_reg,
+            ],
+        )
+        return [set_command, meas_command, free_command]
 
     def _get_netqasm_new_command(self, command):
-        address = command.qID
-        qalloc = f"{instruction_to_string(Instruction.QALLOC)} {Parser.QUBIT_START}{address}\n"
-        init = f"{instruction_to_string(Instruction.INIT)} {Parser.QUBIT_START}{address}\n"
-        return qalloc + init
+        q_address = command.qID
+        qubit_reg, set_command = self._get_set_qubit_reg_command(q_address)
+        qalloc_command = Command(
+            instruction=Instruction.QALLOC,
+            args=[],
+            operands=[
+                qubit_reg,
+            ],
+        )
+        init_command = Command(
+            instruction=Instruction.INIT,
+            args=[],
+            operands=[
+                qubit_reg,
+            ],
+        )
+        return [set_command, qalloc_command, init_command]
 
     def _get_netqasm_epr_command(self, command):
+        raise NotImplementedError()
         # TODO
         # epr_address_var = "epr_address"
         # ent_info_var = "ent_info"
@@ -259,7 +315,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         array = instruction_to_string(Instruction.ARRAY)
         wait = instruction_to_string(Instruction.WAIT)
 
-        at = Parser.ADDRESS_START
+        at = Symbols.ADDRESS_START
 
         # qubit addresses
         epr_address_cmds = f"{array}({number}) {at}{qubit_id_address}\n"
@@ -299,6 +355,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
 
     def _get_netqasm_recv_epr_command(self, command):
+        raise NotImplementedError()
         # TODO
         # epr_address_var = "epr_address"
         # ent_info_var = "ent_info"
@@ -365,9 +422,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 return address
 
     def loop(self, body, end, start=0, var_address='i'):
+        raise NotImplementedError
         body(self)
         body_subroutine = self._pop_pending_subroutine()
-        current_branch_variables = Parser._find_current_branch_variables(body_subroutine)
+        current_branch_variables = _find_current_branch_variables(body_subroutine)
         loop_start, loop_end = self._get_loop_commands(
             start=start,
             end=end,
