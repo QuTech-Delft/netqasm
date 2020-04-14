@@ -12,6 +12,7 @@ from netqasm.encoding import (
     SetCommand,
     LoadStoreCommand,
     SingleArrayEntryCommand,
+    SingleArraySliceCommand,
     LeaCommand,
     SingleRegisterCommand,
     ArrayCommand,
@@ -66,7 +67,9 @@ class Instruction(Enum):
     CREATE_EPR = auto()
     RECV_EPR = auto()
     # Waiting
-    WAIT = auto()
+    WAIT_ALL = auto()
+    WAIT_ANY = auto()
+    WAIT_SINGLE = auto()
     # Deallocation
     QFREE = auto()
     # Return
@@ -131,7 +134,11 @@ _COMMAND_GROUPS = {
     ],
     SingleArrayEntryCommand: [
         Instruction.UNDEF,
-        Instruction.WAIT,
+        Instruction.WAIT_SINGLE,
+    ],
+    SingleArraySliceCommand: [
+        Instruction.WAIT_ALL,
+        Instruction.WAIT_ANY,
     ],
     SingleRegisterCommand: [
         Instruction.RET_REG,

@@ -22,18 +22,12 @@ class _SocketHub:
 
         self._logger = logging.getLogger(self.__class__.__name__)
 
-        # TODO
-        self._sockets = []
-
     def connect(self, socket, timeout=None):
         """Connects a socket to another"""
         self._open_sockets.add(socket.key)
         self._add_callbacks(socket)
 
         self._wait_for_remote(socket, timeout=timeout)
-
-        # TODO
-        self._sockets.append(WeakMethod(socket.send))
 
     def _add_callbacks(self, socket):
         if socket.use_callbacks:

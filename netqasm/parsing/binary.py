@@ -58,7 +58,7 @@ def _field_struct_to_arg_operand(field_value):
         return ArraySlice(
             address=_field_struct_to_arg_operand(field_value.address),
             start=_field_struct_to_arg_operand(field_value.start),
-            end=_field_struct_to_arg_operand(field_value.end),
+            stop=_field_struct_to_arg_operand(field_value.stop),
         )
     else:
         raise TypeError(f"Unknown field_value {field_value} of type {type(field_value)}")

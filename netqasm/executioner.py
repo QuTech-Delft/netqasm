@@ -5,11 +5,10 @@ from types import GeneratorType
 from collections import defaultdict
 from itertools import count
 
-from netqasm.subroutine import Command
+from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice
 from netqasm.instructions import Instruction, instruction_to_string
-from netqasm.sdk.shared_memory import get_shared_memory
+from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack
-from netqasm.encoding import REG_INDEX_BITS, RegisterName
 
 
 class OperandType(Enum):
@@ -58,8 +57,13 @@ class Executioner:
 
         self._instruction_handlers = self._get_instruction_handlers()
 
+        # Registers for different apps
         self._registers = {}
 
+        # Arrays stored in memory for different apps
+        self._app_arrays = {}
+
+        # Shared memory with host for different apps
         self._shared_memories = {}
 
         self._qubit_unit_modules = {}
@@ -100,22 +104,21 @@ class Executioner:
     def init_new_application(self, app_id, max_qubits):
         """Sets up a unit module and a shared memory for a new application"""
         self.allocate_new_qubit_unit_module(app_id=app_id, num_qubits=max_qubits)
-        self.new_shared_memory(app_id=app_id)
         self.setup_registers(app_id=app_id)
-
-    def new_shared_memory(self, app_id):
-        """Instanciated a new shared memory with an application"""
-        self._shared_memories[app_id] = self._get_shared_memory(app_id=app_id)
+        self.setup_arrays(app_id=app_id)
+        self.new_shared_memory(app_id=app_id)
 
     def setup_registers(self, app_id):
         """Setup registers for application"""
-        self._registers[app_id] = self._get_new_registers()
+        self._registers[app_id] = setup_registers()
 
-    def _get_new_registers(self):
-        return {register_name: [0] * (2 ** REG_INDEX_BITS) for register_name in RegisterName}
+    def setup_arrays(self, app_id):
+        """Setup memory for storing arrays for application"""
+        self._app_arrays[app_id] = Arrays()
 
-    def _get_shared_memory(self, app_id):
-        return get_shared_memory(node_name=self._name, key=app_id)
+    def new_shared_memory(self, app_id):
+        """Instanciated a new shared memory with an application"""
+        self._shared_memories[app_id] = get_shared_memory(node_name=self._name, key=app_id)
 
     def reset_program_counter(self, subroutine_id):
         """Resets the program counter for a given subroutine ID"""
@@ -209,18 +212,18 @@ class Executioner:
 
     @inc_program_counter
     def _instr_lea(self, subroutine_id, operands):
-        # TODO
-        raise NotImplementedError()
+        register = operands[0]
+        address = operands[1]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._set_register(app_id=app_id, register=register, value=address.address)
+        self._logger.debug(f"Storing address of {address} to register {register}")
 
     @inc_program_counter
     def _instr_undef(self, subroutine_id, operands):
-        # TODO
-        raise NotImplementedError()
-        # self._assert_number_args(args, num=0)
-        # self._assert_operands(operands, num=1, operand_types=[OperandType.WRITE])
-        # app_id = self._get_app_id(subroutine_id=subroutine_id)
-        # self._set_address_value(app_id=app_id, operand=operands[0], value=None)
-        # self._logger.debug(f"Unset value at address given by operand {operands[0]}")
+        array_entry = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._set_array_entry(app_id=app_id, array_entry=array_entry, value=None)
+        self._logger.debug(f"Unset array entry {array_entry}")
 
     @inc_program_counter
     def _instr_array(self, subroutine_id, operands):
@@ -231,11 +234,8 @@ class Executioner:
         self._logger.debug(f"Initializing an array of length {length} at address {address}")
 
     def _initialize_array(self, app_id, address, length):
-        shared_memory = self._shared_memories[app_id]
-        current = shared_memory[address]
-        if current is not None:
-            raise ValueError(f"Address {address} for app with ID {app_id} is already initialized")
-        shared_memory[address] = [None] * length
+        arrays = self._app_arrays[app_id]
+        arrays.init_new_array(address, length)
 
     def _instr_jmp(self, subroutine_id, operands):
         self._handle_branch_instr(
@@ -390,50 +390,89 @@ class Executioner:
 
     @inc_program_counter
     def _instr_create_epr(self, subroutine_id, operands):
-        # TODO
-        raise NotImplementedError()
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
         purpose_id = self._get_register(app_id=app_id, register=operands[1])
-        self._assert_operands(operands, num=3, operand_types=OperandType.ADDRESS)
-        self._logger.debug(f"Creating EPR pair using qubit addresses stored at {operands[0]}, "
-                           f"using arguments stored at {operands[1]}, "
-                           f"placing the entanglement information at address to be stored at {operands[2]}")
+        q_array_address = self._get_register(app_id=app_id, register=operands[2])
+        arg_array_address = self._get_register(app_id=app_id, register=operands[3])
+        ent_info_array_address = self._get_register(app_id=app_id, register=operands[4])
+        self._logger.debug(f"Creating EPR pair with remote node id {remote_node_id} and purpose_id {purpose_id}"
+                           f"using qubit addresses stored in array with address {q_array_address}, "
+                           f"using arguments stored in array with address {arg_array_address}, "
+                           f"placing the entanglement information in array at address {ent_info_array_address}")
         self._do_create_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
-            q_address=operands[0].address,
-            arg_address=operands[1].address,
-            ent_info_address=operands[2].address,
+            q_array_address=q_array_address,
+            arg_array_address=arg_array_address,
+            ent_info_array_address=ent_info_array_address,
         )
 
-    def _do_create_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, arg_address, ent_info_address):
+    def _do_create_epr(
+        self,
+        subroutine_id,
+        remote_node_id,
+        purpose_id,
+        q_array_address,
+        arg_array_address,
+        ent_info_array_address,
+    ):
         pass
 
     @inc_program_counter
     def _instr_recv_epr(self, subroutine_id, operands):
-        # TODO
-        raise NotImplementedError()
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
         purpose_id = self._get_register(app_id=app_id, register=operands[1])
-        self._assert_operands(operands, num=2, operand_types=OperandType.ADDRESS)
-        self._logger.debug(f"Receive EPR pair using qubit addresses stored at {operands[0]}, "
-                           f"placing the entanglement information at address to be stored at {operands[1]}")
+        q_array_address = self._get_register(app_id=app_id, register=operands[2])
+        ent_info_array_address = self._get_register(app_id=app_id, register=operands[3])
+        self._logger.debug(f"Receiving EPR pair with remote node id {remote_node_id} and purpose_id {purpose_id}"
+                           f"using qubit addresses stored in array with address {q_array_address}, "
+                           f"placing the entanglement information in array at address {ent_info_array_address}")
         self._do_recv_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
-            q_address=operands[0].address,
-            ent_info_address=operands[1].address,
+            q_array_address=q_array_address,
+            ent_info_array_address=ent_info_array_address,
         )
 
-    def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_address, ent_info_address):
+    def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_array_address, ent_info_array_address):
         pass
 
     @inc_program_counter
-    def _instr_wait(self, subroutine_id, operands):
+    def _instr_wait_all(self, subroutine_id, operands):
+        array_slice = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._logger.debug(f"Waiting for all entries in array slice {array_slice} to become defined")
+        while True:
+            values = self._get_array_slice(app_id=app_id, array_slice=array_slice)
+            if all(value is not None for value in values):
+                output = self._do_wait()
+                if isinstance(output, GeneratorType):
+                    yield from output
+            else:
+                break
+        self._logger.debug(f"Finished waiting")
+
+    @inc_program_counter
+    def _instr_wait_any(self, subroutine_id, operands):
+        array_slice = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._logger.debug(f"Waiting for any entry in array slice {array_slice} to become defined")
+        while True:
+            values = self._get_array_slice(app_id=app_id, array_slice=array_slice)
+            if any(value is not None for value in values):
+                output = self._do_wait()
+                if isinstance(output, GeneratorType):
+                    yield from output
+            else:
+                break
+        self._logger.debug(f"Finished waiting")
+
+    @inc_program_counter
+    def _instr_wait_single(self, subroutine_id, operands):
         array_entry = operands[0]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for array entry {array_entry} to become defined")
@@ -460,11 +499,28 @@ class Executioner:
 
     @inc_program_counter
     def _instr_ret_reg(self, subroutine_id, operands):
-        raise NotImplementedError()
+        register = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        value = self._get_register(app_id=app_id, register=register)
+        self._update_shared_memory(register, value)
 
     @inc_program_counter
     def _instr_ret_arr(self, subroutine_id, operands):
-        raise NotImplementedError()
+        array_slice = operands[0]
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        value = self._get_array_slice(app_id=app_id, array_slice=array_slice)
+        self._update_shared_memory(array_slice, value)
+
+    def _update_shared_memory(self, app_id, entry, value):
+        shared_memory = self._shared_memories[app_id]
+        if isinstance(entry, Register):
+            shared_memory.set_register(entry, value)
+        elif isinstance(entry, ArrayEntry):
+            shared_memory.set_array_entry(entry, value)
+        elif isinstance(entry, ArraySlice):
+            shared_memory.set_array_entry(entry, value)
+        else:
+            raise TypeError(f"Cannot update shared memory with entry specified as {entry}")
 
     def _get_unit_module(self, subroutine_id):
         app_id = self._get_app_id(subroutine_id)
@@ -485,70 +541,13 @@ class Executioner:
         return position
 
     def _get_array_entry(self, app_id, array_entry):
-        raise NotImplementedError()
+        return self._app_arrays[app_id][array_entry.address, array_entry.index]
 
     def _set_array_entry(self, app_id, array_entry, value):
-        raise NotImplementedError()
+        self._app_arrays[app_id][array_entry.address, array_entry.index] = value
 
-    # def _get_address_value(self, app_id, operand, assert_int=True):
-    #     # TODO
-    #     raise NotImplementedError()
-    #     if isinstance(operand, Address):
-    #         return operand.address
-    #     else:
-    #         address = self._get_address(app_id=app_id, operand=operand)
-    #         shared_memory = self._shared_memories[app_id]
-    #         value = shared_memory[address]
-    #         if assert_int:
-    #             if not isinstance(value, int):
-    #                 raise TypeError(f"Expected an int at address {address}, but got {value}")
-    #         return value
-
-    # def _get_unused_entry_of_array(self, app_id, array_address):
-    #     shared_memory = self._shared_memories[app_id]
-    #     array = shared_memory[array_address]
-    #     if not isinstance(array, list):
-    #         raise TypeError(f"Expected a list at address {array_address}, but got {array}")
-    #     if array is None:
-    #         raise ValueError(f"No array initialized at address {array_address} for app with ID {app_id}")
-    #     for index, entry in enumerate(array):
-    #         if entry is None:
-    #             return index
-    #     return None
-
-    # def _get_address(self, app_id, operand):
-    #     if isinstance(operand, ArrayEntry):
-    #         array_address = operand.address.address
-    #         if operand.index is None:
-    #             index = self._get_unused_entry_of_array(app_id=app_id, array_address=array_address)
-    #             if index is None:
-    #                 raise RuntimeError(f"No unused index in the array at address {array_address} "
-    #                                    f"for app with ID {app_id}")
-    #         else:
-    #             index = self._get_address_value(app_id=app_id, operand=operand.index)
-    #         array_entry_address = array_address, index
-    #         if operand.address.mode == AddressMode.DIRECT:
-    #             return array_entry_address
-    #         elif operand.address.mode == AddressMode.INDIRECT:
-    #             shared_memory = self._shared_memories[app_id]
-    #             indirect_address = shared_memory[array_entry_address]
-    #             if not isinstance(indirect_address, int):
-    #                 raise TypeError(f"Expected an int at address {array_entry_address}, not {indirect_address}")
-    #             return indirect_address
-    #     if operand.mode == AddressMode.IMMEDIATE:
-    #         raise ValueError("Not an address mode")
-    #     elif operand.mode == AddressMode.DIRECT:
-    #         return operand.address
-    #     elif operand.mode == AddressMode.INDIRECT:
-    #         # AddressMode.INDIRECT
-    #         address = operand.address
-    #         shared_memory = self._shared_memories[app_id]
-    #         indirect_address = shared_memory[address]
-    #         if not isinstance(indirect_address, int):
-    #             raise TypeError(f"Expected an int at address {address}, not {indirect_address}")
-    #         return indirect_address
-    #     else:
-    #         raise TypeError(f"Unknown address mode {operand.mode}")
+    def _get_array_slice(self, app_id, array_slice):
+        return self._app_arrays[app_id][array_slice.address, array_slice.start:array_slice.stop]
 
     def allocate_new_qubit_unit_module(self, app_id, num_qubits):
         unit_module = self._get_new_qubit_unit_module(num_qubits)
@@ -633,58 +632,9 @@ class Executioner:
         else:
             return op(a, b) % mod
 
-    # def _set_address_value(self, app_id, operand, value):
-    #     address = self._get_address(app_id=app_id, operand=operand)
-    #     shared_memory = self._shared_memories[app_id]
-    #     shared_memory[address] = value
-
     def _assert_number_args(self, args, num):
         if not len(args) == num:
             raise TypeError(f"Expected {num} arguments, got {len(args)}")
-
-    # def _assert_operands(self, operands, num, operand_types):
-    #     if isinstance(operand_types, OperandType):
-    #         operand_types = [operand_types] * num
-    #     if not len(operands) == num:
-    #         raise TypeError(f"Expected {num} operands, got {len(operands)}")
-    #     for operand, operand_type in zip(operands, operand_types):
-    #         self._assert_operand(operand=operand, operand_type=operand_type)
-
-    # def _assert_operand(self, operand, operand_type):
-    #     if operand_type == OperandType.QUBIT:
-    #         # Should either be a qubit or an address read from memory
-    #         try:
-    #             self._assert_operand(operand, OperandType.READ)
-    #         except TypeError:
-    #             if not isinstance(operand, QubitAddress):
-    #                 raise TypeError(f"Expected operand of type QubitAddress but got {type(operand)}")
-    #     elif operand_type == OperandType.READ:
-    #         if isinstance(operand, Address):
-    #             pass
-    #         elif isinstance(operand, Array):
-    #             # If array, the index needs to be given
-    #             if operand.index is None:
-    #                 raise TypeError("When writing, an operand of type Array, needs a given index")
-    #         else:
-    #             raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
-    #     elif operand_type == OperandType.WRITE:
-    #         if isinstance(operand, Address):
-    #             address = operand
-    #         elif isinstance(operand, Array):
-    #             address = operand.address
-    #         else:
-    #             raise TypeError(f"Expected operand of type Address or Array but got {type(operand)}")
-
-    #         if address.mode not in [AddressMode.DIRECT, AddressMode.INDIRECT]:
-    #             raise ValueError(f"Expected address (direct or indirect) not a scalar (immediate)")
-
-    #     elif operand_type == OperandType.ADDRESS:
-    #         if not isinstance(operand, Address):
-    #             raise TypeError(f"Expected operand of type Address but got {type(operand)}")
-    #         if operand.mode not in [AddressMode.DIRECT, AddressMode.INDIRECT]:
-    #             raise ValueError(f"Expected address (direct or indirect) not a scalar (immediate)")
-    #     else:
-    #         raise TypeError(f"Unknown operand type {type}")
 
     def _get_app_id(self, subroutine_id):
         """Returns the app ID for the given subroutine"""

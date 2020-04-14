@@ -66,6 +66,10 @@ Value = Union[Constant, Register]
 class Address:
     address: Constant
 
+    def __post_init__(self):
+        if isinstance(self.address, int):
+            self.address = Constant(self.address)
+
     def _assert_types(self):
         assert isinstance(self.address, Constant)
 
@@ -86,9 +90,17 @@ class ArrayEntry:
     address: Address
     index: Register
 
+    def __post_init__(self):
+        if isinstance(self.address, int):
+            self.address = Address(Constant(self.address))
+
     def _assert_types(self):
-        assert isinstance(self.address, Address)
-        assert isinstance(self.index, Register)
+        try:
+            assert isinstance(self.address, Address)
+            assert isinstance(self.index, Register)
+        except Exception as err:
+            breakpoint()
+            raise err
 
     def __str__(self):
         index = f"{Symbols.INDEX_BRACKETS[0]}{self.index}{Symbols.INDEX_BRACKETS[1]}"
@@ -110,24 +122,28 @@ class ArrayEntry:
 class ArraySlice:
     address: Address
     start: Register
-    end: Register
+    stop: Register
+
+    def __post_init__(self):
+        if isinstance(self.address, int):
+            self.address = Address(Constant(self.address))
 
     def _assert_types(self):
         assert isinstance(self.address, Address)
         assert isinstance(self.start, Register)
-        assert isinstance(self.end, Register)
+        assert isinstance(self.stop, Register)
 
     def __str__(self):
-        index = f"{Symbols.INDEX_BRACKETS[0]}{self.start}{Symbols.SLICE_DELIM}{self.end}{Symbols.INDEX_BRACKETS[1]}"
+        index = f"{Symbols.INDEX_BRACKETS[0]}{self.start}{Symbols.SLICE_DELIM}{self.stop}{Symbols.INDEX_BRACKETS[1]}"
         return f"{self.address}{index}"
 
     @property
     def cstruct(self):
         self._assert_types()
-        return encoding.ArrayAccess(
+        return encoding.ArraySlice(
             self.address.cstruct,
             self.start.cstruct,
-            self.end.cstruct,
+            self.stop.cstruct,
         )
 
     def __bytes__(self):
@@ -147,8 +163,14 @@ _OPERAND_UNION = Union[
 @dataclass
 class Command:
     instruction: Instruction
-    args: List[Constant]
-    operands: List[_OPERAND_UNION]
+    args: List[Constant] = None
+    operands: List[_OPERAND_UNION] = None
+
+    def __post_init__(self):
+        if self.args is None:
+            self.args = []
+        if self.operands is None:
+            self.operands = []
 
     def _assert_types(self):
         assert isinstance(self.instruction, Instruction)

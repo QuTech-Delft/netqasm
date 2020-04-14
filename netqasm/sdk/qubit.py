@@ -1,14 +1,13 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 from netqasm.sdk.meas_outcome import MeasurementOutcome
-from netqasm.sdk.shared_memory import get_shared_memory
 
 
 class Qubit(qubit):
     def __init__(self, conn, put_new_command=True):
         self._conn = conn
         self._qID = self._conn.new_qubitID()
-        # TODO this is needed to be backwards compatible
+        # NOTE this is needed to be compatible with CQC abstract class
         self.notify = False
 
         if put_new_command:
@@ -26,21 +25,19 @@ class Qubit(qubit):
     def _conn(self, value):
         self._cqc = value
 
-    def measure(self, outcome_reg=None):
+    def measure(self, var_name=None):
         self.check_active()
 
-        if outcome_reg is None:
-            outcome_reg = self._conn._get_new_meas_outcome_reg()
-        self._conn.put_command(self._qID, CQC_CMD_MEASURE, outcome_reg=outcome_reg)
+        if var_name is None:
+            array_entry = None
+        else:
+            array_entry = self._conn._create_new_outcome_variable(var_name=var_name)
+
+        self._conn.put_command(self._qID, CQC_CMD_MEASURE, array_entry=array_entry)
 
         self._set_active(False)
 
-        # TODO update how this is treated
-        memory = get_shared_memory(
-            node_name=self._conn.name,
-            key=self._conn._appID,
-        )
         return MeasurementOutcome(
-            memory=memory,
-            address=outcome_reg,
+            connection=self,
+            var_name=var_name,
         )

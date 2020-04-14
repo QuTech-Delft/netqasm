@@ -4,6 +4,7 @@ import ctypes
 CONSTANT = ctypes.c_uint32
 
 ADDRESS = ctypes.c_uint32
+ADDRESS_BITS = len(bytes(ADDRESS())) * 8
 
 INSTR_ID = ctypes.c_uint8
 
@@ -57,7 +58,7 @@ class ArraySlice(ctypes.Structure):
     _fields_ = [
         ('address', Address),
         ('start', Register),
-        ('end', Register),
+        ('stop', Register),
     ]
 
 
@@ -70,7 +71,10 @@ class Command(ctypes.Structure):
     ID = 0
 
     def __init__(self, *args, **kwargs):
-        super().__init__(self.ID, *args, **kwargs)
+        try:
+            super().__init__(self.ID, *args, **kwargs)
+        except TypeError as err:
+            raise TypeError(f"command {self.__class__.__name__} could not be created, since: {err}")
 
 
 def add_padding(fields):
@@ -177,7 +181,13 @@ class LeaCommand(Command):
 
 class SingleArrayEntryCommand(Command):
     _fields_ = add_padding([
-        ('address', ArrayEntry),
+        ('array_entry', ArrayEntry),
+    ])
+
+
+class SingleArraySliceCommand(Command):
+    _fields_ = add_padding([
+        ('array_slice', ArraySlice),
     ])
 
 
@@ -231,6 +241,7 @@ COMMANDS = [
     SetCommand,
     LoadStoreCommand,
     SingleArrayEntryCommand,
+    SingleArraySliceCommand,
     SingleRegisterCommand,
     ArrayCommand,
     CreateEPRCommand,

@@ -83,15 +83,15 @@ class MeasurementOutcome(int):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, memory, address):
+    def __init__(self, connection, var_name):
         self._value = None
-        self._memory = memory
-        self._address = address
+        self._connection = connection
+        self._var_name = var_name
 
     def __str__(self):
         value = self.value
         if value is None:
-            return (f"Measurement outcome which will be stored at address={self._address}\n"
+            return (f"Measurement outcome which has the variable name={self._var_name}\n"
                     "To access the value, the subroutine must first be executed which can be done by flushing.")
         else:
             return str(value)
@@ -103,10 +103,11 @@ class MeasurementOutcome(int):
     def value(self):
         if self._value is not None:
             return self._value
-        if self._memory is None:
-            value = None
-        else:
-            value = self._memory[self._address]
+        if self._var_name is None:
+            raise NoValueError("Measurement outcome was not assigned a variable name, "
+                               "to use a measure outcome give it a name when calling measure, e.g.:\n"
+                               "\tm = q.measure(var_name='m')")
+        value = self._connection.read_variable(var_name=self._var_name)
         if value is not None:
             self._value = value
         return value

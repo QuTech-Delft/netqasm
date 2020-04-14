@@ -53,63 +53,63 @@ ret_arr @0[0:1]
         netqasm_version="0.0",
         app_id=0,
         commands=[
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 0),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.STORE, args=[], operands=[
+            Command(instruction=Instruction.STORE, operands=[
                 Register(RegisterName.R, 0),
                 ArrayEntry(Address(Constant(0)), Register(RegisterName.R, 2)),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.Q, 0),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.INIT, args=[], operands=[
+            Command(instruction=Instruction.INIT, operands=[
                 Register(RegisterName.Q, 0),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 15),
                 Constant(4),
             ]),
-            Command(instruction=Instruction.ARRAY, args=[], operands=[
+            Command(instruction=Instruction.ARRAY, operands=[
                 Register(RegisterName.R, 15),
                 Address(address=Constant(2)),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 15),
                 Constant(1),
             ]),
-            Command(instruction=Instruction.ADD, args=[], operands=[
+            Command(instruction=Instruction.ADD, operands=[
                 Register(RegisterName.R, 1),
                 Register(RegisterName.R, 2),
                 Register(RegisterName.R, 15),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 15),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 14),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.BEQ, args=[], operands=[
+            Command(instruction=Instruction.BEQ, operands=[
                 Register(RegisterName.R, 15),
                 Register(RegisterName.R, 14),
                 Constant(11),
             ]),
-            Command(instruction=Instruction.RET_REG, args=[], operands=[
+            Command(instruction=Instruction.RET_REG, operands=[
                 Register(RegisterName.R, 0),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 15),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 14),
                 Constant(1),
             ]),
-            Command(instruction=Instruction.RET_ARR, args=[], operands=[
+            Command(instruction=Instruction.RET_ARR, operands=[
                 ArraySlice(
                     Address(Constant(0)),
                     Register(RegisterName.R, 15),
@@ -168,60 +168,60 @@ EXIT:
         netqasm_version="0.0",
         app_id=0,
         commands=[
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.C, 1),
                 Constant(1),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.C, 10),
                 Constant(10),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.Q, 0),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.SET, args=[], operands=[
+            Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 0),
                 Constant(0),
             ]),
-            Command(instruction=Instruction.ARRAY, args=[], operands=[
+            Command(instruction=Instruction.ARRAY, operands=[
                 Register(RegisterName.C, 10),
                 Address(Constant(0)),
             ]),
-            Command(instruction=Instruction.BEQ, args=[], operands=[
+            Command(instruction=Instruction.BEQ, operands=[
                 Register(RegisterName.R, 0),
                 Register(RegisterName.C, 10),
                 Constant(14),
             ]),
-            Command(instruction=Instruction.QALLOC, args=[], operands=[
+            Command(instruction=Instruction.QALLOC, operands=[
                 Register(RegisterName.Q, 0),
             ]),
-            Command(instruction=Instruction.INIT, args=[], operands=[
+            Command(instruction=Instruction.INIT, operands=[
                 Register(RegisterName.Q, 0),
             ]),
-            Command(instruction=Instruction.H, args=[], operands=[
+            Command(instruction=Instruction.H, operands=[
                 Register(RegisterName.Q, 0),
             ]),
-            Command(instruction=Instruction.MEAS, args=[], operands=[
+            Command(instruction=Instruction.MEAS, operands=[
                 Register(RegisterName.Q, 0),
                 Register(RegisterName.M, 0),
             ]),
-            Command(instruction=Instruction.STORE, args=[], operands=[
+            Command(instruction=Instruction.STORE, operands=[
                 Register(RegisterName.M, 0),
                 ArrayEntry(
                     address=Address(Constant(0)),
                     index=Register(RegisterName.R, 0),
                 ),
             ]),
-            Command(instruction=Instruction.QFREE, args=[], operands=[
+            Command(instruction=Instruction.QFREE, operands=[
                 Register(RegisterName.Q, 0),
             ]),
-            Command(instruction=Instruction.ADD, args=[], operands=[
+            Command(instruction=Instruction.ADD, operands=[
                 Register(RegisterName.R, 0),
                 Register(RegisterName.R, 0),
                 Register(RegisterName.C, 1),
             ]),
-            Command(instruction=Instruction.JMP, args=[], operands=[
+            Command(instruction=Instruction.JMP, operands=[
                 Constant(5),
             ]),
         ],
