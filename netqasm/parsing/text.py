@@ -430,15 +430,19 @@ _REPLACE_CONSTANTS_EXCEPTION = [
 def _replace_constants(subroutine):
     current_registers = get_current_registers(subroutine)
 
-    def reg_and_set_cmd(reg_i, value):
-        register = Register(RegisterName.R, reg_i)
-        if register in current_registers:
+    def reg_and_set_cmd(value, tmp_registers):
+        for i in range(2 ** REG_INDEX_BITS):
+            register = Register(RegisterName.R, i)
+            if str(register) not in current_registers and register not in tmp_registers:
+                break
+        else:
             raise RuntimeError("Could not replace constant since no registers left")
         set_command = Command(
             instruction=Instruction.SET,
             args=[],
             operands=[register, value],
         )
+        tmp_registers.append(register)
 
         return register, set_command
 
@@ -448,14 +452,15 @@ def _replace_constants(subroutine):
         if not isinstance(command, Command):
             i += 1
             continue
-        reg_i = 2 ** REG_INDEX_BITS - 1
+        # reg_i = 2 ** REG_INDEX_BITS - 1
+        tmp_registers = []
         for j, operand in enumerate(command.operands):
             if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
-                register, set_command = reg_and_set_cmd(reg_i, operand)
+                register, set_command = reg_and_set_cmd(operand, tmp_registers)
                 subroutine.commands.insert(i, set_command)
                 command.operands[j] = register
 
-                reg_i -= 1
+                # reg_i -= 1
                 i += 1
             else:
                 if isinstance(operand, ArrayEntry):
@@ -469,11 +474,11 @@ def _replace_constants(subroutine):
                     if isinstance(value, int):
                         value = Constant(value)
                     if isinstance(value, Constant):
-                        register, set_command = reg_and_set_cmd(reg_i, value)
+                        register, set_command = reg_and_set_cmd(value, tmp_registers)
                         subroutine.commands.insert(i, set_command)
                         setattr(operand, attr, register)
 
-                        reg_i -= 1
+                        # reg_i -= 1
                         i += 1
         i += 1
 
@@ -486,12 +491,18 @@ def _replace_constants(subroutine):
 
 
 def get_current_registers(subroutine):
-    current_registers = []
+    current_registers = set()
     for command in subroutine.commands:
         if not isinstance(command, Command):
             continue
-        if command.instruction == Instruction.SET:
-            register = command.operands[0]
-            if register not in current_registers:
-                current_registers.append(register)
+        for op in command.operands:
+            if isinstance(op, Register):
+                current_registers.add(str(op))
+
+        # TODO
+        # if command.instruction == Instruction.SET:
+        #     register = command.operands[0]
+        #     if register not in current_registers:
+        #         current_registers.append(register)
+        # if command.instruction == Instruction.LOAD:
     return current_registers

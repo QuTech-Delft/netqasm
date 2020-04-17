@@ -191,9 +191,9 @@ class Executioner:
     def _instr_set(self, subroutine_id, operands):
         register = operands[0]
         constant = operands[1]
+        self._logger.debug(f"Set register {register} to {constant}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id, register, constant.value)
-        self._logger.debug(f"Set register {register} to {constant}")
 
     def _set_register(self, app_id, register, value):
         self._registers[app_id][register.name][register.index] = value
@@ -206,8 +206,8 @@ class Executioner:
         register = operands[0]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, register)
-        self._allocate_physical_qubit(subroutine_id, qubit_address)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
+        self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
     def _instr_init(self, subroutine_id, operands):
@@ -219,8 +219,8 @@ class Executioner:
         array_entry = operands[1]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         value = self._get_register(app_id, register)
-        self._set_array_entry(app_id=app_id, array_entry=array_entry, value=value)
         self._logger.debug(f"Storing value {value} from register {register} to array entry {array_entry}")
+        self._set_array_entry(app_id=app_id, array_entry=array_entry, value=value)
 
     @inc_program_counter
     def _instr_load(self, subroutine_id, operands):
@@ -228,31 +228,31 @@ class Executioner:
         array_entry = operands[1]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         value = self._get_array_entry(app_id=app_id, array_entry=array_entry)
-        value = self._set_register(app_id, register, value)
         self._logger.debug(f"Storing value {value} from array entry {array_entry} to register {register}")
+        self._set_register(app_id, register, value)
 
     @inc_program_counter
     def _instr_lea(self, subroutine_id, operands):
         register = operands[0]
         address = operands[1]
+        self._logger.debug(f"Storing address of {address} to register {register}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id=app_id, register=register, value=address.address)
-        self._logger.debug(f"Storing address of {address} to register {register}")
 
     @inc_program_counter
     def _instr_undef(self, subroutine_id, operands):
         array_entry = operands[0]
+        self._logger.debug(f"Unset array entry {array_entry}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_array_entry(app_id=app_id, array_entry=array_entry, value=None)
-        self._logger.debug(f"Unset array entry {array_entry}")
 
     @inc_program_counter
     def _instr_array(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         length = self._get_register(app_id, operands[0])
         address = operands[1]
-        self._initialize_array(app_id=app_id, address=address, length=length)
         self._logger.debug(f"Initializing an array of length {length} at address {address}")
+        self._initialize_array(app_id=app_id, address=address, length=length)
 
     def _initialize_array(self, app_id, address, length):
         arrays = self._app_arrays[app_id]
@@ -561,9 +561,8 @@ class Executioner:
     def _instr_qfree(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
-
-        self._free_physical_qubit(subroutine_id, q_address)
         self._logger.debug(f"Freeing qubit at address {q_address}")
+        self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
     def _instr_ret_reg(self, subroutine_id, operands):
@@ -717,15 +716,17 @@ class Executioner:
         a = self._get_register(app_id=app_id, register=operands[1])
         b = self._get_register(app_id=app_id, register=operands[2])
         value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
-        self._set_register(app_id=app_id, register=operands[0], value=value)
-        mod_str = "" if mod is None else "(mod {mod})"
+        mod_str = "" if mod is None else f"(mod {mod})"
         self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
-                           f"and storing the value at address {operands[0]}")
+                           f"and storing the value {value} at register {operands[0]}")
+        self._set_register(app_id=app_id, register=operands[0], value=value)
 
     def _compute_binary_classical_instr(self, instr, a, b, mod=1):
         op = {
             Instruction.ADD: operator.add,
+            Instruction.ADDM: operator.add,
             Instruction.SUB: operator.sub,
+            Instruction.SUBM: operator.sub,
         }[instr]
         if mod is None:
             return op(a, b)

@@ -7,22 +7,25 @@ from cqc.pythonLib import CQCHandler
 from cqc.cqcHeader import (
     CQC_CMD_NEW,
     CQC_CMD_X,
+    CQC_CMD_Y,
     CQC_CMD_Z,
     CQC_CMD_H,
+    CQC_CMD_K,
+    CQC_CMD_T,
     CQC_CMD_CNOT,
     CQC_CMD_MEASURE,
     CQC_CMD_RELEASE,
     CQC_CMD_EPR,
     CQC_CMD_EPR_RECV,
-    command_to_string,
+    # command_to_string,
 )
 
 from netqasm import NETQASM_VERSION
-from netqasm.parsing.text import assemble_subroutine
+from netqasm.parsing.text import assemble_subroutine, parse_register
 from netqasm.instructions import Instruction
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit
-from netqasm.sdk.ent_info import Variable
+from netqasm.sdk.futures import Future, Array
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName
 from netqasm.subroutine import (
@@ -44,8 +47,11 @@ _Command = namedtuple("Command", ["qID", "command", "kwargs"])
 _CQC_TO_NETQASM_INSTR = {
     CQC_CMD_NEW: Instruction.INIT,
     CQC_CMD_X: Instruction.X,
+    CQC_CMD_Y: Instruction.K,
     CQC_CMD_Z: Instruction.Z,
     CQC_CMD_H: Instruction.H,
+    CQC_CMD_K: Instruction.K,
+    CQC_CMD_T: Instruction.T,
     CQC_CMD_CNOT: Instruction.CNOT,
     CQC_CMD_MEASURE: Instruction.MEAS,
     CQC_CMD_EPR: Instruction.CREATE_EPR,
@@ -68,19 +74,26 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         self._pending_commands = []
 
-        # self._pending_subroutine = None
-
         self._shared_memory = get_shared_memory(self.name, key=self._appID)
 
-        self._array_outcomes_address = None
+        # TODO
+        # self._array_outcomes_address = None
 
-        self._next_array_outcome_index = 0
+        # self._next_array_outcome_index = 0
 
+        # Registers for looping
+        self._current_loop_registers = []
+
+        # Arrays to return
+        self._arrays_to_return = []
+
+        # TODO
         # Used while building up a subroutine (until flushing)
-        self._variables = {}
+        # self._variables = {}
 
+        # TODO
         # Used after flushing
-        self._stored_variables = {}
+        # self._stored_variables = {}
 
         self._logger = logging.getLogger(f"{self.__class__.__name__}({self.name})")
 
@@ -88,11 +101,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def shared_memory(self):
         return self._shared_memory
 
-    @property
-    def array_outcomes_address(self):
-        if self._array_outcomes_address is None:
-            self._array_outcomes_address = self._get_new_array_address()
-        return self._array_outcomes_address
+    # TODO
+    # @property
+    # def array_outcomes_address(self):
+    #     if self._array_outcomes_address is None:
+    #         self._array_outcomes_address = self._get_new_array_address()
+    #     return self._array_outcomes_address
 
     def new_qubitID(self):
         return self._get_new_qubit_address()
@@ -108,6 +122,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         pass
+
+    def new_array(self, length):
+        address = self._get_new_array_address()
+        array = Array(
+            connection=self,
+            length=length,
+            address=address,
+        )
+        self._arrays_to_return.append(array)
+        return array
 
     def createEPR(self, name, purpose_id=0, number=1):
         """Creates EPR pair with a remote node""
@@ -148,15 +172,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for _ in range(num_pairs):
             ent_info = []
             for _ in range(OK_FIELDS):
-                entinfo_var_name = self._get_unused_variable(start_with="entinfo")
-                self._set_variable(address=entinfo_array_address, index=index, var_name=entinfo_var_name)
+                # TODO
+                # entinfo_var_name = self._get_unused_variable(start_with="entinfo")
+                # self._set_variable(address=entinfo_array_address, index=index, var_name=entinfo_var_name)
                 index += 1
-                ent_info.append(Variable(self, var_name=entinfo_var_name))
+                ent_info.append(Future(self, address=entinfo_array_address, index=index))
             ent_info = self.__class__.ENT_INFO(*ent_info)
             qubit = Qubit(self, put_new_command=False, ent_info=ent_info)
             qubits.append(qubit)
         return qubits
-
 
     # def _create_new_entinfo_variable(self, var_name):
     #     address = self._get_new_array_address()
@@ -201,9 +225,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _get_remote_node_name(self, remote_node_id):
         raise NotImplementedError
 
-    def put_command(self, qID, command, **kwargs):
-        self._logger.debug(f"Put new command={command_to_string(command)} for qubit qID={qID} with kwargs={kwargs}")
-        self._pending_commands.append(_Command(qID=qID, command=command, kwargs=kwargs))
+    def put_commands(self, commands, **kwargs):
+        for command in commands:
+            self.put_command(command, **kwargs)
+
+    def put_command(self, command, **kwargs):
+        if isinstance(command, Command):
+            pass
+        else:
+            qID = kwargs["qID"]
+            command = _Command(qID=qID, command=command, kwargs=kwargs)
+        self._logger.debug(f"Put new command={command}")
+        self._pending_commands.append(command)
 
     def flush(self, block=True):
         subroutine = self._pop_pending_subroutine()
@@ -213,13 +246,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._commit_subroutine(subroutine=subroutine, block=block)
 
     def _commit_subroutine(self, subroutine, block=True):
-        self._logger.debug(f"Flushing subroutine:\n{subroutine}")
+        # TODO
+        self._logger.info(f"Flushing subroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
         bin_subroutine = self._pre_process_subroutine(subroutine)
 
         # Commit the subroutine to the quantum device
         self.commit(bin_subroutine, block=block)
+
+        self._reset()
 
     # def _put_subroutine(self, subroutine):
     #     """Stores a subroutine to be flushed"""
@@ -235,17 +271,39 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             commands = self._pop_pending_commands()
             subroutine = self._subroutine_from_commands(commands)
 
-            # Allocate and return array of meas outcomes
-            outcome_array_commands = self._get_outcome_array_commands()
-            if outcome_array_commands is not None:
-                outcome_array_cmd, return_outcomes_cmd = outcome_array_commands
-                subroutine.commands.insert(0, outcome_array_cmd)
-                subroutine.commands.append(return_outcomes_cmd)
+            array_commands = self._get_array_commands()
+            init_arrays, return_arrays = array_commands
+            subroutine.commands = init_arrays + subroutine.commands + return_arrays
 
-            self._reset_addresses()
+            # TODO
+            # Allocate and return array of meas outcomes
+            # outcome_array_commands = self._get_outcome_array_commands()
+            # if outcome_array_commands is not None:
+            #     outcome_array_cmd, return_outcomes_cmd = outcome_array_commands
+            #     subroutine.commands.insert(0, outcome_array_cmd)
+            #     subroutine.commands.append(return_outcomes_cmd)
         else:
             subroutine = None
         return subroutine
+
+    def _get_array_commands(self):
+        init_arrays = []
+        return_arrays = []
+        for array in self._arrays_to_return:
+            init_arrays.append(Command(
+                instruction=Instruction.ARRAY,
+                operands=[
+                    Constant(len(array)),
+                    Address(Constant(array.address)),
+                ],
+            ))
+            return_arrays.append(Command(
+                instruction=Instruction.RET_ARR,
+                operands=[
+                    Address(Constant(array.address)),
+                ],
+            ))
+        return init_arrays, return_arrays
 
     def _subroutine_from_commands(self, commands):
         # Build sub-routine
@@ -259,20 +317,21 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         metadata = self._get_metadata()
         return Subroutine(**metadata, commands=all_netqasm_commands)
 
-    def _get_outcome_array_commands(self):
-        num_vars = len(self._variables)
-        if num_vars == 0:
-            return None
-        array_address = self.array_outcomes_address
-        array_command = Command(
-            instruction=Instruction.ARRAY,
-            operands=[Constant(num_vars), Address(Constant(array_address))],
-        )
-        return_command = Command(
-            instruction=Instruction.RET_ARR,
-            operands=[Address(Constant(array_address))],
-        )
-        return array_command, return_command
+    # TODO
+    # def _get_outcome_array_commands(self):
+    #     num_vars = len(self._variables)
+    #     if num_vars == 0:
+    #         return None
+    #     array_address = self.array_outcomes_address
+    #     array_command = Command(
+    #         instruction=Instruction.ARRAY,
+    #         operands=[Constant(num_vars), Address(Constant(array_address))],
+    #     )
+    #     return_command = Command(
+    #         instruction=Instruction.RET_ARR,
+    #         operands=[Address(Constant(array_address))],
+    #     )
+    #     return array_command, return_command
 
     def _get_metadata(self):
         return {
@@ -349,7 +408,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
     def _get_netqasm_meas_command(self, command):
         outcome_reg = self._get_new_meas_outcome_reg()
-        address_index = command.kwargs.get('address_index')
+        address = command.kwargs.get('address')
+        index = command.kwargs.get('index')
         inplace = command.kwargs.get('inplace')
         q_address = command.qID
         qubit_reg, set_command = self._get_set_qubit_reg_command(q_address)
@@ -364,17 +424,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             )]
         else:
             free_commands = []
-        if address_index is not None:
-            address, index = address_index
+        if address is not None:
+            # address, index = address_index
             store_command = Command(
                 instruction=Instruction.STORE,
                 operands=[outcome_reg, ArrayEntry(address=address, index=index)],
             )
-            return_command = Command(
-                instruction=Instruction.RET_REG,
-                operands=[outcome_reg],
-            )
-            outcome_commands = [store_command, return_command]
+            # TODO move to array func
+            # return_command = Command(
+            #     instruction=Instruction.RET_REG,
+            #     operands=[outcome_reg],
+            # )
+            outcome_commands = [store_command]
         else:
             outcome_commands = []
         return [set_command, meas_command] + free_commands + outcome_commands
@@ -538,99 +599,138 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 used_addresses.append(address)
                 return address
 
-    def _create_new_outcome_variable(self, var_name):
-        address = self.array_outcomes_address
-        index = self._get_array_outcome_index(var_name=var_name)
-        self._set_variable(address=address, index=index, var_name=var_name)
-        return address, index
+    # TODO
+    # def _create_new_outcome_variable(self, var_name):
+    #     address = self.array_outcomes_address
+    #     index = self._get_array_outcome_index(var_name=var_name)
+    #     self._set_variable(address=address, index=index, var_name=var_name)
+    #     return address, index
 
-    def _set_variable(self, address, index, var_name):
-        self._variables[var_name] = (address, index)
+    # def _set_variable(self, address, index, var_name):
+    #     self._variables[var_name] = (address, index)
 
-    def read_variable(self, var_name):
-        address_index = self._stored_variables.get(var_name)
-        if address_index is None:
-            raise ValueError(f"{var_name} is not a known name of a variable")
-        address, index = address_index
-        return self._shared_memory.get_array_part(address=address, index=index)
+    # def read_variable(self, var_name):
+    #     address_index = self._stored_variables.get(var_name)
+    #     if address_index is None:
+    #         raise ValueError(f"{var_name} is not a known name of a variable")
+    #     address, index = address_index
+    #     return self._shared_memory.get_array_part(address=address, index=index)
 
-    def _get_unused_variable(self, start_with="var"):
-        for i in count(0):
-            var_name = f"{start_with}{i}"
-            if var_name not in self._variables:
-                return var_name
+    # def _get_unused_variable(self, start_with="var"):
+    #     for i in count(0):
+    #         var_name = f"{start_with}{i}"
+    #         if var_name not in self._variables:
+    #             return var_name
 
-    def _get_array_outcome_index(self, var_name):
-        """Finds a new index for a measurement outcome"""
-        index = self._next_array_outcome_index
-        self._next_array_outcome_index += 1
-        return index
+    # def _get_array_outcome_index(self, var_name):
+    #     """Finds a new index for a measurement outcome"""
+    #     index = self._next_array_outcome_index
+    #     self._next_array_outcome_index += 1
+    #     return index
 
-    def _reset_addresses(self):
-        self._array_outcomes_address = None
-        self._stored_variables = self._variables
-        self._variables = {}
-        self._next_array_outcome_index = 0
+    def _reset(self):
+        # TODO
+        # self._array_outcomes_address = None
+        # self._stored_variables = self._variables
+        # self._variables = {}
+        # self._next_array_outcome_index = 0
+        self._current_loop_registers = []
+        self._arrays_to_return = []
 
-    def loop(self, body, stop, start=0):
+    def loop(self, body, stop, start=0, step=1, loop_register=None):
         current_commands = self._pop_pending_commands()
         body(self)
         body_commands = self._pop_pending_commands()
-        current_branch_variables = [cmd.name for cmd in current_commands + body_commands if isinstance(cmd, Label)]
+        current_branch_variables = [
+                cmd.name for cmd in current_commands + body_commands if isinstance(cmd, BranchLabel)
+        ]
         # current_branch_variables = _find_current_branch_variables(body_subroutine)
         loop_start, loop_end = self._get_loop_commands(
             start=start,
             stop=stop,
+            step=step,
             current_branch_variables=current_branch_variables,
+            loop_register=loop_register,
         )
         commands = current_commands + loop_start + body_commands + loop_end
 
         self._set_pending_commands(commands=commands)
 
-    def _get_loop_commands(self, start, stop, current_branch_variables):
-        loop_variable = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
+    def _get_loop_commands(self, start, stop, step, current_branch_variables, loop_register):
+        entry_variable = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
         exit_variable = self._find_unused_variable(start_with="EXIT", current_variables=current_branch_variables)
-        # start_loop = f"""store {var_address} {start}
-# {loop_variable}:
-# beq {var_address} {end} {exit_variable}
-# """
-        start_loop = [
+
+        loop_register = self._handle_loop_register(loop_register)
+
+        entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
+            start=start,
+            stop=stop,
+            step=step,
+            entry_variable=entry_variable,
+            exit_variable=exit_variable,
+            loop_register=loop_register,
+        )
+
+        return entry_loop, exit_loop
+
+    def _handle_loop_register(self, loop_register):
+        if loop_register is None:
+            loop_register = self._get_unused_loop_register()
+        else:
+            if isinstance(loop_register, Register):
+                pass
+            elif isinstance(loop_register, str):
+                loop_register = parse_register(loop_register)
+            else:
+                raise ValueError(f"not a valid loop_register with type {type(loop_register)}")
+            if loop_register in self._current_loop_registers:
+                raise RuntimeError(f"register {loop_register} is already used for looping")
+        self._current_loop_registers.append(loop_register)
+        return loop_register
+
+    @staticmethod
+    def _get_entry_exit_loop_cmds(start, stop, step, entry_variable, exit_variable, loop_register):
+        entry_loop = [
             Command(
                 instruction=Instruction.SET,
-                operands=[Register(RegisterName.R, 0), Constant(start)],
+                operands=[loop_register, Constant(start)],
             ),
-            BranchLabel(loop_variable),
+            BranchLabel(entry_variable),
             Command(
                 instruction=Instruction.BEQ,
                 operands=[
-                    Register(RegisterName.R, 0),
+                    loop_register,
                     Constant(stop),
                     Label(exit_variable),
                 ],
             ),
         ]
-        # end_loop = f"""add {var_address} {var_address} 1
-# beq 0 0 {loop_variable}
-# {exit_variable}:
-# """
-        end_loop = [
+        exit_loop = [
             Command(
                 instruction=Instruction.ADD,
                 operands=[
-                    Register(RegisterName.R, 0),
-                    Register(RegisterName.R, 0),
-                    Constant(1),
+                    loop_register,
+                    loop_register,
+                    Constant(step),
                 ],
             ),
             Command(
                 instruction=Instruction.JMP,
-                operands=[Label(loop_variable)],
+                operands=[Label(entry_variable)],
             ),
             BranchLabel(exit_variable),
         ]
-        return start_loop, end_loop
+        return entry_loop, exit_loop
 
-    def _find_unused_variable(self, start_with="", current_variables=None):
+    def _get_unused_loop_register(self):
+        for i in range(5):
+            register = parse_register(f"R{i}")
+            if register not in self._current_loop_registers:
+                return register
+        raise RuntimeError(f"could not find an available loop register (cannot do more than 5 nested loops)")
+
+    @staticmethod
+    def _find_unused_variable(start_with="", current_variables=None):
         if current_variables is None:
             current_variables = set([])
         else:
