@@ -78,7 +78,7 @@ def as_int_when_value(cls):
 
 
 @as_int_when_value
-class MeasurementOutcome(int):
+class Variable(int):
     @classmethod
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)

@@ -22,6 +22,8 @@ from netqasm.parsing.text import assemble_subroutine
 from netqasm.instructions import Instruction
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.ent_info import Variable
+from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName
 from netqasm.subroutine import (
     Subroutine,
@@ -53,6 +55,10 @@ _CQC_TO_NETQASM_INSTR = {
 
 
 class NetQASMConnection(CQCHandler, abc.ABC):
+
+    # Class to use to pack entanglement information
+    ENT_INFO = tuple
+
     def __init__(self, name, app_id=None, max_qubits=5):
         super().__init__(name=name, app_id=app_id)
 
@@ -70,7 +76,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         self._next_array_outcome_index = 0
 
+        # Used while building up a subroutine (until flushing)
         self._variables = {}
+
+        # Used after flushing
+        self._stored_variables = {}
 
         self._logger = logging.getLogger(f"{self.__class__.__name__}({self.name})")
 
@@ -99,7 +109,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         pass
 
-    def createEPR(self, name, purpose_id=0, number=1, block=True):
+    def createEPR(self, name, purpose_id=0, number=1):
         """Creates EPR pair with a remote node""
 
         Parameters
@@ -111,9 +121,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         number : int
             The number of pairs to create
         """
+        # if entinfo_var_name is None:
+        #     entinfo_var_name = self._get_unused_variable(start_with="entinfo")
+        # entinfo_array_address = self._create_new_entinfo_variable(var_name=entinfo_var_name)
+        entinfo_array_address = self._get_new_array_address()
+        # ent_info = self._create_ent_info(entinfo_array_address)
         remote_node_id = self._get_remote_node_id(name)
         logging.debug(f"App {self.name} puts command to create EPR with {name}")
-        qubits = [Qubit(self, put_new_command=False) for _ in range(number)]
+        # qubits = [Qubit(self, put_new_command=False, ent_info=ent_info) for _ in range(number)]
+        qubits = self._create_ent_qubits(num_pairs=number, entinfo_array_address=entinfo_array_address)
         virtual_qubit_ids = [q._qID for q in qubits]
         self.put_command(
             qID=virtual_qubit_ids,
@@ -121,12 +137,32 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
             number=number,
-            block=block,
+            entinfo_array_address=entinfo_array_address,
         )
 
         return qubits
 
-    def recvEPR(self, name, purpose_id=0, number=1, block=True):
+    def _create_ent_qubits(self, num_pairs, entinfo_array_address):
+        qubits = []
+        index = 0
+        for _ in range(num_pairs):
+            ent_info = []
+            for _ in range(OK_FIELDS):
+                entinfo_var_name = self._get_unused_variable(start_with="entinfo")
+                self._set_variable(address=entinfo_array_address, index=index, var_name=entinfo_var_name)
+                index += 1
+                ent_info.append(Variable(self, var_name=entinfo_var_name))
+            ent_info = self.__class__.ENT_INFO(*ent_info)
+            qubit = Qubit(self, put_new_command=False, ent_info=ent_info)
+            qubits.append(qubit)
+        return qubits
+
+
+    # def _create_new_entinfo_variable(self, var_name):
+    #     address = self._get_new_array_address()
+    #     self._set_variable(address=address, index=None, var_name=var_name)
+
+    def recvEPR(self, name, purpose_id=0, number=1, entinfo_var_name=None):
         """Receives EPR pair with a remote node""
 
         Parameters
@@ -138,9 +174,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         number : int
             The number of pairs to recv
         """
+        # if entinfo_var_name is None:
+        #     entinfo_var_name = self._get_unused_variable(start_with="entinfo")
+        # entinfo_array_address = self._create_new_entinfo_variable(var_name=entinfo_var_name)
+        entinfo_array_address = self._get_new_array_address()
+        # ent_info = self._create_ent_info(entinfo_array_address)
         remote_node_id = self._get_remote_node_id(name)
         logging.debug(f"App {self.name} puts command to recv EPR with {name}")
-        qubits = [Qubit(self, put_new_command=False) for _ in range(number)]
+        # qubits = [Qubit(self, put_new_command=False, ent_info) for _ in range(number)]
+        qubits = self._create_ent_qubits(num_pairs=number, entinfo_array_address=entinfo_array_address)
         virtual_qubit_ids = [q._qID for q in qubits]
         self.put_command(
             qID=virtual_qubit_ids,
@@ -148,12 +190,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
             number=number,
-            block=block,
+            entinfo_array_address=entinfo_array_address,
         )
 
         return qubits
 
     def _get_remote_node_id(self, name):
+        raise NotImplementedError
+
+    def _get_remote_node_name(self, remote_node_id):
         raise NotImplementedError
 
     def put_command(self, qID, command, **kwargs):
@@ -189,6 +234,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         if len(self._pending_commands) > 0:
             commands = self._pop_pending_commands()
             subroutine = self._subroutine_from_commands(commands)
+
+            # Allocate and return array of meas outcomes
+            outcome_array_commands = self._get_outcome_array_commands()
+            if outcome_array_commands is not None:
+                outcome_array_cmd, return_outcomes_cmd = outcome_array_commands
+                subroutine.commands.insert(0, outcome_array_cmd)
+                subroutine.commands.append(return_outcomes_cmd)
+
+            self._reset_addresses()
         else:
             subroutine = None
         return subroutine
@@ -197,10 +251,28 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Build sub-routine
         all_netqasm_commands = []
         for command in commands:
-            netqasm_commands = self._get_netqasm_command(command)
-            all_netqasm_commands += netqasm_commands
+            if isinstance(command, _Command):
+                netqasm_commands = self._get_netqasm_command(command)
+                all_netqasm_commands += netqasm_commands
+            else:
+                all_netqasm_commands.append(command)
         metadata = self._get_metadata()
         return Subroutine(**metadata, commands=all_netqasm_commands)
+
+    def _get_outcome_array_commands(self):
+        num_vars = len(self._variables)
+        if num_vars == 0:
+            return None
+        array_address = self.array_outcomes_address
+        array_command = Command(
+            instruction=Instruction.ARRAY,
+            operands=[Constant(num_vars), Address(Constant(array_address))],
+        )
+        return_command = Command(
+            instruction=Instruction.RET_ARR,
+            operands=[Address(Constant(array_address))],
+        )
+        return array_command, return_command
 
     def _get_metadata(self):
         return {
@@ -276,22 +348,27 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         return [set_command1, set_command2, qubit_command]
 
     def _get_netqasm_meas_command(self, command):
-        outcome_reg = self._conn._get_new_meas_outcome_reg()
-        array_entry = command.kwargs.get('array_entry')
+        outcome_reg = self._get_new_meas_outcome_reg()
+        address_index = command.kwargs.get('address_index')
+        inplace = command.kwargs.get('inplace')
         q_address = command.qID
         qubit_reg, set_command = self._get_set_qubit_reg_command(q_address)
         meas_command = Command(
             instruction=Instruction.MEAS,
             operands=[qubit_reg, outcome_reg],
         )
-        free_command = Command(
-            instruction=Instruction.QFREE,
-            operands=[Constant(q_address)],
-        )
-        if array_entry is not None:
+        if not inplace:
+            free_commands = [Command(
+                instruction=Instruction.QFREE,
+                operands=[Constant(q_address)],
+            )]
+        else:
+            free_commands = []
+        if address_index is not None:
+            address, index = address_index
             store_command = Command(
                 instruction=Instruction.STORE,
-                operands=[outcome_reg, array_entry],
+                operands=[outcome_reg, ArrayEntry(address=address, index=index)],
             )
             return_command = Command(
                 instruction=Instruction.RET_REG,
@@ -300,7 +377,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             outcome_commands = [store_command, return_command]
         else:
             outcome_commands = []
-        return [set_command, meas_command, free_command] + outcome_commands
+        return [set_command, meas_command] + free_commands + outcome_commands
+
+    def _get_new_meas_outcome_reg(self):
+        # NOTE We can simply use the same every time (M0) since it will anyway be stored to memory if returned
+        return Register(RegisterName.M, 0)
 
     def _get_netqasm_new_command(self, command):
         q_address = command.qID
@@ -319,12 +400,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # TODO How to assign new array addresses?
         qubit_id_address = self._get_new_array_address()
         arg_address = self._get_new_array_address()
-        entinfo_address = self._get_new_array_address()
+        # entinfo_address = self._get_new_array_address()
 
         remote_node_id = command.kwargs["remote_node_id"]
         purpose_id = command.kwargs["purpose_id"]
         number = command.kwargs["number"]
-        block = command.kwargs["block"]
+        entinfo_address = command.kwargs["entinfo_array_address"]
         virtual_qubit_ids = command.qID
 
         # # instructions to use
@@ -351,10 +432,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         # create_operands = {}
         if command.command == CQC_CMD_EPR:
+            instruction = Instruction.CREATE_EPR
             # arguments
             # TODO add other args
-            # TODO num args should be specified elsewhere and not hardcoded here
-            num_args = 20
+            num_args = CREATE_FIELDS
             # args_cmds = f"{array}({num_args}) {at}{arg_address}\n"
             # TODO don't create a new array if already created from previous command
             args_cmds = [Command(
@@ -374,6 +455,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 Constant(entinfo_address),
             ]
         elif command.command == CQC_CMD_EPR_RECV:
+            instruction = Instruction.RECV_EPR
             args_cmds = []
             epr_cmd_operands = [
                 Constant(qubit_id_address),
@@ -384,7 +466,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         # entanglement information
         # TODO should be specified elsewhere and not hardcoded here
-        num_values = 8
+        num_values = OK_FIELDS
         ent_info_length = number * num_values
         ent_info_cmd = Command(
             instruction=Instruction.ARRAY,
@@ -392,9 +474,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
         # ent_info_cmd = f"{array}({number}) {at}{entinfo_address}\n"
 
+        # Return entanglement information
+
         # epr command
         epr_cmd = Command(
-            instruction=Instruction.CREATE_EPR,
+            instruction=instruction,
             args=[Constant(remote_node_id), Constant(purpose_id)],
             operands=epr_cmd_operands,
         )
@@ -403,20 +487,26 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         #     f"{at}{qubit_id_address}{arg_operand} {at}{entinfo_address}\n"
         # )
         # wait_cmd = f"{wait} {at}{entinfo_address}\n"
-        if block:
-            wait_cmds = [Command(
-                instruction=Instruction.WAIT_ALL,
-                operands=[ArraySlice(entinfo_address, start=0, stop=ent_info_length)],
-            )]
-        else:
-            wait_cmds = []
+        wait_cmd = Command(
+            instruction=Instruction.WAIT_ALL,
+            operands=[ArraySlice(entinfo_address, start=0, stop=ent_info_length)],
+        )
+
+        # return ent info command
+        return_cmd = Command(
+            instruction=Instruction.RET_ARR,
+            operands=[Address(Constant(entinfo_address))],
+        )
 
         return (
             epr_address_cmds +
             args_cmds +
-            [ent_info_cmd] +
-            [epr_cmd] +
-            wait_cmds
+            [
+                ent_info_cmd,
+                epr_cmd,
+                wait_cmd,
+                return_cmd,
+            ]
         )
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
@@ -451,18 +541,24 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _create_new_outcome_variable(self, var_name):
         address = self.array_outcomes_address
         index = self._get_array_outcome_index(var_name=var_name)
-        array_entry = ArrayEntry(address=address, index=index)
-        self._set_variable(array_entry=array_entry, var_name=var_name)
-        return array_entry
+        self._set_variable(address=address, index=index, var_name=var_name)
+        return address, index
 
-    def _set_variable(self, array_entry, var_name):
-        self._variables[var_name] = array_entry
+    def _set_variable(self, address, index, var_name):
+        self._variables[var_name] = (address, index)
 
     def read_variable(self, var_name):
-        array_entry = self._variables.get(var_name)
-        if array_entry is None:
+        address_index = self._stored_variables.get(var_name)
+        if address_index is None:
             raise ValueError(f"{var_name} is not a known name of a variable")
-        return self._shared_memory.get_array_entry(array_entry=array_entry)
+        address, index = address_index
+        return self._shared_memory.get_array_part(address=address, index=index)
+
+    def _get_unused_variable(self, start_with="var"):
+        for i in count(0):
+            var_name = f"{start_with}{i}"
+            if var_name not in self._variables:
+                return var_name
 
     def _get_array_outcome_index(self, var_name):
         """Finds a new index for a measurement outcome"""
@@ -470,7 +566,13 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._next_array_outcome_index += 1
         return index
 
-    def loop(self, body, end, start=0, var_address='i'):
+    def _reset_addresses(self):
+        self._array_outcomes_address = None
+        self._stored_variables = self._variables
+        self._variables = {}
+        self._next_array_outcome_index = 0
+
+    def loop(self, body, stop, start=0):
         current_commands = self._pop_pending_commands()
         body(self)
         body_commands = self._pop_pending_commands()
@@ -478,15 +580,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # current_branch_variables = _find_current_branch_variables(body_subroutine)
         loop_start, loop_end = self._get_loop_commands(
             start=start,
-            end=end,
-            var_address=var_address,
+            stop=stop,
             current_branch_variables=current_branch_variables,
         )
         commands = current_commands + loop_start + body_commands + loop_end
 
         self._set_pending_commands(commands=commands)
 
-    def _get_loop_commands(self, start, end, var_address, current_branch_variables):
+    def _get_loop_commands(self, start, stop, current_branch_variables):
         loop_variable = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
         exit_variable = self._find_unused_variable(start_with="EXIT", current_variables=current_branch_variables)
         # start_loop = f"""store {var_address} {start}
@@ -495,7 +596,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 # """
         start_loop = [
             Command(
-                instruction=Instruction.STORE,
+                instruction=Instruction.SET,
                 operands=[Register(RegisterName.R, 0), Constant(start)],
             ),
             BranchLabel(loop_variable),
@@ -503,8 +604,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 instruction=Instruction.BEQ,
                 operands=[
                     Register(RegisterName.R, 0),
-                    Constant(end),
-                    Label(loop_variable),
+                    Constant(stop),
+                    Label(exit_variable),
                 ],
             ),
         ]
@@ -518,7 +619,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 operands=[
                     Register(RegisterName.R, 0),
                     Register(RegisterName.R, 0),
-                    Constant(0),
+                    Constant(1),
                 ],
             ),
             Command(

@@ -14,6 +14,7 @@ from netqasm.subroutine import (
 from netqasm.encoding import RegisterName
 from netqasm.instructions import Instruction
 from netqasm.parsing import parse_binary_subroutine
+from netqasm.network_stack import CREATE_FIELDS
 
 
 class DebugConnection(NetQASMConnection):
@@ -37,7 +38,7 @@ def test_simple():
 
     assert len(alice.storage) == 1
     subroutine = parse_binary_subroutine(alice.storage[0])
-    expected = Subroutine(netqasm_version='0.0', app_id=0, commands=[
+    expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
             Constant(0),
@@ -127,7 +128,7 @@ def test_epr():
 
     assert len(alice.storage) == 1
     subroutine = parse_binary_subroutine(alice.storage[0])
-    expected = Subroutine(netqasm_version='0.0', app_id=0, commands=[
+    expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Qubit address array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 15),
@@ -152,7 +153,7 @@ def test_epr():
         # Arg array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 15),
-            Constant(20),
+            Constant(CREATE_FIELDS),
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
             Register(RegisterName.R, 15),

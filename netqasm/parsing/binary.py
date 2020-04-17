@@ -1,16 +1,36 @@
 from netqasm import encoding
 from netqasm.instructions import Instruction, COMMAND_STRUCTS
-from netqasm.subroutine import Command, Register, Constant, Address, Subroutine, ArrayEntry, ArraySlice
+from netqasm.subroutine import (
+    Command,
+    Register,
+    Constant,
+    Address,
+    Subroutine,
+    ArrayEntry,
+    ArraySlice,
+)
 
 
 def parse_binary_subroutine(data):
+    metadata, data = parse_metadata(data)
     if (len(data) % encoding.COMMAND_BYTES) != 0:
         raise ValueError("Length of data not a multiple of command length")
     num_commands = int(len(data) / encoding.COMMAND_BYTES)
     commands = [
         parse_binary_command(data[i * encoding.COMMAND_BYTES:(i + 1) * encoding.COMMAND_BYTES])
         for i in range(num_commands)]
-    return Subroutine(netqasm_version="0.0", app_id=0, commands=commands)
+    return Subroutine(
+        netqasm_version=tuple(metadata.netqasm_version),
+        app_id=metadata.app_id,
+        commands=commands,
+    )
+
+
+def parse_metadata(data):
+    metadata = data[:encoding.METADATA_BYTES]
+    metadata = encoding.Metadata.from_buffer_copy(metadata)
+    data = data[encoding.METADATA_BYTES:]
+    return metadata, data
 
 
 def parse_binary_command(data):

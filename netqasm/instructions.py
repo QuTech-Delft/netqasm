@@ -16,9 +16,9 @@ from netqasm.encoding import (
     LeaCommand,
     SingleRegisterCommand,
     ArrayCommand,
+    RetArrCommand,
     CreateEPRCommand,
     RecvEPRCommand,
-    ReturnCommand,
 )
 
 
@@ -52,6 +52,7 @@ class Instruction(Enum):
     Y = auto()
     Z = auto()
     H = auto()
+    S = auto()
     K = auto()
     T = auto()
     # Single-qubit rotations
@@ -146,14 +147,14 @@ _COMMAND_GROUPS = {
     ArrayCommand: [
         Instruction.ARRAY,
     ],
+    RetArrCommand: [
+        Instruction.RET_ARR,
+    ],
     CreateEPRCommand: [
         Instruction.CREATE_EPR,
     ],
     RecvEPRCommand: [
         Instruction.RECV_EPR,
-    ],
-    ReturnCommand: [
-        Instruction.RET_ARR,
     ],
 }
 

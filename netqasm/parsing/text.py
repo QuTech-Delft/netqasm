@@ -24,6 +24,7 @@ def parse_text_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
+    # expand_slices=True,
 ):
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
@@ -35,6 +36,7 @@ def parse_text_subroutine(
         assign_branch_labels=assign_branch_labels,
         make_args_operands=make_args_operands,
         replace_constants=replace_constants,
+        # expand_slices=expand_slices,
     )
     return subroutine
 
@@ -44,9 +46,12 @@ def assemble_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
+    # expand_slices=True,
 ):
     if make_args_operands:
         _make_args_operands(subroutine)
+    # if expand_slices:
+    #     _expand_slices(subroutine)
     if replace_constants:
         _replace_constants(subroutine)
         # _replace_explicit_addresses(subroutine, current_registers)
@@ -78,10 +83,18 @@ def _create_subroutine(preamble_data, body_lines):
             commands.append(command)
 
     return Subroutine(
-        netqasm_version=preamble_data[Symbols.PREAMBLE_NETQASM][0][0],
+        netqasm_version=_parse_netqasm_version(preamble_data[Symbols.PREAMBLE_NETQASM][0][0]),
         app_id=int(preamble_data[Symbols.PREAMBLE_APPID][0][0]),
         commands=commands,
     )
+
+
+def _parse_netqasm_version(netqasm_version):
+    try:
+        major, minor = netqasm_version.strip().split('.')
+        return int(major), int(minor)
+    except Exception as err:
+        raise ValueError(f"Could not parse netqasm version {netqasm_version} since: {err}")
 
 
 def _split_instr_and_args(word):
@@ -117,12 +130,12 @@ def _parse_operands(words):
 
 def _parse_operand(word):
     if word.startswith(Symbols.ADDRESS_START):
-        return _parse_address(word)
+        return parse_address(word)
     else:
-        return _parse_value(word)
+        return _parse_value(word, allow_label=True)
 
 
-def _parse_value(value):
+def _parse_value(value, allow_label=False):
     # Try to parse a constant
     try:
         return _parse_constant(value)
@@ -131,12 +144,15 @@ def _parse_value(value):
 
     # Try to parse a register
     try:
-        return _parse_register(value)
+        return parse_register(value)
     except NetQASMSyntaxError:
         pass
 
-    # Parse a label
-    return _parse_label(value)
+    if allow_label:
+        # Parse a label
+        return _parse_label(value)
+    else:
+        raise NetQASMSyntaxError("{value} is not a valid value in this case")
 
 
 def _parse_label(label):
@@ -146,7 +162,7 @@ def _parse_label(label):
 _REGISTER_NAMES = {reg.name: reg for reg in RegisterName}
 
 
-def _parse_register(register):
+def parse_register(register):
     try:
         register_name = _REGISTER_NAMES[register[0]]
     except KeyError:
@@ -155,7 +171,7 @@ def _parse_register(register):
     return Register(register_name, value)
 
 
-def _parse_address(address):
+def parse_address(address):
     base_address, index = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
     base_address = _parse_base_address(base_address)
     index = _parse_index(index)
@@ -177,8 +193,17 @@ def _parse_base_address(base_address):
 def _parse_index(index):
     if index == "":
         return None
-    index = index.strip(Symbols.INDEX_BRACKETS)
+    index = index.strip(Symbols.INDEX_BRACKETS).strip()
     if Symbols.SLICE_DELIM in index:
+        # if index == Symbols.SLICE_DELIM:
+        #     return None, None
+        # elif index.startswith(Symbols.SLICE_DELIM):
+        #     stop = index.lstrip(Symbols.SLICE_DELIM)
+        #     return None, _parse_value(stop.strip())
+        # elif index.endswith(Symbols.SLICE_DELIM):
+        #     start = index.rstrip(Symbols.SLICE_DELIM)
+        #     return _parse_value(start.strip()), None
+        # else:
         start, stop = index.split(Symbols.SLICE_DELIM)
         return _parse_value(start.strip()), _parse_value(stop.strip())
     else:
@@ -453,38 +478,11 @@ def _replace_constants(subroutine):
         i += 1
 
 
-# def _replace_explicit_addresses(subroutine, current_registers):
-#     i = 0
-#     while i < len(subroutine.commands):
-#         command = subroutine.commands[i]
-#         if not isinstance(command, Command):
-#             i += 1
-#             continue
-#         reg_i = 2 ** REG_INDEX_BITS - 6
-#         for j, operand in enumerate(command.operands):
-#             if isinstance(operand, ArrayEntry):
-#                 attrs = ["index"]
-#             elif isinstance(operand, ArraySlice):
-#                 attrs = ["start", "stop"]
-#             else:
-#                 continue
-#             for attr in attrs:
-#                 value = getattr(operand, attr)
-#                 if isinstance(value, Constant):
-#                     register = Register(RegisterName.R, reg_i)
-#                     if register in current_registers:
-#                         raise RuntimeError("Could not replace constant since no registers left")
-#                     set_command = Command(
-#                         instruction=Instruction.SET,
-#                         args=[],
-#                         operands=[register, value],
-#                     )
-#                     subroutine.commands.insert(i, set_command)
-#                     setattr(operand, attr, register)
-
-#                     reg_i -= 1
-#                     i += 1
-#         i += 1
+# def _expand_slices(subroutine):
+#     for command in subroutine.commands:
+#         for operand in command.operands:
+#             if isinstance(operand, ArraySlice):
+#                 pass
 
 
 def get_current_registers(subroutine):

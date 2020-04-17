@@ -1,6 +1,26 @@
 from enum import Enum, auto
 import ctypes
 
+############
+# METADATA #
+############
+NETQASM_VERSION = ctypes.c_uint8 * 2
+APP_ID = ctypes.c_uint16
+
+
+class Metadata(ctypes.Structure):
+    _fields_ = [
+        ('netqasm_version', NETQASM_VERSION),
+        ('app_id', APP_ID),
+    ]
+
+
+METADATA_BYTES = len(bytes(Metadata()))
+
+
+########
+# BODY #
+########
 CONSTANT = ctypes.c_uint32
 
 ADDRESS = ctypes.c_uint32
@@ -191,12 +211,6 @@ class SingleArraySliceCommand(Command):
     ])
 
 
-class ReturnCommand(Command):
-    _fields_ = add_padding([
-        ('address', ArraySlice),
-    ])
-
-
 class SingleRegisterCommand(Command):
     _fields_ = add_padding([
         ('register', Register),
@@ -206,6 +220,12 @@ class SingleRegisterCommand(Command):
 class ArrayCommand(Command):
     _fields_ = add_padding([
         ('size', Register),
+        ('address', Address),
+    ])
+
+
+class RetArrCommand(Command):
+    _fields_ = add_padding([
         ('address', Address),
     ])
 

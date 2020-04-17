@@ -50,7 +50,7 @@ ret_arr @0[0:1]
 """
 
     expected = Subroutine(
-        netqasm_version="0.0",
+        netqasm_version=(0, 0),
         app_id=0,
         commands=[
             Command(instruction=Instruction.SET, operands=[
@@ -165,7 +165,7 @@ EXIT:
 """
 
     expected = Subroutine(
-        netqasm_version="0.0",
+        netqasm_version=(0, 0),
         app_id=0,
         commands=[
             Command(instruction=Instruction.SET, operands=[

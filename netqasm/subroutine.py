@@ -222,12 +222,13 @@ _COMMAND_UNION = Union[
 
 @dataclass
 class Subroutine:
-    netqasm_version: str
+    netqasm_version: tuple
     app_id: int
     commands: List[_COMMAND_UNION]
 
     def _assert_types(self):
-        assert isinstance(self.netqasm_version, str)
+        assert isinstance(self.netqasm_version, tuple)
+        assert len(self.netqasm_version) == 2
         assert isinstance(self.app_id, int)
         assert all(isinstance(command, _COMMAND_UNION.__args__) for command in self.commands)
 
@@ -243,10 +244,14 @@ class Subroutine:
     @property
     def cstructs(self):
         self._assert_types()
-        return [command.cstruct for command in self.commands]
+        metadata = encoding.Metadata(
+            netqasm_version=self.netqasm_version,
+            app_id=self.app_id,
+        )
+        return [metadata] + [command.cstruct for command in self.commands]
 
     def __bytes__(self):
-        return b''.join(bytes(command) for command in self.commands)
+        return b''.join(bytes(cstruct) for cstruct in self.cstructs)
 
 
 class Symbols:
