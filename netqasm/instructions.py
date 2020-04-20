@@ -86,6 +86,7 @@ _COMMAND_GROUPS = {
         Instruction.Y,
         Instruction.Z,
         Instruction.H,
+        Instruction.S,
         Instruction.K,
         Instruction.T,
         Instruction.QFREE,

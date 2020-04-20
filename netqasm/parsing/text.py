@@ -24,7 +24,6 @@ def parse_text_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    # expand_slices=True,
 ):
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
@@ -36,7 +35,6 @@ def parse_text_subroutine(
         assign_branch_labels=assign_branch_labels,
         make_args_operands=make_args_operands,
         replace_constants=replace_constants,
-        # expand_slices=expand_slices,
     )
     return subroutine
 
@@ -46,15 +44,11 @@ def assemble_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    # expand_slices=True,
 ):
     if make_args_operands:
         _make_args_operands(subroutine)
-    # if expand_slices:
-    #     _expand_slices(subroutine)
     if replace_constants:
         _replace_constants(subroutine)
-        # _replace_explicit_addresses(subroutine, current_registers)
     if assign_branch_labels:
         _assign_branch_labels(subroutine)
     return subroutine
@@ -195,15 +189,6 @@ def _parse_index(index):
         return None
     index = index.strip(Symbols.INDEX_BRACKETS).strip()
     if Symbols.SLICE_DELIM in index:
-        # if index == Symbols.SLICE_DELIM:
-        #     return None, None
-        # elif index.startswith(Symbols.SLICE_DELIM):
-        #     stop = index.lstrip(Symbols.SLICE_DELIM)
-        #     return None, _parse_value(stop.strip())
-        # elif index.endswith(Symbols.SLICE_DELIM):
-        #     start = index.rstrip(Symbols.SLICE_DELIM)
-        #     return _parse_value(start.strip()), None
-        # else:
         start, stop = index.split(Symbols.SLICE_DELIM)
         return _parse_value(start.strip()), _parse_value(stop.strip())
     else:
@@ -220,24 +205,6 @@ def _split_of_bracket(word, brackets):
     address = word[:start]
     content = word[start:]
     return address, content
-
-
-# def _parse_value(word):
-#     if word.startswith(Symbols.DEREF_START):
-#         address = word.lstrip(Symbols.INDIRECT_START)
-#         if is_number(address):
-#             address = int(address)
-#         return Address(address=address, mode=AddressMode.INDIRECT)
-#     elif word.startswith(Symbols.ADDRESS_START):
-#         address = word.lstrip(Symbols.ADDRESS_START)
-#         if not is_number(address):
-#             raise NetQASMSyntaxError(f"Expected number for address {address}")
-#         return Address(address=int(address), mode=AddressMode.DIRECT)
-#     elif is_number(word):
-#         return Address(address=int(word), mode=AddressMode.IMMEDIATE)
-#     else:
-#         # Direct mode with a variable
-#         return Address(address=word, mode=AddressMode.DIRECT)
 
 
 def _split_preamble_body(subroutine):
@@ -392,21 +359,6 @@ def _get_unused_address(current_addresses):
             return address
 
 
-# def _find_current_branch_variables(subroutine: str):
-#     """Finds the current branch variables in a subroutine (str) and returns these as a list"""
-#     # NOTE preamble definitions are ignored
-#     # NOTE there is no checking here for valid and unique variable names
-#     preamble_lines, body_lines = _split_preamble_body(subroutine)
-
-#     branch_variables = []
-#     for line in body_lines:
-#         # A line defining a branch variable should end with BRANCH_END
-#         if line.endswith(Symbols.BRANCH_END):
-#             branch_variables.append(line.rstrip(Symbols.BRANCH_END))
-
-#         return branch_variables
-
-
 def _make_args_operands(subroutine):
     for command in subroutine.commands:
         if not isinstance(command, Command):
@@ -452,7 +404,6 @@ def _replace_constants(subroutine):
         if not isinstance(command, Command):
             i += 1
             continue
-        # reg_i = 2 ** REG_INDEX_BITS - 1
         tmp_registers = []
         for j, operand in enumerate(command.operands):
             if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
@@ -460,7 +411,6 @@ def _replace_constants(subroutine):
                 subroutine.commands.insert(i, set_command)
                 command.operands[j] = register
 
-                # reg_i -= 1
                 i += 1
             else:
                 if isinstance(operand, ArrayEntry):
@@ -478,16 +428,8 @@ def _replace_constants(subroutine):
                         subroutine.commands.insert(i, set_command)
                         setattr(operand, attr, register)
 
-                        # reg_i -= 1
                         i += 1
         i += 1
-
-
-# def _expand_slices(subroutine):
-#     for command in subroutine.commands:
-#         for operand in command.operands:
-#             if isinstance(operand, ArraySlice):
-#                 pass
 
 
 def get_current_registers(subroutine):
@@ -498,11 +440,4 @@ def get_current_registers(subroutine):
         for op in command.operands:
             if isinstance(op, Register):
                 current_registers.add(str(op))
-
-        # TODO
-        # if command.instruction == Instruction.SET:
-        #     register = command.operands[0]
-        #     if register not in current_registers:
-        #         current_registers.append(register)
-        # if command.instruction == Instruction.LOAD:
     return current_registers

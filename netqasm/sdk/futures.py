@@ -117,13 +117,6 @@ class Future(int):
     def value(self):
         if self._value is not None:
             return self._value
-        # TODO
-        # if self._address is None:
-        #     raise NoValueError(f"{self.__class__.__name__} was not assigned an array address, "
-        #                        "to for example use a measure outcome give it an address and index "
-        #                        "when calling measure, e.g.:\n"
-        #                        "\tarray = connection.new_array(1)"
-        #                        "\tm = q.measure(address=array.address, index=0)")
         if not isinstance(self._index, int):
             raise NonConstantIndexError("index is not constant and cannot be resolved")
         value = self._connection._shared_memory.get_array_part(address=self._address, index=self._index)

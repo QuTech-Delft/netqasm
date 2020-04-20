@@ -30,15 +30,6 @@ class EprCmdData:
     pairs_left: int
 
 
-# @dataclass
-# class RecvData:
-#     subroutine_id: int
-#     ent_info_array_address: int
-#     q_array_address: int
-#     recv_request: tuple
-#     pairs_left: int
-
-
 def inc_program_counter(method):
     def new_method(self, subroutine_id, operands):
         output = method(self, subroutine_id, operands)
@@ -351,6 +342,34 @@ class Executioner:
     def _instr_subm(self, subroutine_id, operands):
         self._handle_binary_classical_instr(Instruction.SUBM, subroutine_id, operands)
 
+    def _handle_binary_classical_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        if instr in [Instruction.ADDM, Instruction.SUBM]:
+            mod = self._get_register(app_id=app_id, register=operands[3])
+        else:
+            mod = None
+        if mod is not None and mod < 1:
+            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
+        a = self._get_register(app_id=app_id, register=operands[1])
+        b = self._get_register(app_id=app_id, register=operands[2])
+        value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
+        mod_str = "" if mod is None else f"(mod {mod})"
+        self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
+                           f"and storing the value {value} at register {operands[0]}")
+        self._set_register(app_id=app_id, register=operands[0], value=value)
+
+    def _compute_binary_classical_instr(self, instr, a, b, mod=1):
+        op = {
+            Instruction.ADD: operator.add,
+            Instruction.ADDM: operator.add,
+            Instruction.SUB: operator.sub,
+            Instruction.SUBM: operator.sub,
+        }[instr]
+        if mod is None:
+            return op(a, b)
+        else:
+            return op(a, b) % mod
+
     @inc_program_counter
     def _instr_x(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, operands)
@@ -398,6 +417,31 @@ class Executioner:
     @inc_program_counter
     def _instr_cphase(self, subroutine_id, operands):
         yield from self._handle_two_qubit_instr(Instruction.CPHASE, subroutine_id, operands)
+
+    def _handle_single_qubit_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address = self._get_register(app_id=app_id, register=operands[0])
+        self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")
+        output = self._do_single_qubit_instr(instr, subroutine_id, q_address)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _do_single_qubit_instr(self, instr, subroutine_id, address):
+        """Performs a single qubit gate"""
+        pass
+
+    def _handle_two_qubit_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address1 = self._get_register(app_id=app_id, register=operands[0])
+        q_address2 = self._get_register(app_id=app_id, register=operands[1])
+        self._logger.debug(f"Performing {instr} on the qubits at addresses {q_address1} and {q_address2}")
+        output = self._do_two_qubit_instr(instr, subroutine_id, q_address1, q_address2)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _do_two_qubit_instr(self, instr, subroutine_id, address1, address2):
+        """Performs a two qubit gate"""
+        pass
 
     @inc_program_counter
     def _instr_meas(self, subroutine_id, operands):
@@ -465,6 +509,7 @@ class Executioner:
         )
 
     def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_array_address):
+        # Should be subclassed
         raise NotImplementedError
 
     @inc_program_counter
@@ -507,6 +552,7 @@ class Executioner:
         self.network_stack.put(remote_node_id=remote_node_id, request=recv_request)
 
     def _get_recv_request(self, subroutine_id, remote_node_id, purpose_id):
+        # Should be subclassed
         raise NotImplementedError
 
     @inc_program_counter
@@ -626,7 +672,6 @@ class Executioner:
         return self._app_arrays[app_id][address, index]
 
     def _expand_array_part(self, app_id, array_part):
-        # if isinstance(array_part
         address = array_part.address.address.value
         if isinstance(array_part, ArrayEntry):
             if isinstance(array_part.index, Constant):
@@ -679,59 +724,6 @@ class Executioner:
         for physical_address in count(0):
             if physical_address not in self._used_physical_qubit_addresses:
                 return physical_address
-
-    def _handle_single_qubit_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=operands[0])
-        self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")
-        output = self._do_single_qubit_instr(instr, subroutine_id, q_address)
-        if isinstance(output, GeneratorType):
-            yield from output
-
-    def _do_single_qubit_instr(self, instr, subroutine_id, address):
-        """Performs a single qubit gate"""
-        pass
-
-    def _handle_two_qubit_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address1 = self._get_register(app_id=app_id, register=operands[0])
-        q_address2 = self._get_register(app_id=app_id, register=operands[1])
-        self._logger.debug(f"Performing {instr} on the qubits at addresses {q_address1} and {q_address2}")
-        output = self._do_two_qubit_instr(instr, subroutine_id, q_address1, q_address2)
-        if isinstance(output, GeneratorType):
-            yield from output
-
-    def _do_two_qubit_instr(self, instr, subroutine_id, address1, address2):
-        """Performs a two qubit gate"""
-        pass
-
-    def _handle_binary_classical_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        if instr in [Instruction.ADDM, Instruction.SUBM]:
-            mod = self._get_register(app_id=app_id, register=operands[3])
-        else:
-            mod = None
-        if mod is not None and mod < 1:
-            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
-        a = self._get_register(app_id=app_id, register=operands[1])
-        b = self._get_register(app_id=app_id, register=operands[2])
-        value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
-        mod_str = "" if mod is None else f"(mod {mod})"
-        self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
-                           f"and storing the value {value} at register {operands[0]}")
-        self._set_register(app_id=app_id, register=operands[0], value=value)
-
-    def _compute_binary_classical_instr(self, instr, a, b, mod=1):
-        op = {
-            Instruction.ADD: operator.add,
-            Instruction.ADDM: operator.add,
-            Instruction.SUB: operator.sub,
-            Instruction.SUBM: operator.sub,
-        }[instr]
-        if mod is None:
-            return op(a, b)
-        else:
-            return op(a, b) % mod
 
     def _assert_number_args(self, args, num):
         if not len(args) == num:

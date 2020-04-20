@@ -1,8 +1,7 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
-from netqasm.sdk.meas_outcome import MeasurementOutcome
-from netqasm.sdk.futures import Array
+from netqasm.sdk.futures import Array, Future
 from netqasm.parsing import parse_register
 
 
@@ -64,7 +63,7 @@ class Qubit(qubit):
         if not inplace:
             self._set_active(False)
 
-        return MeasurementOutcome(
+        return Future(
             connection=self._conn,
             address=address,
             index=index,

@@ -131,98 +131,102 @@ def test_epr():
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Qubit address array
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
+            Register(RegisterName.R, 0),
             Constant(1),
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
-            Register(RegisterName.R, 15),
-            Address(0),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 14),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.STORE, operands=[
-            Register(RegisterName.R, 15),
-            ArrayEntry(0, index=Register(RegisterName.R, 14)),
-        ]),
-        # Arg array
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
-            Constant(CREATE_FIELDS),
-        ]),
-        Command(instruction=Instruction.ARRAY, operands=[
-            Register(RegisterName.R, 15),
+            Register(RegisterName.R, 0),
             Address(1),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
+            Register(RegisterName.R, 0),
+            Constant(0),
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 1),
+            Constant(0),
+        ]),
+        Command(instruction=Instruction.STORE, operands=[
+            Register(RegisterName.R, 0),
+            ArrayEntry(1, index=Register(RegisterName.R, 1)),
+        ]),
+        # Arg array
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 0),
+            Constant(CREATE_FIELDS),
+        ]),
+        Command(instruction=Instruction.ARRAY, operands=[
+            Register(RegisterName.R, 0),
+            Address(2),
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 0),
             Constant(1),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 14),
+            Register(RegisterName.R, 1),
             Constant(1),
         ]),
         Command(instruction=Instruction.STORE, operands=[
-            Register(RegisterName.R, 15),
-            ArrayEntry(1, index=Register(RegisterName.R, 14)),
+            Register(RegisterName.R, 0),
+            ArrayEntry(2, index=Register(RegisterName.R, 1)),
         ]),
         # ent info array
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
-            Constant(8),
+            Register(RegisterName.R, 0),
+            Constant(9),
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
-            Register(RegisterName.R, 15),
-            Address(2),
+            Register(RegisterName.R, 0),
+            Address(0),
         ]),
         # create cmd
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
+            Register(RegisterName.R, 0),
             Constant(1),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 14),
+            Register(RegisterName.R, 1),
             Constant(0),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 13),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 12),
+            Register(RegisterName.R, 2),
             Constant(1),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 11),
+            Register(RegisterName.R, 3),
             Constant(2),
         ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 4),
+            Constant(0),
+        ]),
         Command(instruction=Instruction.CREATE_EPR, operands=[
-            Register(RegisterName.R, 15),
-            Register(RegisterName.R, 14),
-            Register(RegisterName.R, 13),
-            Register(RegisterName.R, 12),
-            Register(RegisterName.R, 11),
+            Register(RegisterName.R, 0),
+            Register(RegisterName.R, 1),
+            Register(RegisterName.R, 2),
+            Register(RegisterName.R, 3),
+            Register(RegisterName.R, 4),
         ]),
         # wait cmd
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 15),
+            Register(RegisterName.R, 0),
             Constant(0),
         ]),
         Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 14),
-            Constant(8),
+            Register(RegisterName.R, 1),
+            Constant(9),
         ]),
         Command(instruction=Instruction.WAIT_ALL, operands=[
             ArraySlice(
-                address=Address(Constant(2)),
-                start=Register(RegisterName.R, 15),
-                stop=Register(RegisterName.R, 14),
+                address=Address(Constant(0)),
+                start=Register(RegisterName.R, 0),
+                stop=Register(RegisterName.R, 1),
             ),
+        ]),
+        # return cmd
+        Command(instruction=Instruction.RET_ARR, operands=[
+            Address(Constant(0)),
         ]),
         # Hadamard
         Command(instruction=Instruction.SET, operands=[
@@ -250,3 +254,8 @@ def test_epr():
     print(subroutine)
     print(expected)
     assert subroutine == expected
+
+
+if __name__ == "__main__":
+    # test_simple()
+    test_epr()
