@@ -19,14 +19,6 @@ def test_non_constant_index():
         print(m)
 
 
-def test_no_array():
-    conn = MockConnnection()
-
-    m = Future(conn, address=0, index=0)
-    with pytest.raises(IndexError):
-        print(m)
-
-
 def test_no_value():
     conn = MockConnnection()
     conn._shared_memory.init_new_array(address=0, length=1)

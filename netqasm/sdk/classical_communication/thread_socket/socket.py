@@ -1,7 +1,8 @@
-import logging
-
+from netqasm.logging import get_netqasm_logger
 from ..socket import Socket
 from .socket_hub import _socket_hub
+
+# TODO add structured logging for QNE
 
 
 class ThreadSocket(Socket):
@@ -40,7 +41,7 @@ class ThreadSocket(Socket):
         self._socket_hub = _socket_hub
 
         # Logger
-        self._logger = logging.getLogger(f"{self.__class__.__name__}{self.key}")
+        self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
         self._logger.debug(f"Setting up connection")
 

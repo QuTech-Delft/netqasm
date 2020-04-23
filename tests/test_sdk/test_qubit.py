@@ -2,6 +2,7 @@ import logging
 
 from netqasm.sdk.connection import NetQASMConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.logging import set_log_level
 from netqasm.subroutine import (
     Subroutine,
     Command,
@@ -14,7 +15,7 @@ from netqasm.subroutine import (
 from netqasm.encoding import RegisterName
 from netqasm.instructions import Instruction
 from netqasm.parsing import parse_binary_subroutine
-from netqasm.network_stack import CREATE_FIELDS
+from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 
 
 class DebugConnection(NetQASMConnection):
@@ -27,7 +28,7 @@ class DebugConnection(NetQASMConnection):
 
 
 def test_simple():
-    logging.basicConfig(level=logging.DEBUG)
+    set_log_level(logging.DEBUG)
     with DebugConnection("Alice") as alice:
         q1 = Qubit(alice)
         q2 = Qubit(alice)
@@ -121,14 +122,24 @@ def test_epr():
         def _get_remote_node_id(self, name):
             return self.nodes[name]
 
-    logging.basicConfig(level=logging.DEBUG)
+    set_log_level(logging.DEBUG)
     with MockConnection("Alice") as alice:
         q1 = alice.createEPR("Bob")[0]
         q1.H()
 
     assert len(alice.storage) == 1
     subroutine = parse_binary_subroutine(alice.storage[0])
+    print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
+        # Arg array
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 0),
+            Constant(OK_FIELDS),
+        ]),
+        Command(instruction=Instruction.ARRAY, operands=[
+            Register(RegisterName.R, 0),
+            Address(0),
+        ]),
         # Qubit address array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
@@ -150,7 +161,7 @@ def test_epr():
             Register(RegisterName.R, 0),
             ArrayEntry(1, index=Register(RegisterName.R, 1)),
         ]),
-        # Arg array
+        # ent info array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
             Constant(CREATE_FIELDS),
@@ -170,15 +181,6 @@ def test_epr():
         Command(instruction=Instruction.STORE, operands=[
             Register(RegisterName.R, 0),
             ArrayEntry(2, index=Register(RegisterName.R, 1)),
-        ]),
-        # ent info array
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 0),
-            Constant(9),
-        ]),
-        Command(instruction=Instruction.ARRAY, operands=[
-            Register(RegisterName.R, 0),
-            Address(0),
         ]),
         # create cmd
         Command(instruction=Instruction.SET, operands=[
@@ -224,10 +226,6 @@ def test_epr():
                 stop=Register(RegisterName.R, 1),
             ),
         ]),
-        # return cmd
-        Command(instruction=Instruction.RET_ARR, operands=[
-            Address(Constant(0)),
-        ]),
         # Hadamard
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
@@ -244,6 +242,16 @@ def test_epr():
         Command(instruction=Instruction.QFREE, operands=[
             Register(RegisterName.Q, 0),
         ]),
+        # return cmds
+        Command(instruction=Instruction.RET_ARR, operands=[
+            Address(Constant(0)),
+        ]),
+        Command(instruction=Instruction.RET_ARR, operands=[
+            Address(Constant(1)),
+        ]),
+        Command(instruction=Instruction.RET_ARR, operands=[
+            Address(Constant(2)),
+        ]),
     ])
     for i, command in enumerate(subroutine.commands):
         print(repr(command))
@@ -257,5 +265,5 @@ def test_epr():
 
 
 if __name__ == "__main__":
-    # test_simple()
+    test_simple()
     test_epr()

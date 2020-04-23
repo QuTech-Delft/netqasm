@@ -1,3 +1,4 @@
+import os
 import logging
 import operator
 from enum import Enum, auto
@@ -6,6 +7,9 @@ from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
 
+import netsquid as ns
+
+from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address, Constant
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
@@ -36,12 +40,36 @@ def inc_program_counter(method):
         if isinstance(output, GeneratorType):
             yield from output
         self._program_counters[subroutine_id] += 1
+    new_method.__name__ == method.__name__
+    return new_method
+
+
+def log_instr(method):
+    def new_method(self, subroutine_id, operands):
+        if self._instr_logger is not None:
+            sid = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.SID]
+            prc = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.PRC]
+            nst = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.NST]
+            ins = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.INS]
+            instr_name = method.__name__[len('_instr_'):]
+            extra = {
+                sid: subroutine_id,
+                prc: self._program_counters[subroutine_id],
+                nst: ns.sim_time(),
+                ins: instr_name,
+            }
+            ops_str = ' '.join(str(op) for op in operands)
+            self._instr_logger.info(f"Doing instruction {instr_name} with operands {ops_str}", extra=extra)
+        output = method(self, subroutine_id, operands)
+        if isinstance(output, GeneratorType):
+            yield from output
+    new_method.__name__ == method.__name__
     return new_method
 
 
 class Executioner:
 
-    def __init__(self, name=None, num_qubits=5):
+    def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.
 
         The methods starting with `_instr_xxx` define what a given instruction should do and
@@ -57,10 +85,7 @@ class Executioner:
         ----------
         name : str or None
             Give a name to the executioner for logging purposes.
-        num_qubits : int
-            The number of qubits for the executioner to use
         """
-
         if name is None:
             self._name = f"{self.__class__}"
         else:
@@ -85,6 +110,9 @@ class Executioner:
         # Keep track of what subroutines are currently handled
         self._subroutines = {}
 
+        # Keep track of which subroutine in the order
+        self._next_subroutine_id = 0
+
         # Keep track of what physical qubit addresses are in use
         self._used_physical_qubit_addresses = []
 
@@ -100,7 +128,24 @@ class Executioner:
         # Network stack
         self._network_stack = None
 
-        self._logger = logging.getLogger(f"{self.__class__.__name__}({self._name})")
+        # Logger for instructions
+        self._instr_logger = self._setup_instr_logger(instr_log_dir=instr_log_dir)
+
+        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
+
+    def _setup_instr_logger(self, instr_log_dir):
+        if instr_log_dir is None:
+            return None
+        instr_logger = get_netqasm_logger(f"Instr-by-{self.__class__.__name__}({self._name})")
+        instr_log_file = f'{self._name.lower()}.log'
+        instr_log_path = os.path.join(instr_log_dir, instr_log_file)
+        filelog = logging.FileHandler(instr_log_path, mode='w')
+        formatter = _setup_instr_logger_formatter()
+        filelog.setFormatter(formatter)
+        instr_logger.setLevel(logging.INFO)
+        instr_logger.addHandler(filelog)
+        instr_logger.propagate = False
+        return instr_logger
 
     @property
     def network_stack(self):
@@ -147,6 +192,12 @@ class Executioner:
         }
         return instruction_handlers
 
+    def _consume_execute_subroutine(self, subroutine):
+        """Consumes the generator returned by execute_subroutine"""
+        output = self.execute_subroutine(subroutine=subroutine)
+        for _ in output:
+            pass
+
     def execute_subroutine(self, subroutine):
         """Executes the a subroutine given to the executioner"""
         subroutine_id = self._get_new_subroutine_id()
@@ -157,9 +208,8 @@ class Executioner:
             yield from output
 
     def _get_new_subroutine_id(self):
-        for subroutine_id in count(0):
-            if subroutine_id not in self._subroutines:
-                return subroutine_id
+        self._next_subroutine_id += 1
+        return self._next_subroutine_id - 1
 
     def _execute_commands(self, subroutine_id, commands):
         """Executes a given subroutine"""
@@ -201,6 +251,7 @@ class Executioner:
         self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
+    @log_instr
     def _instr_init(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.INIT, subroutine_id, operands)
 
@@ -371,50 +422,62 @@ class Executioner:
             return op(a, b) % mod
 
     @inc_program_counter
+    @log_instr
     def _instr_x(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_y(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.Y, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_z(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.Z, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_h(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.H, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_s(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.S, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_k(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.K, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_t(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.T, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_x(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_X, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_y(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_Y, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_z(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_Z, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_cnot(self, subroutine_id, operands):
         yield from self._handle_two_qubit_instr(Instruction.CNOT, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_cphase(self, subroutine_id, operands):
         yield from self._handle_two_qubit_instr(Instruction.CPHASE, subroutine_id, operands)
 
@@ -444,6 +507,7 @@ class Executioner:
         pass
 
     @inc_program_counter
+    @log_instr
     def _instr_meas(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
@@ -458,6 +522,7 @@ class Executioner:
         return 0
 
     @inc_program_counter
+    @log_instr
     def _instr_create_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
@@ -513,6 +578,7 @@ class Executioner:
         raise NotImplementedError
 
     @inc_program_counter
+    @log_instr
     def _instr_recv_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
@@ -607,7 +673,7 @@ class Executioner:
     def _instr_qfree(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
-        self._logger.debug(f"Freeing qubit at address {q_address}")
+        self._logger.debug(f"Freeing qubit at virtual address {q_address}")
         self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
@@ -703,6 +769,7 @@ class Executioner:
                 physical_address = self._get_unused_physical_qubit()
             self._used_physical_qubit_addresses.append(physical_address)
             unit_module[virtual_address] = physical_address
+            self._reserve_physical_qubit(physical_address)
         else:
             app_id = self._subroutines[subroutine_id].app_id
             raise RuntimeError(f"QubitAddress at address {virtual_address} "
@@ -715,8 +782,18 @@ class Executioner:
             raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is not allocated "
                                "and cannot be freed")
         else:
+            physical_address = unit_module[address]
             unit_module[address] = None
-            self._used_physical_qubit_addresses.remove(address)
+            self._used_physical_qubit_addresses.remove(physical_address)
+            self._clear_phys_qubit_in_memory(physical_address)
+
+    def _reserve_physical_qubit(self, physical_address):
+        """To be subclassed for different quantum processors (e.g. netsquid)"""
+        pass
+
+    def _clear_phys_qubit_in_memory(self, physical_address):
+        """To be subclassed for different quantum processors (e.g. netsquid)"""
+        pass
 
     def _get_unused_physical_qubit(self):
         # Assuming that the topology of the unit module is a complete graph

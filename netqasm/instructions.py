@@ -166,6 +166,18 @@ def instruction_to_string(instr):
     return instr.name.lower()
 
 
+def flip_branch_instr(instr):
+    try:
+        return {
+            Instruction.BEQ: Instruction.BNE,
+            Instruction.BNE: Instruction.BEQ,
+            Instruction.BLT: Instruction.BGE,
+            Instruction.BGE: Instruction.BLT,
+        }[instr]
+    except KeyError:
+        raise ValueError(f"Not a branch instruction {instr}")
+
+
 _STRING_TO_INSTRUCTION = {instruction_to_string(instr): instr for instr in Instruction}
 
 

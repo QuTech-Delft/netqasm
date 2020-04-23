@@ -1,11 +1,6 @@
 import click
 import netqasm
-from netqasm.executioner import Executioner
 from netqasm.io_util import execute_subroutine
-try:
-    from squidasm.executioner import NetSquidExecutioner
-except ModuleNotFoundError:
-    NetSquidExecutioner = None
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -34,8 +29,8 @@ def version():
 
 @cli.command()
 @click.argument("netqasm-file", type=str)
-@click.option("-e", "--executioner", type=click.Choice(["debug", "netsquid"]), default="debug",
-              help="Which executioner to be used.\n"
+@click.option("-b", "--backend", type=click.Choice(["debug", "netsquid"]), default="debug",
+              help="Which backend to be used.\n"
                    "debug (default): simple debug executioner which does not perform any quantum operations.\n"
                    "netsquid: use netsquid to simulate qubit operations "
                    "(for this the package 'squidasm' needs to be installed.\n"
@@ -45,17 +40,12 @@ def version():
 @click.option("-o", "--output-file", type=str, default=None,
               help="File to write output to, if not specified the name of "
                    "the netqasm file will be used with '.out' as extension.")
-def execute(netqasm_file, executioner, num_qubits, output_file):
+@click.option("--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]), default="WARNING",
+              help="What log-level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)."
+                   "Note, this affects logging to stderr, not logging instructions to file."
+              )
+def execute(netqasm_file, backend, num_qubits, output_file, log_level):
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    if executioner == "debug":
-        executioner = Executioner(num_qubits=num_qubits)
-    elif executioner == "netsquid":
-        if NetSquidExecutioner is None:
-            raise ModuleNotFoundError("To execute a subroutine using NetSquid the package "
-                                      "'squidasm' needs to be installed")
-        executioner = NetSquidExecutioner(num_qubits=num_qubits)
-    else:
-        raise ValueError("Unkown executioner {executioner}")
-    execute_subroutine(executioner, netqasm_file=netqasm_file, output_file=output_file)
+    execute_subroutine(backend, num_qubits, netqasm_file=netqasm_file, output_file=output_file, log_level=log_level)

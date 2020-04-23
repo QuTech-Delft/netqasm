@@ -5,6 +5,7 @@ from netqasm.encoding import RegisterName
 from netqasm.subroutine import Register
 from netqasm.executioner import Executioner
 from netqasm.parsing import parse_text_subroutine
+from netqasm.logging import set_log_level
 
 
 @pytest.mark.parametrize("subroutine_str, expected_register, expected_output", [
@@ -46,7 +47,7 @@ from netqasm.parsing import parse_text_subroutine
     ),
 ])
 def test_executioner(subroutine_str, expected_register, expected_output):
-    logging.basicConfig(level=logging.DEBUG)
+    set_log_level(logging.DEBUG)
     subroutine = parse_text_subroutine(subroutine_str)
 
     print(subroutine)

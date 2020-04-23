@@ -146,7 +146,7 @@ def _parse_value(value, allow_label=False):
         # Parse a label
         return _parse_label(value)
     else:
-        raise NetQASMSyntaxError("{value} is not a valid value in this case")
+        raise NetQASMSyntaxError(f"{value} is not a valid value in this case")
 
 
 def _parse_label(label):
@@ -380,9 +380,9 @@ _REPLACE_CONSTANTS_EXCEPTION = [
 
 
 def _replace_constants(subroutine):
-    current_registers = get_current_registers(subroutine)
+    current_registers = get_current_registers(subroutine.commands)
 
-    def reg_and_set_cmd(value, tmp_registers):
+    def reg_and_set_cmd(value, tmp_registers, lineno=None):
         for i in range(2 ** REG_INDEX_BITS):
             register = Register(RegisterName.R, i)
             if str(register) not in current_registers and register not in tmp_registers:
@@ -393,6 +393,7 @@ def _replace_constants(subroutine):
             instruction=Instruction.SET,
             args=[],
             operands=[register, value],
+            lineno=lineno,
         )
         tmp_registers.append(register)
 
@@ -407,7 +408,7 @@ def _replace_constants(subroutine):
         tmp_registers = []
         for j, operand in enumerate(command.operands):
             if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
-                register, set_command = reg_and_set_cmd(operand, tmp_registers)
+                register, set_command = reg_and_set_cmd(operand, tmp_registers, lineno=command.lineno)
                 subroutine.commands.insert(i, set_command)
                 command.operands[j] = register
 
@@ -424,7 +425,7 @@ def _replace_constants(subroutine):
                     if isinstance(value, int):
                         value = Constant(value)
                     if isinstance(value, Constant):
-                        register, set_command = reg_and_set_cmd(value, tmp_registers)
+                        register, set_command = reg_and_set_cmd(value, tmp_registers, lineno=command.lineno)
                         subroutine.commands.insert(i, set_command)
                         setattr(operand, attr, register)
 
@@ -432,9 +433,9 @@ def _replace_constants(subroutine):
         i += 1
 
 
-def get_current_registers(subroutine):
+def get_current_registers(commands):
     current_registers = set()
-    for command in subroutine.commands:
+    for command in commands:
         if not isinstance(command, Command):
             continue
         for op in command.operands:

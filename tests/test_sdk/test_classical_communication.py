@@ -1,8 +1,10 @@
 import pytest
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from timeit import default_timer as timer
 
 from netqasm.sdk import ThreadSocket
+from netqasm.logging import set_log_level
 
 
 def test_init_error():
@@ -230,11 +232,10 @@ def execute_functions(functions):
 
 
 if __name__ == '__main__':
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
-    # test_connect()
-    # test_connection_lost()
-    # test_send_recv()
+    set_log_level(logging.DEBUG)
+    test_connect()
+    test_connection_lost()
+    test_send_recv()
     test_recv_block()
-    # test_ping_pong_counter()
-    # test_ping_pong_counter_callbacks()
+    test_ping_pong_counter()
+    test_ping_pong_counter_callbacks()

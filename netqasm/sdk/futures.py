@@ -1,8 +1,6 @@
-from copy import copy
-
 from netqasm.encoding import REG_INDEX_BITS
 from netqasm.parsing import parse_register, parse_address
-from netqasm.subroutine import Constant, Symbols, Command
+from netqasm.subroutine import Constant, Symbols, Command, Register
 from netqasm.instructions import Instruction
 
 
@@ -128,7 +126,6 @@ class Future(int):
         if not isinstance(other, int):
             raise NotImplementedError
         tmp_register = parse_register(f"R{2 ** REG_INDEX_BITS - 1}")
-        address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{self._index}]")
         add_operands = [
             tmp_register,
             tmp_register,
@@ -143,34 +140,91 @@ class Future(int):
             add_operands.append(Constant(mod))
 
         commands = [
-            Command(
-                instruction=Instruction.LOAD,
-                operands=[
-                    tmp_register,
-                    address_entry,
-                ],
-            ),
+            self._get_load_command(tmp_register),
             Command(
                 instruction=add_instr,
                 operands=add_operands
             ),
-            Command(
-                instruction=Instruction.STORE,
-                operands=[
-                    tmp_register,
-                    copy(address_entry),
-                ],
-            ),
+            self._get_store_command(tmp_register),
         ]
         self._connection.put_commands(commands)
 
+    def _get_load_command(self, register):
+        return self._get_access_command(Instruction.LOAD, register)
+
+    def _get_store_command(self, register):
+        return self._get_access_command(Instruction.STORE, register)
+
+    def _get_access_command(self, instruction, register):
+        assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
+        if isinstance(self._index, Future):
+            raise NotImplementedError
+        elif isinstance(self._index, int) or isinstance(self._index, Register):
+            index = self._index
+        else:
+            raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
+        address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{index}]")
+        return Command(
+            instruction=instruction,
+            operands=[
+                register,
+                address_entry,
+            ],
+        )
+
+    # TODO add other conditions
+    def if_eq(self, other):
+        return _IfContext(
+            condition=Instruction.BEQ,
+            a=self,
+            b=other,
+        )
+
+
+class _IfContext:
+
+    next_id = 0
+
+    def __init__(self, condition, a, b=0):
+        self._id = self._get_id()
+        self._condition = condition
+        self._connection = a._connection
+        self._a = a
+        self._b = b
+
+    def _get_id(self):
+        self.__class__.next_id += 1
+        return self.__class__.next_id - 1
+
+    def __enter__(self, *args, **kwargs):
+        self._connection._enter_if_context(context_id=self._id)
+
+    def __exit__(self, *args, **kwargs):
+        self._connection._exit_if_context(
+            context_id=self._id,
+            condition=self._condition,
+            a=self._a,
+            b=self._b,
+        )
+
 
 class Array:
-    def __init__(self, connection, length, address):
+    def __init__(self, connection, length, address, init_values=None, lineno=None):
+        if init_values is not None:
+            if not all((isinstance(x, int) or x is None) for x in init_values):
+                raise TypeError("Array needs to consist of int's or None's")
+            length = len(init_values)
         assert isinstance(length, int) and length > 0, f"{length} is not a valid length"
         self._connection = connection
         self._length = length
         self._address = address
+        self._init_values = init_values
+        self._lineno = lineno
+
+    @property
+    def lineno(self):
+        """What line in host application file initiated this array"""
+        return self._lineno
 
     def __len__(self):
         return self._length
@@ -181,3 +235,23 @@ class Array:
     @property
     def address(self):
         return self._address
+
+    def get_future_index(self, index):
+        if isinstance(index, str):
+            index = parse_register(index)
+        return Future(
+            connection=self._connection,
+            address=self._address,
+            index=index,
+        )
+
+    def get_future_slice(self, s):
+        range_args = []
+        for attr in ["start", "stop", "step"]:
+            x = getattr(s, attr)
+            if x is not None:
+                if not isinstance(x, int):
+                    raise NotImplementedError("Future slices can only be specified by integers at this point, "
+                                              f"not {type(x)}")
+                range_args.append(x)
+        return [self.get_future_index(index) for index in range(*range_args)]
