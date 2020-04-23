@@ -7,8 +7,6 @@ from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
 
-import netsquid as ns
-
 from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address, Constant
 from netqasm.instructions import Instruction, instruction_to_string
@@ -49,13 +47,14 @@ def log_instr(method):
         if self._instr_logger is not None:
             sid = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.SID]
             prc = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.PRC]
-            nst = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.NST]
+            sit = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.SIT]
             ins = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.INS]
             instr_name = method.__name__[len('_instr_'):]
+            sim_time = self._get_simulated_time()
             extra = {
                 sid: subroutine_id,
                 prc: self._program_counters[subroutine_id],
-                nst: ns.sim_time(),
+                sit: sim_time,
                 ins: instr_name,
             }
             ops_str = ' '.join(str(op) for op in operands)
@@ -132,6 +131,9 @@ class Executioner:
         self._instr_logger = self._setup_instr_logger(instr_log_dir=instr_log_dir)
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
+
+    def _get_simulated_time(self):
+        return 0
 
     def _setup_instr_logger(self, instr_log_dir):
         if instr_log_dir is None:

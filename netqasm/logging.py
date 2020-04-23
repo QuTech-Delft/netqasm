@@ -32,7 +32,7 @@ def _setup_netqasm_logger():
 
 class _InstrLogHeaders(Enum):
     WCT = "WCT"  # Wall clock time
-    NST = "NST"  # NetSquid time
+    SIT = "SIT"  # Simulated time
     SID = "SID"  # Subroutine ID
     PRC = "PRC"  # Program counter
     HLN = "HLN"  # Host line number
@@ -41,7 +41,7 @@ class _InstrLogHeaders(Enum):
 
 _INSTR_LOGGER_FIELDS = {
     _InstrLogHeaders.WCT: "asctime",
-    _InstrLogHeaders.NST: "ns_time",
+    _InstrLogHeaders.SIT: "sim_time",
     _InstrLogHeaders.SID: "subroutine_id",
     _InstrLogHeaders.PRC: "program_counter",
     _InstrLogHeaders.HLN: "host_lineno",
@@ -56,7 +56,7 @@ def _setup_instr_logger_formatter():
     """Instruction logger used by for example the Executioner"""
     hdrs = [
         _InstrLogHeaders.WCT,
-        _InstrLogHeaders.NST,
+        _InstrLogHeaders.SIT,
         _InstrLogHeaders.SID,
         _InstrLogHeaders.PRC,
         _InstrLogHeaders.INS,
