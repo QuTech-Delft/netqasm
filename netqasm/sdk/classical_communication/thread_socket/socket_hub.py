@@ -1,9 +1,10 @@
-import logging
 from time import sleep
 from threading import Lock
 from collections import defaultdict
 from timeit import default_timer as timer
 from weakref import WeakMethod
+
+from netqasm.logging import get_netqasm_logger
 
 
 class _SocketHub:
@@ -20,10 +21,7 @@ class _SocketHub:
 
         self._lock = Lock()
 
-        self._logger = logging.getLogger(self.__class__.__name__)
-
-        # TODO
-        self._sockets = []
+        self._logger = get_netqasm_logger(self.__class__.__name__)
 
     def connect(self, socket, timeout=None):
         """Connects a socket to another"""
@@ -31,9 +29,6 @@ class _SocketHub:
         self._add_callbacks(socket)
 
         self._wait_for_remote(socket, timeout=timeout)
-
-        # TODO
-        self._sockets.append(WeakMethod(socket.send))
 
     def _add_callbacks(self, socket):
         if socket.use_callbacks:

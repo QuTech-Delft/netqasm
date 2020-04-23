@@ -1,8 +1,10 @@
 # NETQASM 0.0
 # APPID 0
-store m 0
+# DEFINE i R0
+set i! 0
 LOOP:
-beq m 10 EXIT
-add m m 1
-beq 0 0 LOOP
+beq i! 10 EXIT
+add i! i! 1
+jmp LOOP
 EXIT:
+ret_reg i!
