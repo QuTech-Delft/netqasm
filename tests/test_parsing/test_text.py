@@ -69,51 +69,51 @@ ret_arr @0[0:1]
                 Register(RegisterName.Q, 0),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
                 Constant(4),
             ]),
             Command(instruction=Instruction.ARRAY, operands=[
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
                 Address(address=Constant(2)),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
                 Constant(1),
             ]),
             Command(instruction=Instruction.ADD, operands=[
                 Register(RegisterName.R, 1),
                 Register(RegisterName.R, 2),
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
                 Constant(0),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 14),
+                Register(RegisterName.R, 4),
                 Constant(0),
             ]),
             Command(instruction=Instruction.BEQ, operands=[
-                Register(RegisterName.R, 15),
-                Register(RegisterName.R, 14),
+                Register(RegisterName.R, 3),
+                Register(RegisterName.R, 4),
                 Constant(11),
             ]),
             Command(instruction=Instruction.RET_REG, operands=[
                 Register(RegisterName.R, 0),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 15),
+                Register(RegisterName.R, 3),
                 Constant(0),
             ]),
             Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 14),
+                Register(RegisterName.R, 4),
                 Constant(1),
             ]),
             Command(instruction=Instruction.RET_ARR, operands=[
                 ArraySlice(
                     Address(Constant(0)),
-                    Register(RegisterName.R, 15),
-                    Register(RegisterName.R, 14),
+                    Register(RegisterName.R, 3),
+                    Register(RegisterName.R, 4),
                 ),
             ]),
         ])

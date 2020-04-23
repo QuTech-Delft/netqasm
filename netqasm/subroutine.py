@@ -95,12 +95,8 @@ class ArrayEntry:
             self.address = Address(Constant(self.address))
 
     def _assert_types(self):
-        try:
-            assert isinstance(self.address, Address)
-            assert isinstance(self.index, Register)
-        except Exception as err:
-            breakpoint()
-            raise err
+        assert isinstance(self.address, Address)
+        assert isinstance(self.index, Register)
 
     def __str__(self):
         index = f"{Symbols.INDEX_BRACKETS[0]}{self.index}{Symbols.INDEX_BRACKETS[1]}"
@@ -160,11 +156,20 @@ _OPERAND_UNION = Union[
 ]
 
 
+def _get_lineo_str(lineno):
+    if lineno is None:
+        lineno = "()"
+    else:
+        lineno = f"({lineno})"
+    return f"{rspaces(lineno, min_chars=5)} "
+
+
 @dataclass
 class Command:
     instruction: Instruction
     args: List[Constant] = None
     operands: List[_OPERAND_UNION] = None
+    lineno: int = None
 
     def __post_init__(self):
         if self.args is None:
@@ -178,6 +183,13 @@ class Command:
         assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
 
     def __str__(self):
+        return self._build_str(show_lineno=False)
+
+    @property
+    def debug_str(self):
+        return self._build_str(show_lineno=True)
+
+    def _build_str(self, show_lineno=False):
         if len(self.args) == 0:
             args = ''
         else:
@@ -185,7 +197,11 @@ class Command:
             args = Symbols.ARGS_BRACKETS[0] + args + Symbols.ARGS_BRACKETS[1]
         operands = ' '.join(str(operand) for operand in self.operands)
         instr_name = instruction_to_string(self.instruction)
-        return f"{instr_name}{args} {operands}"
+        if show_lineno:
+            lineno_str = _get_lineo_str(self.lineno)
+        else:
+            lineno_str = ""
+        return f"{lineno_str}{instr_name}{args} {operands}"
 
     @property
     def cstruct(self):
@@ -206,12 +222,24 @@ class Command:
 @dataclass
 class BranchLabel:
     name: str
+    lineno: int = None
 
     def _assert_types(self):
         assert isinstance(self.name, str)
 
     def __str__(self):
-        return self.name + Symbols.BRANCH_END
+        return self._build_str(show_lineno=False)
+
+    @property
+    def debug_str(self):
+        return self._build_str(show_lineno=True)
+
+    def _build_str(self, show_lineno=False):
+        if show_lineno:
+            lineno_str = _get_lineo_str(self.lineno)
+        else:
+            lineno_str = ""
+        return f"{lineno_str}{self.name}{Symbols.BRANCH_END}"
 
 
 _COMMAND_UNION = Union[
@@ -234,8 +262,9 @@ class Subroutine:
 
     def __str__(self):
         to_return = f"Subroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
+        to_return += " LN | HLN | CMD\n"
         for i, command in enumerate(self.commands):
-            to_return += f"{rspaces(i)} {command}\n"
+            to_return += f"{rspaces(i)} {command.debug_str}\n"
         return to_return
 
     def __len__(self):

@@ -86,6 +86,7 @@ _COMMAND_GROUPS = {
         Instruction.Y,
         Instruction.Z,
         Instruction.H,
+        Instruction.S,
         Instruction.K,
         Instruction.T,
         Instruction.QFREE,
@@ -163,6 +164,18 @@ def instruction_to_string(instr):
     if not isinstance(instr, Instruction):
         raise ValueError(f"Unknown instruction {instr}")
     return instr.name.lower()
+
+
+def flip_branch_instr(instr):
+    try:
+        return {
+            Instruction.BEQ: Instruction.BNE,
+            Instruction.BNE: Instruction.BEQ,
+            Instruction.BLT: Instruction.BGE,
+            Instruction.BGE: Instruction.BLT,
+        }[instr]
+    except KeyError:
+        raise ValueError(f"Not a branch instruction {instr}")
 
 
 _STRING_TO_INSTRUCTION = {instruction_to_string(instr): instr for instr in Instruction}

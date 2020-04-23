@@ -1,8 +1,6 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
-from netqasm.sdk.meas_outcome import MeasurementOutcome
-
 
 class Qubit(qubit):
     def __init__(self, conn, put_new_command=True, ent_info=None):
@@ -12,8 +10,9 @@ class Qubit(qubit):
         self.notify = False
 
         if put_new_command:
-            self._conn.put_command(self._qID, CQC_CMD_NEW)
+            self._conn.put_command(CQC_CMD_NEW, qID=self._qID)
 
+        # TODO fix this after moving from cqc
         self._active = None
         self._set_active(True)
 
@@ -30,22 +29,19 @@ class Qubit(qubit):
     def _conn(self, value):
         self._cqc = value
 
-    def measure(self, var_name=None, inplace=False):
+    def measure(self, future=None, inplace=False):
         self.check_active()
 
-        if var_name is None:
-            var_name = self._conn._get_unused_variable(start_with="m")
-        address_index = self._conn._create_new_outcome_variable(var_name=var_name)
+        if future is None:
+            array = self._conn.new_array(1)
+            future = array.get_future_index(0)
 
-        self._conn.put_command(self._qID, CQC_CMD_MEASURE, address_index=address_index, inplace=inplace)
+        self._conn.put_command(CQC_CMD_MEASURE, qID=self._qID, future=future, inplace=inplace)
 
         if not inplace:
             self._set_active(False)
 
-        return MeasurementOutcome(
-            connection=self._conn,
-            var_name=var_name,
-        )
+        return future
 
     @property
     def entanglement_info(self):
@@ -62,3 +58,25 @@ class Qubit(qubit):
         remote_node_name = self._conn._get_remote_node_name(remote_node_id)
         self._remote_ent_node = remote_node_name
         return remote_node_name
+
+
+class _FutureQubit(Qubit):
+    def __init__(self, conn, future_id):
+        """Used by NetQASMConnection to handle operations on a future qubit (e.g. post createEPR)"""
+        self._conn = conn
+        # NOTE this is needed to be compatible with CQC abstract class
+        self.notify = False
+
+        self._qID = future_id
+
+        # TODO fix this after moving from cqc
+        self._active = None
+        self._set_active(True)
+
+    @property
+    def entanglement_info(self):
+        raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
+
+    @property
+    def remote_entangled_node(self):
+        raise NotImplementedError("Cannot access entanglement info of a future qubit yet")

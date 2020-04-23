@@ -1,3 +1,4 @@
+import os
 import logging
 import operator
 from enum import Enum, auto
@@ -6,6 +7,7 @@ from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
 
+from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address, Constant
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
@@ -30,27 +32,43 @@ class EprCmdData:
     pairs_left: int
 
 
-# @dataclass
-# class RecvData:
-#     subroutine_id: int
-#     ent_info_array_address: int
-#     q_array_address: int
-#     recv_request: tuple
-#     pairs_left: int
-
-
 def inc_program_counter(method):
     def new_method(self, subroutine_id, operands):
         output = method(self, subroutine_id, operands)
         if isinstance(output, GeneratorType):
             yield from output
         self._program_counters[subroutine_id] += 1
+    new_method.__name__ == method.__name__
+    return new_method
+
+
+def log_instr(method):
+    def new_method(self, subroutine_id, operands):
+        if self._instr_logger is not None:
+            sid = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.SID]
+            prc = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.PRC]
+            sit = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.SIT]
+            ins = _INSTR_LOGGER_FIELDS[_InstrLogHeaders.INS]
+            instr_name = method.__name__[len('_instr_'):]
+            sim_time = self._get_simulated_time()
+            extra = {
+                sid: subroutine_id,
+                prc: self._program_counters[subroutine_id],
+                sit: sim_time,
+                ins: instr_name,
+            }
+            ops_str = ' '.join(str(op) for op in operands)
+            self._instr_logger.info(f"Doing instruction {instr_name} with operands {ops_str}", extra=extra)
+        output = method(self, subroutine_id, operands)
+        if isinstance(output, GeneratorType):
+            yield from output
+    new_method.__name__ == method.__name__
     return new_method
 
 
 class Executioner:
 
-    def __init__(self, name=None, num_qubits=5):
+    def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.
 
         The methods starting with `_instr_xxx` define what a given instruction should do and
@@ -66,10 +84,7 @@ class Executioner:
         ----------
         name : str or None
             Give a name to the executioner for logging purposes.
-        num_qubits : int
-            The number of qubits for the executioner to use
         """
-
         if name is None:
             self._name = f"{self.__class__}"
         else:
@@ -94,6 +109,9 @@ class Executioner:
         # Keep track of what subroutines are currently handled
         self._subroutines = {}
 
+        # Keep track of which subroutine in the order
+        self._next_subroutine_id = 0
+
         # Keep track of what physical qubit addresses are in use
         self._used_physical_qubit_addresses = []
 
@@ -109,7 +127,27 @@ class Executioner:
         # Network stack
         self._network_stack = None
 
-        self._logger = logging.getLogger(f"{self.__class__.__name__}({self._name})")
+        # Logger for instructions
+        self._instr_logger = self._setup_instr_logger(instr_log_dir=instr_log_dir)
+
+        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
+
+    def _get_simulated_time(self):
+        return 0
+
+    def _setup_instr_logger(self, instr_log_dir):
+        if instr_log_dir is None:
+            return None
+        instr_logger = get_netqasm_logger(f"Instr-by-{self.__class__.__name__}({self._name})")
+        instr_log_file = f'{self._name.lower()}.log'
+        instr_log_path = os.path.join(instr_log_dir, instr_log_file)
+        filelog = logging.FileHandler(instr_log_path, mode='w')
+        formatter = _setup_instr_logger_formatter()
+        filelog.setFormatter(formatter)
+        instr_logger.setLevel(logging.INFO)
+        instr_logger.addHandler(filelog)
+        instr_logger.propagate = False
+        return instr_logger
 
     @property
     def network_stack(self):
@@ -156,6 +194,12 @@ class Executioner:
         }
         return instruction_handlers
 
+    def _consume_execute_subroutine(self, subroutine):
+        """Consumes the generator returned by execute_subroutine"""
+        output = self.execute_subroutine(subroutine=subroutine)
+        for _ in output:
+            pass
+
     def execute_subroutine(self, subroutine):
         """Executes the a subroutine given to the executioner"""
         subroutine_id = self._get_new_subroutine_id()
@@ -166,9 +210,8 @@ class Executioner:
             yield from output
 
     def _get_new_subroutine_id(self):
-        for subroutine_id in count(0):
-            if subroutine_id not in self._subroutines:
-                return subroutine_id
+        self._next_subroutine_id += 1
+        return self._next_subroutine_id - 1
 
     def _execute_commands(self, subroutine_id, commands):
         """Executes a given subroutine"""
@@ -191,9 +234,9 @@ class Executioner:
     def _instr_set(self, subroutine_id, operands):
         register = operands[0]
         constant = operands[1]
+        self._logger.debug(f"Set register {register} to {constant}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id, register, constant.value)
-        self._logger.debug(f"Set register {register} to {constant}")
 
     def _set_register(self, app_id, register, value):
         self._registers[app_id][register.name][register.index] = value
@@ -206,10 +249,11 @@ class Executioner:
         register = operands[0]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, register)
-        self._allocate_physical_qubit(subroutine_id, qubit_address)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
+        self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
+    @log_instr
     def _instr_init(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.INIT, subroutine_id, operands)
 
@@ -219,8 +263,8 @@ class Executioner:
         array_entry = operands[1]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         value = self._get_register(app_id, register)
-        self._set_array_entry(app_id=app_id, array_entry=array_entry, value=value)
         self._logger.debug(f"Storing value {value} from register {register} to array entry {array_entry}")
+        self._set_array_entry(app_id=app_id, array_entry=array_entry, value=value)
 
     @inc_program_counter
     def _instr_load(self, subroutine_id, operands):
@@ -228,31 +272,31 @@ class Executioner:
         array_entry = operands[1]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         value = self._get_array_entry(app_id=app_id, array_entry=array_entry)
-        value = self._set_register(app_id, register, value)
         self._logger.debug(f"Storing value {value} from array entry {array_entry} to register {register}")
+        self._set_register(app_id, register, value)
 
     @inc_program_counter
     def _instr_lea(self, subroutine_id, operands):
         register = operands[0]
         address = operands[1]
+        self._logger.debug(f"Storing address of {address} to register {register}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id=app_id, register=register, value=address.address)
-        self._logger.debug(f"Storing address of {address} to register {register}")
 
     @inc_program_counter
     def _instr_undef(self, subroutine_id, operands):
         array_entry = operands[0]
+        self._logger.debug(f"Unset array entry {array_entry}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_array_entry(app_id=app_id, array_entry=array_entry, value=None)
-        self._logger.debug(f"Unset array entry {array_entry}")
 
     @inc_program_counter
     def _instr_array(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         length = self._get_register(app_id, operands[0])
         address = operands[1]
-        self._initialize_array(app_id=app_id, address=address, length=length)
         self._logger.debug(f"Initializing an array of length {length} at address {address}")
+        self._initialize_array(app_id=app_id, address=address, length=length)
 
     def _initialize_array(self, app_id, address, length):
         arrays = self._app_arrays[app_id]
@@ -351,55 +395,121 @@ class Executioner:
     def _instr_subm(self, subroutine_id, operands):
         self._handle_binary_classical_instr(Instruction.SUBM, subroutine_id, operands)
 
+    def _handle_binary_classical_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        if instr in [Instruction.ADDM, Instruction.SUBM]:
+            mod = self._get_register(app_id=app_id, register=operands[3])
+        else:
+            mod = None
+        if mod is not None and mod < 1:
+            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
+        a = self._get_register(app_id=app_id, register=operands[1])
+        b = self._get_register(app_id=app_id, register=operands[2])
+        value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
+        mod_str = "" if mod is None else f"(mod {mod})"
+        self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
+                           f"and storing the value {value} at register {operands[0]}")
+        self._set_register(app_id=app_id, register=operands[0], value=value)
+
+    def _compute_binary_classical_instr(self, instr, a, b, mod=1):
+        op = {
+            Instruction.ADD: operator.add,
+            Instruction.ADDM: operator.add,
+            Instruction.SUB: operator.sub,
+            Instruction.SUBM: operator.sub,
+        }[instr]
+        if mod is None:
+            return op(a, b)
+        else:
+            return op(a, b) % mod
+
     @inc_program_counter
+    @log_instr
     def _instr_x(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.X, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_y(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.Y, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_z(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.Z, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_h(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.H, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_s(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.S, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_k(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.K, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_t(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.T, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_x(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_X, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_y(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_Y, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_rot_z(self, subroutine_id, operands):
         yield from self._handle_single_qubit_instr(Instruction.ROT_Z, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_cnot(self, subroutine_id, operands):
         yield from self._handle_two_qubit_instr(Instruction.CNOT, subroutine_id, operands)
 
     @inc_program_counter
+    @log_instr
     def _instr_cphase(self, subroutine_id, operands):
         yield from self._handle_two_qubit_instr(Instruction.CPHASE, subroutine_id, operands)
 
+    def _handle_single_qubit_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address = self._get_register(app_id=app_id, register=operands[0])
+        self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")
+        output = self._do_single_qubit_instr(instr, subroutine_id, q_address)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _do_single_qubit_instr(self, instr, subroutine_id, address):
+        """Performs a single qubit gate"""
+        pass
+
+    def _handle_two_qubit_instr(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address1 = self._get_register(app_id=app_id, register=operands[0])
+        q_address2 = self._get_register(app_id=app_id, register=operands[1])
+        self._logger.debug(f"Performing {instr} on the qubits at addresses {q_address1} and {q_address2}")
+        output = self._do_two_qubit_instr(instr, subroutine_id, q_address1, q_address2)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _do_two_qubit_instr(self, instr, subroutine_id, address1, address2):
+        """Performs a two qubit gate"""
+        pass
+
     @inc_program_counter
+    @log_instr
     def _instr_meas(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
@@ -414,6 +524,7 @@ class Executioner:
         return 0
 
     @inc_program_counter
+    @log_instr
     def _instr_create_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
@@ -465,9 +576,11 @@ class Executioner:
         )
 
     def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_array_address):
+        # Should be subclassed
         raise NotImplementedError
 
     @inc_program_counter
+    @log_instr
     def _instr_recv_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
@@ -507,6 +620,7 @@ class Executioner:
         self.network_stack.put(remote_node_id=remote_node_id, request=recv_request)
 
     def _get_recv_request(self, subroutine_id, remote_node_id, purpose_id):
+        # Should be subclassed
         raise NotImplementedError
 
     @inc_program_counter
@@ -561,9 +675,8 @@ class Executioner:
     def _instr_qfree(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
-
+        self._logger.debug(f"Freeing qubit at virtual address {q_address}")
         self._free_physical_qubit(subroutine_id, q_address)
-        self._logger.debug(f"Freeing qubit at address {q_address}")
 
     @inc_program_counter
     def _instr_ret_reg(self, subroutine_id, operands):
@@ -627,7 +740,6 @@ class Executioner:
         return self._app_arrays[app_id][address, index]
 
     def _expand_array_part(self, app_id, array_part):
-        # if isinstance(array_part
         address = array_part.address.address.value
         if isinstance(array_part, ArrayEntry):
             if isinstance(array_part.index, Constant):
@@ -659,6 +771,7 @@ class Executioner:
                 physical_address = self._get_unused_physical_qubit()
             self._used_physical_qubit_addresses.append(physical_address)
             unit_module[virtual_address] = physical_address
+            self._reserve_physical_qubit(physical_address)
         else:
             app_id = self._subroutines[subroutine_id].app_id
             raise RuntimeError(f"QubitAddress at address {virtual_address} "
@@ -671,8 +784,18 @@ class Executioner:
             raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is not allocated "
                                "and cannot be freed")
         else:
+            physical_address = unit_module[address]
             unit_module[address] = None
-            self._used_physical_qubit_addresses.remove(address)
+            self._used_physical_qubit_addresses.remove(physical_address)
+            self._clear_phys_qubit_in_memory(physical_address)
+
+    def _reserve_physical_qubit(self, physical_address):
+        """To be subclassed for different quantum processors (e.g. netsquid)"""
+        pass
+
+    def _clear_phys_qubit_in_memory(self, physical_address):
+        """To be subclassed for different quantum processors (e.g. netsquid)"""
+        pass
 
     def _get_unused_physical_qubit(self):
         # Assuming that the topology of the unit module is a complete graph
@@ -680,57 +803,6 @@ class Executioner:
         for physical_address in count(0):
             if physical_address not in self._used_physical_qubit_addresses:
                 return physical_address
-
-    def _handle_single_qubit_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=operands[0])
-        self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")
-        output = self._do_single_qubit_instr(instr, subroutine_id, q_address)
-        if isinstance(output, GeneratorType):
-            yield from output
-
-    def _do_single_qubit_instr(self, instr, subroutine_id, address):
-        """Performs a single qubit gate"""
-        pass
-
-    def _handle_two_qubit_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address1 = self._get_register(app_id=app_id, register=operands[0])
-        q_address2 = self._get_register(app_id=app_id, register=operands[1])
-        self._logger.debug(f"Performing {instr} on the qubits at addresses {q_address1} and {q_address2}")
-        output = self._do_two_qubit_instr(instr, subroutine_id, q_address1, q_address2)
-        if isinstance(output, GeneratorType):
-            yield from output
-
-    def _do_two_qubit_instr(self, instr, subroutine_id, address1, address2):
-        """Performs a two qubit gate"""
-        pass
-
-    def _handle_binary_classical_instr(self, instr, subroutine_id, operands):
-        app_id = self._get_app_id(subroutine_id=subroutine_id)
-        if instr in [Instruction.ADDM, Instruction.SUBM]:
-            mod = self._get_register(app_id=app_id, register=operands[3])
-        else:
-            mod = None
-        if mod is not None and mod < 1:
-            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
-        a = self._get_register(app_id=app_id, register=operands[1])
-        b = self._get_register(app_id=app_id, register=operands[2])
-        value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
-        self._set_register(app_id=app_id, register=operands[0], value=value)
-        mod_str = "" if mod is None else "(mod {mod})"
-        self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
-                           f"and storing the value at address {operands[0]}")
-
-    def _compute_binary_classical_instr(self, instr, a, b, mod=1):
-        op = {
-            Instruction.ADD: operator.add,
-            Instruction.SUB: operator.sub,
-        }[instr]
-        if mod is None:
-            return op(a, b)
-        else:
-            return op(a, b) % mod
 
     def _assert_number_args(self, args, num):
         if not len(args) == num:

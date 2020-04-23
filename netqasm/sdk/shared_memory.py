@@ -1,4 +1,6 @@
 from netqasm.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
+from netqasm.parsing import parse_address, parse_register
+from netqasm.subroutine import Symbols
 
 _MEMORIES = {}
 
@@ -48,6 +50,9 @@ class Register:
         if not (0 <= index < len(self)):
             raise IndexError(f"index {index} is not within 0 and {len(self)}")
 
+    def _get_active_values(self):
+        return [(index, value) for index, value in self._register.items() if value is not None]
+
 
 def setup_registers():
     return {reg_name: Register() for reg_name in RegisterName}
@@ -56,6 +61,20 @@ def setup_registers():
 class Arrays:
     def __init__(self):
         self._arrays = {}
+
+    # TODO add test for this
+    def _get_active_values(self):
+        values = []
+        for address, array in self._arrays.items():
+            for index, value in enumerate(array):
+                if value is None:
+                    continue
+                address_entry = parse_address(
+                    f"{Symbols.ADDRESS_START}{address}"
+                    f"{Symbols.INDEX_BRACKETS[0]}{index}{Symbols.INDEX_BRACKETS[1]}"
+                )
+                values.append((address_entry, value))
+        return values
 
     def __str__(self):
         return str(self._arrays)
@@ -83,7 +102,10 @@ class Arrays:
 
     def __getitem__(self, key):
         address, index = self._extract_key(key)
-        array = self._get_array(address)
+        try:
+            array = self._get_array(address)
+        except IndexError:
+            return None
 
         try:
             value = array[index]
@@ -99,6 +121,7 @@ class Arrays:
     def _set_array(self, address, array):
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
+        self._assert_list(array)
         self._arrays[address] = array
 
     def has_array(self, address):
@@ -118,12 +141,12 @@ class Arrays:
         if not isinstance(value, list):
             raise TypeError(f"expected 'list', not {type(value)}")
         for x in value:
-            _assert_within_width(x, ADDRESS_BITS)
+            if x is not None:
+                _assert_within_width(x, ADDRESS_BITS)
         _assert_within_width(len(value), ADDRESS_BITS)
 
     def init_new_array(self, address, length):
-        if address in self._arrays:
-            raise ValueError(f"Array already initialized at address {address}")
+        # TODO, is it okay to overwrite the array if it exists?
         _assert_within_width(address, ADDRESS_BITS)
         self._arrays[address] = [None] * length
 
@@ -159,9 +182,17 @@ class SharedMemory:
         return self._arrays._get_array(address)
 
     def init_new_array(self, address, length=1, new_array=None):
-        if new_array is None:
-            self._arrays.init_new_array(address, length)
-        else:
-            if not self._arrays.has_array(address):
-                self._arrays.init_new_array(address, len(new_array))
+        if new_array is not None:
+            length = len(new_array)
+        self._arrays.init_new_array(address, length)
+        if new_array is not None:
             self._arrays._set_array(address, new_array)
+
+    def _get_active_values(self):
+        all_values = []
+        for reg_name, reg in self._registers.items():
+            reg_values = reg._get_active_values()
+            reg_values = [(parse_register(f"{reg_name.name}{index}"), value) for index, value in reg_values]
+            all_values += reg_values
+        all_values += self._arrays._get_active_values()
+        return all_values
