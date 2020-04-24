@@ -15,7 +15,7 @@ from netqasm.subroutine import (
 from netqasm.encoding import RegisterName
 from netqasm.instructions import Instruction
 from netqasm.parsing import parse_binary_subroutine
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
+from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS, CircuitRules, Rule
 
 
 class DebugConnection(NetQASMConnection):
@@ -116,14 +116,18 @@ def test_epr():
 
     class MockConnection(DebugConnection):
         def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
             self.nodes = {"Alice": 0, "Bob": 1}
+            super().__init__(*args, **kwargs)
 
         def _get_remote_node_id(self, name):
             return self.nodes[name]
 
+        def _get_circuit_rules(self, epr_to=None, epr_from=None):
+            # Needed to satisfy circuit rules of EPR generation
+            return CircuitRules([Rule(0, 0)], [Rule(1, 0)])
+
     set_log_level(logging.DEBUG)
-    with MockConnection("Alice") as alice:
+    with MockConnection("Alice", epr_to="Bob") as alice:
         q1 = alice.createEPR("Bob")[0]
         q1.H()
 

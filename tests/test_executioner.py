@@ -54,7 +54,8 @@ def test_executioner(subroutine_str, expected_register, expected_output):
 
     app_id = 0
     executioner = Executioner()
-    executioner.init_new_application(app_id=app_id, max_qubits=1)
+    # Consume the generator
+    list(executioner.init_new_application(app_id=app_id, max_qubits=1))
     for _ in range(10):
         list(executioner.execute_subroutine(subroutine=subroutine))
         assert executioner._get_register(app_id, expected_register) == expected_output
