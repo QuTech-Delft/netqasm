@@ -4,3 +4,7 @@ class NetQASMSyntaxError(SyntaxError):
 
 class NetQASMInstrError(ValueError):
     pass
+
+
+class NoCircuitRuleError(RuntimeError):
+    pass

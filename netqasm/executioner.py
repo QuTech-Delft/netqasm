@@ -159,12 +159,13 @@ class Executioner:
             raise TypeError(f"network_stack must be an instance of BaseNetworkStack, not {type(network_stack)}")
         self._network_stack = network_stack
 
-    def init_new_application(self, app_id, max_qubits):
+    def init_new_application(self, app_id, max_qubits, circuit_rules=None):
         """Sets up a unit module and a shared memory for a new application"""
         self.allocate_new_qubit_unit_module(app_id=app_id, num_qubits=max_qubits)
         self.setup_registers(app_id=app_id)
         self.setup_arrays(app_id=app_id)
         self.new_shared_memory(app_id=app_id)
+        yield from self.setup_circuits(app_id=app_id, circuit_rules=circuit_rules)
 
     def setup_registers(self, app_id):
         """Setup registers for application"""
@@ -177,6 +178,13 @@ class Executioner:
     def new_shared_memory(self, app_id):
         """Instanciated a new shared memory with an application"""
         self._shared_memories[app_id] = get_shared_memory(node_name=self._name, key=app_id)
+
+    def setup_circuits(self, app_id, circuit_rules=None):
+        if self.network_stack is None:
+            return
+        output = self.network_stack.setup_circuits(circuit_rules=circuit_rules)
+        if isinstance(output, GeneratorType):
+            yield from output
 
     def reset_program_counter(self, subroutine_id):
         """Resets the program counter for a given subroutine ID"""
@@ -565,7 +573,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         num_qubits = len(self._app_arrays[app_id][q_array_address, :])
         assert num_qubits == create_request.number, "Not enough qubit addresses"
-        create_id = self.network_stack.put(remote_node_id=remote_node_id, request=create_request)
+        create_id = self.network_stack.put(request=create_request)
         self._epr_create_requests[create_id] = EprCmdData(
             subroutine_id=subroutine_id,
             ent_info_array_address=ent_info_array_address,
@@ -602,7 +610,6 @@ class Executioner:
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has not network stack")
         recv_request = self._get_recv_request(
-            subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
         )
@@ -617,9 +624,8 @@ class Executioner:
             tot_pairs=num_qubits,
             pairs_left=num_qubits,
         ))
-        self.network_stack.put(remote_node_id=remote_node_id, request=recv_request)
 
-    def _get_recv_request(self, subroutine_id, remote_node_id, purpose_id):
+    def _get_recv_request(self, remote_node_id, purpose_id):
         # Should be subclassed
         raise NotImplementedError
 

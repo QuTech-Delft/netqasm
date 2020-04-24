@@ -24,12 +24,13 @@ from cqc.cqcHeader import (
 
 from netqasm import NETQASM_VERSION
 from netqasm.logging import get_netqasm_logger
+from netqasm.util import NoCircuitRuleError
 from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
 from netqasm.instructions import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
+from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS, Rule, CircuitRules
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
     Subroutine,
@@ -122,12 +123,23 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     # Class to use to pack entanglement information
     ENT_INFO = _Tuple
 
-    def __init__(self, name, app_id=None, max_qubits=5, track_lines=False, log_subroutines_dir=None):
+    def __init__(
+        self,
+        name,
+        app_id=None,
+        max_qubits=5,
+        track_lines=False,
+        log_subroutines_dir=None,
+        epr_to=None,
+        epr_from=None,
+    ):
         super().__init__(name=name, app_id=app_id)
 
         self._used_array_addresses = []
 
-        self._init_new_app(max_qubits=max_qubits)
+        self._circuit_rules = self._get_circuit_rules(epr_to=epr_to, epr_from=epr_from)
+
+        self._init_new_app(max_qubits=max_qubits, circuit_rules=self._circuit_rules)
 
         self._pending_commands = []
 
@@ -154,6 +166,26 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._commited_subroutines = []
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
+
+    def _get_circuit_rules(self, epr_to=None, epr_from=None):
+        if epr_to is None and epr_from is None:
+            return CircuitRules(create_rules=[], recv_rules=[])
+        # Should be subclassed, is implemented in squidasm.sdk.NetSquidConnection
+        raise NotImplementedError
+
+    def _assert_has_rule(self, tp, remote_node_id, purpose_id):
+        if tp == 'create':
+            rules = self._circuit_rules.create_rules
+        elif tp == 'recv':
+            rules = self._circuit_rules.recv_rules
+        else:
+            raise ValueError(f"{tp} is not a known rule type")
+        rule = Rule(remote_node_id=remote_node_id, purpose_id=purpose_id)
+        if rule not in rules:
+            raise NoCircuitRuleError("Cannot create/recv entanglement with node "
+                                     f"with ID {remote_node_id} and purpose ID {purpose_id}.\n"
+                                     "Declare this by using the arguments `epr_to` and/or `epr_from` "
+                                     "to the connection.")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Allow to not release qubit upon exit, useful for debugging
@@ -185,7 +217,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # NOTE this is to comply with CQC abstract class
         raise NotImplementedError
 
-    def _init_new_app(self, max_qubits):
+    def _init_new_app(self, max_qubits, circuit_rules=None):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         pass
 
@@ -203,7 +235,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         return array
 
     def createEPR(self, name, purpose_id=0, number=1, post_routine=None):
-        """Creates EPR pair with a remote node""
+        """Creates EPR pair with a remote node
 
         Parameters
         ----------
@@ -214,9 +246,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         number : int
             The number of pairs to create
         """
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
-        remote_node_id = self._get_remote_node_id(name)
         self._logger.debug(f"App {self.name} puts command to create EPR with {name}")
+        remote_node_id = self._get_remote_node_id(name)
+        self._assert_has_rule(tp='create', remote_node_id=remote_node_id, purpose_id=purpose_id)
+        ent_info_array = self.new_array(length=OK_FIELDS * number)
         qubits = self._create_ent_qubits(num_pairs=number, ent_info_array=ent_info_array)
         virtual_qubit_ids = [q._qID for q in qubits]
         self.put_command(
@@ -252,9 +285,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         number : int
             The number of pairs to recv
         """
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
-        remote_node_id = self._get_remote_node_id(name)
         self._logger.debug(f"App {self.name} puts command to recv EPR with {name}")
+        remote_node_id = self._get_remote_node_id(name)
+        self._assert_has_rule(tp='recv', remote_node_id=remote_node_id, purpose_id=purpose_id)
+        ent_info_array = self.new_array(length=OK_FIELDS * number)
         qubits = self._create_ent_qubits(num_pairs=number, ent_info_array=ent_info_array)
         virtual_qubit_ids = [q._qID for q in qubits]
         self.put_command(
