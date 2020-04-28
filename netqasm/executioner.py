@@ -127,6 +127,9 @@ class Executioner:
         # Network stack
         self._network_stack = None
 
+        # Timeout for trying to setup circuits
+        self._circuit_setup_timeout = 1
+
         # Logger for instructions
         self._instr_logger = self._setup_instr_logger(instr_log_dir=instr_log_dir)
 
@@ -182,7 +185,7 @@ class Executioner:
     def setup_circuits(self, app_id, circuit_rules=None):
         if self.network_stack is None:
             return
-        output = self.network_stack.setup_circuits(circuit_rules=circuit_rules)
+        output = self.network_stack.setup_circuits(circuit_rules=circuit_rules, timeout=self._circuit_setup_timeout)
         if isinstance(output, GeneratorType):
             yield from output
 
