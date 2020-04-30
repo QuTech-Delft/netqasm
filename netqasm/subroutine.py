@@ -8,7 +8,7 @@ from netqasm.string_util import rspaces
 from netqasm.instructions import Instruction, COMMAND_STRUCTS, instruction_to_string
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Constant:
     value: int
 
@@ -27,7 +27,7 @@ class Constant:
         return bytes(self.cstruct)
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Label:
     name: str
 
@@ -38,7 +38,7 @@ class Label:
         return self.name
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Register:
     name: RegisterName
     index: int
@@ -59,16 +59,14 @@ class Register:
         return bytes(self.cstruct)
 
 
-Value = Union[Constant, Register]
-
-
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Address:
     address: Constant
 
     def __post_init__(self):
         if isinstance(self.address, int):
-            self.address = Constant(self.address)
+            # NOTE this is needed since class is "frozen"
+            super().__setattr__("address", Constant(self.address))
 
     def _assert_types(self):
         assert isinstance(self.address, Constant)
@@ -178,9 +176,14 @@ class Command:
             self.operands = []
 
     def _assert_types(self):
-        assert isinstance(self.instruction, Instruction)
-        assert all(isinstance(arg, _OPERAND_UNION.__args__) for arg in self.args)
-        assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
+        try:
+            assert isinstance(self.instruction, Instruction)
+            assert all(isinstance(arg, _OPERAND_UNION.__args__) for arg in self.args)
+            assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
+        except Exception as err:
+            print(err)
+            print(self)
+            raise err
 
     def __str__(self):
         return self._build_str(show_lineno=False)

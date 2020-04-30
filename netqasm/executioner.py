@@ -115,9 +115,6 @@ class Executioner:
         # Keep track of what physical qubit addresses are in use
         self._used_physical_qubit_addresses = []
 
-        # Keep track of the last create epr request without a returned create ID
-        self._last_create_epr_request = None
-
         # Keep track of the create epr requests in progress
         self._epr_create_requests = {}
 
@@ -189,13 +186,37 @@ class Executioner:
         if isinstance(output, GeneratorType):
             yield from output
 
+    def stop_application(self, app_id):
+        """Stops an application and clears all qubits and classical memories"""
+        self._clear_qubits(app_id=app_id)
+        self._clear_registers(app_id=app_id)
+        self._clear_arrays(app_id=app_id)
+        self._clear_shared_memory(app_id=app_id)
+
+    def _clear_qubits(self, app_id):
+        unit_module = self._qubit_unit_modules.pop(app_id)
+        for virtual_address, physical_address in enumerate(unit_module):
+            if physical_address is None:
+                continue
+            self._used_physical_qubit_addresses.remove(physical_address)
+            self._clear_phys_qubit_in_memory(physical_address)
+
+    def _clear_registers(self, app_id):
+        self._registers.pop(app_id)
+
+    def _clear_arrays(self, app_id):
+        self._app_arrays.pop(app_id)
+
+    def _clear_shared_memory(self, app_id):
+        self._shared_memories.pop(app_id)
+
     def reset_program_counter(self, subroutine_id):
         """Resets the program counter for a given subroutine ID"""
         self._program_counters.pop(subroutine_id, 0)
 
     def clear_subroutine(self, subroutine_id):
         """Clears a subroutine from the executioner"""
-        self.reset_program_counter()
+        self.reset_program_counter(subroutine_id=subroutine_id)
         self._subroutines.pop(subroutine_id, 0)
 
     def _get_instruction_handlers(self):
@@ -219,6 +240,7 @@ class Executioner:
         output = self._execute_commands(subroutine_id, subroutine.commands)
         if isinstance(output, GeneratorType):
             yield from output
+        self.clear_subroutine(subroutine_id=subroutine_id)
 
     def _get_new_subroutine_id(self):
         self._next_subroutine_id += 1
@@ -722,14 +744,13 @@ class Executioner:
             raise RuntimeError(f"Application with app ID {app_id} has not allocated qubit unit module")
         return unit_module
 
-    def _get_position_in_unit_module(self, subroutine_id, address):
-        unit_module = self._get_unit_module(subroutine_id)
+    def _get_position_in_unit_module(self, app_id, address):
+        unit_module = self._qubit_unit_modules[app_id]
         if address >= len(unit_module):
             raise IndexError(f"The address {address} is not within the allocated unit module "
                              f"of size {len(unit_module)}")
         position = unit_module[address]
         if position is None:
-            app_id = self._get_app_id(subroutine_id)
             raise RuntimeError(f"The qubit with address {address} was not allocated for app ID {app_id}")
         return position
 
@@ -773,8 +794,18 @@ class Executioner:
     def _get_new_qubit_unit_module(self, num_qubits):
         return [None] * num_qubits
 
+    def _has_virtual_address(self, app_id, virtual_address):
+        unit_module = self._qubit_unit_modules.get(app_id)
+        if unit_module is None:
+            return False
+        return unit_module[virtual_address] is not None
+
     def _allocate_physical_qubit(self, subroutine_id, virtual_address, physical_address=None):
         unit_module = self._get_unit_module(subroutine_id)
+        if virtual_address >= len(unit_module):
+            app_id = self._subroutines[subroutine_id].app_id
+            raise ValueError(f"Virtual address {virtual_address} is outside the unit module (app ID {app_id}) "
+                             f"which has length {len(unit_module)}")
         if unit_module[virtual_address] is None:
             if physical_address is None:
                 physical_address = self._get_unused_physical_qubit()

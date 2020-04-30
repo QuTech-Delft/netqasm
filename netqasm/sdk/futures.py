@@ -1,4 +1,3 @@
-from netqasm.encoding import REG_INDEX_BITS
 from netqasm.parsing import parse_register, parse_address
 from netqasm.subroutine import Constant, Symbols, Command, Register
 from netqasm.instructions import Instruction
@@ -125,7 +124,9 @@ class Future(int):
     def add(self, other, mod=None):
         if not isinstance(other, int):
             raise NotImplementedError
-        tmp_register = parse_register(f"R{2 ** REG_INDEX_BITS - 1}")
+        # TODO
+        # tmp_register = parse_register(f"R{2 ** REG_INDEX_BITS - 1}")
+        tmp_register = self._connection._get_inactive_register()
         add_operands = [
             tmp_register,
             tmp_register,
@@ -139,38 +140,48 @@ class Future(int):
             add_instr = Instruction.ADDM
             add_operands.append(Constant(mod))
 
-        commands = [
-            self._get_load_command(tmp_register),
-            Command(
+        commands = []
+        with self._connection._activate_register(tmp_register):
+            commands += self._get_load_commands(tmp_register)
+            commands += [Command(
                 instruction=add_instr,
-                operands=add_operands
-            ),
-            self._get_store_command(tmp_register),
-        ]
+                operands=add_operands,
+            )]
+            commands += self._get_store_commands(tmp_register)
         self._connection.put_commands(commands)
 
-    def _get_load_command(self, register):
-        return self._get_access_command(Instruction.LOAD, register)
+    def _get_load_commands(self, register):
+        return self._get_access_commands(Instruction.LOAD, register)
 
-    def _get_store_command(self, register):
-        return self._get_access_command(Instruction.STORE, register)
+    def _get_store_commands(self, register):
+        return self._get_access_commands(Instruction.STORE, register)
 
-    def _get_access_command(self, instruction, register):
+    def _get_access_commands(self, instruction, register):
         assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
+        commands = []
         if isinstance(self._index, Future):
-            raise NotImplementedError
+            if self._connection is not self._index._connection:
+                raise RuntimeError("Future-index must be from the same connection as the future itself")
+            tmp_register = self._connection._get_inactive_register()
+            # NOTE this might be many commands if the index is a future with a future index etc
+            with self._connection._activate_register(tmp_register):
+                access_index_cmds = self._index._get_access_commands(instruction=instruction, register=tmp_register)
+            commands += access_index_cmds
+            index = tmp_register
         elif isinstance(self._index, int) or isinstance(self._index, Register):
             index = self._index
         else:
             raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
         address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{index}]")
-        return Command(
+        access_cmd = Command(
             instruction=instruction,
             operands=[
                 register,
                 address_entry,
             ],
         )
+        commands.append(access_cmd)
+        return commands
 
     # TODO add other conditions
     def if_eq(self, other):
@@ -196,7 +207,7 @@ class _IfContext:
         self.__class__.next_id += 1
         return self.__class__.next_id - 1
 
-    def __enter__(self, *args, **kwargs):
+    def __enter__(self):
         self._connection._enter_if_context(context_id=self._id)
 
     def __exit__(self, *args, **kwargs):
