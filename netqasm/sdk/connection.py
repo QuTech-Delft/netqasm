@@ -788,7 +788,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         current_commands = self._pop_pending_commands()
         body(self)
         body_commands = self._pop_pending_commands()
-        self._build_if_statement(
+        self._put_if_statement_commands(
             pre_commands=current_commands,
             body_commands=body_commands,
             condition=condition,
@@ -796,7 +796,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             b=b,
         )
 
-    def _build_if_statement(self, pre_commands, body_commands, condition, a, b):
+    def _put_if_statement_commands(self, pre_commands, body_commands, condition, a, b):
         branch_instruction = flip_branch_instr(condition)
         current_branch_variables = [
                 cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
@@ -860,19 +860,43 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         return if_start, if_end
 
-    def loop(self, body, stop, start=0, step=1, loop_register=None):
+    @contextmanager
+    def loop(self, stop, start=0, step=1, loop_register=None):
+        try:
+            pre_commands = self._pop_pending_commands()
+        finally:
+            body_commands = self._pop_pending_commands()
+            self._put_loop_commands(
+                pre_commands=pre_commands,
+                body_commands=body_commands,
+                stop=stop,
+                start=start,
+                step=step,
+                loop_register=loop_register,
+            )
+
+    def loop_body(self, body, stop, start=0, step=1, loop_register=None):
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
         """
         loop_register = self._handle_loop_register(loop_register)
-        # self._add_active_register(loop_register)
 
-        current_commands = self._pop_pending_commands()
+        pre_commands = self._pop_pending_commands()
         with self._activate_register(loop_register):
             body(self)
         body_commands = self._pop_pending_commands()
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=stop,
+            start=start,
+            step=step,
+            loop_register=loop_register,
+        )
+
+    def _put_loop_commands(self, pre_commands, body_commands, stop, start, step, loop_register):
         current_branch_variables = [
-                cmd.name for cmd in current_commands + body_commands if isinstance(cmd, BranchLabel)
+                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
         ]
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(
@@ -883,7 +907,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             current_registers=current_registers,
             loop_register=loop_register,
         )
-        commands = current_commands + loop_start + body_commands + loop_end
+        commands = pre_commands + loop_start + body_commands + loop_end
 
         self.put_commands(commands=commands)
 
@@ -921,7 +945,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             raise err
         finally:
             self._remove_active_register(register=register)
-        # return _ActiveRegContext(conn=self, register=register)
 
     def _add_active_register(self, register):
         if register in self._active_registers:
@@ -996,16 +1019,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 if var_name not in current_variables:
                     return var_name
 
-    def _enter_if_context(self, context_id):
-        current_commands = self._pop_pending_commands()
-        self._pre_context_commands[context_id] = current_commands
+    def _enter_if_context(self, context_id, condition, a, b):
+        pre_commands = self._pop_pending_commands()
+        self._pre_context_commands[context_id] = pre_commands
 
     def _exit_if_context(self, context_id, condition, a, b):
         body_commands = self._pop_pending_commands()
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
-            raise RuntimeError("Something went wrong, not pre_context_commands")
-        self._build_if_statement(
+            raise RuntimeError("Something went wrong, no pre_context_commands")
+        self._put_if_statement_commands(
             pre_commands=pre_context_commands,
             body_commands=body_commands,
             condition=condition,
@@ -1013,14 +1036,27 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             b=b,
         )
 
+    def _enter_foreach_context(self, context_id, array, return_index):
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
+        self._pre_context_commands[context_id] = pre_commands, loop_register
+        if return_index:
+            return loop_register, array.get_future_index(loop_register)
+        else:
+            return array.get_future_index(loop_register)
 
-# class _ActiveRegContext:
-#     def __init__(self, conn, register):
-#         self._conn = conn
-#         self._register = register
-
-#     def __enter__(self):
-#         self._conn._add_active_register(register=self._register)
-
-#     def __exit__(self, *args, **kwargs):
-#         self._conn._remove_active_register(register=self._register)
+    def _exit_foreach_context(self, context_id, array, return_index):
+        body_commands = self._pop_pending_commands()
+        pre_context_commands = self._pre_context_commands.pop(context_id, None)
+        if pre_context_commands is None:
+            raise RuntimeError("Something went wrong, no pre_context_commands")
+        pre_commands, loop_register = pre_context_commands
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=len(array),
+            start=0,
+            step=1,
+            loop_register=loop_register,
+        )
+        self._remove_active_register(register=loop_register)

@@ -1,3 +1,5 @@
+import abc
+
 from netqasm.parsing import parse_register, parse_address
 from netqasm.subroutine import Constant, Symbols, Command, Register
 from netqasm.instructions import Instruction
@@ -165,7 +167,10 @@ class Future(int):
             tmp_register = self._connection._get_inactive_register()
             # NOTE this might be many commands if the index is a future with a future index etc
             with self._connection._activate_register(tmp_register):
-                access_index_cmds = self._index._get_access_commands(instruction=instruction, register=tmp_register)
+                access_index_cmds = self._index._get_access_commands(
+                    instruction=Instruction.LOAD,
+                    register=tmp_register,
+                )
             commands += access_index_cmds
             index = tmp_register
         elif isinstance(self._index, int) or isinstance(self._index, Register):
@@ -186,36 +191,10 @@ class Future(int):
     # TODO add other conditions
     def if_eq(self, other):
         return _IfContext(
+            connection=self._connection,
             condition=Instruction.BEQ,
             a=self,
             b=other,
-        )
-
-
-class _IfContext:
-
-    next_id = 0
-
-    def __init__(self, condition, a, b=0):
-        self._id = self._get_id()
-        self._condition = condition
-        self._connection = a._connection
-        self._a = a
-        self._b = b
-
-    def _get_id(self):
-        self.__class__.next_id += 1
-        return self.__class__.next_id - 1
-
-    def __enter__(self):
-        self._connection._enter_if_context(context_id=self._id)
-
-    def __exit__(self, *args, **kwargs):
-        self._connection._exit_if_context(
-            context_id=self._id,
-            condition=self._condition,
-            a=self._a,
-            b=self._b,
         )
 
 
@@ -266,3 +245,84 @@ class Array:
                                               f"not {type(x)}")
                 range_args.append(x)
         return [self.get_future_index(index) for index in range(*range_args)]
+
+    def foreach(self):
+        return _ForEachContext(
+            connection=self._connection,
+            array=self,
+            return_index=False,
+        )
+
+    def enumerate(self):
+        return _ForEachContext(
+            connection=self._connection,
+            array=self,
+            return_index=True,
+        )
+
+
+class _Context:
+
+    next_id = 0
+
+    @property
+    @abc.abstractmethod
+    def ENTER_METH(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def EXIT_METH(self):
+        pass
+
+    def __init__(self, connection, **kwargs):
+        self._id = self._get_id()
+        self._connection = connection
+        self._kwargs = kwargs
+
+    import snoop
+    @snoop
+    def _get_id(self):
+        _Context.next_id += 1
+        return _Context.next_id - 1
+
+    def __enter__(self):
+        print('entering')
+        return getattr(self._connection, self.ENTER_METH)(
+            context_id=self._id,
+            **self._kwargs,
+        )
+
+    def __exit__(self, *args, **kwargs):
+        print('exiting')
+        getattr(self._connection, self.EXIT_METH)(
+            context_id=self._id,
+            **self._kwargs,
+        )
+
+
+class _IfContext(_Context):
+
+    ENTER_METH = '_enter_if_context'
+    EXIT_METH = '_exit_if_context'
+
+    def __init__(self, connection, condition, a, b):
+        super().__init__(
+            connection=connection,
+            condition=condition,
+            a=a,
+            b=b,
+        )
+
+
+class _ForEachContext(_Context):
+
+    ENTER_METH = '_enter_foreach_context'
+    EXIT_METH = '_exit_foreach_context'
+
+    def __init__(self, connection, array, return_index):
+        super().__init__(
+            connection=connection,
+            array=array,
+            return_index=return_index,
+        )
