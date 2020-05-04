@@ -176,14 +176,9 @@ class Command:
             self.operands = []
 
     def _assert_types(self):
-        try:
-            assert isinstance(self.instruction, Instruction)
-            assert all(isinstance(arg, _OPERAND_UNION.__args__) for arg in self.args)
-            assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
-        except Exception as err:
-            print(err)
-            print(self)
-            raise err
+        assert isinstance(self.instruction, Instruction)
+        assert all(isinstance(arg, _OPERAND_UNION.__args__) for arg in self.args)
+        assert all(isinstance(operand, _OPERAND_UNION.__args__) for operand in self.operands)
 
     def __str__(self):
         return self._build_str(show_lineno=False)

@@ -126,8 +126,6 @@ class Future(int):
     def add(self, other, mod=None):
         if not isinstance(other, int):
             raise NotImplementedError
-        # TODO
-        # tmp_register = parse_register(f"R{2 ** REG_INDEX_BITS - 1}")
         tmp_register = self._connection._get_inactive_register()
         add_operands = [
             tmp_register,
@@ -188,11 +186,50 @@ class Future(int):
         commands.append(access_cmd)
         return commands
 
-    # TODO add other conditions
     def if_eq(self, other):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEQ,
+            a=self,
+            b=other,
+        )
+
+    def if_ne(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNE,
+            a=self,
+            b=other,
+        )
+
+    def if_lt(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BLT,
+            a=self,
+            b=other,
+        )
+
+    def if_ge(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BGE,
+            a=self,
+            b=other,
+        )
+
+    def if_ez(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BEZ,
+            a=self,
+            b=other,
+        )
+
+    def if_nz(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNZ,
             a=self,
             b=other,
         )
@@ -280,21 +317,17 @@ class _Context:
         self._connection = connection
         self._kwargs = kwargs
 
-    import snoop
-    @snoop
     def _get_id(self):
         _Context.next_id += 1
         return _Context.next_id - 1
 
     def __enter__(self):
-        print('entering')
         return getattr(self._connection, self.ENTER_METH)(
             context_id=self._id,
             **self._kwargs,
         )
 
     def __exit__(self, *args, **kwargs):
-        print('exiting')
         getattr(self._connection, self.EXIT_METH)(
             context_id=self._id,
             **self._kwargs,
