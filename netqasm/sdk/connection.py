@@ -295,28 +295,105 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             NOTE: If `sequential` is `False` (default), `number` cannot be greater than
                   the size of the unit module. However, if `sequential` is `True` is can.
         """
+        return self._handle_epr_request(
+            instruction=Instruction.CREATE_EPR,
+            name=name,
+            purpose_id=purpose_id,
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+        )
+
+    def _handle_epr_request(self, instruction, name, purpose_id, number, post_routine, sequential):
         self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential)
-        self._logger.debug(f"App {self.name} puts command to create EPR with {name}")
-        remote_node_id = self._get_remote_node_id(name)
-        self._assert_has_rule(tp='create', remote_node_id=remote_node_id, purpose_id=purpose_id)
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
-        qubits = self._create_ent_qubits(
-            num_pairs=number,
-            ent_info_array=ent_info_array,
+        qubits, remote_node_id, ent_info_array = self._handle_epr_arguments(
+            instruction=instruction,
+            name=name,
+            number=number,
+            purpose_id=purpose_id,
             sequential=sequential,
         )
         virtual_qubit_ids = [q._qID for q in qubits]
-        self.put_command(
-            qID=virtual_qubit_ids,
-            command=CQC_CMD_EPR,
+        wait_all = post_routine is None
+        qubit_ids_array = self._put_epr_commands(
+            instruction=instruction,
+            virtual_qubit_ids=virtual_qubit_ids,
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
             number=number,
             ent_info_array=ent_info_array,
-            post_routine=post_routine,
+            wait_all=wait_all,
         )
 
+        self._put_post_commands(qubit_ids_array, number, ent_info_array, post_routine)
+
         return qubits
+
+    @contextmanager
+    def create_epr_context(self, name, purpose_id=0, number=1, sequential=False):
+        try:
+            instruction = Instruction.CREATE_EPR
+            pre_commands, loop_register, ent_info_array, q, pair = self._pre_epr_context(
+                instruction=instruction,
+                name=name,
+                purpose_id=purpose_id,
+                number=number,
+                sequential=sequential,
+            )
+            yield q, pair
+        finally:
+            self._post_epr_context(
+                pre_commands=pre_commands,
+                number=number,
+                loop_register=loop_register,
+                ent_info_array=ent_info_array,
+                pair=pair,
+            )
+
+    def _pre_epr_context(self, instruction, name, purpose_id=0, number=1, sequential=False):
+        # NOTE since this is in a context there will be a post_routine
+        self._assert_epr_args(number=number, post_routine=True, sequential=sequential)
+        qubits, remote_node_id, ent_info_array = self._handle_epr_arguments(
+            instruction=instruction,
+            name=name,
+            number=number,
+            purpose_id=purpose_id,
+            sequential=sequential,
+        )
+        virtual_qubit_ids = [q._qID for q in qubits]
+        qubit_ids_array = self._put_epr_commands(
+            instruction=instruction,
+            virtual_qubit_ids=virtual_qubit_ids,
+            remote_node_id=remote_node_id,
+            purpose_id=purpose_id,
+            number=number,
+            ent_info_array=ent_info_array,
+            wait_all=False,
+        )
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
+        pair = loop_register
+        q_id = qubit_ids_array.get_future_index(pair)
+        q = _FutureQubit(conn=self, future_id=q_id)
+        return pre_commands, loop_register, ent_info_array, q, pair
+
+    def _post_epr_context(self, pre_commands, number, loop_register, ent_info_array, pair):
+        body_commands = self._pop_pending_commands()
+        self._put_wait_for_ent_info_cmd(
+            ent_info_array=ent_info_array,
+            pair=pair,
+        )
+        wait_cmds = self._pop_pending_commands()
+        body_commands = wait_cmds + body_commands
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=number,
+            start=0,
+            step=1,
+            loop_register=loop_register,
+        )
+        self._remove_active_register(register=loop_register)
 
     def _assert_epr_args(self, number, post_routine, sequential):
         if sequential and number > 1:
@@ -356,24 +433,35 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         post_routine : function
             See description for :meth:`~.createEPR`
         """
-        self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential)
-        self._logger.debug(f"App {self.name} puts command to recv EPR with {name}")
-        remote_node_id = self._get_remote_node_id(name)
-        self._assert_has_rule(tp='recv', remote_node_id=remote_node_id, purpose_id=purpose_id)
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
-        qubits = self._create_ent_qubits(num_pairs=number, ent_info_array=ent_info_array, sequential=sequential)
-        virtual_qubit_ids = [q._qID for q in qubits]
-        self.put_command(
-            qID=virtual_qubit_ids,
-            command=CQC_CMD_EPR_RECV,
-            remote_node_id=remote_node_id,
+        return self._handle_epr_request(
+            instruction=Instruction.RECV_EPR,
+            name=name,
             purpose_id=purpose_id,
             number=number,
-            ent_info_array=ent_info_array,
             post_routine=post_routine,
+            sequential=sequential,
         )
 
-        return qubits
+    @contextmanager
+    def recv_epr_context(self, name, purpose_id=0, number=1, sequential=False):
+        try:
+            instruction = Instruction.RECV_EPR
+            pre_commands, loop_register, ent_info_array, q, pair = self._pre_epr_context(
+                instruction=instruction,
+                name=name,
+                purpose_id=purpose_id,
+                number=number,
+                sequential=sequential,
+            )
+            yield q, pair
+        finally:
+            self._post_epr_context(
+                pre_commands=pre_commands,
+                number=number,
+                loop_register=loop_register,
+                ent_info_array=ent_info_array,
+                pair=pair,
+            )
 
     def _get_remote_node_id(self, name):
         raise NotImplementedError
@@ -513,7 +601,9 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         elif command == CQC_CMD_NEW:
             self._put_netqasm_new_command(command=command, **kwargs)
         elif command in _CQC_EPR_INSTRS:
-            self._put_netqasm_epr_command(command=command, **kwargs)
+            # NOTE shouldn't happen anymore
+            raise RuntimeError("Didn't expect a EPR command from CQC, should directly be a NetQASM command.")
+            # self._put_netqasm_epr_command(command=command, **kwargs)
         elif command in _CQC_TWO_Q_INSTRS:
             self._put_netqasm_two_qubit_command(command=command, **kwargs)
         elif command in _CQC_SINGLE_Q_INSTRS:
@@ -603,24 +693,41 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         commands = set_commands + [qalloc_command, init_command]
         self.put_commands(commands)
 
-    def _put_netqasm_epr_command(
+    def _handle_epr_arguments(self, instruction, name, number, purpose_id, sequential):
+        if instruction == Instruction.CREATE_EPR:
+            self._logger.debug(f"App {self.name} puts command to create EPR with {name}")
+            rule_tp = 'create'
+        elif instruction == Instruction.RECV_EPR:
+            self._logger.debug(f"App {self.name} puts command to recv EPR from {name}")
+            rule_tp = 'recv'
+        else:
+            raise ValueError(f"Not an epr instruction {instruction}")
+
+        remote_node_id = self._get_remote_node_id(name)
+        self._assert_has_rule(tp=rule_tp, remote_node_id=remote_node_id, purpose_id=purpose_id)
+        ent_info_array = self.new_array(length=OK_FIELDS * number)
+        qubits = self._create_ent_qubits(
+            num_pairs=number,
+            ent_info_array=ent_info_array,
+            sequential=sequential,
+        )
+        return qubits, remote_node_id, ent_info_array
+
+    def _put_epr_commands(
         self,
-        command,
-        qID,
+        instruction,
+        virtual_qubit_ids,
         remote_node_id,
         purpose_id,
         number,
         ent_info_array,
-        post_routine,
+        wait_all,
         **kwargs,
     ):
-        virtual_qubit_ids = qID
-
         # qubit addresses
         qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
 
-        if command == CQC_CMD_EPR:
-            instruction = Instruction.CREATE_EPR
+        if instruction == Instruction.CREATE_EPR:
             # arguments
             # TODO add other args
             num_args = CREATE_FIELDS
@@ -633,14 +740,13 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 Constant(create_args_array.address),
                 Constant(ent_info_array.address),
             ]
-        elif command == CQC_CMD_EPR_RECV:
-            instruction = Instruction.RECV_EPR
+        elif instruction == Instruction.RECV_EPR:
             epr_cmd_operands = [
                 Constant(qubit_ids_array.address),
                 Constant(ent_info_array.address),
             ]
         else:
-            raise ValueError(f"Not an epr command {command}")
+            raise ValueError(f"Not an epr instruction {instruction}")
 
         # epr command
         epr_cmd = Command(
@@ -650,7 +756,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
 
         # wait
-        if post_routine is None:
+        if wait_all:
             wait_cmds = [Command(
                 instruction=Instruction.WAIT_ALL,
                 operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],
@@ -661,7 +767,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         commands = [epr_cmd] + wait_cmds
         self.put_commands(commands)
 
-        self._put_post_commands(qubit_ids_array, number, ent_info_array, post_routine)
+        return qubit_ids_array
 
     def _put_post_commands(self, qubit_ids, number, ent_info_array, post_routine=None):
         if post_routine is None:
@@ -670,22 +776,20 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         loop_register = self._get_inactive_register()
 
         def post_loop(conn):
-            # pair = conn.new_array(init_values=[0]).get_future_index(0)
             # Wait for each pair individually
             pair = loop_register
-            wait_cmd = conn._get_wait_for_ent_info_cmd(
+            conn._put_wait_for_ent_info_cmd(
                 ent_info_array=ent_info_array,
                 pair=pair,
             )
-            conn.put_command(wait_cmd)
             q_id = qubit_ids.get_future_index(pair)
             q = _FutureQubit(conn=conn, future_id=q_id)
             post_routine(self, q, pair)
-            # pair.add(1)
 
-        self.loop(post_loop, stop=number, loop_register=loop_register)
+        # TODO use loop context
+        self.loop_body(post_loop, stop=number, loop_register=loop_register)
 
-    def _get_wait_for_ent_info_cmd(self, ent_info_array, pair):
+    def _put_wait_for_ent_info_cmd(self, ent_info_array, pair):
         """Wait for the correct slice of the entanglement info array for the given pair"""
         # NOTE arr_start should be pair * OK_FIELDS and
         # arr_stop should be (pair + 1) * OK_FIELDS
@@ -701,12 +805,13 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             ))
 
         # Multiply pair * OK_FIELDS
+        # TODO use loop context
         def add_arr_start(conn):
             self.put_command(Command(
                 instruction=Instruction.ADD,
                 operands=[arr_start, arr_start, pair],
             ))
-        self.loop(add_arr_start, stop=OK_FIELDS)
+        self.loop_body(add_arr_start, stop=OK_FIELDS)
 
         # Let tmp be pair + 1
         self.put_command(Command(
@@ -715,22 +820,22 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         ))
 
         # Multiply (tmp = pair + 1) * OK_FIELDS
+        # TODO use loop context
         def add_arr_stop(conn):
             self.put_command(Command(
                 instruction=Instruction.ADD,
                 operands=[arr_stop, arr_stop, tmp],
             ))
-        self.loop(add_arr_stop, stop=OK_FIELDS)
+        self.loop_body(add_arr_stop, stop=OK_FIELDS)
 
         wait_cmd = Command(
             instruction=Instruction.WAIT_ALL,
             operands=[ArraySlice(ent_info_array.address, start=arr_start, stop=arr_stop)],
         )
+        self.put_command(wait_cmd)
 
         for reg in created_regs:
             self._remove_active_register(register=reg)
-
-        return wait_cmd
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
         # NOTE this is to comply with CQC abstract class
@@ -783,12 +888,20 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         """An effective if-statement where body is a function executing the clause for a >= b"""
         self._handle_if(Instruction.BGE, a, b, body)
 
+    def if_ez(self, a, body):
+        """An effective if-statement where body is a function executing the clause for a == 0"""
+        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+
+    def if_nz(self, a, body):
+        """An effective if-statement where body is a function executing the clause for a != 0"""
+        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+
     def _handle_if(self, condition, a, b, body):
         """Used to build effective if-statements"""
         current_commands = self._pop_pending_commands()
         body(self)
         body_commands = self._pop_pending_commands()
-        self._build_if_statement(
+        self._put_if_statement_commands(
             pre_commands=current_commands,
             body_commands=body_commands,
             condition=condition,
@@ -796,7 +909,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             b=b,
         )
 
-    def _build_if_statement(self, pre_commands, body_commands, condition, a, b):
+    def _put_if_statement_commands(self, pre_commands, body_commands, condition, a, b):
+        if len(body_commands) == 0:
+            self.put_commands(commands=pre_commands)
+            return
         branch_instruction = flip_branch_instr(condition)
         current_branch_variables = [
                 cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
@@ -819,9 +935,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for x in [a, b]:
             if isinstance(x, Future):
                 # Register for checking branching based on condition
-                # TODO check this
-                # if isinstance(x._index, Register):
-                #     self._add_active_register(x._index)
                 reg = self._get_inactive_register(activate=True)
                 # Load values
                 address_entry = parse_address(f"{Symbols.ADDRESS_START}{x._address}[{x._index}]")
@@ -860,19 +973,49 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         return if_start, if_end
 
-    def loop(self, body, stop, start=0, step=1, loop_register=None):
+    @contextmanager
+    def loop(self, stop, start=0, step=1, loop_register=None):
+        try:
+            pre_commands = self._pop_pending_commands()
+            loop_register = self._handle_loop_register(loop_register, activate=True)
+            yield loop_register
+        finally:
+            body_commands = self._pop_pending_commands()
+            self._put_loop_commands(
+                pre_commands=pre_commands,
+                body_commands=body_commands,
+                stop=stop,
+                start=start,
+                step=step,
+                loop_register=loop_register,
+            )
+            self._remove_active_register(register=loop_register)
+
+    def loop_body(self, body, stop, start=0, step=1, loop_register=None):
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
         """
         loop_register = self._handle_loop_register(loop_register)
-        # self._add_active_register(loop_register)
 
-        current_commands = self._pop_pending_commands()
+        pre_commands = self._pop_pending_commands()
         with self._activate_register(loop_register):
             body(self)
         body_commands = self._pop_pending_commands()
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=stop,
+            start=start,
+            step=step,
+            loop_register=loop_register,
+        )
+
+    def _put_loop_commands(self, pre_commands, body_commands, stop, start, step, loop_register):
+        if len(body_commands) == 0:
+            self.put_commands(commands=pre_commands)
+            return
         current_branch_variables = [
-                cmd.name for cmd in current_commands + body_commands if isinstance(cmd, BranchLabel)
+                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
         ]
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(
@@ -883,13 +1026,13 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             current_registers=current_registers,
             loop_register=loop_register,
         )
-        commands = current_commands + loop_start + body_commands + loop_end
+        commands = pre_commands + loop_start + body_commands + loop_end
 
         self.put_commands(commands=commands)
 
-    def _handle_loop_register(self, loop_register):
+    def _handle_loop_register(self, loop_register, activate=False):
         if loop_register is None:
-            loop_register = self._get_inactive_register()
+            loop_register = self._get_inactive_register(activate=activate)
         else:
             if isinstance(loop_register, Register):
                 pass
@@ -902,7 +1045,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # self._add_active_register(loop_register)
         return loop_register
 
-    # TODO add active registers, to better handle registers for looping etc
     def _get_inactive_register(self, activate=False):
         for i in range(2 ** REG_INDEX_BITS):
             register = parse_register(f"R{i}")
@@ -921,7 +1063,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             raise err
         finally:
             self._remove_active_register(register=register)
-        # return _ActiveRegContext(conn=self, register=register)
 
     def _add_active_register(self, register):
         if register in self._active_registers:
@@ -934,8 +1075,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _get_loop_commands(self, start, stop, step, current_branch_variables, current_registers, loop_register):
         entry_label = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
         exit_label = self._find_unused_variable(start_with="LOOP_EXIT", current_variables=current_branch_variables)
-
-        # loop_register = self._handle_loop_register(loop_register, current_registers)
 
         entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
             start=start,
@@ -996,16 +1135,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 if var_name not in current_variables:
                     return var_name
 
-    def _enter_if_context(self, context_id):
-        current_commands = self._pop_pending_commands()
-        self._pre_context_commands[context_id] = current_commands
+    def _enter_if_context(self, context_id, condition, a, b):
+        pre_commands = self._pop_pending_commands()
+        self._pre_context_commands[context_id] = pre_commands
 
     def _exit_if_context(self, context_id, condition, a, b):
         body_commands = self._pop_pending_commands()
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
-            raise RuntimeError("Something went wrong, not pre_context_commands")
-        self._build_if_statement(
+            raise RuntimeError("Something went wrong, no pre_context_commands")
+        self._put_if_statement_commands(
             pre_commands=pre_context_commands,
             body_commands=body_commands,
             condition=condition,
@@ -1013,14 +1152,58 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             b=b,
         )
 
+    def _enter_foreach_context(self, context_id, array, return_index):
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
+        self._pre_context_commands[context_id] = pre_commands, loop_register
+        if return_index:
+            return loop_register, array.get_future_index(loop_register)
+        else:
+            return array.get_future_index(loop_register)
 
-# class _ActiveRegContext:
-#     def __init__(self, conn, register):
-#         self._conn = conn
-#         self._register = register
+    def _exit_foreach_context(self, context_id, array, return_index):
+        body_commands = self._pop_pending_commands()
+        pre_context_commands = self._pre_context_commands.pop(context_id, None)
+        if pre_context_commands is None:
+            raise RuntimeError("Something went wrong, no pre_context_commands")
+        pre_commands, loop_register = pre_context_commands
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=len(array),
+            start=0,
+            step=1,
+            loop_register=loop_register,
+        )
+        self._remove_active_register(register=loop_register)
 
-#     def __enter__(self):
-#         self._conn._add_active_register(register=self._register)
 
-#     def __exit__(self, *args, **kwargs):
-#         self._conn._remove_active_register(register=self._register)
+class DebugConnection(NetQASMConnection):
+
+    _node_ids = {}
+
+    @classmethod
+    def set_node_ids(cls, node_ids):
+        """Used to set node IDs for node names in a network for this debug connection"""
+        cls._node_ids = node_ids
+
+    def __init__(self, *args, **kwargs):
+        """A connection that simply stores the subroutine it commits"""
+        super().__init__(*args, **kwargs)
+        self.storage = []
+
+    def commit(self, subroutine, block=True):
+        self.storage.append(subroutine)
+
+    def _get_circuit_rules(self, epr_to=None, epr_from=None):
+        # Don't do anything for this debug connection
+        pass
+
+    def _get_remote_node_id(self, name):
+        node_id = self.__class__._node_ids.get(name)
+        if node_id is None:
+            raise ValueError(f"node {name} is not known")
+        return node_id
+
+    def _assert_has_rule(self, tp, remote_node_id, purpose_id):
+        pass

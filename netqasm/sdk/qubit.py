@@ -85,14 +85,5 @@ class _FutureQubit(Qubit):
         raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
 
     def _set_active(self, be_active):
-        # NOTE when changing the status of a future qubit, also it's actual qubit should change
+        # TODO when changing the status of a future qubit, how to treat the status of the actual qubit?
         self._active = be_active
-        # TODO
-        # # Check if not already new state
-        # if self._active == be_active:
-        #     return
-        # if be_active:
-        #     self._cqc.active_qubits.append(self)
-        # else:
-        #     if self in self._cqc.active_qubits:
-        #         self._cqc.active_qubits.remove(self)
