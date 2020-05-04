@@ -52,7 +52,8 @@ def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, log_
 
 def _execute_using_debug(num_qubits, subroutine):
     executioner = Executioner()
-    executioner.init_new_application(app_id=subroutine.app_id, max_qubits=num_qubits)
+    # Consume the generator
+    list(executioner.init_new_application(app_id=subroutine.app_id, max_qubits=num_qubits))
     executioner._consume_execute_subroutine(subroutine)
     shared_memory = executioner._shared_memories[subroutine.app_id]
     return shared_memory
@@ -71,6 +72,7 @@ def _execute_using_netsquid(num_qubits, subroutine):
         msg=InitNewAppMessage(
             app_id=0,
             max_qubits=num_qubits,
+            circuit_rules=None,
         )
     ))
     # Send subroutine
