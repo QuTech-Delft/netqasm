@@ -1,4 +1,5 @@
-from netqasm.encoding import REG_INDEX_BITS
+import abc
+
 from netqasm.parsing import parse_register, parse_address
 from netqasm.subroutine import Constant, Symbols, Command, Register
 from netqasm.instructions import Instruction
@@ -125,7 +126,7 @@ class Future(int):
     def add(self, other, mod=None):
         if not isinstance(other, int):
             raise NotImplementedError
-        tmp_register = parse_register(f"R{2 ** REG_INDEX_BITS - 1}")
+        tmp_register = self._connection._get_inactive_register()
         add_operands = [
             tmp_register,
             tmp_register,
@@ -139,72 +140,98 @@ class Future(int):
             add_instr = Instruction.ADDM
             add_operands.append(Constant(mod))
 
-        commands = [
-            self._get_load_command(tmp_register),
-            Command(
+        commands = []
+        with self._connection._activate_register(tmp_register):
+            commands += self._get_load_commands(tmp_register)
+            commands += [Command(
                 instruction=add_instr,
-                operands=add_operands
-            ),
-            self._get_store_command(tmp_register),
-        ]
+                operands=add_operands,
+            )]
+            commands += self._get_store_commands(tmp_register)
         self._connection.put_commands(commands)
 
-    def _get_load_command(self, register):
-        return self._get_access_command(Instruction.LOAD, register)
+    def _get_load_commands(self, register):
+        return self._get_access_commands(Instruction.LOAD, register)
 
-    def _get_store_command(self, register):
-        return self._get_access_command(Instruction.STORE, register)
+    def _get_store_commands(self, register):
+        return self._get_access_commands(Instruction.STORE, register)
 
-    def _get_access_command(self, instruction, register):
+    def _get_access_commands(self, instruction, register):
         assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
+        commands = []
         if isinstance(self._index, Future):
-            raise NotImplementedError
+            if self._connection is not self._index._connection:
+                raise RuntimeError("Future-index must be from the same connection as the future itself")
+            tmp_register = self._connection._get_inactive_register()
+            # NOTE this might be many commands if the index is a future with a future index etc
+            with self._connection._activate_register(tmp_register):
+                access_index_cmds = self._index._get_access_commands(
+                    instruction=Instruction.LOAD,
+                    register=tmp_register,
+                )
+            commands += access_index_cmds
+            index = tmp_register
         elif isinstance(self._index, int) or isinstance(self._index, Register):
             index = self._index
         else:
             raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
         address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{index}]")
-        return Command(
+        access_cmd = Command(
             instruction=instruction,
             operands=[
                 register,
                 address_entry,
             ],
         )
+        commands.append(access_cmd)
+        return commands
 
-    # TODO add other conditions
     def if_eq(self, other):
         return _IfContext(
+            connection=self._connection,
             condition=Instruction.BEQ,
             a=self,
             b=other,
         )
 
+    def if_ne(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNE,
+            a=self,
+            b=other,
+        )
 
-class _IfContext:
+    def if_lt(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BLT,
+            a=self,
+            b=other,
+        )
 
-    next_id = 0
+    def if_ge(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BGE,
+            a=self,
+            b=other,
+        )
 
-    def __init__(self, condition, a, b=0):
-        self._id = self._get_id()
-        self._condition = condition
-        self._connection = a._connection
-        self._a = a
-        self._b = b
+    def if_ez(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BEZ,
+            a=self,
+            b=other,
+        )
 
-    def _get_id(self):
-        self.__class__.next_id += 1
-        return self.__class__.next_id - 1
-
-    def __enter__(self, *args, **kwargs):
-        self._connection._enter_if_context(context_id=self._id)
-
-    def __exit__(self, *args, **kwargs):
-        self._connection._exit_if_context(
-            context_id=self._id,
-            condition=self._condition,
-            a=self._a,
-            b=self._b,
+    def if_nz(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNZ,
+            a=self,
+            b=other,
         )
 
 
@@ -255,3 +282,80 @@ class Array:
                                               f"not {type(x)}")
                 range_args.append(x)
         return [self.get_future_index(index) for index in range(*range_args)]
+
+    def foreach(self):
+        return _ForEachContext(
+            connection=self._connection,
+            array=self,
+            return_index=False,
+        )
+
+    def enumerate(self):
+        return _ForEachContext(
+            connection=self._connection,
+            array=self,
+            return_index=True,
+        )
+
+
+class _Context:
+
+    next_id = 0
+
+    @property
+    @abc.abstractmethod
+    def ENTER_METH(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def EXIT_METH(self):
+        pass
+
+    def __init__(self, connection, **kwargs):
+        self._id = self._get_id()
+        self._connection = connection
+        self._kwargs = kwargs
+
+    def _get_id(self):
+        _Context.next_id += 1
+        return _Context.next_id - 1
+
+    def __enter__(self):
+        return getattr(self._connection, self.ENTER_METH)(
+            context_id=self._id,
+            **self._kwargs,
+        )
+
+    def __exit__(self, *args, **kwargs):
+        getattr(self._connection, self.EXIT_METH)(
+            context_id=self._id,
+            **self._kwargs,
+        )
+
+
+class _IfContext(_Context):
+
+    ENTER_METH = '_enter_if_context'
+    EXIT_METH = '_exit_if_context'
+
+    def __init__(self, connection, condition, a, b):
+        super().__init__(
+            connection=connection,
+            condition=condition,
+            a=a,
+            b=b,
+        )
+
+
+class _ForEachContext(_Context):
+
+    ENTER_METH = '_enter_foreach_context'
+    EXIT_METH = '_exit_foreach_context'
+
+    def __init__(self, connection, array, return_index):
+        super().__init__(
+            connection=connection,
+            array=array,
+            return_index=return_index,
+        )

@@ -3,9 +3,12 @@ from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
 
 class Qubit(qubit):
-    def __init__(self, conn, put_new_command=True, ent_info=None):
+    def __init__(self, conn, put_new_command=True, ent_info=None, virtual_address=None):
         self._conn = conn
-        self._qID = self._conn.new_qubitID()
+        if virtual_address is None:
+            self._qID = self._conn.new_qubitID()
+        else:
+            self._qID = virtual_address
         # NOTE this is needed to be compatible with CQC abstract class
         self.notify = False
 
@@ -80,3 +83,7 @@ class _FutureQubit(Qubit):
     @property
     def remote_entangled_node(self):
         raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
+
+    def _set_active(self, be_active):
+        # TODO when changing the status of a future qubit, how to treat the status of the actual qubit?
+        self._active = be_active

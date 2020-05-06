@@ -88,20 +88,22 @@ def test_simple():
         Command(instruction=Instruction.H, operands=[
             Register(RegisterName.Q, 0),
         ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.Q, 0),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.QFREE, operands=[
-            Register(RegisterName.Q, 0),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.Q, 0),
-            Constant(1),
-        ]),
-        Command(instruction=Instruction.QFREE, operands=[
-            Register(RegisterName.Q, 0),
-        ]),
+        # NOTE qubits are now freed when application ends
+        # without explicit qfree for each
+        # Command(instruction=Instruction.SET, operands=[
+        #     Register(RegisterName.Q, 0),
+        #     Constant(0),
+        # ]),
+        # Command(instruction=Instruction.QFREE, operands=[
+        #     Register(RegisterName.Q, 0),
+        # ]),
+        # Command(instruction=Instruction.SET, operands=[
+        #     Register(RegisterName.Q, 0),
+        #     Constant(1),
+        # ]),
+        # Command(instruction=Instruction.QFREE, operands=[
+        #     Register(RegisterName.Q, 0),
+        # ]),
     ])
     for command, expected_command in zip(subroutine.commands, expected.commands):
         print(repr(command))
@@ -239,13 +241,15 @@ def test_epr():
             Register(RegisterName.Q, 0),
         ]),
         # free qubit
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.Q, 0),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.QFREE, operands=[
-            Register(RegisterName.Q, 0),
-        ]),
+        # NOTE qubits are now freed when application ends
+        # without explicit qfree for each
+        # Command(instruction=Instruction.SET, operands=[
+        #     Register(RegisterName.Q, 0),
+        #     Constant(0),
+        # ]),
+        # Command(instruction=Instruction.QFREE, operands=[
+        #     Register(RegisterName.Q, 0),
+        # ]),
         # return cmds
         Command(instruction=Instruction.RET_ARR, operands=[
             Address(Constant(0)),
@@ -269,5 +273,5 @@ def test_epr():
 
 
 if __name__ == "__main__":
-    test_simple()
+    # test_simple()
     test_epr()

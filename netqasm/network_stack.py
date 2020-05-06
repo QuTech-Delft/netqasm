@@ -27,6 +27,6 @@ class BaseNetworkStack(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def setup_circuits(self, circuit_rules):
+    def setup_circuits(self, circuit_rules, timeout=1):
         """Asks the network stack to setup circuits to be used"""
         pass
