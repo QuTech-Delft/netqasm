@@ -206,6 +206,9 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._signal_stop(stop_backend=stop_backend)
         self._inactivate_qubits()
 
+        if self._track_lines:
+            self._save_log_subroutines()
+
     def _inactivate_qubits(self):
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
