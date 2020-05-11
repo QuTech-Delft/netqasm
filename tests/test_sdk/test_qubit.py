@@ -114,6 +114,52 @@ def test_simple():
     assert subroutine == expected
 
 
+def test_rotations():
+    set_log_level(logging.DEBUG)
+    with DebugConnection("Alice") as alice:
+        q = Qubit(alice)
+        q.rot_X(n=1, m=1)
+
+    assert len(alice.storage) == 1
+    subroutine = parse_binary_subroutine(alice.storage[0])
+    expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.Q, 0),
+            Constant(0),
+        ]),
+        Command(instruction=Instruction.QALLOC, operands=[
+            Register(RegisterName.Q, 0),
+        ]),
+        Command(instruction=Instruction.INIT, operands=[
+            Register(RegisterName.Q, 0),
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.Q, 0),
+            Constant(0),
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 0),
+            Constant(1),
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 1),
+            Constant(1),
+        ]),
+        Command(instruction=Instruction.ROT_X, operands=[
+            Register(RegisterName.Q, 0),
+            Register(RegisterName.R, 0),
+            Register(RegisterName.R, 1),
+        ]),
+    ])
+    for command, expected_command in zip(subroutine.commands, expected.commands):
+        print(repr(command))
+        print(repr(expected_command))
+        assert command == expected_command
+    print(subroutine)
+    print(expected)
+    assert subroutine == expected
+
+
 def test_epr():
 
     class MockConnection(DebugConnection):
@@ -274,4 +320,5 @@ def test_epr():
 
 if __name__ == "__main__":
     # test_simple()
-    test_epr()
+    # test_epr()
+    test_rotations()

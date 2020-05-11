@@ -3,7 +3,7 @@ from netqasm.instructions import Instruction, COMMAND_STRUCTS
 from netqasm.subroutine import (
     Command,
     Register,
-    Constant,
+    # Constant,
     Address,
     Subroutine,
     ArrayEntry,
@@ -60,7 +60,9 @@ def _command_struct_to_command(command):
 
 def _field_struct_to_arg_operand(field_value):
     if isinstance(field_value, int):
-        return Constant(value=field_value)
+        # TODO
+        # return Constant(value=field_value)
+        return field_value
     elif isinstance(field_value, encoding.Register):
         register_name = encoding.RegisterName(field_value.register_name)
         return Register(
@@ -68,7 +70,9 @@ def _field_struct_to_arg_operand(field_value):
             index=field_value.register_index,
         )
     elif isinstance(field_value, encoding.Address):
-        return Address(address=Constant(value=field_value.address))
+        # TODO
+        # return Address(address=Constant(value=field_value.address))
+        return Address(address=field_value.address)
     elif isinstance(field_value, encoding.ArrayEntry):
         return ArrayEntry(
             address=_field_struct_to_arg_operand(field_value.address),

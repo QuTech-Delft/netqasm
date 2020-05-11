@@ -1,6 +1,6 @@
 import pytest
 
-from netqasm.string_util import group_by_word, is_variable_name, is_number
+from netqasm.string_util import group_by_word, is_variable_name, is_number, is_float
 
 
 @pytest.mark.parametrize("string, seperator, brackets, expected", [
@@ -51,9 +51,11 @@ def test_is_variable_name(variable, expected):
 
 @pytest.mark.parametrize("number, expected", [
     ("1", True),
+    ("-1", True),
     ("0123", True),
     ("0123456789", True),
     ("321891204189", True),
+    ("-321891204189", True),
     ("a12", False),
     ("o", False),
     ("O", False),
@@ -61,3 +63,24 @@ def test_is_variable_name(variable, expected):
 ])
 def test_is_number(number, expected):
     assert is_number(number) == expected
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("1.", True),
+    (".1", True),
+    (".", False),
+    ("1", False),
+    ("01.23", True),
+    ("01234.56789", True),
+    ("32.1891204189", True),
+    ("a12.", False),
+    (".a12.", False),
+    ("o.", False),
+    ("O.", False),
+    ("!.", False),
+    (".o", False),
+    (".O", False),
+    (".!", False),
+])
+def test_is_float(value, expected):
+    assert is_float(value) == expected

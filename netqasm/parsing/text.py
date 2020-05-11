@@ -5,7 +5,9 @@ from netqasm.string_util import group_by_word, is_variable_name, is_number
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
-    Constant,
+    # TODO
+    # Constant,
+    # Immediate,
     Label,
     Register,
     Address,
@@ -105,12 +107,17 @@ def _parse_args(args):
                 .split(Symbols.ARGS_DELIM)]
 
 
-def _parse_constant(constant, return_int=False):
+# TODO
+# def _parse_constant(constant, return_int=False):
+#     if not is_number(constant):
+#         raise NetQASMSyntaxError(f"Expected constant, got {constant}")
+#     if return_int:
+#         return int(constant)
+#     return Constant(int(constant))
+def _parse_constant(constant):
     if not is_number(constant):
         raise NetQASMSyntaxError(f"Expected constant, got {constant}")
-    if return_int:
-        return int(constant)
-    return Constant(int(constant))
+    return int(constant)
 
 
 def _parse_operands(words):
@@ -130,6 +137,13 @@ def _parse_operand(word):
 
 
 def _parse_value(value, allow_label=False):
+    # TODO
+    # Try to parse an immediate
+    # try:
+    #     return _parse_immediate(value)
+    # except NetQASMSyntaxError:
+    #     pass
+
     # Try to parse a constant
     try:
         return _parse_constant(value)
@@ -144,12 +158,32 @@ def _parse_value(value, allow_label=False):
 
     if allow_label:
         # Parse a label
-        return _parse_label(value)
-    else:
-        raise NetQASMSyntaxError(f"{value} is not a valid value in this case")
+        try:
+            return _parse_label(value)
+        except NetQASMSyntaxError:
+            pass
+
+    raise NetQASMSyntaxError(f"{value} is not a valid value in this case")
+
+
+# TODO
+# def _parse_immediate(value):
+#     if not _is_byte(value):
+#         raise NetQASMSyntaxError(f"Expected a byte, e.g. `0x00`, got {value}")
+#     return Immediate(int(value))
+
+
+def _is_byte(value):
+    if not value.startswith('0x'):
+        return False
+    if not len(value) == 4:
+        return False
+    return is_number(value[2:])
 
 
 def _parse_label(label):
+    if not is_variable_name(label):
+        raise NetQASMSyntaxError(f"Expected a label, got {label}")
     return Label(label)
 
 
@@ -325,7 +359,9 @@ def _assign_branch_labels(subroutine):
         if branch_label in branch_labels:
             raise NetQASMSyntaxError("branch labels need to be unique, name {branch_label} already used")
         # Assing the label to the line/command number
-        branch_labels[branch_label] = Constant(command_number)
+        # TODO
+        # branch_labels[branch_label] = Constant(command_number)
+        branch_labels[branch_label] = command_number
         # Remove the line
         commands = commands[:command_number] + commands[command_number + 1:]
     subroutine.commands = commands
@@ -378,6 +414,11 @@ _REPLACE_CONSTANTS_EXCEPTION = [
     (Instruction.BGE, 2),
 ]
 
+# TODO
+# for instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
+#     for index in [1, 2]:
+#         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
+
 
 def _replace_constants(subroutine):
     current_registers = get_current_registers(subroutine.commands)
@@ -407,7 +448,9 @@ def _replace_constants(subroutine):
             continue
         tmp_registers = []
         for j, operand in enumerate(command.operands):
-            if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
+            # TODO
+            # if isinstance(operand, Constant) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
+            if isinstance(operand, int) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
                 register, set_command = reg_and_set_cmd(operand, tmp_registers, lineno=command.lineno)
                 subroutine.commands.insert(i, set_command)
                 command.operands[j] = register
@@ -422,9 +465,11 @@ def _replace_constants(subroutine):
                     continue
                 for attr in attrs:
                     value = getattr(operand, attr)
+                    # TODO
+                    # if isinstance(value, int):
+                    #     value = Constant(value)
+                    # if isinstance(value, Constant):
                     if isinstance(value, int):
-                        value = Constant(value)
-                    if isinstance(value, Constant):
                         register, set_command = reg_and_set_cmd(value, tmp_registers, lineno=command.lineno)
                         subroutine.commands.insert(i, set_command)
                         setattr(operand, attr, register)

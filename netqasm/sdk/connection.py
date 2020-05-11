@@ -597,6 +597,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         """Block until flushed subroutines finish"""
         raise NotImplementedError
 
+    def _single_qubit_rotation(self, instruction, virtual_qubit_id, n, d):
+        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 1):
+            raise ValueError(f'{n} * pi / {d} is not a valid angle specification')
+        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
+        rot_command = Command(
+            instruction=instruction,
+            operands=[register, Constant(n), Constant(d)],
+        )
+        commands = set_commands + [rot_command]
+        self.put_commands(commands)
+
     # TODO stop using qID (not pep8) when not inheriting from CQC anymore
     def _put_netqasm_commands(self, command, **kwargs):
         if command == CQC_CMD_MEASURE:

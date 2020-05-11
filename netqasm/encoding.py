@@ -22,6 +22,7 @@ METADATA_BYTES = len(bytes(Metadata()))
 # BODY #
 ########
 CONSTANT = ctypes.c_uint32
+IMMEDIATE = ctypes.c_uint8
 
 ADDRESS = ctypes.c_uint32
 ADDRESS_BITS = len(bytes(ADDRESS())) * 8
@@ -136,7 +137,9 @@ class MeasCommand(Command):
 class RotationCommand(Command):
     _fields_ = add_padding([
         ('qubit', Register),
-        ('angle', Register),
+        # An angle specified as `m * pi / n`
+        ('angle_numerator', Register),
+        ('angle_denominator', Register),
     ])
 
 

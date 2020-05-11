@@ -7,6 +7,8 @@ from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
 
+import numpy as np
+
 from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address, Constant
 from netqasm.instructions import Instruction, instruction_to_string
@@ -492,17 +494,17 @@ class Executioner:
     @inc_program_counter
     @log_instr
     def _instr_rot_x(self, subroutine_id, operands):
-        yield from self._handle_single_qubit_instr(Instruction.ROT_X, subroutine_id, operands)
+        yield from self._handle_single_qubit_rotation(Instruction.ROT_X, subroutine_id, operands)
 
     @inc_program_counter
     @log_instr
     def _instr_rot_y(self, subroutine_id, operands):
-        yield from self._handle_single_qubit_instr(Instruction.ROT_Y, subroutine_id, operands)
+        yield from self._handle_single_qubit_rotation(Instruction.ROT_Y, subroutine_id, operands)
 
     @inc_program_counter
     @log_instr
     def _instr_rot_z(self, subroutine_id, operands):
-        yield from self._handle_single_qubit_instr(Instruction.ROT_Z, subroutine_id, operands)
+        yield from self._handle_single_qubit_rotation(Instruction.ROT_Z, subroutine_id, operands)
 
     @inc_program_counter
     @log_instr
@@ -524,6 +526,25 @@ class Executioner:
 
     def _do_single_qubit_instr(self, instr, subroutine_id, address):
         """Performs a single qubit gate"""
+        pass
+
+    def _handle_single_qubit_rotation(self, instr, subroutine_id, operands):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address = self._get_register(app_id=app_id, register=operands[0])
+        angle = self._get_rotation_angle_from_operands(app_id=app_id, operands=operands)
+        self._logger.debug(f"Performing {instr} with angle {angle} "
+                           f"on the qubit at address {q_address}")
+        output = self._do_single_qubit_rotation(instr, subroutine_id, q_address, angle=angle)
+        if isinstance(output, GeneratorType):
+            yield from output
+
+    def _get_rotation_angle_from_operands(self, app_id, operands):
+        n = self._get_register(app_id=app_id, register=operands[1])
+        d = self._get_register(app_id=app_id, register=operands[2])
+        return n * np.pi / d
+
+    def _do_single_qubit_rotation(self, instr, subroutine_id, address, angle):
+        """Performs a single qubit rotation with the angle `n * pi / m`"""
         pass
 
     def _handle_two_qubit_instr(self, instr, subroutine_id, operands):

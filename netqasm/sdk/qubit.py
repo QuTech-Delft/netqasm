@@ -1,6 +1,8 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
+from netqasm.instructions import Instruction
+
 
 class Qubit(qubit):
     def __init__(self, conn, put_new_command=True, ent_info=None, virtual_address=None):
@@ -61,6 +63,33 @@ class Qubit(qubit):
         remote_node_name = self._conn._get_remote_node_name(remote_node_id)
         self._remote_ent_node = remote_node_name
         return remote_node_name
+
+    def rot_x(self, n=0, d=1):
+        """Performs a rotation around the X-axis of an angle `n * pi / d`"""
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_X,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+        )
+
+    def rot_y(self, n=0, d=1):
+        """Performs a rotation around the Y-axis of an angle `n * pi / d`"""
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_Y,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+        )
+
+    def rot_z(self, n=0, d=1):
+        """Performs a rotation around the Z-axis of an angle `n * pi / d`"""
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_Z,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+        )
 
 
 class _FutureQubit(Qubit):

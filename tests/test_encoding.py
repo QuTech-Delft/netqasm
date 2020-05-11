@@ -106,5 +106,35 @@ EXIT:
     print(bytes(subroutine))
 
 
+def test_encode_rotations():
+    subroutine = """
+# NETQASM 0.0
+# APPID 0
+
+set Q0 0
+qalloc Q0
+init Q0
+
+// Perform rotations
+rot_x Q0 1 1  // rotate by 1 * pi / 1 = pi
+rot_x Q0 1 4  // rotate by 1 * pi / 4 = pi / 4
+rot_y Q0 7 22  // rotate by 7 pi / 22
+
+qfree Q0
+"""
+
+    subroutine = parse_text_subroutine(subroutine)
+    print(subroutine)
+
+    print("\nInstructions:")
+    for cstruct in subroutine.cstructs:
+        print(f"{cstruct.__class__.__name__}: {bytes(cstruct)}")
+
+    print("\nFull subroutine:")
+    print(bytes(subroutine))
+
+
 if __name__ == '__main__':
-    test_encode()
+    # test_encode()
+    # test_encode_substitution()
+    test_encode_rotations()

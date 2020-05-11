@@ -159,6 +159,30 @@ _COMMAND_GROUPS = {
     ],
 }
 
+# Quantum gates
+STATIC_SINGLE_QUBIT_GATES = [
+    Instruction.X,
+    Instruction.Y,
+    Instruction.Z,
+    Instruction.H,
+    Instruction.K,
+    Instruction.S,
+    Instruction.T,
+]
+
+SINGLE_QUBIT_ROTATION_GATES = [
+    Instruction.ROT_X,
+    Instruction.ROT_Y,
+    Instruction.ROT_Z,
+]
+
+SINGLE_QUBIT_GATES = STATIC_SINGLE_QUBIT_GATES + SINGLE_QUBIT_ROTATION_GATES
+
+TWO_QUBIT_GATES = [
+    Instruction.CNOT,
+    Instruction.CPHASE,
+]
+
 
 def instruction_to_string(instr):
     if not isinstance(instr, Instruction):

@@ -237,6 +237,94 @@ EXIT:
     assert subroutine == expected
 
 
+def test_rotations():
+    subroutine = """
+# NETQASM 0.0
+# APPID 0
+
+set Q0 0
+qalloc Q0
+init Q0
+
+// Perform rotations
+rot_x Q0 1 1  // rotate by 1 * pi / 1 = pi
+rot_x Q0 1 4  // rotate by 1 * pi / 4 = pi / 4
+rot_y Q0 7 22  // rotate by 7 pi / 22
+
+qfree Q0
+"""
+
+    expected = Subroutine(
+        netqasm_version=(0, 0),
+        app_id=0,
+        commands=[
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.Q, 0),
+                Constant(0),
+            ]),
+            Command(instruction=Instruction.QALLOC, operands=[
+                Register(RegisterName.Q, 0),
+            ]),
+            Command(instruction=Instruction.INIT, operands=[
+                Register(RegisterName.Q, 0),
+            ]),
+            # Rotations
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 0),
+                Constant(1),
+            ]),
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 1),
+                Constant(1),
+            ]),
+            Command(instruction=Instruction.ROT_X, operands=[
+                Register(RegisterName.Q, 0),
+                Register(RegisterName.R, 0),
+                Register(RegisterName.R, 1),
+            ]),
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 0),
+                Constant(1),
+            ]),
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 1),
+                Constant(4),
+            ]),
+            Command(instruction=Instruction.ROT_X, operands=[
+                Register(RegisterName.Q, 0),
+                Register(RegisterName.R, 0),
+                Register(RegisterName.R, 1),
+            ]),
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 0),
+                Constant(7),
+            ]),
+            Command(instruction=Instruction.SET, operands=[
+                Register(RegisterName.R, 1),
+                Constant(22),
+            ]),
+            Command(instruction=Instruction.ROT_Y, operands=[
+                Register(RegisterName.Q, 0),
+                Register(RegisterName.R, 0),
+                Register(RegisterName.R, 1),
+            ]),
+            Command(instruction=Instruction.QFREE, operands=[
+                Register(RegisterName.Q, 0),
+            ]),
+        ],
+    )
+    subroutine = parse_text_subroutine(subroutine)
+    for i, command in enumerate(subroutine.commands):
+        exp_command = expected.commands[i]
+        print(repr(command))
+        print(repr(exp_command))
+        assert command == exp_command
+    print(repr(subroutine))
+    print(repr(expected))
+    assert subroutine == expected
+
+
 if __name__ == "__main__":
-    test_simple()
-    test_loop()
+    # test_simple()
+    # test_loop()
+    test_rotations()
