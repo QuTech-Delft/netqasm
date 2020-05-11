@@ -255,7 +255,7 @@ class Executioner:
     def _execute_command(self, subroutine_id, command):
         """Executes a single instruction"""
         if not isinstance(command, Command):
-            raise TypeError(f"Expected a Command, not {type(command)}")
+            raise TypeError(f"At line {self._program_counters[subroutine_id]}: Expected a Command, not {type(command)}")
         self._assert_number_args(command.args, num=0)
         output = self._instruction_handlers[command.instruction](subroutine_id, command.operands)
         if isinstance(output, GeneratorType):
@@ -433,7 +433,7 @@ class Executioner:
         else:
             mod = None
         if mod is not None and mod < 1:
-            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
+            raise RuntimeError(f"At line {self._program_counters[subroutine_id]}: Modulus needs to be greater or equal to 1, not {mod}")
         a = self._get_register(app_id=app_id, register=operands[1])
         b = self._get_register(app_id=app_id, register=operands[2])
         value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
@@ -586,7 +586,7 @@ class Executioner:
         ent_info_array_address,
     ):
         if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has no network stack")
+            raise RuntimeError(f"At line {self._program_counters[subroutine_id]}: SubroutineHandler has no network stack")
         create_request = self._get_create_request(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
@@ -608,7 +608,7 @@ class Executioner:
 
     def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_array_address):
         # Should be subclassed
-        raise NotImplementedError
+        raise NotImplementedError(f"At line {self._program_counters[subroutine_id]}")
 
     @inc_program_counter
     @log_instr
@@ -631,7 +631,7 @@ class Executioner:
 
     def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_array_address, ent_info_array_address):
         if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has not network stack")
+            raise RuntimeError("At line {self._program_counters[subroutine_id]}: SubroutineHandler has no network stack")
         recv_request = self._get_recv_request(
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
@@ -739,7 +739,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id)
         unit_module = self._qubit_unit_modules.get(app_id)
         if unit_module is None:
-            raise RuntimeError(f"Application with app ID {app_id} has not allocated qubit unit module")
+            raise RuntimeError(f"At line {self._program_counters[subroutine_id]}: Application with app ID {app_id} has not allocated qubit unit module")
         return unit_module
 
     def _get_position_in_unit_module(self, app_id, address):
@@ -802,7 +802,7 @@ class Executioner:
         unit_module = self._get_unit_module(subroutine_id)
         if virtual_address >= len(unit_module):
             app_id = self._subroutines[subroutine_id].app_id
-            raise ValueError(f"Virtual address {virtual_address} is outside the unit module (app ID {app_id}) "
+            raise ValueError(f"At line {self._program_counters[subroutine_id]}: Virtual address {virtual_address} is outside the unit module (app ID {app_id}) "
                              f"which has length {len(unit_module)}")
         if unit_module[virtual_address] is None:
             if physical_address is None:
@@ -812,14 +812,14 @@ class Executioner:
             self._reserve_physical_qubit(physical_address)
         else:
             app_id = self._subroutines[subroutine_id].app_id
-            raise RuntimeError(f"QubitAddress at address {virtual_address} "
+            raise RuntimeError(f"At line {self._program_counters[subroutine_id]}: QubitAddress at address {virtual_address} "
                                f"for application {app_id} is already allocated")
 
     def _free_physical_qubit(self, subroutine_id, address):
         unit_module = self._get_unit_module(subroutine_id)
         if unit_module[address] is None:
             app_id = self._subroutines[subroutine_id].app_id
-            raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is not allocated "
+            raise RuntimeError(f"At line {self._program_counters[subroutine_id]}: QubitAddress at address {address} for application {app_id} is not allocated "
                                "and cannot be freed")
         else:
             physical_address = unit_module[address]
