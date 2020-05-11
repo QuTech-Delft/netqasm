@@ -228,9 +228,7 @@ class Executioner:
 
     def _consume_execute_subroutine(self, subroutine):
         """Consumes the generator returned by execute_subroutine"""
-        output = self.execute_subroutine(subroutine=subroutine)
-        for _ in output:
-            pass
+        list(self.execute_subroutine(subroutine=subroutine))
 
     def execute_subroutine(self, subroutine):
         """Executes the a subroutine given to the executioner"""
