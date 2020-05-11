@@ -135,6 +135,6 @@ qfree Q0
 
 
 if __name__ == '__main__':
-    # test_encode()
-    # test_encode_substitution()
+    test_encode()
+    test_encode_substitution()
     test_encode_rotations()

@@ -64,7 +64,13 @@ class Qubit(qubit):
         self._remote_ent_node = remote_node_name
         return remote_node_name
 
-    def rot_x(self, n=0, d=1):
+    def S(self):
+        self._conn._put_netqasm_single_qubit_command(
+            command=Instruction.S,
+            qID=self._qID,
+        )
+
+    def rot_X(self, n=0, d=1):
         """Performs a rotation around the X-axis of an angle `n * pi / d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_X,
@@ -73,7 +79,7 @@ class Qubit(qubit):
             d=d,
         )
 
-    def rot_y(self, n=0, d=1):
+    def rot_Y(self, n=0, d=1):
         """Performs a rotation around the Y-axis of an angle `n * pi / d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Y,
@@ -82,7 +88,7 @@ class Qubit(qubit):
             d=d,
         )
 
-    def rot_z(self, n=0, d=1):
+    def rot_Z(self, n=0, d=1):
         """Performs a rotation around the Z-axis of an angle `n * pi / d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Z,

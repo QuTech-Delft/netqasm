@@ -183,6 +183,8 @@ TWO_QUBIT_GATES = [
     Instruction.CPHASE,
 ]
 
+QUBIT_GATES = SINGLE_QUBIT_GATES + TWO_QUBIT_GATES
+
 
 def instruction_to_string(instr):
     if not isinstance(instr, Instruction):

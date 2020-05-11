@@ -8,46 +8,6 @@ from netqasm.string_util import rspaces
 from netqasm.instructions import Instruction, COMMAND_STRUCTS, instruction_to_string
 
 
-# TODO
-# TODO maybe rename this? since there is also Immediate
-# @dataclass(eq=True, frozen=True)
-# class Constant:
-#     value: int
-
-#     def _assert_types(self):
-#         assert isinstance(self.value, int)
-
-#     def __str__(self):
-#         return str(self.value)
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.CONSTANT(self.value)
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
-
-
-# @dataclass(eq=True, frozen=True)
-# class Immediate:
-#     value: int
-
-#     def _assert_types(self):
-#         assert isinstance(self.value, int)
-
-#     def __str__(self):
-#         return str(self.value)
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.BYTE(self.value)
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
-
-
 @dataclass(eq=True, frozen=True)
 class Label:
     name: str
@@ -82,15 +42,7 @@ class Register:
 
 @dataclass(eq=True, frozen=True)
 class Address:
-    # TODO
-    # address: Constant
     address: int
-
-    # TODO
-    # def __post_init__(self):
-    #     if isinstance(self.address, int):
-    #         # NOTE this is needed since class is "frozen"
-    #         super().__setattr__("address", Constant(self.address))
 
     def _assert_types(self):
         assert isinstance(self.address, int)
@@ -101,7 +53,7 @@ class Address:
     @property
     def cstruct(self):
         self._assert_types()
-        return encoding.Address(self.address.value)
+        return encoding.Address(self.address)
 
     def __bytes__(self):
         return bytes(self.cstruct)
@@ -114,8 +66,6 @@ class ArrayEntry:
 
     def __post_init__(self):
         if isinstance(self.address, int):
-            # TODO
-            # self.address = Address(Constant(self.address))
             self.address = Address(self.address)
 
     def _assert_types(self):
@@ -146,8 +96,6 @@ class ArraySlice:
 
     def __post_init__(self):
         if isinstance(self.address, int):
-            # TODO
-            # self.address = Address(Constant(self.address))
             self.address = Address(self.address)
 
     def _assert_types(self):
@@ -173,9 +121,6 @@ class ArraySlice:
 
 
 _OPERAND_UNION = Union[
-    # TODO
-    # Constant,
-    # Immediate,
     int,
     Register,
     Address,
@@ -238,6 +183,9 @@ class Command:
         command = COMMAND_STRUCTS[self.instruction]
         args = [arg.cstruct if hasattr(arg, 'cstruct') else arg for arg in self.args]
         operands = [op.cstruct if hasattr(op, 'cstruct') else op for op in self.operands]
+        print(operands)
+        if any(isinstance(op, Address) for op in operands):
+            breakpoint()
         fields = args + operands
         if not len(fields) != len(command._fields_):
             raise NetQASMInstrError(f"Unexpected number of fields for command {command}, "

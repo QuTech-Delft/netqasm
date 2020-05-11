@@ -7,7 +7,6 @@ from netqasm.subroutine import (
     Subroutine,
     Command,
     Register,
-    Constant,
     Address,
     ArrayEntry,
     ArraySlice,
@@ -42,7 +41,7 @@ def test_simple():
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.QALLOC, operands=[
             Register(RegisterName.Q, 0),
@@ -52,7 +51,7 @@ def test_simple():
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.QALLOC, operands=[
             Register(RegisterName.Q, 0),
@@ -62,28 +61,28 @@ def test_simple():
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.H, operands=[
             Register(RegisterName.Q, 0),
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.X, operands=[
             Register(RegisterName.Q, 0),
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.X, operands=[
             Register(RegisterName.Q, 0),
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.H, operands=[
             Register(RegisterName.Q, 0),
@@ -92,14 +91,14 @@ def test_simple():
         # without explicit qfree for each
         # Command(instruction=Instruction.SET, operands=[
         #     Register(RegisterName.Q, 0),
-        #     Constant(0),
+        #     0,
         # ]),
         # Command(instruction=Instruction.QFREE, operands=[
         #     Register(RegisterName.Q, 0),
         # ]),
         # Command(instruction=Instruction.SET, operands=[
         #     Register(RegisterName.Q, 0),
-        #     Constant(1),
+        #     1,
         # ]),
         # Command(instruction=Instruction.QFREE, operands=[
         #     Register(RegisterName.Q, 0),
@@ -118,14 +117,14 @@ def test_rotations():
     set_log_level(logging.DEBUG)
     with DebugConnection("Alice") as alice:
         q = Qubit(alice)
-        q.rot_X(n=1, m=1)
+        q.rot_X(n=1, d=1)
 
     assert len(alice.storage) == 1
     subroutine = parse_binary_subroutine(alice.storage[0])
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.QALLOC, operands=[
             Register(RegisterName.Q, 0),
@@ -135,20 +134,12 @@ def test_rotations():
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 0),
-            Constant(1),
-        ]),
-        Command(instruction=Instruction.SET, operands=[
-            Register(RegisterName.R, 1),
-            Constant(1),
+            0,
         ]),
         Command(instruction=Instruction.ROT_X, operands=[
             Register(RegisterName.Q, 0),
-            Register(RegisterName.R, 0),
-            Register(RegisterName.R, 1),
+            1,
+            1,
         ]),
     ])
     for command, expected_command in zip(subroutine.commands, expected.commands):
@@ -186,7 +177,7 @@ def test_epr():
         # Arg array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(OK_FIELDS),
+            OK_FIELDS,
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
             Register(RegisterName.R, 0),
@@ -195,7 +186,7 @@ def test_epr():
         # Qubit address array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
             Register(RegisterName.R, 0),
@@ -203,11 +194,11 @@ def test_epr():
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 1),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.STORE, operands=[
             Register(RegisterName.R, 0),
@@ -216,7 +207,7 @@ def test_epr():
         # ent info array
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(CREATE_FIELDS),
+            CREATE_FIELDS,
         ]),
         Command(instruction=Instruction.ARRAY, operands=[
             Register(RegisterName.R, 0),
@@ -224,11 +215,11 @@ def test_epr():
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 1),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.STORE, operands=[
             Register(RegisterName.R, 0),
@@ -237,23 +228,23 @@ def test_epr():
         # create cmd
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 1),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 2),
-            Constant(1),
+            1,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 3),
-            Constant(2),
+            2,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 4),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.CREATE_EPR, operands=[
             Register(RegisterName.R, 0),
@@ -265,15 +256,15 @@ def test_epr():
         # wait cmd
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 1),
-            Constant(9),
+            9,
         ]),
         Command(instruction=Instruction.WAIT_ALL, operands=[
             ArraySlice(
-                address=Address(Constant(0)),
+                address=Address(0),
                 start=Register(RegisterName.R, 0),
                 stop=Register(RegisterName.R, 1),
             ),
@@ -281,7 +272,7 @@ def test_epr():
         # Hadamard
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
-            Constant(0),
+            0,
         ]),
         Command(instruction=Instruction.H, operands=[
             Register(RegisterName.Q, 0),
@@ -291,20 +282,20 @@ def test_epr():
         # without explicit qfree for each
         # Command(instruction=Instruction.SET, operands=[
         #     Register(RegisterName.Q, 0),
-        #     Constant(0),
+        #     0,
         # ]),
         # Command(instruction=Instruction.QFREE, operands=[
         #     Register(RegisterName.Q, 0),
         # ]),
         # return cmds
         Command(instruction=Instruction.RET_ARR, operands=[
-            Address(Constant(0)),
+            Address(0),
         ]),
         Command(instruction=Instruction.RET_ARR, operands=[
-            Address(Constant(1)),
+            Address(1),
         ]),
         Command(instruction=Instruction.RET_ARR, operands=[
-            Address(Constant(2)),
+            Address(2),
         ]),
     ])
     for i, command in enumerate(subroutine.commands):
@@ -319,6 +310,6 @@ def test_epr():
 
 
 if __name__ == "__main__":
-    # test_simple()
-    # test_epr()
+    test_simple()
+    test_epr()
     test_rotations()

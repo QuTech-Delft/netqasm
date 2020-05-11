@@ -21,7 +21,7 @@ METADATA_BYTES = len(bytes(Metadata()))
 ########
 # BODY #
 ########
-CONSTANT = ctypes.c_uint32
+INTEGER = ctypes.c_int32
 IMMEDIATE = ctypes.c_uint8
 
 ADDRESS = ctypes.c_uint32
@@ -138,8 +138,8 @@ class RotationCommand(Command):
     _fields_ = add_padding([
         ('qubit', Register),
         # An angle specified as `m * pi / n`
-        ('angle_numerator', Register),
-        ('angle_denominator', Register),
+        ('angle_numerator', IMMEDIATE),
+        ('angle_denominator', IMMEDIATE),
     ])
 
 
@@ -162,14 +162,14 @@ class ClassicalOpModCommand(Command):
 
 class JumpCommand(Command):
     _fields_ = add_padding([
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
 class BranchUnaryCommand(Command):
     _fields_ = add_padding([
         ('a', Register),
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
@@ -177,14 +177,14 @@ class BranchBinaryCommand(Command):
     _fields_ = add_padding([
         ('a', Register),
         ('b', Register),
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
 class SetCommand(Command):
     _fields_ = add_padding([
         ('register', Register),
-        ('value', CONSTANT),
+        ('value', INTEGER),
     ])
 
 

@@ -1,7 +1,6 @@
 import pytest
 
 from netqasm.subroutine import (
-    Constant,
     Register,
     Address,
     ArrayEntry,
@@ -55,30 +54,30 @@ ret_arr @0[0:1]
         commands=[
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 0),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.STORE, operands=[
                 Register(RegisterName.R, 0),
-                ArrayEntry(Address(Constant(0)), Register(RegisterName.R, 2)),
+                ArrayEntry(Address(0), Register(RegisterName.R, 2)),
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.Q, 0),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.INIT, operands=[
                 Register(RegisterName.Q, 0),
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 3),
-                Constant(4),
+                4,
             ]),
             Command(instruction=Instruction.ARRAY, operands=[
                 Register(RegisterName.R, 3),
-                Address(address=Constant(2)),
+                Address(address=2),
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 3),
-                Constant(1),
+                1,
             ]),
             Command(instruction=Instruction.ADD, operands=[
                 Register(RegisterName.R, 1),
@@ -87,31 +86,31 @@ ret_arr @0[0:1]
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 3),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 4),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.BEQ, operands=[
                 Register(RegisterName.R, 3),
                 Register(RegisterName.R, 4),
-                Constant(11),
+                11,
             ]),
             Command(instruction=Instruction.RET_REG, operands=[
                 Register(RegisterName.R, 0),
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 3),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 4),
-                Constant(1),
+                1,
             ]),
             Command(instruction=Instruction.RET_ARR, operands=[
                 ArraySlice(
-                    Address(Constant(0)),
+                    Address(0),
                     Register(RegisterName.R, 3),
                     Register(RegisterName.R, 4),
                 ),
@@ -170,28 +169,28 @@ EXIT:
         commands=[
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.C, 1),
-                Constant(1),
+                1,
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.C, 10),
-                Constant(10),
+                10,
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.Q, 0),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.R, 0),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.ARRAY, operands=[
                 Register(RegisterName.C, 10),
-                Address(Constant(0)),
+                Address(0),
             ]),
             Command(instruction=Instruction.BEQ, operands=[
                 Register(RegisterName.R, 0),
                 Register(RegisterName.C, 10),
-                Constant(14),
+                14,
             ]),
             Command(instruction=Instruction.QALLOC, operands=[
                 Register(RegisterName.Q, 0),
@@ -209,7 +208,7 @@ EXIT:
             Command(instruction=Instruction.STORE, operands=[
                 Register(RegisterName.M, 0),
                 ArrayEntry(
-                    address=Address(Constant(0)),
+                    address=Address(0),
                     index=Register(RegisterName.R, 0),
                 ),
             ]),
@@ -222,7 +221,7 @@ EXIT:
                 Register(RegisterName.C, 1),
             ]),
             Command(instruction=Instruction.JMP, operands=[
-                Constant(5),
+                5,
             ]),
         ],
     )
@@ -260,7 +259,7 @@ qfree Q0
         commands=[
             Command(instruction=Instruction.SET, operands=[
                 Register(RegisterName.Q, 0),
-                Constant(0),
+                0,
             ]),
             Command(instruction=Instruction.QALLOC, operands=[
                 Register(RegisterName.Q, 0),
@@ -269,44 +268,20 @@ qfree Q0
                 Register(RegisterName.Q, 0),
             ]),
             # Rotations
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 0),
-                Constant(1),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 1),
-                Constant(1),
+            Command(instruction=Instruction.ROT_X, operands=[
+                Register(RegisterName.Q, 0),
+                1,
+                1,
             ]),
             Command(instruction=Instruction.ROT_X, operands=[
                 Register(RegisterName.Q, 0),
-                Register(RegisterName.R, 0),
-                Register(RegisterName.R, 1),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 0),
-                Constant(1),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 1),
-                Constant(4),
-            ]),
-            Command(instruction=Instruction.ROT_X, operands=[
-                Register(RegisterName.Q, 0),
-                Register(RegisterName.R, 0),
-                Register(RegisterName.R, 1),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 0),
-                Constant(7),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 1),
-                Constant(22),
+                1,
+                4,
             ]),
             Command(instruction=Instruction.ROT_Y, operands=[
                 Register(RegisterName.Q, 0),
-                Register(RegisterName.R, 0),
-                Register(RegisterName.R, 1),
+                7,
+                22,
             ]),
             Command(instruction=Instruction.QFREE, operands=[
                 Register(RegisterName.Q, 0),
@@ -325,6 +300,6 @@ qfree Q0
 
 
 if __name__ == "__main__":
-    # test_simple()
-    # test_loop()
+    test_simple()
+    test_loop()
     test_rotations()

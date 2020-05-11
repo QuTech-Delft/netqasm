@@ -52,6 +52,9 @@ def gate_to_matrix(instr, angle=None):
             Instruction.ROT_Y: [0, 1, 0],
             Instruction.ROT_Z: [0, 0, 1],
         }[instr]
+        if isinstance(angle, tuple):
+            n, d = angle
+            angle = n * np.pi / d
         return get_rotation_matrix(axis=axis, angle=angle)
     else:
         raise ValueError(f"{instr} is not a quantum gate")
@@ -78,6 +81,7 @@ def are_matrices_equal(*matrices):
             return False
         # Check what phase to apply to the matrix so that it is the same as the first
         phase = np.angle(matrices[0][first_non_zero] / matrix[first_non_zero])
+        print(np.exp(phase * 1j) * matrix)
         if not np.allclose(matrices[0], np.exp(phase * 1j) * matrix):
             return False
     return True

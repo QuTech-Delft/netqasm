@@ -10,7 +10,7 @@ from collections import defaultdict
 import numpy as np
 
 from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
-from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address, Constant
+from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack
@@ -269,7 +269,7 @@ class Executioner:
         constant = operands[1]
         self._logger.debug(f"Set register {register} to {constant}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        self._set_register(app_id, register, constant.value)
+        self._set_register(app_id, register, constant)
 
     def _set_register(self, app_id, register, value):
         self._registers[app_id][register.name][register.index] = value
@@ -333,7 +333,7 @@ class Executioner:
 
     def _initialize_array(self, app_id, address, length):
         arrays = self._app_arrays[app_id]
-        arrays.init_new_array(address.address.value, length)
+        arrays.init_new_array(address.address, length)
 
     def _instr_jmp(self, subroutine_id, operands):
         self._handle_branch_instr(
@@ -403,7 +403,7 @@ class Executioner:
         }[instr]
 
         if condition_func(a, b):
-            jump_address = operands[-1].value
+            jump_address = operands[-1]
             self._logger.debug(f"Branching to line {jump_address}, since {instr}(a={a}, b={b}) "
                                f"is True, with values from registers {operands[:-1]}")
             self._program_counters[subroutine_id] = jump_address
@@ -539,8 +539,8 @@ class Executioner:
             yield from output
 
     def _get_rotation_angle_from_operands(self, app_id, operands):
-        n = self._get_register(app_id=app_id, register=operands[1])
-        d = self._get_register(app_id=app_id, register=operands[2])
+        n = operands[1]
+        d = operands[2]
         return n * np.pi / d
 
     def _do_single_qubit_rotation(self, instr, subroutine_id, address, angle):
@@ -751,7 +751,7 @@ class Executioner:
             address, index = self._expand_array_part(app_id=app_id, array_part=entry)
             shared_memory.set_array_part(address=address, index=index, value=value)
         elif isinstance(entry, Address):
-            address = entry.address.value
+            address = entry.address
             shared_memory.init_new_array(address=address, new_array=value)
         else:
             raise TypeError(f"Cannot update shared memory with entry specified as {entry}")
@@ -774,7 +774,7 @@ class Executioner:
         return position
 
     def _get_array(self, app_id, address):
-        return self._app_arrays[app_id]._get_array(address.address.value)
+        return self._app_arrays[app_id]._get_array(address.address)
 
     def _get_array_entry(self, app_id, array_entry):
         address, index = self._expand_array_part(app_id=app_id, array_part=array_entry)
@@ -789,17 +789,17 @@ class Executioner:
         return self._app_arrays[app_id][address, index]
 
     def _expand_array_part(self, app_id, array_part):
-        address = array_part.address.address.value
+        address = array_part.address.address
         if isinstance(array_part, ArrayEntry):
-            if isinstance(array_part.index, Constant):
-                index = array_part.index.value
+            if isinstance(array_part.index, int):
+                index = array_part.index
             else:
                 index = self._get_register(app_id=app_id, register=array_part.index)
         elif isinstance(array_part, ArraySlice):
             startstop = []
             for raw_s in [array_part.start, array_part.stop]:
-                if isinstance(raw_s, Constant):
-                    s = raw_s.value
+                if isinstance(raw_s, int):
+                    s = raw_s
                 else:
                     s = self._get_register(app_id=app_id, register=raw_s)
                 startstop.append(s)
