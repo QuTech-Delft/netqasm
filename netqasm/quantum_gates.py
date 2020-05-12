@@ -54,7 +54,7 @@ def gate_to_matrix(instr, angle=None):
         }[instr]
         if isinstance(angle, tuple):
             n, d = angle
-            angle = n * np.pi / d
+            angle = n * np.pi / 2 ** d
         return get_rotation_matrix(axis=axis, angle=angle)
     else:
         raise ValueError(f"{instr} is not a quantum gate")

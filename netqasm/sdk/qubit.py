@@ -70,8 +70,8 @@ class Qubit(qubit):
             qID=self._qID,
         )
 
-    def rot_X(self, n=0, d=1):
-        """Performs a rotation around the X-axis of an angle `n * pi / d`"""
+    def rot_X(self, n=0, d=0):
+        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_X,
             virtual_qubit_id=self._qID,
@@ -79,8 +79,8 @@ class Qubit(qubit):
             d=d,
         )
 
-    def rot_Y(self, n=0, d=1):
-        """Performs a rotation around the Y-axis of an angle `n * pi / d`"""
+    def rot_Y(self, n=0, d=0):
+        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Y,
             virtual_qubit_id=self._qID,
@@ -88,8 +88,8 @@ class Qubit(qubit):
             d=d,
         )
 
-    def rot_Z(self, n=0, d=1):
-        """Performs a rotation around the Z-axis of an angle `n * pi / d`"""
+    def rot_Z(self, n=0, d=0):
+        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Z,
             virtual_qubit_id=self._qID,

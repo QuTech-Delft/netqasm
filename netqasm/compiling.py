@@ -26,30 +26,30 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
     SINGLE_QUBIT_GATE_MAPPING = {
         # gate: rotation, angle
-        Instruction.X: [(Instruction.ROT_X, (1, 1))],  # pi
-        Instruction.Y: [(Instruction.ROT_Y, (1, 1))],  # pi
+        Instruction.X: [(Instruction.ROT_X, (1, 0))],  # pi
+        Instruction.Y: [(Instruction.ROT_Y, (1, 0))],  # pi
         Instruction.Z: [
-            (Instruction.ROT_X, (3, 2)),  # - pi / 2
-            (Instruction.ROT_Y, (1, 1)),  # pi
-            (Instruction.ROT_X, (1, 2)),  # pi / 2
+            (Instruction.ROT_X, (3, 1)),  # - pi / 2
+            (Instruction.ROT_Y, (1, 0)),  # pi
+            (Instruction.ROT_X, (1, 1)),  # pi / 2
         ],
         Instruction.H: [
-            (Instruction.ROT_Y, (3, 2)),  # - pi / 2
-            (Instruction.ROT_X, (1, 1)),  # pi
+            (Instruction.ROT_Y, (3, 1)),  # - pi / 2
+            (Instruction.ROT_X, (1, 0)),  # pi
         ],
         Instruction.K: [
-            (Instruction.ROT_X, (1, 2)),  # pi / 2
-            (Instruction.ROT_Y, (1, 1)),  # pi
+            (Instruction.ROT_X, (1, 1)),  # pi / 2
+            (Instruction.ROT_Y, (1, 0)),  # pi
         ],
         Instruction.S: [
-            (Instruction.ROT_X, (3, 2)),  # - pi / 2
-            (Instruction.ROT_Y, (3, 2)),  # - pi / 2
-            (Instruction.ROT_X, (1, 2)),  # pi / 2
+            (Instruction.ROT_X, (3, 1)),  # - pi / 2
+            (Instruction.ROT_Y, (3, 1)),  # - pi / 2
+            (Instruction.ROT_X, (1, 1)),  # pi / 2
         ],
         Instruction.T: [
-            (Instruction.ROT_X, (3, 2)),  # - pi / 2
-            (Instruction.ROT_Y, (7, 4)),  # - pi / 4
-            (Instruction.ROT_X, (1, 2)),  # pi / 2
+            (Instruction.ROT_X, (3, 1)),  # - pi / 2
+            (Instruction.ROT_Y, (7, 2)),  # - pi / 4
+            (Instruction.ROT_X, (1, 1)),  # pi / 2
         ],
     }
 
@@ -90,9 +90,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
             n = command.operands[1]
             d = command.operands[2]
             return [
-                Command(Instruction.ROT_X, operands=[qubit, 3, 2]),  # 3 pi / 2
-                Command(Instruction.ROT_Y, operands=[qubit, 2 * d - n, d]),  # - n pi / d
-                Command(Instruction.ROT_X, operands=[qubit, 1, 2]),  # pi / 2
+                Command(Instruction.ROT_X, operands=[qubit, 3, 1]),  # 3 pi / 2
+                Command(Instruction.ROT_Y, operands=[qubit, 2 * 2 ** d - n, d]),  # - n pi / 2 ^ d
+                Command(Instruction.ROT_X, operands=[qubit, 1, 1]),  # pi / 2
             ]
         elif command.instruction in [Instruction.ROT_X, Instruction.ROT_Y]:
             return [command]

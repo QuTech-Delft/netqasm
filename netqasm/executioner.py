@@ -541,7 +541,7 @@ class Executioner:
     def _get_rotation_angle_from_operands(self, app_id, operands):
         n = operands[1]
         d = operands[2]
-        return n * np.pi / d
+        return n * np.pi / 2 ** d
 
     def _do_single_qubit_rotation(self, instr, subroutine_id, address, angle):
         """Performs a single qubit rotation with the angle `n * pi / m`"""
