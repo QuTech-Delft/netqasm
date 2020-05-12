@@ -28,7 +28,7 @@ def _read_netqasm_file(netqasm_file):
 def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, log_level="WARNING"):
     set_log_level(log_level)
     subroutine = _read_netqasm_file(netqasm_file)
-    print("Generated subroutine:\n", subroutine)
+
     if backend == "debug":
         shared_memory = _execute_using_debug(
             num_qubits=num_qubits,
