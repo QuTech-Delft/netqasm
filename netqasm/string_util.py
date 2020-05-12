@@ -45,7 +45,20 @@ def is_variable_name(variable):
 
 
 def is_number(number):
+    # Allow for negative numbers
+    if number.startswith('-'):
+        number = number[1:]
     return len(number) > 0 and set(number) <= set(NUM)
+
+
+def is_float(value):
+    if not value.count('.') == 1:
+        return False
+    parts = value.split('.')
+    # Both int_part and dec_part cannot be zero
+    if all(len(part) == 0 for part in parts):
+        return False
+    return all(len(part) == 0 or is_number(part) for part in parts)
 
 
 def rspaces(val, min_chars=4):

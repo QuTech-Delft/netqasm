@@ -1,7 +1,7 @@
 import abc
 
 from netqasm.parsing import parse_register, parse_address
-from netqasm.subroutine import Constant, Symbols, Command, Register
+from netqasm.subroutine import Symbols, Command, Register
 from netqasm.instructions import Instruction
 
 
@@ -130,7 +130,7 @@ class Future(int):
         add_operands = [
             tmp_register,
             tmp_register,
-            Constant(other),
+            other,
         ]
         if mod is None:
             add_instr = Instruction.ADD
@@ -138,7 +138,7 @@ class Future(int):
             if not isinstance(mod, int):
                 raise NotImplementedError
             add_instr = Instruction.ADDM
-            add_operands.append(Constant(mod))
+            add_operands.append(mod)
 
         commands = []
         with self._connection._activate_register(tmp_register):

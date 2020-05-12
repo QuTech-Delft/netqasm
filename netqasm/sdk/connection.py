@@ -37,7 +37,6 @@ from netqasm.subroutine import (
     Subroutine,
     Command,
     Register,
-    Constant,
     Address,
     ArrayEntry,
     ArraySlice,
@@ -133,6 +132,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         log_subroutines_dir=None,
         epr_to=None,
         epr_from=None,
+        compiler=None,
     ):
         super().__init__(name=name, app_id=app_id)
 
@@ -169,6 +169,9 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._log_subroutines_dir = log_subroutines_dir
         # Commited subroutines saved for logging/debugging
         self._commited_subroutines = []
+
+        # What compiler (if any) to be used
+        self._compiler = compiler
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
 
@@ -532,8 +535,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             init_arrays.append(Command(
                 instruction=Instruction.ARRAY,
                 operands=[
-                    Constant(len(array)),
-                    Address(Constant(array.address)),
+                    len(array),
+                    Address(array.address),
                 ],
                 lineno=array.lineno,
             ))
@@ -545,8 +548,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                     init_arrays.append(Command(
                         instruction=Instruction.STORE,
                         operands=[
-                            Constant(value),
-                            ArrayEntry(Address(Constant(array.address)), i),
+                            value,
+                            ArrayEntry(Address(array.address), i),
                         ],
                         lineno=array.lineno,
                     ))
@@ -554,7 +557,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return_arrays.append(Command(
                 instruction=Instruction.RET_ARR,
                 operands=[
-                    Address(Constant(array.address)),
+                    Address(array.address),
                 ],
                 lineno=array.lineno,
             ))
@@ -582,6 +585,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         Can be subclassed and overried for more elaborate compiling.
         """
         subroutine = assemble_subroutine(subroutine)
+        if self._compiler is not None:
+            self._compiler.compile(subroutine=subroutine)
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return bytes(subroutine)
@@ -596,6 +601,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def block(self):
         """Block until flushed subroutines finish"""
         raise NotImplementedError
+
+    def _single_qubit_rotation(self, instruction, virtual_qubit_id, n, d):
+        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 1):
+            raise ValueError(f'{n} * pi / {d} is not a valid angle specification')
+        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
+        rot_command = Command(
+            instruction=instruction,
+            operands=[register, n, d],
+        )
+        commands = set_commands + [rot_command]
+        self.put_commands(commands)
 
     # TODO stop using qID (not pep8) when not inheriting from CQC anymore
     def _put_netqasm_commands(self, command, **kwargs):
@@ -618,7 +634,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         q_address = qID
         register, set_commands = self._get_set_qubit_reg_commands(q_address)
         # Construct the qubit command
-        instr = _CQC_TO_NETQASM_INSTR[command]
+        if isinstance(command, Instruction):
+            instr = command
+        else:
+            instr = _CQC_TO_NETQASM_INSTR[command]
         qubit_command = Command(
             instruction=instr,
             operands=[register],
@@ -636,7 +655,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 instruction=Instruction.SET,
                 operands=[
                     register,
-                    Constant(q_address),
+                    q_address,
                 ],
             )]
         else:
@@ -739,14 +758,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             create_args[1] = number  # Number of pairs
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
-                Constant(qubit_ids_array.address),
-                Constant(create_args_array.address),
-                Constant(ent_info_array.address),
+                qubit_ids_array.address,
+                create_args_array.address,
+                ent_info_array.address,
             ]
         elif instruction == Instruction.RECV_EPR:
             epr_cmd_operands = [
-                Constant(qubit_ids_array.address),
-                Constant(ent_info_array.address),
+                qubit_ids_array.address,
+                ent_info_array.address,
             ]
         else:
             raise ValueError(f"Not an epr instruction {instruction}")
@@ -754,7 +773,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # epr command
         epr_cmd = Command(
             instruction=instruction,
-            args=[Constant(remote_node_id), Constant(purpose_id)],
+            args=[remote_node_id, purpose_id],
             operands=epr_cmd_operands,
         )
 
@@ -804,7 +823,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for reg in created_regs:
             self.put_command(Command(
                 instruction=Instruction.SET,
-                operands=[reg, Constant(0)],
+                operands=[reg, 0],
             ))
 
         # Multiply pair * OK_FIELDS
@@ -819,7 +838,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Let tmp be pair + 1
         self.put_command(Command(
             instruction=Instruction.ADD,
-            operands=[tmp, pair, Constant(1)],
+            operands=[tmp, pair, 1],
         ))
 
         # Multiply (tmp = pair + 1) * OK_FIELDS
@@ -951,9 +970,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 cond_values.append(reg)
                 if_start.append(load)
             elif isinstance(x, int):
-                cond_values.append(Constant(x))
-            elif isinstance(x, Constant):
-                cond_values.append(x.value)
+                cond_values.append(x)
             else:
                 raise TypeError(f"Cannot do conditional statement with type {type(x)}")
         branch = Command(
@@ -1095,14 +1112,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         entry_loop = [
             Command(
                 instruction=Instruction.SET,
-                operands=[loop_register, Constant(start)],
+                operands=[loop_register, start],
             ),
             BranchLabel(entry_label),
             Command(
                 instruction=Instruction.BEQ,
                 operands=[
                     loop_register,
-                    Constant(stop),
+                    stop,
                     Label(exit_label),
                 ],
             ),
@@ -1113,7 +1130,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 operands=[
                     loop_register,
                     loop_register,
-                    Constant(step),
+                    step,
                 ],
             ),
             Command(
