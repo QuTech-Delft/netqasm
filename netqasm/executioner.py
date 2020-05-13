@@ -253,9 +253,8 @@ class Executioner:
             command = commands[prog_counter]
             try:
                 output = self._execute_command(subroutine_id, command)
-                if isinstance(output, GeneratorType):
+                if isinstance(output, GeneratorType):  # sanity check: should always be the case
                     yield from output
-                # can 'output' be another type than GeneratorType?
             except Exception as exc:
                 raise exc.__class__(f"At line {prog_counter}: {exc}") from exc
 
@@ -634,7 +633,7 @@ class Executioner:
 
     def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_array_address):
         # Should be subclassed
-        raise NotImplementedError(f"At line {self._program_counters[subroutine_id]}")
+        raise NotImplementedError
 
     @inc_program_counter
     @log_instr

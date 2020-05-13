@@ -61,7 +61,7 @@ def test_executioner(subroutine_str, expected_register, expected_output):
         assert executioner._get_register(app_id, expected_register) == expected_output
 
 
-@pytest.mark.parametrize("subroutine_str, error_line", [
+@pytest.mark.parametrize("subroutine_str, error_type, error_line", [
     (
         """
         # NETQASM 0.0
@@ -71,6 +71,7 @@ def test_executioner(subroutine_str, expected_register, expected_output):
         set R1 0
         addm R0 R0 R0 R1
         """,
+        RuntimeError,
         3
     ),
     (
@@ -81,11 +82,12 @@ def test_executioner(subroutine_str, expected_register, expected_output):
         qalloc Q0
         qalloc Q0
         """,
+        RuntimeError,
         2
     )
 ])
-def test_failing_executioner(subroutine_str, error_line):
-    with pytest.raises(Exception) as exc:
+def test_failing_executioner(subroutine_str, error_type, error_line):
+    with pytest.raises(error_type) as exc:
         set_log_level(logging.DEBUG)
         subroutine = parse_text_subroutine(subroutine_str)
 
