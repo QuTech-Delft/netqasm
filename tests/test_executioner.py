@@ -87,15 +87,16 @@ def test_executioner(subroutine_str, expected_register, expected_output):
     )
 ])
 def test_failing_executioner(subroutine_str, error_type, error_line):
+    set_log_level(logging.DEBUG)
+    subroutine = parse_text_subroutine(subroutine_str)
+
+    print(subroutine)
+
+    app_id = 0
+    executioner = Executioner()
+    list(executioner.init_new_application(app_id=app_id, max_qubits=1))
+
     with pytest.raises(error_type) as exc:
-        set_log_level(logging.DEBUG)
-        subroutine = parse_text_subroutine(subroutine_str)
-
-        print(subroutine)
-
-        app_id = 0
-        executioner = Executioner()
-        list(executioner.init_new_application(app_id=app_id, max_qubits=1))
         executioner._consume_execute_subroutine(subroutine=subroutine)
 
     print(f"Exception: {exc.value}")
