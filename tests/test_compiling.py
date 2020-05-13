@@ -2,7 +2,7 @@ import pytest
 from netqasm.logging import set_log_level
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
 from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
-from netqasm.sdk.connection import NetQASMConnection
+from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.instructions import Instruction, QUBIT_GATES
 from netqasm.compiling import NVSubroutineCompiler
@@ -50,15 +50,6 @@ rot_z Q0 1 2
             assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
 
 
-class DebugConnection(NetQASMConnection):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.storage = []
-
-    def commit(self, subroutine, block=True):
-        self.storage.append(subroutine)
-
-
 def test_compiling_nv_using_sdk():
     set_log_level('DEBUG')
     with DebugConnection("Alice", compiler=NVSubroutineCompiler) as alice:
@@ -74,8 +65,8 @@ def test_compiling_nv_using_sdk():
         q.rot_Y(n=1, d=2)
         q.rot_Z(n=1, d=2)
 
-    assert len(alice.storage) == 1
-    subroutine = parse_binary_subroutine(alice.storage[0])
+    assert len(alice.storage) == 4
+    subroutine = parse_binary_subroutine(alice.storage[1].msg)
     for command in subroutine.commands:
         instr = command.instruction
         if instr in QUBIT_GATES:

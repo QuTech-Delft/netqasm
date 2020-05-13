@@ -6,7 +6,7 @@ from .socket_hub import _socket_hub
 
 
 class ThreadSocket(Socket):
-    def __init__(self, node_id, remote_node_id, socket_id=0, timeout=None,
+    def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
                  use_callbacks=False):
         """Socket used when applications run under the same process in different threads.
 
@@ -14,9 +14,9 @@ class ThreadSocket(Socket):
 
         Parameters
         ----------
-        node_id : int
+        node_name : int
             Node ID of the local node.
-        remote_node_id : int
+        remote_node_name : int
             Node ID of the local node.
         socket_id : int, optional
             ID of the socket (can be seen as a port)
@@ -25,10 +25,10 @@ class ThreadSocket(Socket):
         use_callbacks : float, optional
             Whether to use callbacks or not.
         """
-        if node_id == remote_node_id:
-            raise ValueError(f"Cannot connect to itself node_id {node_id} = remote_node_id {remote_node_id}")
-        self._node_id = node_id
-        self._remote_node_id = remote_node_id
+        if node_name == remote_node_name:
+            raise ValueError(f"Cannot connect to itself node_name {node_name} = remote_node_name {remote_node_name}")
+        self._node_name = node_name
+        self._remote_node_name = remote_node_name
         self._id = socket_id
 
         # Use callbacks
@@ -55,12 +55,12 @@ class ThreadSocket(Socket):
             self._socket_hub.disconnect(self)
 
     @property
-    def node_id(self):
-        return self._node_id
+    def node_name(self):
+        return self._node_name
 
     @property
-    def remote_node_id(self):
-        return self._remote_node_id
+    def remote_node_name(self):
+        return self._remote_node_name
 
     @property
     def id(self):
@@ -68,11 +68,11 @@ class ThreadSocket(Socket):
 
     @property
     def key(self):
-        return self.node_id, self.remote_node_id, self.id
+        return self.node_name, self.remote_node_name, self.id
 
     @property
     def remote_key(self):
-        return self.remote_node_id, self.node_id, self.id
+        return self.remote_node_name, self.node_name, self.id
 
     @property
     def connected(self):

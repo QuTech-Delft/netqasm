@@ -69,9 +69,6 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 new_commands = [command]
             subroutine.commands = subroutine.commands[:i] + new_commands + subroutine.commands[i + 1:]
             i += len(new_commands)
-            print(new_commands)
-            print(i)
-            print(subroutine)
 
     @classmethod
     def _handle_single_qubit_static_gate(cls, command):

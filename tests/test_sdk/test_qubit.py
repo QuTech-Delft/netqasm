@@ -1,7 +1,8 @@
 import logging
 
-from netqasm.sdk.connection import NetQASMConnection
+from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.logging import set_log_level
 from netqasm.subroutine import (
     Subroutine,
@@ -14,16 +15,13 @@ from netqasm.subroutine import (
 from netqasm.encoding import RegisterName
 from netqasm.instructions import Instruction
 from netqasm.parsing import parse_binary_subroutine
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS, CircuitRules, Rule
+from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 
 
-class DebugConnection(NetQASMConnection):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.storage = []
-
-    def commit(self, subroutine, block=True):
-        self.storage.append(subroutine)
+DebugConnection.node_ids = {
+    "Alice": 0,
+    "Bob": 1,
+}
 
 
 def test_simple():
@@ -36,8 +34,9 @@ def test_simple():
         q1.X()
         q2.H()
 
-    assert len(alice.storage) == 1
-    subroutine = parse_binary_subroutine(alice.storage[0])
+    # 4 messages: init, subroutine, stop app and stop backend
+    assert len(alice.storage) == 4
+    subroutine = parse_binary_subroutine(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
@@ -119,8 +118,9 @@ def test_rotations():
         q = Qubit(alice)
         q.rot_X(n=1, d=1)
 
-    assert len(alice.storage) == 1
-    subroutine = parse_binary_subroutine(alice.storage[0])
+    # 4 messages: init, subroutine, stop app and stop backend
+    assert len(alice.storage) == 4
+    subroutine = parse_binary_subroutine(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.Q, 0),
@@ -153,25 +153,16 @@ def test_rotations():
 
 def test_epr():
 
-    class MockConnection(DebugConnection):
-        def __init__(self, *args, **kwargs):
-            self.nodes = {"Alice": 0, "Bob": 1}
-            super().__init__(*args, **kwargs)
-
-        def _get_remote_node_id(self, name):
-            return self.nodes[name]
-
-        def _get_circuit_rules(self, epr_to=None, epr_from=None):
-            # Needed to satisfy circuit rules of EPR generation
-            return CircuitRules([Rule(0, 0)], [Rule(1, 0)])
-
     set_log_level(logging.DEBUG)
-    with MockConnection("Alice", epr_to="Bob") as alice:
-        q1 = alice.createEPR("Bob")[0]
+
+    epr_socket = EPRSocket(remote_node_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        q1 = epr_socket.create()[0]
         q1.H()
 
-    assert len(alice.storage) == 1
-    subroutine = parse_binary_subroutine(alice.storage[0])
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    subroutine = parse_binary_subroutine(alice.storage[2].msg)
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array

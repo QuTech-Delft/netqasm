@@ -167,7 +167,6 @@ class Executioner:
         self.setup_registers(app_id=app_id)
         self.setup_arrays(app_id=app_id)
         self.new_shared_memory(app_id=app_id)
-        yield from self.setup_circuits(app_id=app_id, circuit_rules=circuit_rules)
 
     def setup_registers(self, app_id):
         """Setup registers for application"""
@@ -181,10 +180,14 @@ class Executioner:
         """Instanciated a new shared memory with an application"""
         self._shared_memories[app_id] = get_shared_memory(node_name=self._name, key=app_id)
 
-    def setup_circuits(self, app_id, circuit_rules=None):
+    def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
         if self.network_stack is None:
             return
-        output = self.network_stack.setup_circuits(circuit_rules=circuit_rules, timeout=self._circuit_setup_timeout)
+        output = self.network_stack.setup_epr_socket(
+            epr_socket_id=epr_socket_id,
+            remote_node_id=remote_node_id,
+            remote_epr_socket_id=remote_epr_socket_id,
+        )
         if isinstance(output, GeneratorType):
             yield from output
 
@@ -584,18 +587,18 @@ class Executioner:
     def _instr_create_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
-        purpose_id = self._get_register(app_id=app_id, register=operands[1])
+        epr_socket_id = self._get_register(app_id=app_id, register=operands[1])
         q_array_address = self._get_register(app_id=app_id, register=operands[2])
         arg_array_address = self._get_register(app_id=app_id, register=operands[3])
         ent_info_array_address = self._get_register(app_id=app_id, register=operands[4])
-        self._logger.debug(f"Creating EPR pair with remote node id {remote_node_id} and purpose_id {purpose_id}, "
+        self._logger.debug(f"Creating EPR pair with remote node id {remote_node_id} and EPR socket ID {epr_socket_id}, "
                            f"using qubit addresses stored in array with address {q_array_address}, "
                            f"using arguments stored in array with address {arg_array_address}, "
                            f"placing the entanglement information in array at address {ent_info_array_address}")
         self._do_create_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
+            epr_socket_id=epr_socket_id,
             q_array_address=q_array_address,
             arg_array_address=arg_array_address,
             ent_info_array_address=ent_info_array_address,
@@ -605,7 +608,7 @@ class Executioner:
         self,
         subroutine_id,
         remote_node_id,
-        purpose_id,
+        epr_socket_id,
         q_array_address,
         arg_array_address,
         ent_info_array_address,
@@ -615,7 +618,7 @@ class Executioner:
         create_request = self._get_create_request(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
+            epr_socket_id=epr_socket_id,
             arg_array_address=arg_array_address,
         )
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -631,7 +634,7 @@ class Executioner:
             pairs_left=create_request.number,
         )
 
-    def _get_create_request(self, subroutine_id, remote_node_id, purpose_id, arg_array_address):
+    def _get_create_request(self, subroutine_id, remote_node_id, epr_socket_id, arg_array_address):
         # Should be subclassed
         raise NotImplementedError
 
@@ -640,42 +643,39 @@ class Executioner:
     def _instr_recv_epr(self, subroutine_id, operands):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=operands[0])
-        purpose_id = self._get_register(app_id=app_id, register=operands[1])
+        epr_socket_id = self._get_register(app_id=app_id, register=operands[1])
         q_array_address = self._get_register(app_id=app_id, register=operands[2])
         ent_info_array_address = self._get_register(app_id=app_id, register=operands[3])
-        self._logger.debug(f"Receiving EPR pair with remote node id {remote_node_id} and purpose_id {purpose_id}, "
+        self._logger.debug(f"Receiving EPR pair with remote node id {remote_node_id} "
+                           f"and EPR socket ID {epr_socket_id}, "
                            f"using qubit addresses stored in array with address {q_array_address}, "
                            f"placing the entanglement information in array at address {ent_info_array_address}")
         self._do_recv_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
+            epr_socket_id=epr_socket_id,
             q_array_address=q_array_address,
             ent_info_array_address=ent_info_array_address,
         )
 
-    def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_array_address, ent_info_array_address):
+    def _do_recv_epr(self, subroutine_id, remote_node_id, epr_socket_id, q_array_address, ent_info_array_address):
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
-        recv_request = self._get_recv_request(
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-        )
         # Check number of qubit addresses
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         num_qubits = len(self._app_arrays[app_id][q_array_address, :])
+        purpose_id = self._network_stack._get_purpose_id(
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+        )
         self._epr_recv_requests[purpose_id].append(EprCmdData(
             subroutine_id=subroutine_id,
             ent_info_array_address=ent_info_array_address,
             q_array_address=q_array_address,
-            request=recv_request,
+            request=None,
             tot_pairs=num_qubits,
             pairs_left=num_qubits,
         ))
-
-    def _get_recv_request(self, remote_node_id, purpose_id):
-        # Should be subclassed
-        raise NotImplementedError
 
     @inc_program_counter
     def _instr_wait_all(self, subroutine_id, operands):
