@@ -59,3 +59,45 @@ def test_executioner(subroutine_str, expected_register, expected_output):
     for _ in range(10):
         list(executioner.execute_subroutine(subroutine=subroutine))
         assert executioner._get_register(app_id, expected_register) == expected_output
+
+
+@pytest.mark.parametrize("subroutine_str, error_type, error_line", [
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set R0 1
+        add R0 R0 R0
+        set R1 0
+        addm R0 R0 R0 R1
+        """,
+        RuntimeError,
+        3
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        qalloc Q0
+        qalloc Q0
+        """,
+        RuntimeError,
+        2
+    )
+])
+def test_failing_executioner(subroutine_str, error_type, error_line):
+    set_log_level(logging.DEBUG)
+    subroutine = parse_text_subroutine(subroutine_str)
+
+    print(subroutine)
+
+    app_id = 0
+    executioner = Executioner()
+    list(executioner.init_new_application(app_id=app_id, max_qubits=1))
+
+    with pytest.raises(error_type) as exc:
+        executioner._consume_execute_subroutine(subroutine=subroutine)
+
+    print(f"Exception: {exc.value}")
+    assert str(exc.value).startswith(f"At line {error_line}")

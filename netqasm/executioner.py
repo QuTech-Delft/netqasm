@@ -249,10 +249,14 @@ class Executioner:
     def _execute_commands(self, subroutine_id, commands):
         """Executes a given subroutine"""
         while self._program_counters[subroutine_id] < len(commands):
-            command = commands[self._program_counters[subroutine_id]]
-            output = self._execute_command(subroutine_id, command)
-            if isinstance(output, GeneratorType):
-                yield from output
+            prog_counter = self._program_counters[subroutine_id]
+            command = commands[prog_counter]
+            try:
+                output = self._execute_command(subroutine_id, command)
+                if isinstance(output, GeneratorType):  # sanity check: should always be the case
+                    yield from output
+            except Exception as exc:
+                raise exc.__class__(f"At line {prog_counter}: {exc}") from exc
 
     def _execute_command(self, subroutine_id, command):
         """Executes a single instruction"""
@@ -435,7 +439,7 @@ class Executioner:
         else:
             mod = None
         if mod is not None and mod < 1:
-            raise RuntimeError("Modulus needs to be greater or equal to 1, not {mod}")
+            raise RuntimeError(f"Modulus needs to be greater or equal to 1, not {mod}")
         a = self._get_register(app_id=app_id, register=operands[1])
         b = self._get_register(app_id=app_id, register=operands[2])
         value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
@@ -607,7 +611,7 @@ class Executioner:
         ent_info_array_address,
     ):
         if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has no network stack")
+            raise RuntimeError(f"SubroutineHandler has no network stack")
         create_request = self._get_create_request(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
@@ -652,7 +656,7 @@ class Executioner:
 
     def _do_recv_epr(self, subroutine_id, remote_node_id, purpose_id, q_array_address, ent_info_array_address):
         if self.network_stack is None:
-            raise RuntimeError("SubroutineHandler has not network stack")
+            raise RuntimeError("SubroutineHandler has no network stack")
         recv_request = self._get_recv_request(
             remote_node_id=remote_node_id,
             purpose_id=purpose_id,
