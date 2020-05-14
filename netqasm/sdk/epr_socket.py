@@ -93,6 +93,7 @@ class EPRSocket(abc.ABC):
     def create_context(self, number=1, sequential=False):
         try:
             instruction = Instruction.CREATE_EPR
+            # NOTE loop_register is the register used for looping over the generated pairs
             pre_commands, loop_register, ent_info_array, q, pair = self._conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self._remote_node_id,
@@ -134,6 +135,7 @@ class EPRSocket(abc.ABC):
     def recv_context(self, number=1, sequential=False):
         try:
             instruction = Instruction.RECV_EPR
+            # NOTE loop_register is the register used for looping over the generated pairs
             pre_commands, loop_register, ent_info_array, q, pair = self._conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self._remote_node_id,
