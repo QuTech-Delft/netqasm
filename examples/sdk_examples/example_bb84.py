@@ -28,6 +28,8 @@ def main(no_output=False):
             q.measure(outcome)
 
     if no_output:
+        # Third message since the first two are for init application
+        # and opening the EPR socket
         print(f'binary:\n{alice.storage[2].msg}')
 
 
