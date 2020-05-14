@@ -32,6 +32,7 @@ from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
 from netqasm.sdk.epr_socket import EPRType
+from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
@@ -439,9 +440,19 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         """Block until flushed subroutines finish"""
         raise NotImplementedError
 
-    def _single_qubit_rotation(self, instruction, virtual_qubit_id, n, d):
-        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 1):
-            raise ValueError(f'{n} * pi / {d} is not a valid angle specification')
+    def _single_qubit_rotation(self, instruction, virtual_qubit_id, n=0, d=0, angle=None):
+        if angle is not None:
+            nds = get_angle_spec_from_float(angle=angle)
+            for n, d in nds:
+                self._single_qubit_rotation(
+                    instruction=instruction,
+                    virtual_qubit_id=virtual_qubit_id,
+                    n=n,
+                    d=d,
+                )
+            return
+        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
+            raise ValueError(f'{n} * pi / 2 ^ {d} is not a valid angle specification')
         register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
         rot_command = Command(
             instruction=instruction,

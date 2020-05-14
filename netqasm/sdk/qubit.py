@@ -1,7 +1,10 @@
+import numpy as np
+
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
 from netqasm.instructions import Instruction
+from netqasm.encoding import IMMEDIATE_BITS
 
 
 class Qubit(qubit):
@@ -71,31 +74,58 @@ class Qubit(qubit):
         )
 
     def rot_X(self, n=0, d=0, angle=None):
-        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`"""
+        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_X,
             virtual_qubit_id=self._qID,
             n=n,
             d=d,
+            angle=angle,
         )
 
-    def rot_Y(self, n=0, d=0):
-        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`"""
+    def rot_Y(self, n=0, d=0, angle=None):
+        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Y,
             virtual_qubit_id=self._qID,
             n=n,
             d=d,
+            angle=angle,
         )
 
-    def rot_Z(self, n=0, d=0):
-        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`"""
+    def rot_Z(self, n=0, d=0, angle=None):
+        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_Z,
             virtual_qubit_id=self._qID,
             n=n,
             d=d,
+            angle=angle,
         )
+
+    @staticmethod
+    def get_angle_spec_from_float(angle, tol=1e-6):
+        rest = angle / np.pi
+
+        # Max value of `n`
+        n_max = 2 ** IMMEDIATE_BITS - 1
+
+        nds = []
+        while rest > tol:
+            # Find the largest `d` such that `rest <= n_max / 2 ^ d`
+            d = np.floor(n_max - np.log2(rest))
+            # Find an `n` that minimizes `abs(rest - n / 2 ^ d)`
+            n = np.round(rest * 2 ** d)
+            # Shouldn't happen, but lets make sure
+            assert n <= n_max, "Something went wrong, n is bigger than n_max"
+            nds.append((n, d))
+        return nds
 
 
 class _FutureQubit(Qubit):
