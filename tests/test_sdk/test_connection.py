@@ -204,6 +204,20 @@ def test_epr():
             Register(RegisterName.R, 0),
             Address(2),
         ]),
+        # tp arg
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 0),
+            0,
+        ]),
+        Command(instruction=Instruction.SET, operands=[
+            Register(RegisterName.R, 1),
+            0,
+        ]),
+        Command(instruction=Instruction.STORE, operands=[
+            Register(RegisterName.R, 0),
+            ArrayEntry(2, index=Register(RegisterName.R, 1)),
+        ]),
+        # num pairs arg
         Command(instruction=Instruction.SET, operands=[
             Register(RegisterName.R, 0),
             1,
@@ -647,6 +661,6 @@ def test_epr_m():
 if __name__ == "__main__":
     # test_simple()
     # test_rotations()
-    # test_epr()
+    test_epr()
     # test_two_epr()
-    test_epr_m()
+    # test_epr_m()

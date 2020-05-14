@@ -130,7 +130,11 @@ class LineTracker:
 class NetQASMConnection(CQCHandler, abc.ABC):
 
     # Class to use to pack entanglement information
-    ENT_INFO = _Tuple
+    ENT_INFO = {
+        EPRType.K: _Tuple,
+        EPRType.M: _Tuple,
+        EPRType.R: _Tuple,
+    }
 
     def __init__(
         self,
@@ -722,14 +726,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _pre_epr_context(self, instruction, remote_node_id, epr_socket_id, number=1, sequential=False, tp=EPRType.K):
         # NOTE since this is in a context there will be a post_routine
         self._assert_epr_args(number=number, post_routine=True, sequential=sequential, tp=tp)
-        qubits, ent_info_array = self._handle_arguments(
+        output, ent_info_array = self._handle_arguments(
             instruction=instruction,
             remote_node_id=remote_node_id,
             number=number,
             tp=tp,
             sequential=sequential,
         )
-        virtual_qubit_ids = [q._qID for q in qubits]
+        if tp == EPRType.K:
+            virtual_qubit_ids = [q._qID for q in output]
+        else:
+            raise ValueError("EPR generation as a context is only allowed for K type requests")
         qubit_ids_array = self._put_epr_commands(
             instruction=instruction,
             virtual_qubit_ids=virtual_qubit_ids,
@@ -747,10 +754,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             q_id = qubit_ids_array.get_future_index(pair)
             q = _FutureQubit(conn=self, future_id=q_id)
             output = q
-        elif tp == EPRType.M:
-            slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
-            ent_info_slice = ent_info_array.get_future_slice(slc)
-            output = ent_info_slice
+        # elif tp == EPRType.M:
+        #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+        #     ent_info_slice = ent_info_array.get_future_slice(slc)
+        #     output = ent_info_slice
         else:
             raise NotImplementedError
         return pre_commands, loop_register, ent_info_array, output, pair
@@ -780,8 +787,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 raise ValueError("When using sequential mode with more than one pair "
                                  "a post_routine needs to be specified which consumes the "
                                  "generated pair as they come in.")
-        if not sequential and number > self._max_qubits:
-            raise ValueError(f"When not using sequential mode, the number of pairs {number} cannot be "
+        if tp == EPRType.K and not sequential and number > self._max_qubits:
+            raise ValueError(f"When not using sequential mode for K type, the number of pairs {number} cannot be "
                              f"greater than the maximum number of qubits specified ({self._max_qubits}).")
 
     def _handle_arguments(self, instruction, remote_node_id, number, tp, sequential):
@@ -796,6 +803,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         ent_info_slices = self._create_ent_info_slices(
             num_pairs=number,
             ent_info_array=ent_info_array,
+            tp=tp,
         )
         if tp == EPRType.K:
             qubits = self._create_ent_qubits(
@@ -808,11 +816,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         else:
             raise NotImplementedError
 
-    def _create_ent_info_slices(self, num_pairs, ent_info_array):
+    def _create_ent_info_slices(self, num_pairs, ent_info_array, tp):
         ent_info_slices = []
         for i in range(num_pairs):
             ent_info_slice = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
-            ent_info_slice = self.__class__.ENT_INFO(*ent_info_slice)
+            ent_info_slice = self.__class__.ENT_INFO[tp](*ent_info_slice)
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
