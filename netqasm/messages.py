@@ -1,6 +1,9 @@
 from enum import Enum, auto
 from collections import namedtuple
 
+# This module defines the messages that the host can send to
+# the backend/QNodeOS
+
 Message = namedtuple("Message", ["type", "msg"])
 InitNewAppMessage = namedtuple("InitNewAppMessage", ["app_id", "max_qubits"])
 StopAppMessage = namedtuple("StopAppMessage", ["app_id"])
