@@ -31,6 +31,7 @@ from netqasm.instructions import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
+from netqasm.sdk.epr_socket import EPRType
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
@@ -556,10 +557,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         number,
         ent_info_array,
         wait_all,
+        tp,
         **kwargs,
     ):
         # qubit addresses
-        qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
+        if tp == EPRType.K:
+            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
+            qubit_ids_array_address = qubit_ids_array.address
+        else:
+            qubit_ids_array = None
+            # NOTE since this argument won't be used just set it to some
+            # constant register for now
+            qubit_ids_array_address = Register(RegisterName.C, 0)
 
         if instruction == Instruction.CREATE_EPR:
             # arguments
@@ -567,16 +576,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             num_args = CREATE_FIELDS
             # TODO don't create a new array if already created from previous command
             create_args = [None] * num_args
+            create_args[0] = tp.value  # Type, i.e. K, M or R
             create_args[1] = number  # Number of pairs
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
-                qubit_ids_array.address,
+                qubit_ids_array_address,
                 create_args_array.address,
                 ent_info_array.address,
             ]
         elif instruction == Instruction.RECV_EPR:
             epr_cmd_operands = [
-                qubit_ids_array.address,
+                qubit_ids_array_address,
                 ent_info_array.address,
             ]
         else:
@@ -603,7 +613,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         return qubit_ids_array
 
-    def _put_post_commands(self, qubit_ids, number, ent_info_array, post_routine=None):
+    def _put_post_commands(self, qubit_ids, number, ent_info_array, tp, post_routine=None):
         if post_routine is None:
             return []
 
@@ -616,9 +626,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 ent_info_array=ent_info_array,
                 pair=pair,
             )
-            q_id = qubit_ids.get_future_index(pair)
-            q = _FutureQubit(conn=conn, future_id=q_id)
-            post_routine(self, q, pair)
+            if tp == EPRType.K:
+                q_id = qubit_ids.get_future_index(pair)
+                q = _FutureQubit(conn=conn, future_id=q_id)
+                post_routine(self, q, pair)
+            elif tp == EPRType.M:
+                slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+                ent_info_slice = ent_info_array.get_future_slice(slc)
+                post_routine(self, ent_info_slice, pair)
+            else:
+                raise NotImplementedError
 
         # TODO use loop context
         self.loop_body(post_loop, stop=number, loop_register=loop_register)
@@ -671,15 +688,21 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for reg in created_regs:
             self._remove_active_register(register=reg)
 
-    def _handle_request(self, instruction, remote_node_id, epr_socket_id, number, post_routine, sequential):
-        self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential)
-        qubits, ent_info_array = self._handle_arguments(
+    def _handle_request(self, instruction, remote_node_id, epr_socket_id, number, post_routine, sequential, tp):
+        self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential, tp=tp)
+        # NOTE the `output` is either a list of qubits or a list of entanglement information
+        # depending on the type of the request.
+        output, ent_info_array = self._handle_arguments(
             instruction=instruction,
             remote_node_id=remote_node_id,
             number=number,
+            tp=tp,
             sequential=sequential,
         )
-        virtual_qubit_ids = [q._qID for q in qubits]
+        if tp == EPRType.K:
+            virtual_qubit_ids = [q._qID for q in output]
+        else:
+            virtual_qubit_ids = None
         wait_all = post_routine is None
         qubit_ids_array = self._put_epr_commands(
             instruction=instruction,
@@ -689,19 +712,21 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             number=number,
             ent_info_array=ent_info_array,
             wait_all=wait_all,
+            tp=tp,
         )
 
-        self._put_post_commands(qubit_ids_array, number, ent_info_array, post_routine)
+        self._put_post_commands(qubit_ids_array, number, ent_info_array, tp, post_routine)
 
-        return qubits
+        return output
 
-    def _pre_epr_context(self, instruction, remote_node_id, epr_socket_id, number=1, sequential=False):
+    def _pre_epr_context(self, instruction, remote_node_id, epr_socket_id, number=1, sequential=False, tp=EPRType.K):
         # NOTE since this is in a context there will be a post_routine
-        self._assert_epr_args(number=number, post_routine=True, sequential=sequential)
+        self._assert_epr_args(number=number, post_routine=True, sequential=sequential, tp=tp)
         qubits, ent_info_array = self._handle_arguments(
             instruction=instruction,
             remote_node_id=remote_node_id,
             number=number,
+            tp=tp,
             sequential=sequential,
         )
         virtual_qubit_ids = [q._qID for q in qubits]
@@ -713,13 +738,22 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             number=number,
             ent_info_array=ent_info_array,
             wait_all=False,
+            tp=tp,
         )
         pre_commands = self._pop_pending_commands()
         loop_register = self._get_inactive_register(activate=True)
         pair = loop_register
-        q_id = qubit_ids_array.get_future_index(pair)
-        q = _FutureQubit(conn=self, future_id=q_id)
-        return pre_commands, loop_register, ent_info_array, q, pair
+        if tp == EPRType.K:
+            q_id = qubit_ids_array.get_future_index(pair)
+            q = _FutureQubit(conn=self, future_id=q_id)
+            output = q
+        elif tp == EPRType.M:
+            slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+            ent_info_slice = ent_info_array.get_future_slice(slc)
+            output = ent_info_slice
+        else:
+            raise NotImplementedError
+        return pre_commands, loop_register, ent_info_array, output, pair
 
     def _post_epr_context(self, pre_commands, number, loop_register, ent_info_array, pair):
         body_commands = self._pop_pending_commands()
@@ -739,7 +773,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
         self._remove_active_register(register=loop_register)
 
-    def _assert_epr_args(self, number, post_routine, sequential):
+    def _assert_epr_args(self, number, post_routine, sequential, tp):
+        assert isinstance(tp, EPRType), "tp is not an EPRType"
         if sequential and number > 1:
             if post_routine is None:
                 raise ValueError("When using sequential mode with more than one pair "
@@ -749,7 +784,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             raise ValueError(f"When not using sequential mode, the number of pairs {number} cannot be "
                              f"greater than the maximum number of qubits specified ({self._max_qubits}).")
 
-    def _handle_arguments(self, instruction, remote_node_id, number, sequential):
+    def _handle_arguments(self, instruction, remote_node_id, number, tp, sequential):
         if instruction == Instruction.CREATE_EPR:
             self._logger.debug(f"App {self.name} puts command to create EPR with {remote_node_id}")
         elif instruction == Instruction.RECV_EPR:
@@ -758,24 +793,42 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             raise ValueError(f"Not an epr instruction {instruction}")
 
         ent_info_array = self.new_array(length=OK_FIELDS * number)
-        qubits = self._create_ent_qubits(
+        ent_info_slices = self._create_ent_info_slices(
             num_pairs=number,
             ent_info_array=ent_info_array,
-            sequential=sequential,
         )
-        return qubits, ent_info_array
+        if tp == EPRType.K:
+            qubits = self._create_ent_qubits(
+                ent_info_slices=ent_info_slices,
+                sequential=sequential,
+            )
+            return qubits, ent_info_array
+        elif tp == EPRType.M:
+            return ent_info_slices, ent_info_array
+        else:
+            raise NotImplementedError
 
-    def _create_ent_qubits(self, num_pairs, ent_info_array, sequential):
+    def _create_ent_info_slices(self, num_pairs, ent_info_array):
+        ent_info_slices = []
+        for i in range(num_pairs):
+            ent_info_slice = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
+            ent_info_slice = self.__class__.ENT_INFO(*ent_info_slice)
+            ent_info_slices.append(ent_info_slice)
+        return ent_info_slices
+
+    def _create_ent_qubits(self, ent_info_slices, sequential):
         qubits = []
         virtual_address = None
-        for i in range(num_pairs):
-            ent_info = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
-            ent_info = self.__class__.ENT_INFO(*ent_info)
-            if i == 0:
-                qubit = Qubit(self, put_new_command=False, ent_info=ent_info)
-                virtual_address = qubit._qID
+        for i, ent_info_slice in enumerate(ent_info_slices):
+            # If sequential we want all qubits to have the same ID
+            if sequential:
+                if i == 0:
+                    qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
+                    virtual_address = qubit._qID
+                else:
+                    qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
             else:
-                qubit = Qubit(self, put_new_command=False, ent_info=ent_info, virtual_address=virtual_address)
+                qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
             qubits.append(qubit)
         return qubits
 
@@ -791,7 +844,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         remote_node_id = self._get_node_id(node_name=remote_node_name)
         return self._create_epr(remote_node_id=remote_node_id, epr_socket_id=epr_socket_id, **kwargs)
 
-    def _create_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False):
+    def _create_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False, tp=EPRType.K):
         """Receives EPR pair with a remote node"""
         if not isinstance(remote_node_id, int):
             raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
@@ -802,6 +855,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             number=number,
             post_routine=post_routine,
             sequential=sequential,
+            tp=tp,
         )
 
     def recvEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
@@ -816,7 +870,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         remote_node_id = self._get_node_id(node_name=remote_node_name)
         return self._recv_epr(remote_node_id=remote_node_id, epr_socket_id=epr_socket_id, **kwargs)
 
-    def _recv_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False):
+    def _recv_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False, tp=EPRType.K):
         """Receives EPR pair with a remote node"""
         return self._handle_request(
             instruction=Instruction.RECV_EPR,
@@ -825,6 +879,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             number=number,
             post_routine=post_routine,
             sequential=sequential,
+            tp=tp,
         )
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):

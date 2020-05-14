@@ -1,4 +1,5 @@
 import abc
+from enum import Enum, auto
 from contextlib import contextmanager
 
 from netqasm.logging import get_netqasm_logger
@@ -7,6 +8,12 @@ from netqasm.instructions import Instruction
 
 class NoCircuitError(RuntimeError):
     pass
+
+
+class EPRType(Enum):
+    K = 0
+    M = auto()
+    R = auto()
 
 
 def _assert_has_conn(method):
@@ -42,7 +49,7 @@ class EPRSocket(abc.ABC):
         self._remote_node_id = self._get_node_id(node_name=self._remote_node_name)
 
     @_assert_has_conn
-    def create(self, number=1, post_routine=None, sequential=False):
+    def create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K):
         """Creates EPR pair with a remote node
 
         Parameters
@@ -86,22 +93,24 @@ class EPRSocket(abc.ABC):
             number=number,
             post_routine=post_routine,
             sequential=sequential,
+            tp=tp,
         )
 
     @contextmanager
     @_assert_has_conn
-    def create_context(self, number=1, sequential=False):
+    def create_context(self, number=1, sequential=False, tp=EPRType.K):
         try:
             instruction = Instruction.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, q, pair = self._conn._pre_epr_context(
+            pre_commands, loop_register, ent_info_array, output, pair = self._conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self._remote_node_id,
                 epr_socket_id=self._epr_socket_id,
                 number=number,
                 sequential=sequential,
+                tp=tp,
             )
-            yield q, pair
+            yield output, pair
         finally:
             self._conn._post_epr_context(
                 pre_commands=pre_commands,
@@ -112,7 +121,7 @@ class EPRSocket(abc.ABC):
             )
 
     @_assert_has_conn
-    def recv(self, number=1, post_routine=None, sequential=False):
+    def recv(self, number=1, post_routine=None, sequential=False, tp=EPRType.K):
         """Receives EPR pair with a remote node""
 
         Parameters
@@ -128,22 +137,24 @@ class EPRSocket(abc.ABC):
             number=number,
             post_routine=post_routine,
             sequential=sequential,
+            tp=tp,
         )
 
     @contextmanager
     @_assert_has_conn
-    def recv_context(self, number=1, sequential=False):
+    def recv_context(self, number=1, sequential=False, tp=EPRType.K):
         try:
             instruction = Instruction.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, q, pair = self._conn._pre_epr_context(
+            pre_commands, loop_register, ent_info_array, output, pair = self._conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self._remote_node_id,
                 epr_socket_id=self._epr_socket_id,
                 number=number,
                 sequential=sequential,
+                tp=tp,
             )
-            yield q, pair
+            yield output, pair
         finally:
             self._conn._post_epr_context(
                 pre_commands=pre_commands,
