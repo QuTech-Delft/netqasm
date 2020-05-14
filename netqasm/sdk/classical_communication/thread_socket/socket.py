@@ -16,7 +16,7 @@ class ThreadSocket(Socket):
         ----------
         node_name : int
             Node ID of the local node.
-        remote_node_name : int
+        remote_node_name : str
             Node ID of the local node.
         socket_id : int, optional
             ID of the socket (can be seen as a port)
