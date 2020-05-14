@@ -60,7 +60,7 @@ class Qubit(qubit):
             return None
         # Lookup remote entangled node
         remote_node_id = self.entanglement_info.remote_node_id
-        remote_node_name = self._conn._get_remote_node_name(remote_node_id)
+        remote_node_name = self._conn._get_node_name(node_id=remote_node_id)
         self._remote_ent_node = remote_node_name
         return remote_node_name
 

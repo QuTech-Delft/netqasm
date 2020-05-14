@@ -5,7 +5,7 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.logging import set_log_level
 
 
-def main():
+def main(no_output=False):
     with DebugConnection("Alice", track_lines=True) as alice:
         num = 10
 
@@ -18,7 +18,8 @@ def main():
                 q.X()
             q.measure(future=outcomes.get_future_index(i))
 
-    print(f'binary:\n{alice.storage[0]}')
+    if no_output:
+        print(f'binary:\n{alice.storage[0]}')
 
 
 if __name__ == "__main__":

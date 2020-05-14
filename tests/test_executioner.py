@@ -55,7 +55,7 @@ def test_executioner(subroutine_str, expected_register, expected_output):
     app_id = 0
     executioner = Executioner()
     # Consume the generator
-    list(executioner.init_new_application(app_id=app_id, max_qubits=1))
+    executioner.init_new_application(app_id=app_id, max_qubits=1)
     for _ in range(10):
         list(executioner.execute_subroutine(subroutine=subroutine))
         assert executioner._get_register(app_id, expected_register) == expected_output
@@ -94,7 +94,7 @@ def test_failing_executioner(subroutine_str, error_type, error_line):
 
     app_id = 0
     executioner = Executioner()
-    list(executioner.init_new_application(app_id=app_id, max_qubits=1))
+    executioner.init_new_application(app_id=app_id, max_qubits=1)
 
     with pytest.raises(error_type) as exc:
         executioner._consume_execute_subroutine(subroutine=subroutine)

@@ -236,7 +236,7 @@ class RetArrCommand(Command):
 class CreateEPRCommand(Command):
     _fields_ = add_padding([
         ('remote_node_id', Register),
-        ('purpose_id', Register),
+        ('epr_socket_id', Register),
         ('qubit_address_array', Register),
         ('arg_array', Register),
         ('ent_info_array', Register),
@@ -246,7 +246,7 @@ class CreateEPRCommand(Command):
 class RecvEPRCommand(Command):
     _fields_ = add_padding([
         ('remote_node_id', Register),
-        ('purpose_id', Register),
+        ('epr_socket_id', Register),
         ('qubit_address_array', Register),
         ('ent_info_array', Register),
     ])
