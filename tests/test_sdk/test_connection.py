@@ -659,8 +659,8 @@ def test_epr_m():
 
 
 if __name__ == "__main__":
-    # test_simple()
-    # test_rotations()
+    test_simple()
+    test_rotations()
     test_epr()
-    # test_two_epr()
-    # test_epr_m()
+    test_two_epr()
+    test_epr_m()
