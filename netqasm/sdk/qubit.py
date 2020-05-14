@@ -70,7 +70,7 @@ class Qubit(qubit):
             qID=self._qID,
         )
 
-    def rot_X(self, n=0, d=0):
+    def rot_X(self, n=0, d=0, angle=None):
         """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`"""
         self._conn._single_qubit_rotation(
             instruction=Instruction.ROT_X,
