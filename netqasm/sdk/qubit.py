@@ -1,10 +1,7 @@
-import numpy as np
-
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
 from netqasm.instructions import Instruction
-from netqasm.encoding import IMMEDIATE_BITS
 
 
 class Qubit(qubit):
@@ -108,24 +105,6 @@ class Qubit(qubit):
             d=d,
             angle=angle,
         )
-
-    @staticmethod
-    def get_angle_spec_from_float(angle, tol=1e-6):
-        rest = angle / np.pi
-
-        # Max value of `n`
-        n_max = 2 ** IMMEDIATE_BITS - 1
-
-        nds = []
-        while rest > tol:
-            # Find the largest `d` such that `rest <= n_max / 2 ^ d`
-            d = np.floor(n_max - np.log2(rest))
-            # Find an `n` that minimizes `abs(rest - n / 2 ^ d)`
-            n = np.round(rest * 2 ** d)
-            # Shouldn't happen, but lets make sure
-            assert n <= n_max, "Something went wrong, n is bigger than n_max"
-            nds.append((n, d))
-        return nds
 
 
 class _FutureQubit(Qubit):
