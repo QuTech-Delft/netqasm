@@ -13,7 +13,7 @@ from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
-from netqasm.network_stack import BaseNetworkStack
+from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 
 
 class OperandType(Enum):
@@ -622,8 +622,9 @@ class Executioner:
             arg_array_address=arg_array_address,
         )
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        num_qubits = len(self._app_arrays[app_id][q_array_address, :])
-        assert num_qubits == create_request.number, "Not enough qubit addresses"
+        if self._is_create_keep_request(create_request):
+            num_qubits = len(self._app_arrays[app_id][q_array_address, :])
+            assert num_qubits == create_request.number, "Not enough qubit addresses"
         create_id = self.network_stack.put(request=create_request)
         self._epr_create_requests[create_id] = EprCmdData(
             subroutine_id=subroutine_id,
@@ -633,6 +634,10 @@ class Executioner:
             tot_pairs=create_request.number,
             pairs_left=create_request.number,
         )
+
+    def _is_create_keep_request(self, request):
+        # Should be subclassed
+        raise NotImplementedError
 
     def _get_create_request(self, subroutine_id, remote_node_id, epr_socket_id, arg_array_address):
         # Should be subclassed
@@ -663,7 +668,11 @@ class Executioner:
             raise RuntimeError("SubroutineHandler has no network stack")
         # Check number of qubit addresses
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        num_qubits = len(self._app_arrays[app_id][q_array_address, :])
+        # Get number of pairs based on length of ent info array
+        num_pairs = self._get_num_pairs_from_array(
+            app_id=app_id,
+            ent_info_array_address=ent_info_array_address,
+        )
         purpose_id = self._network_stack._get_purpose_id(
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
@@ -673,9 +682,12 @@ class Executioner:
             ent_info_array_address=ent_info_array_address,
             q_array_address=q_array_address,
             request=None,
-            tot_pairs=num_qubits,
-            pairs_left=num_qubits,
+            tot_pairs=num_pairs,
+            pairs_left=num_pairs,
         ))
+
+    def _get_num_pairs_from_array(self, app_id, ent_info_array_address):
+        return int(len(self._app_arrays[app_id][ent_info_array_address, :]) / OK_FIELDS)
 
     @inc_program_counter
     def _instr_wait_all(self, subroutine_id, operands):
