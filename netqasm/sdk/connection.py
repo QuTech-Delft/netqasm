@@ -551,6 +551,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         ent_info_array,
         wait_all,
         tp,
+        random_basis_local=None,
+        random_basis_remote=None,
         **kwargs,
     ):
         # qubit addresses
@@ -571,6 +573,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             create_args = [None] * num_args
             create_args[0] = tp.value  # Type, i.e. K, M or R
             create_args[1] = number  # Number of pairs
+            create_args[2] = random_basis_local.value  # random basis for local node
+            create_args[3] = random_basis_remote.value  # random basis for remote node
+            # TODO currently this give 50 / 50 since with the current link layer
+            # This should change and not be hardcoded here
+            create_args[10] = 128  # 50 / 50 probability for sampling random basis
+            create_args[11] = 128
+            create_args[12] = 128
+            create_args[13] = 128
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
                 qubit_ids_array_address,
@@ -681,7 +691,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for reg in created_regs:
             self._remove_active_register(register=reg)
 
-    def _handle_request(self, instruction, remote_node_id, epr_socket_id, number, post_routine, sequential, tp):
+    def _handle_request(
+        self,
+        instruction,
+        remote_node_id,
+        epr_socket_id,
+        number,
+        post_routine,
+        sequential,
+        tp,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
         self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential, tp=tp)
         # NOTE the `output` is either a list of qubits or a list of entanglement information
         # depending on the type of the request.
@@ -706,6 +727,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             ent_info_array=ent_info_array,
             wait_all=wait_all,
             tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
         )
 
         self._put_post_commands(qubit_ids_array, number, ent_info_array, tp, post_routine)
@@ -841,7 +864,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         remote_node_id = self._get_node_id(node_name=remote_node_name)
         return self._create_epr(remote_node_id=remote_node_id, epr_socket_id=epr_socket_id, **kwargs)
 
-    def _create_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False, tp=EPRType.K):
+    def _create_epr(
+        self,
+        remote_node_id,
+        epr_socket_id,
+        number=1,
+        post_routine=None,
+        sequential=False,
+        tp=EPRType.K,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
         """Receives EPR pair with a remote node"""
         if not isinstance(remote_node_id, int):
             raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
@@ -853,6 +886,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             post_routine=post_routine,
             sequential=sequential,
             tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
         )
 
     def recvEPR(self, remote_node_name, epr_socket_id=0, **kwargs):

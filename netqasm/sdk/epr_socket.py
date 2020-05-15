@@ -16,6 +16,14 @@ class EPRType(Enum):
     R = auto()
 
 
+# TODO this is copied from magic link layer in netsquid-magic
+class RandomBasis(Enum):
+    NONE = 0
+    XZ = auto()
+    XYZ = auto()
+    CHSH = auto()
+
+
 def _assert_has_conn(method):
     def new_method(self, *args, **kwargs):
         if self._conn is None:
@@ -61,7 +69,15 @@ class EPRSocket(abc.ABC):
         self._remote_node_id = self._get_node_id(node_name=self._remote_node_name)
 
     @_assert_has_conn
-    def create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K):
+    def create(
+        self,
+        number=1,
+        post_routine=None,
+        sequential=False,
+        tp=EPRType.K,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
         """Creates EPR pair with a remote node
 
         Parameters
@@ -121,6 +137,8 @@ class EPRSocket(abc.ABC):
             post_routine=post_routine,
             sequential=sequential,
             tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
         )
 
     @contextmanager
