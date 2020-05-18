@@ -1,5 +1,3 @@
-import os
-import logging
 import operator
 from enum import Enum, auto
 from itertools import count
@@ -9,7 +7,8 @@ from collections import defaultdict
 
 import numpy as np
 
-from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, _INSTR_LOGGER_FIELDS, _InstrLogHeaders
+from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, setup_file_logger
+from netqasm.logging import _INSTR_LOGGER_FIELDS, _InstrLogHeaders
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
@@ -130,26 +129,17 @@ class Executioner:
         self._circuit_setup_timeout = 1
 
         # Logger for instructions
-        self._instr_logger = self._setup_instr_logger(instr_log_dir=instr_log_dir)
+        self._instr_logger = setup_file_logger(
+            cls=self.__class__,
+            name=self._name,
+            log_dir=instr_log_dir,
+            filename=f"{str(self._name).lower()}.log",
+            formatter=_setup_instr_logger_formatter())
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
 
     def _get_simulated_time(self):
         return 0
-
-    def _setup_instr_logger(self, instr_log_dir):
-        if instr_log_dir is None:
-            return None
-        instr_logger = get_netqasm_logger(f"Instr-by-{self.__class__.__name__}({self._name})")
-        instr_log_file = f'{self._name.lower()}.log'
-        instr_log_path = os.path.join(instr_log_dir, instr_log_file)
-        filelog = logging.FileHandler(instr_log_path, mode='w')
-        formatter = _setup_instr_logger_formatter()
-        filelog.setFormatter(formatter)
-        instr_logger.setLevel(logging.INFO)
-        instr_logger.addHandler(filelog)
-        instr_logger.propagate = False
-        return instr_logger
 
     @property
     def network_stack(self):

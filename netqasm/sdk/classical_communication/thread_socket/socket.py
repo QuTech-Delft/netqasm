@@ -1,8 +1,7 @@
-import os
-import logging
 from enum import Enum
 
-from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter, _COMM_LOGGER_FIELDS, _CommLogHeaders
+from netqasm.logging import get_netqasm_logger, setup_file_logger
+from netqasm.logging import _COMM_LOGGER_FIELDS, _CommLogHeaders, setup_comm_logger_formatter
 from ..socket import Socket
 from .socket_hub import _socket_hub
 from netqasm.log_util import LineTracker
@@ -91,7 +90,12 @@ class ThreadSocket(Socket):
         self._logger.debug(f"Setting up connection")
 
         # Classical communication logger
-        self._comm_logger = self._setup_comm_logger(comm_log_dir)
+        self._comm_logger = setup_file_logger(
+            cls=self.__class__,
+            name=self.node_name,
+            log_dir=comm_log_dir,
+            filename=f"{str(self.node_name).lower()}_class_comm.log",
+            formatter=setup_comm_logger_formatter())
 
         # Connect
         self._socket_hub.connect(self, timeout=timeout)
@@ -133,19 +137,6 @@ class ThreadSocket(Socket):
     @use_callbacks.setter
     def use_callbacks(self, value):
         self._use_callbacks = value
-
-    def _setup_comm_logger(self, log_dir):
-        logger = get_netqasm_logger(f"Message-by-{self.__class__.__name__}({self.node_name})")
-        log_path = f'{str(self.node_name).lower()}_class_comm.log'
-        if log_dir is not None:
-            log_path = os.path.join(log_dir, log_path)
-        filelog = logging.FileHandler(log_path, mode='w')
-        formatter = setup_comm_logger_formatter()
-        filelog.setFormatter(formatter)
-        logger.setLevel(logging.INFO)
-        logger.addHandler(filelog)
-        logger.propagate = False
-        return logger
 
     def get_extra_log_fields(self, operation):
         """Returns the `extra` field to pass to the logger.

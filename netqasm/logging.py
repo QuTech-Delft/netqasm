@@ -1,3 +1,4 @@
+import os
 import logging
 from enum import Enum
 
@@ -28,6 +29,35 @@ def _setup_netqasm_logger():
     syslog.setFormatter(formatter)
     logger.addHandler(syslog)
     logger.propagate = False
+
+
+def setup_file_logger(cls, name, log_dir, filename, formatter, level=logging.INFO):
+    """Returns a logger that writes to a file.
+    Parameters
+    ----------
+    cls : class of the 'logging actor'. Logging messages will start with the class name.
+    name : name of the 'logging actor'.
+    log_dir : directory for the log file.
+    filename : log file name.
+    formatter : logging.Formatter object
+
+    Returns
+    -------
+    Logger object, or None if path is not specified
+    """
+    if log_dir is None or filename is None:
+        return None
+
+    logger = get_netqasm_logger(f"{cls.__name__}({name})")
+    log_path = filename
+    if log_dir is not None:
+        log_path = os.path.join(log_dir, log_path)
+    filelog = logging.FileHandler(log_path, mode='w')
+    filelog.setFormatter(formatter)
+    logger.setLevel(level)
+    logger.addHandler(filelog)
+    logger.propagate = False
+    return logger
 
 
 _LOG_FIELD_DELIM = ', '
