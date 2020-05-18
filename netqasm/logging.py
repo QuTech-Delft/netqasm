@@ -68,4 +68,28 @@ def _setup_instr_logger_formatter():
     return formatter
 
 
+class _CommLogHeaders(Enum):
+    WCT = "WCT"  # Wall clock time
+
+
+_COMM_LOGGER_FIELDS = {
+    _CommLogHeaders.WCT: "asctime",
+}
+
+_COMM_LOG_FIELD_DELIM = ' : '
+_COMM_LOG_HDR_DELIM = '='
+
+
+def setup_comm_logger_formatter():
+    """Classical communication logger used by ThreadSocket"""
+    hdrs = [
+        _CommLogHeaders.WCT
+    ]
+    fields = [f"{hdr.value}{_COMM_LOG_HDR_DELIM}%({_COMM_LOGGER_FIELDS[hdr]})s" for hdr in hdrs]
+    # Add name of logger and log message
+    fields = ['%(name)s'] + fields + ['%(message)s']
+    formatter = logging.Formatter(_COMM_LOG_FIELD_DELIM.join(fields))
+    return formatter
+
+
 _setup_netqasm_logger()

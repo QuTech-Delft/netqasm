@@ -1,13 +1,14 @@
-from netqasm.logging import get_netqasm_logger
+import os
+import logging
+
+from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter
 from ..socket import Socket
 from .socket_hub import _socket_hub
-
-# TODO add structured logging for QNE
 
 
 class ThreadSocket(Socket):
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False):
+                 use_callbacks=False, comm_log_dir=None):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -24,6 +25,8 @@ class ThreadSocket(Socket):
             Optionally use a timeout for trying to setup a connection with another node.
         use_callbacks : float, optional
             Whether to use callbacks or not.
+        comm_log_dir : str, optional
+            Path to log classical communication to. File name will be "{node_name}_class_comm.log"
         """
         if node_name == remote_node_name:
             raise ValueError(f"Cannot connect to itself node_name {node_name} = remote_node_name {remote_node_name}")
@@ -44,6 +47,9 @@ class ThreadSocket(Socket):
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
         self._logger.debug(f"Setting up connection")
+
+        # Classical communication logger
+        self._comm_logger = self._setup_comm_logger(comm_log_dir)
 
         # Connect
         self._socket_hub.connect(self, timeout=timeout)
@@ -86,6 +92,19 @@ class ThreadSocket(Socket):
     def use_callbacks(self, value):
         self._use_callbacks = value
 
+    def _setup_comm_logger(self, log_dir):
+        logger = get_netqasm_logger(f"Message-by-{self.__class__.__name__}({self.node_name})")
+        log_path = f'{str(self.node_name).lower()}_class_comm.log'
+        if log_dir is not None:
+            log_path = os.path.join(log_dir, log_path)
+        filelog = logging.FileHandler(log_path, mode='w')
+        formatter = setup_comm_logger_formatter()
+        filelog.setFormatter(formatter)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(filelog)
+        logger.propagate = False
+        return logger
+
     def send(self, msg):
         """Sends a message to the remote node.
 
@@ -103,6 +122,9 @@ class ThreadSocket(Socket):
             raise TypeError(f"Messages needs to be a string, not {type(msg)}")
         if not self.connected:
             raise ConnectionError("Socket is not connected so cannot send")
+
+        if self._comm_logger is not None:
+            self._comm_logger.info(f"Send classical message to {self.remote_node_name}: {msg}")
         self._socket_hub.send(self, msg)
 
     def recv(self, block=True, timeout=None):
@@ -128,7 +150,12 @@ class ThreadSocket(Socket):
         RuntimeError
             If `block=False` and there is no available message
         """
-        return self._socket_hub.recv(self, block=block, timeout=timeout)
+        if self._comm_logger is not None:
+            self._comm_logger.info(f"Waiting for a classical message from {self.remote_node_name}...")
+        msg = self._socket_hub.recv(self, block, timeout)
+        if self._comm_logger is not None:
+            self._comm_logger.info(f"Message received from {self.remote_node_name}: {msg}")
+        return msg
 
     def recv_callback(self, msg):
         """This method gets called when a message is received.
