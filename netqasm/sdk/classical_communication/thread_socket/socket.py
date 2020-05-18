@@ -4,7 +4,7 @@ import logging
 from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter, _COMM_LOGGER_FIELDS, _CommLogHeaders
 from ..socket import Socket
 from .socket_hub import _socket_hub
-from netqasm.linetracker import LineTracker
+from netqasm.log_util import LineTracker
 
 
 def log_send(method):
