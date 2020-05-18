@@ -14,7 +14,14 @@ class _SocketHub:
 
     def __init__(self):
         """Used to connect all sockets (:class:`~.ThreadSocket`) used between threads"""
+        # NOTE a socket gets tracked at two places, the _open_sockets and _remote_sockets
+        # the idea is that when a connection is closed it removes itself from the _open_sockets
+        # but it is the task of the other end to remote it from the _remote_sockets.
+        # This is to prevent a connection from opening and closing on one side before
+        # the sides notices and waits for ever.
         self._open_sockets = set()
+        self._remote_sockets = set()
+
         self._messages = defaultdict(list)
         self._recv_callbacks = {}
         self._conn_lost_callbacks = {}
@@ -26,6 +33,7 @@ class _SocketHub:
     def connect(self, socket, timeout=None):
         """Connects a socket to another"""
         self._open_sockets.add(socket.key)
+        self._remote_sockets.add(socket.key)
         self._add_callbacks(socket)
 
         self._wait_for_remote(socket, timeout=timeout)
@@ -36,7 +44,7 @@ class _SocketHub:
             self._conn_lost_callbacks[socket.key] = WeakMethod(socket.conn_lost_callback)
 
     def is_connected(self, socket):
-        return socket.key in self._open_sockets
+        return all(key in self._open_sockets for key in [socket.key, socket.remote_key])
 
     def disconnect(self, socket):
         """Disconnect a socket"""
@@ -50,10 +58,10 @@ class _SocketHub:
                                          f"for socket {socket.remote_key} but object is garbage collected")
                 else:
                     method()
-            for key in [socket.key, socket.remote_key]:
-                self._open_sockets.remove(key)
-                self._recv_callbacks.pop(key, None)
-                self._conn_lost_callbacks.pop(key, None)
+            self._open_sockets.remove(socket.key)
+            self._remote_sockets.remove(socket.remote_key)
+            self._recv_callbacks.pop(socket.key, None)
+            self._conn_lost_callbacks.pop(socket.key, None)
 
     def _wait_for_remote(self, socket, timeout=None):
         """Wait for a remote socket to become active"""
@@ -61,6 +69,9 @@ class _SocketHub:
         while True:
             if socket.remote_key in self._open_sockets:
                 self._logger.debug(f"Connection for socket {socket.key} successful")
+                return
+            if socket.remote_key in self._remote_sockets:
+                self._logger.debug(f"Connection for socket {socket.key} was successful but closed again")
                 return
             t_now = timer()
             t_elapsed = t_now - t_start
