@@ -186,7 +186,7 @@ class ThreadSocket(Socket):
         RuntimeError
             If `block=False` and there is no available message
         """
-        return self._socket_hub.recv(self, block, timeout)
+        return self._socket_hub.recv(self, block=block, timeout=timeout)
 
     def recv_callback(self, msg):
         """This method gets called when a message is received.
