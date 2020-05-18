@@ -31,7 +31,8 @@ from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
 from netqasm.sdk.epr_socket import EPRType
-from netqasm.sdk.toolbox import get_angle_spec_from_float, LineTracker
+from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.linetracker import LineTracker
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
