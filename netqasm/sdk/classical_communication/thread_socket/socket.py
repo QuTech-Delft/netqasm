@@ -67,7 +67,7 @@ class ThreadSocket(Socket):
         self._remote_node_name = remote_node_name
         self._id = socket_id
 
-        self._line_tracker = LineTracker(track_lines, for_socket=True)
+        self._line_tracker = LineTracker(level=2, track_lines=track_lines)
         self._track_lines = track_lines
 
         # Use callbacks

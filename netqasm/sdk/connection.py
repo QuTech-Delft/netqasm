@@ -145,7 +145,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Can be set to false for e.g. debugging, not exposed to user atm
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(track_lines)
+        self._line_tracker = LineTracker(level=3, track_lines=track_lines)
         self._track_lines = track_lines
 
         # Should subroutines commited be saved for logging/debugging
