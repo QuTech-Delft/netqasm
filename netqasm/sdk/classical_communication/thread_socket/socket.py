@@ -1,14 +1,47 @@
 import os
 import logging
 
-from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter
+from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter, _COMM_LOGGER_FIELDS, _CommLogHeaders
 from ..socket import Socket
 from .socket_hub import _socket_hub
+from netqasm.sdk.connection import LineTracker
+
+
+def log_send(method):
+    def new_method(self, msg):
+        if self._comm_logger is not None:
+            lineno = self._line_tracker.get_line()
+            hln = _COMM_LOGGER_FIELDS[_CommLogHeaders.HLN]
+            extra = {hln: lineno}
+            self._comm_logger.info(f"Send classical message to {self.remote_node_name}: {msg}", extra=extra)
+
+        method(self, msg)
+
+    return new_method
+
+
+def log_recv(method):
+    def new_method(self, block=True, timeout=None):
+        lineno = self._line_tracker.get_line()
+        hln = _COMM_LOGGER_FIELDS[_CommLogHeaders.HLN]
+        extra = {hln: lineno}
+
+        if self._comm_logger is not None:
+            self._comm_logger.info(f"Waiting for a classical message from {self.remote_node_name}...", extra=extra)
+
+        msg = method(self, block, timeout)
+
+        if self._comm_logger is not None:
+            self._comm_logger.info(f"Message received from {self.remote_node_name}: {msg}", extra=extra)
+
+        return msg
+
+    return new_method
 
 
 class ThreadSocket(Socket):
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None):
+                 use_callbacks=False, comm_log_dir=None, track_lines=True):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -33,6 +66,9 @@ class ThreadSocket(Socket):
         self._node_name = node_name
         self._remote_node_name = remote_node_name
         self._id = socket_id
+
+        self._line_tracker = LineTracker(track_lines, for_socket=True)
+        self._track_lines = track_lines
 
         # Use callbacks
         self._use_callbacks = use_callbacks
@@ -105,6 +141,7 @@ class ThreadSocket(Socket):
         logger.propagate = False
         return logger
 
+    @log_send
     def send(self, msg):
         """Sends a message to the remote node.
 
@@ -123,10 +160,9 @@ class ThreadSocket(Socket):
         if not self.connected:
             raise ConnectionError("Socket is not connected so cannot send")
 
-        if self._comm_logger is not None:
-            self._comm_logger.info(f"Send classical message to {self.remote_node_name}: {msg}")
         self._socket_hub.send(self, msg)
 
+    @log_recv
     def recv(self, block=True, timeout=None):
         """Receive a message form the remote node.
 
@@ -150,12 +186,7 @@ class ThreadSocket(Socket):
         RuntimeError
             If `block=False` and there is no available message
         """
-        if self._comm_logger is not None:
-            self._comm_logger.info(f"Waiting for a classical message from {self.remote_node_name}...")
-        msg = self._socket_hub.recv(self, block, timeout)
-        if self._comm_logger is not None:
-            self._comm_logger.info(f"Message received from {self.remote_node_name}: {msg}")
-        return msg
+        return self._socket_hub.recv(self, block, timeout)
 
     def recv_callback(self, msg):
         """This method gets called when a message is received.

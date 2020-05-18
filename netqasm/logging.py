@@ -70,10 +70,12 @@ def _setup_instr_logger_formatter():
 
 class _CommLogHeaders(Enum):
     WCT = "WCT"  # Wall clock time
+    HLN = "HLN"  # Host line number
 
 
 _COMM_LOGGER_FIELDS = {
     _CommLogHeaders.WCT: "asctime",
+    _CommLogHeaders.HLN: "host_lineno",
 }
 
 _COMM_LOG_FIELD_DELIM = ' : '
@@ -83,7 +85,8 @@ _COMM_LOG_HDR_DELIM = '='
 def setup_comm_logger_formatter():
     """Classical communication logger used by ThreadSocket"""
     hdrs = [
-        _CommLogHeaders.WCT
+        _CommLogHeaders.WCT,
+        _CommLogHeaders.HLN
     ]
     fields = [f"{hdr.value}{_COMM_LOG_HDR_DELIM}%({_COMM_LOGGER_FIELDS[hdr]})s" for hdr in hdrs]
     # Add name of logger and log message
