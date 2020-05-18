@@ -1,5 +1,6 @@
 import os
 import logging
+from enum import Enum
 
 from netqasm.logging import get_netqasm_logger, setup_comm_logger_formatter, _COMM_LOGGER_FIELDS, _CommLogHeaders
 from ..socket import Socket
@@ -7,13 +8,18 @@ from .socket_hub import _socket_hub
 from netqasm.log_util import LineTracker
 
 
+class SocketOperation(Enum):
+    SEND = "SEND"
+    RECV = "RECV"
+    WAIT_RECV = "WAIT_RECV"
+
+
 def log_send(method):
     def new_method(self, msg):
         if self._comm_logger is not None:
-            lineno = self._line_tracker.get_line()
-            hln = _COMM_LOGGER_FIELDS[_CommLogHeaders.HLN]
-            extra = {hln: lineno}
-            self._comm_logger.info(f"Send classical message to {self.remote_node_name}: {msg}", extra=extra)
+            self._comm_logger.info(
+                f"Send classical message to {self.remote_node_name}: {msg}",
+                extra=self.get_extra_log_fields(SocketOperation.SEND))
 
         method(self, msg)
 
@@ -22,17 +28,17 @@ def log_send(method):
 
 def log_recv(method):
     def new_method(self, block=True, timeout=None):
-        lineno = self._line_tracker.get_line()
-        hln = _COMM_LOGGER_FIELDS[_CommLogHeaders.HLN]
-        extra = {hln: lineno}
-
         if self._comm_logger is not None:
-            self._comm_logger.info(f"Waiting for a classical message from {self.remote_node_name}...", extra=extra)
+            self._comm_logger.info(
+                f"Waiting for a classical message from {self.remote_node_name}...",
+                extra=self.get_extra_log_fields(SocketOperation.WAIT_RECV))
 
         msg = method(self, block, timeout)
 
         if self._comm_logger is not None:
-            self._comm_logger.info(f"Message received from {self.remote_node_name}: {msg}", extra=extra)
+            self._comm_logger.info(
+                f"Message received from {self.remote_node_name}: {msg}",
+                extra=self.get_extra_log_fields(SocketOperation.RECV))
 
         return msg
 
@@ -140,6 +146,19 @@ class ThreadSocket(Socket):
         logger.addHandler(filelog)
         logger.propagate = False
         return logger
+
+    def get_extra_log_fields(self, operation):
+        """Returns the `extra` field to pass to the logger.
+
+        operation : SocketOperation
+        """
+        lineno = self._line_tracker.get_line()
+        hln = _COMM_LOGGER_FIELDS[_CommLogHeaders.HLN]
+        op = _COMM_LOGGER_FIELDS[_CommLogHeaders.OP]
+        return {
+            hln: lineno,
+            op: operation
+        }
 
     @log_send
     def send(self, msg):
