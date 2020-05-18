@@ -148,7 +148,7 @@ class ThreadSocket(Socket):
         op = _COMM_LOGGER_FIELDS[_CommLogHeaders.OP]
         return {
             hln: lineno,
-            op: operation
+            op: operation.value
         }
 
     @log_send
