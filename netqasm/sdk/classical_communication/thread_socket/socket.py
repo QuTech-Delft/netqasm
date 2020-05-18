@@ -18,12 +18,12 @@ class ThreadSocket(Socket):
         node_name : int
             Node ID of the local node.
         remote_node_name : str
-            Node ID of the local node.
+            Node ID of the remote node.
         socket_id : int, optional
             ID of the socket (can be seen as a port)
         timeout : float, optional
             Optionally use a timeout for trying to setup a connection with another node.
-        use_callbacks : float, optional
+        use_callbacks : bool, optional
             Whether to use callbacks or not.
         comm_log_dir : str, optional
             Path to log classical communication to. File name will be "{node_name}_class_comm.log"
