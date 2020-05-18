@@ -171,6 +171,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pre_context_commands = {}
 
         # Can be set to false for e.g. debugging, not exposed to user atm
+        self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
         self._line_tracker = LineTracker(track_lines)
@@ -190,17 +191,20 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Allow to not stop the backend upon exit, for future use-cases
-        self.close(stop_backend=self._stop_backend_on_exit)
+        # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
+        self.close(
+            clear_app=self._clear_app_on_exit,
+            stop_backend=self._stop_backend_on_exit,
+        )
 
-    def close(self, stop_backend=True):
+    def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
         self.flush()
 
         self._pop_app_id()
 
-        self._signal_stop(stop_backend=stop_backend)
+        self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
         self._inactivate_qubits()
 
         if self._log_subroutines_dir is not None:
@@ -229,11 +233,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             q = self.active_qubits.pop()
             q._set_active(False)
 
-    def _signal_stop(self, stop_backend=True):
-        self._commit_message(msg=Message(
-            type=MessageType.STOP_APP,
-            msg=StopAppMessage(app_id=self._appID),
-        ))
+    def _signal_stop(self, clear_app=True, stop_backend=True):
+        if clear_app:
+            self._commit_message(msg=Message(
+                type=MessageType.STOP_APP,
+                msg=StopAppMessage(app_id=self._appID),
+            ))
 
         if stop_backend:
             self._commit_message(msg=Message(

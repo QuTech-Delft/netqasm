@@ -1,25 +1,33 @@
 from netqasm.sdk.qubit import Qubit as qubit
 
 
-def parity_meas(qubits, bases, node, negative=False):
+def parity_meas(qubits, bases):
     """
     Performs a parity measurement on the provided qubits in the Pauli bases specified by 'bases'.
-    'bases' should be a string with letters in "IXYZ" and have the same length as the number of qubits provided.
-    If 'negative' is true the measurement outcome is flipped.
+    `bases` should be a string with letters in 'IXYZ' and optionally start with '-'.
+    If `bases` starts with '-', then the measurement outcome is flipped.
+    The `basis` should have the same length as the number of qubits provided or +1 if starts with '-'.
     If more than one letter of 'bases' is not identity, then an ancilla qubit will be used, which is created
-    using the provided 'node'.
+    using the connection of the first qubit.
 
-    # TODO update params
-    :param qubits: List of qubits to be measured.
-    :param bases: String specifying the Pauli-bases of the measurement. Example bases="IXY" for three qubits.
-    :type bases: str
-    :param node: The node storing the qubits. Used for creating an ancilla qubit.
-    :type node: :obj: `SimulaQron.cqc.pythonLib.cqc.CQCConnection`
-    :param negative: If the measurement outcome should be flipped or not.
-    :type negative: bool
-    :return: The measurement outcome 0 or 1, where 0 correspond to the +1 eigenvalue of the measurement operator.
+    Parameters
+    ----------
+    qubits : List[:class:`~.sdk.qubit.Qubit`]
+        The qubits to measure
+    bases : str
+        What parity meas to perform.
+
+    Returns
+    -------
+    :class:~.sdk.futures.Future
+        The measurement outcome
     """
 
+    if bases.startswith('-'):
+        negative = True
+        bases = bases[1:]
+    else:
+        negative = False
     if not (len(qubits) == len(bases)):
         raise ValueError("Number of bases needs to be the number of qubits.")
     if not all([(B in "IXYZ") for B in bases]):
@@ -71,8 +79,11 @@ def parity_meas(qubits, bases, node, negative=False):
     else:
         # Parity measurement, ancilla needed
 
+        # Use the connection of the first qubit
+        conn = qubits[0]._conn
+
         # Initialize ancilla qubit
-        anc = qubit(node)
+        anc = qubit(conn)
 
         # Flip to correct basis
         for i in range(len(bases)):
