@@ -573,14 +573,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             create_args = [None] * num_args
             create_args[0] = tp.value  # Type, i.e. K, M or R
             create_args[1] = number  # Number of pairs
-            create_args[2] = random_basis_local.value  # random basis for local node
-            create_args[3] = random_basis_remote.value  # random basis for remote node
             # TODO currently this give 50 / 50 since with the current link layer
             # This should change and not be hardcoded here
-            create_args[10] = 128  # 50 / 50 probability for sampling random basis
-            create_args[11] = 128
-            create_args[12] = 128
-            create_args[13] = 128
+            if random_basis_local is not None:
+                create_args[2] = random_basis_local.value  # random basis for local node
+                create_args[10] = 128  # 50 / 50 probability for sampling random basis
+                create_args[11] = 128
+            if random_basis_remote is not None:
+                create_args[3] = random_basis_remote.value  # random basis for remote node
+                create_args[12] = 128
+                create_args[13] = 128
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
                 qubit_ids_array_address,
