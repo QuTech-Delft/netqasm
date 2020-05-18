@@ -51,8 +51,8 @@ class ThreadSocket(Socket):
     def __del__(self):
         if self.connected:
             self._logger.debug(f"Closing connection")
-            self._connected = False
-            self._socket_hub.disconnect(self)
+        self._connected = False
+        self._socket_hub.disconnect(self)
 
     @property
     def node_name(self):
