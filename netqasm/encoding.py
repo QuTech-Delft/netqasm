@@ -22,7 +22,9 @@ METADATA_BYTES = len(bytes(Metadata()))
 # BODY #
 ########
 INTEGER = ctypes.c_int32
+INTEGER_BITS = len(bytes(INTEGER())) * 8
 IMMEDIATE = ctypes.c_uint8
+IMMEDIATE_BITS = len(bytes(IMMEDIATE())) * 8
 
 ADDRESS = ctypes.c_uint32
 ADDRESS_BITS = len(bytes(ADDRESS())) * 8

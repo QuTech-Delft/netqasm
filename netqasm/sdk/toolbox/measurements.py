@@ -1,4 +1,4 @@
-from netqasm.sdk import Qubit as qubit
+from netqasm.sdk.qubit import Qubit as qubit
 
 
 def parity_meas(qubits, bases, node, negative=False):
