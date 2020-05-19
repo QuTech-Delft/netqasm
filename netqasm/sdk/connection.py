@@ -1,7 +1,6 @@
 import os
 import abc
 import pickle
-import inspect
 import warnings
 from itertools import count
 from collections import namedtuple
@@ -33,6 +32,7 @@ from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
 from netqasm.sdk.epr_socket import EPRType
 from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.log_util import LineTracker
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
@@ -101,33 +101,6 @@ class _Tuple(tuple):
         return tuple.__new__(cls, args[1:])
 
 
-class LineTracker:
-    def __init__(self, track_lines=True):
-        self._track_lines = track_lines
-        if not self._track_lines:
-            return
-        # Get the file-name of the calling host application
-        frame = inspect.currentframe()
-        for _ in range(3):
-            frame = frame.f_back
-        self._calling_filename = self._get_file_from_frame(frame)
-
-    def _get_file_from_frame(self, frame):
-        return str(frame).split(',')[1][7:-1]
-
-    def get_line(self):
-        if not self._track_lines:
-            return None
-        frame = inspect.currentframe()
-        while True:
-            if self._get_file_from_frame(frame) == self._calling_filename:
-                break
-            frame = frame.f_back
-        else:
-            raise RuntimeError(f"Different calling file than {self._calling_filename}")
-        return frame.f_lineno
-
-
 class NetQASMConnection(CQCHandler, abc.ABC):
 
     # Class to use to pack entanglement information
@@ -174,7 +147,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(track_lines)
+        self._line_tracker = LineTracker(level=3, track_lines=track_lines)
         self._track_lines = track_lines
 
         # Should subroutines commited be saved for logging/debugging
