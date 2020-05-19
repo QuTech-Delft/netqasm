@@ -2,10 +2,19 @@ import os
 import abc
 import pickle
 import warnings
+from enum import Enum
 from itertools import count
 from collections import namedtuple
 from contextlib import contextmanager
 
+from qlink_interface import (
+    EPRType,
+    RandomBasis,
+    LinkLayerCreate,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+)
 from cqc.pythonLib import CQCHandler
 from cqc.cqcHeader import (
     CQC_CMD_NEW,
@@ -30,10 +39,9 @@ from netqasm.instructions import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
-from netqasm.sdk.epr_socket import EPRType
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.log_util import LineTracker
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
+from netqasm.network_stack import OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
     Subroutine,
@@ -105,9 +113,9 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
     # Class to use to pack entanglement information
     ENT_INFO = {
-        EPRType.K: _Tuple,
-        EPRType.M: _Tuple,
-        EPRType.R: _Tuple,
+        EPRType.K: LinkLayerOKTypeK,
+        EPRType.M: LinkLayerOKTypeM,
+        EPRType.R: LinkLayerOKTypeR,
     }
 
     def __init__(
@@ -566,23 +574,37 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             qubit_ids_array_address = Register(RegisterName.C, 0)
 
         if instruction == Instruction.CREATE_EPR:
-            # arguments
+            # request arguments
             # TODO add other args
-            num_args = CREATE_FIELDS
-            # TODO don't create a new array if already created from previous command
-            create_args = [None] * num_args
-            create_args[0] = tp.value  # Type, i.e. K, M or R
-            create_args[1] = number  # Number of pairs
+            create_kwargs = {}
+            create_kwargs['type'] = tp
+            create_kwargs['number'] = number
             # TODO currently this give 50 / 50 since with the current link layer
             # This should change and not be hardcoded here
             if random_basis_local is not None:
-                create_args[2] = random_basis_local.value  # random basis for local node
-                create_args[10] = 128  # 50 / 50 probability for sampling random basis
-                create_args[11] = 128
+                # NOTE Currently there is not value one can set to specify
+                # a uniform distribution for three bases. This needs to be changed
+                # in the underlying link layer/network stack
+                assert random_basis_local not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                       "Can only random measure in one of two bases for now")
+                create_kwargs['random_basis_local'] = random_basis_local
+                create_kwargs['probability_dist_local1'] = 128
             if random_basis_remote is not None:
-                create_args[3] = random_basis_remote.value  # random basis for remote node
-                create_args[12] = 128
-                create_args[13] = 128
+                assert random_basis_remote not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                       "Can only random measure in one of two bases for now")
+                create_kwargs['random_basis_remote'] = random_basis_remote
+                create_kwargs['probability_dist_remote1'] = 128
+
+            create_args = []
+            # NOTE we don't include the two first args since this is remote_node_id
+            # and epr_socket_id which comes as immediates
+            for field in LinkLayerCreate._fields[2:]:
+                arg = create_kwargs.get(field)
+                # If Enum, use its value
+                if isinstance(arg, Enum):
+                    arg = arg.value
+                create_args.append(arg)
+            # TODO don't create a new array if already created from previous command
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
                 qubit_ids_array_address,

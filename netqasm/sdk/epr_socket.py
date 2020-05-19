@@ -1,6 +1,7 @@
 import abc
-from enum import Enum, auto
 from contextlib import contextmanager
+
+from qlink_interface import EPRType
 
 from netqasm.logging import get_netqasm_logger
 from netqasm.instructions import Instruction
@@ -8,20 +9,6 @@ from netqasm.instructions import Instruction
 
 class NoCircuitError(RuntimeError):
     pass
-
-
-class EPRType(Enum):
-    K = 0
-    M = auto()
-    R = auto()
-
-
-# TODO this is copied from magic link layer in netsquid-magic
-class RandomBasis(Enum):
-    NONE = 0
-    XZ = auto()
-    XYZ = auto()
-    CHSH = auto()
 
 
 def _assert_has_conn(method):
