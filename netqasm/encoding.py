@@ -21,7 +21,10 @@ METADATA_BYTES = len(bytes(Metadata()))
 ########
 # BODY #
 ########
-CONSTANT = ctypes.c_uint32
+INTEGER = ctypes.c_int32
+INTEGER_BITS = len(bytes(INTEGER())) * 8
+IMMEDIATE = ctypes.c_uint8
+IMMEDIATE_BITS = len(bytes(IMMEDIATE())) * 8
 
 ADDRESS = ctypes.c_uint32
 ADDRESS_BITS = len(bytes(ADDRESS())) * 8
@@ -136,7 +139,9 @@ class MeasCommand(Command):
 class RotationCommand(Command):
     _fields_ = add_padding([
         ('qubit', Register),
-        ('angle', Register),
+        # An angle specified as `m * pi / n`
+        ('angle_numerator', IMMEDIATE),
+        ('angle_denominator', IMMEDIATE),
     ])
 
 
@@ -159,14 +164,14 @@ class ClassicalOpModCommand(Command):
 
 class JumpCommand(Command):
     _fields_ = add_padding([
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
 class BranchUnaryCommand(Command):
     _fields_ = add_padding([
         ('a', Register),
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
@@ -174,14 +179,14 @@ class BranchBinaryCommand(Command):
     _fields_ = add_padding([
         ('a', Register),
         ('b', Register),
-        ('line', CONSTANT),
+        ('line', INTEGER),
     ])
 
 
 class SetCommand(Command):
     _fields_ = add_padding([
         ('register', Register),
-        ('value', CONSTANT),
+        ('value', INTEGER),
     ])
 
 
@@ -233,7 +238,7 @@ class RetArrCommand(Command):
 class CreateEPRCommand(Command):
     _fields_ = add_padding([
         ('remote_node_id', Register),
-        ('purpose_id', Register),
+        ('epr_socket_id', Register),
         ('qubit_address_array', Register),
         ('arg_array', Register),
         ('ent_info_array', Register),
@@ -243,7 +248,7 @@ class CreateEPRCommand(Command):
 class RecvEPRCommand(Command):
     _fields_ = add_padding([
         ('remote_node_id', Register),
-        ('purpose_id', Register),
+        ('epr_socket_id', Register),
         ('qubit_address_array', Register),
         ('ent_info_array', Register),
     ])

@@ -1,1 +1,3 @@
 cqc>=3.2.1,<4.0.0
+click~=7.1
+qlink-interface>=0.0.2,<1.0.0

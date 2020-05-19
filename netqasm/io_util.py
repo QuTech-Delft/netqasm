@@ -28,6 +28,7 @@ def _read_netqasm_file(netqasm_file):
 def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, log_level="WARNING"):
     set_log_level(log_level)
     subroutine = _read_netqasm_file(netqasm_file)
+
     if backend == "debug":
         shared_memory = _execute_using_debug(
             num_qubits=num_qubits,
@@ -53,7 +54,7 @@ def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, log_
 def _execute_using_debug(num_qubits, subroutine):
     executioner = Executioner()
     # Consume the generator
-    list(executioner.init_new_application(app_id=subroutine.app_id, max_qubits=num_qubits))
+    executioner.init_new_application(app_id=subroutine.app_id, max_qubits=num_qubits)
     executioner._consume_execute_subroutine(subroutine)
     shared_memory = executioner._shared_memories[subroutine.app_id]
     return shared_memory

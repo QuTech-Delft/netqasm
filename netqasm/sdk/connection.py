@@ -1,11 +1,20 @@
 import os
 import abc
 import pickle
-import inspect
+import warnings
+from enum import Enum
 from itertools import count
 from collections import namedtuple
 from contextlib import contextmanager
 
+from qlink_interface import (
+    EPRType,
+    RandomBasis,
+    LinkLayerCreate,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+)
 from cqc.pythonLib import CQCHandler
 from cqc.cqcHeader import (
     CQC_CMD_NEW,
@@ -25,25 +34,33 @@ from cqc.cqcHeader import (
 
 from netqasm import NETQASM_VERSION
 from netqasm.logging import get_netqasm_logger
-from netqasm.util import NoCircuitRuleError
 from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
 from netqasm.instructions import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS, Rule, CircuitRules
+from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.log_util import LineTracker
+from netqasm.network_stack import OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
     Subroutine,
     Command,
     Register,
-    Constant,
     Address,
     ArrayEntry,
     ArraySlice,
     Label,
     BranchLabel,
     Symbols,
+)
+from netqasm.messages import (
+    Signal,
+    Message,
+    InitNewAppMessage,
+    MessageType,
+    StopAppMessage,
+    OpenEPRSocketMessage,
 )
 
 
@@ -92,37 +109,14 @@ class _Tuple(tuple):
         return tuple.__new__(cls, args[1:])
 
 
-class LineTracker:
-    def __init__(self, track_lines=True):
-        self._track_lines = track_lines
-        if not self._track_lines:
-            return
-        # Get the file-name of the calling host application
-        frame = inspect.currentframe()
-        for _ in range(3):
-            frame = frame.f_back
-        self._calling_filename = self._get_file_from_frame(frame)
-
-    def _get_file_from_frame(self, frame):
-        return str(frame).split(',')[1][7:-1]
-
-    def get_line(self):
-        if not self._track_lines:
-            return None
-        frame = inspect.currentframe()
-        while True:
-            if self._get_file_from_frame(frame) == self._calling_filename:
-                break
-            frame = frame.f_back
-        else:
-            raise RuntimeError(f"Different calling file than {self._calling_filename}")
-        return frame.f_lineno
-
-
 class NetQASMConnection(CQCHandler, abc.ABC):
 
     # Class to use to pack entanglement information
-    ENT_INFO = _Tuple
+    ENT_INFO = {
+        EPRType.K: LinkLayerOKTypeK,
+        EPRType.M: LinkLayerOKTypeM,
+        EPRType.R: LinkLayerOKTypeR,
+    }
 
     def __init__(
         self,
@@ -131,17 +125,15 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         max_qubits=5,
         track_lines=False,
         log_subroutines_dir=None,
-        epr_to=None,
-        epr_from=None,
+        epr_sockets=None,
+        compiler=None,
     ):
         super().__init__(name=name, app_id=app_id)
 
         self._used_array_addresses = []
 
-        self._circuit_rules = self._get_circuit_rules(epr_to=epr_to, epr_from=epr_from)
-
         self._max_qubits = max_qubits
-        self._init_new_app(max_qubits=max_qubits, circuit_rules=self._circuit_rules)
+        self._init_new_app(max_qubits=max_qubits)
 
         self._pending_commands = []
 
@@ -160,9 +152,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pre_context_commands = {}
 
         # Can be set to false for e.g. debugging, not exposed to user atm
+        self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(track_lines)
+        self._line_tracker = LineTracker(level=3, track_lines=track_lines)
         self._track_lines = track_lines
 
         # Should subroutines commited be saved for logging/debugging
@@ -170,53 +163,69 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Commited subroutines saved for logging/debugging
         self._commited_subroutines = []
 
+        # What compiler (if any) to be used
+        self._compiler = compiler
+
+        # Setup epr sockets
+        self._setup_epr_sockets(epr_sockets=epr_sockets)
+
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
 
-    def _get_circuit_rules(self, epr_to=None, epr_from=None):
-        if epr_to is None and epr_from is None:
-            return CircuitRules(create_rules=[], recv_rules=[])
-        # Should be subclassed, is implemented in squidasm.sdk.NetSquidConnection
-        raise NotImplementedError
-
-    def _assert_has_rule(self, tp, remote_node_id, purpose_id):
-        if tp == 'create':
-            rules = self._circuit_rules.create_rules
-        elif tp == 'recv':
-            rules = self._circuit_rules.recv_rules
-        else:
-            raise ValueError(f"{tp} is not a known rule type")
-        rule = Rule(remote_node_id=remote_node_id, purpose_id=purpose_id)
-        if rule not in rules:
-            raise NoCircuitRuleError("Cannot create/recv entanglement with node "
-                                     f"with ID {remote_node_id} and purpose ID {purpose_id}.\n"
-                                     "Declare this by using the arguments `epr_to` and/or `epr_from` "
-                                     "to the connection.")
-
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # Allow to not stop the backend upon exit, for future use-cases
-        self.close(stop_backend=self._stop_backend_on_exit)
+        # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
+        self.close(
+            clear_app=self._clear_app_on_exit,
+            stop_backend=self._stop_backend_on_exit,
+        )
 
-    def close(self, stop_backend=True):
+    def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
         self.flush()
 
         self._pop_app_id()
 
-        self._signal_stop(stop_backend=stop_backend)
+        self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
         self._inactivate_qubits()
 
-        if self._track_lines:
+        if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
+
+    @abc.abstractmethod
+    def _commit_message(self, msg, block=False):
+        """Commit a message to the backend/qnodeos"""
+        # Should be subclassed
+        pass
+
+    @abc.abstractmethod
+    def _get_node_id(self, node_name):
+        """Returns the node id for the node with the given name"""
+        # Should be subclassed
+        pass
+
+    @abc.abstractmethod
+    def _get_node_name(self, node_id):
+        """Returns the node name for the node with the given ID"""
+        # Should be subclassed
+        pass
 
     def _inactivate_qubits(self):
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
             q._set_active(False)
 
-    def _signal_stop(self, stop_backend=True):
-        # Should be overriden to indicate to backend that the applications is stopping
-        pass
+    def _signal_stop(self, clear_app=True, stop_backend=True):
+        if clear_app:
+            self._commit_message(msg=Message(
+                type=MessageType.STOP_APP,
+                msg=StopAppMessage(app_id=self._appID),
+            ))
+
+        if stop_backend:
+            self._commit_message(msg=Message(
+                type=MessageType.SIGNAL,
+                msg=Signal.STOP,
+            ))
 
     def _save_log_subroutines(self):
         filename = f'subroutines_{self.name}.pkl'
@@ -239,9 +248,43 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # NOTE this is to comply with CQC abstract class
         raise NotImplementedError
 
-    def _init_new_app(self, max_qubits, circuit_rules=None):
+    def commit(self):
+        # NOTE this is to comply with CQC abstract class
+        raise NotImplementedError
+
+    def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
-        pass
+        self._commit_message(msg=Message(
+            type=MessageType.INIT_NEW_APP,
+            msg=InitNewAppMessage(
+                app_id=self._appID,
+                max_qubits=max_qubits,
+            ),
+        ))
+
+    def _setup_epr_sockets(self, epr_sockets):
+        if epr_sockets is None:
+            return
+        for epr_socket in epr_sockets:
+            if epr_socket._remote_node_name == self.name:
+                raise ValueError("A node cannot setup an EPR socket with itself")
+            epr_socket.conn = self
+            self._setup_epr_socket(
+                epr_socket_id=epr_socket._epr_socket_id,
+                remote_node_id=epr_socket._remote_node_id,
+                remote_epr_socket_id=epr_socket._remote_epr_socket_id,
+            )
+
+    def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
+        """Sets up a new epr socket"""
+        self._commit_message(msg=Message(
+            type=MessageType.OPEN_EPR_SOCKET,
+            msg=OpenEPRSocketMessage(
+                epr_socket_id=epr_socket_id,
+                remote_node_id=remote_node_id,
+                remote_epr_socket_id=remote_epr_socket_id,
+            ),
+        ))
 
     def new_array(self, length=1, init_values=None):
         address = self._get_new_array_address()
@@ -255,222 +298,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
         self._arrays_to_return.append(array)
         return array
-
-    def createEPR(self, name, purpose_id=0, number=1, post_routine=None, sequential=False):
-        """Creates EPR pair with a remote node
-
-        Parameters
-        ----------
-        name : str
-            Name of the remote node
-        purpose_id : int
-            The purpose id for the entanglement generation
-        number : int
-            The number of pairs to create
-        post_routine : function
-            Can be used to specify what should happen when entanglement is generated
-            for each pair.
-            The function should take three arguments `(conn, q, pair)` where
-            * `conn` is the connection (e.g. `self`)
-            * `q` is the entangled qubit (of type :class:`netqasm.qubit._FutureQubit`)
-            * `pair` is a loop register stating which pair is handled (0, 1, ...)
-
-            for example to state that the qubit should be measured in the Hadamard basis
-            one can provide the following function
-
-            >>> def post_create(conn, q, pair):
-            >>>     q.H()
-            >>>     q.measure(future=outcomes.get_future_index(pair))
-
-            where `outcomes` is an already allocated array and `pair` is then used to
-            put the outcome at the correct index of the array.
-
-            NOTE: If the a qubit is measured (not inplace) in a `post_routine` but is
-            also used by acting on the returned objects of `createEPR` this cannot
-            be checked in compile-time and will raise an error during the execution
-            of the full subroutine in the backend.
-        sequential : bool, optional
-            If this is specified to `True` each qubit will have the same virtual address
-            and there will maximally be one pair in memory at a given time.
-            If `number` is greater than 1 a post_routine should be specified which
-            consumed each pair.
-
-            NOTE: If `sequential` is `False` (default), `number` cannot be greater than
-                  the size of the unit module. However, if `sequential` is `True` is can.
-        """
-        return self._handle_epr_request(
-            instruction=Instruction.CREATE_EPR,
-            name=name,
-            purpose_id=purpose_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-        )
-
-    def _handle_epr_request(self, instruction, name, purpose_id, number, post_routine, sequential):
-        self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential)
-        qubits, remote_node_id, ent_info_array = self._handle_epr_arguments(
-            instruction=instruction,
-            name=name,
-            number=number,
-            purpose_id=purpose_id,
-            sequential=sequential,
-        )
-        virtual_qubit_ids = [q._qID for q in qubits]
-        wait_all = post_routine is None
-        qubit_ids_array = self._put_epr_commands(
-            instruction=instruction,
-            virtual_qubit_ids=virtual_qubit_ids,
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-            number=number,
-            ent_info_array=ent_info_array,
-            wait_all=wait_all,
-        )
-
-        self._put_post_commands(qubit_ids_array, number, ent_info_array, post_routine)
-
-        return qubits
-
-    @contextmanager
-    def create_epr_context(self, name, purpose_id=0, number=1, sequential=False):
-        try:
-            instruction = Instruction.CREATE_EPR
-            pre_commands, loop_register, ent_info_array, q, pair = self._pre_epr_context(
-                instruction=instruction,
-                name=name,
-                purpose_id=purpose_id,
-                number=number,
-                sequential=sequential,
-            )
-            yield q, pair
-        finally:
-            self._post_epr_context(
-                pre_commands=pre_commands,
-                number=number,
-                loop_register=loop_register,
-                ent_info_array=ent_info_array,
-                pair=pair,
-            )
-
-    def _pre_epr_context(self, instruction, name, purpose_id=0, number=1, sequential=False):
-        # NOTE since this is in a context there will be a post_routine
-        self._assert_epr_args(number=number, post_routine=True, sequential=sequential)
-        qubits, remote_node_id, ent_info_array = self._handle_epr_arguments(
-            instruction=instruction,
-            name=name,
-            number=number,
-            purpose_id=purpose_id,
-            sequential=sequential,
-        )
-        virtual_qubit_ids = [q._qID for q in qubits]
-        qubit_ids_array = self._put_epr_commands(
-            instruction=instruction,
-            virtual_qubit_ids=virtual_qubit_ids,
-            remote_node_id=remote_node_id,
-            purpose_id=purpose_id,
-            number=number,
-            ent_info_array=ent_info_array,
-            wait_all=False,
-        )
-        pre_commands = self._pop_pending_commands()
-        loop_register = self._get_inactive_register(activate=True)
-        pair = loop_register
-        q_id = qubit_ids_array.get_future_index(pair)
-        q = _FutureQubit(conn=self, future_id=q_id)
-        return pre_commands, loop_register, ent_info_array, q, pair
-
-    def _post_epr_context(self, pre_commands, number, loop_register, ent_info_array, pair):
-        body_commands = self._pop_pending_commands()
-        self._put_wait_for_ent_info_cmd(
-            ent_info_array=ent_info_array,
-            pair=pair,
-        )
-        wait_cmds = self._pop_pending_commands()
-        body_commands = wait_cmds + body_commands
-        self._put_loop_commands(
-            pre_commands=pre_commands,
-            body_commands=body_commands,
-            stop=number,
-            start=0,
-            step=1,
-            loop_register=loop_register,
-        )
-        self._remove_active_register(register=loop_register)
-
-    def _assert_epr_args(self, number, post_routine, sequential):
-        if sequential and number > 1:
-            if post_routine is None:
-                raise ValueError("When using sequential mode with more than one pair "
-                                 "a post_routine needs to be specified which consumes the "
-                                 "generated pair as they come in.")
-        if not sequential and number > self._max_qubits:
-            raise ValueError(f"When not using sequential mode, the number of pairs {number} cannot be "
-                             f"greater than the maximum number of qubits specified ({self._max_qubits}).")
-
-    def _create_ent_qubits(self, num_pairs, ent_info_array, sequential):
-        qubits = []
-        virtual_address = None
-        for i in range(num_pairs):
-            ent_info = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
-            ent_info = self.__class__.ENT_INFO(*ent_info)
-            if i == 0:
-                qubit = Qubit(self, put_new_command=False, ent_info=ent_info)
-                virtual_address = qubit._qID
-            else:
-                qubit = Qubit(self, put_new_command=False, ent_info=ent_info, virtual_address=virtual_address)
-            qubits.append(qubit)
-        return qubits
-
-    def recvEPR(self, name, purpose_id=0, number=1, post_routine=None, sequential=False):
-        """Receives EPR pair with a remote node""
-
-        Parameters
-        ----------
-        name : str
-            Name of the remote node
-        purpose_id : int
-            The purpose id for the entanglement generation
-        number : int
-            The number of pairs to recv
-        post_routine : function
-            See description for :meth:`~.createEPR`
-        """
-        return self._handle_epr_request(
-            instruction=Instruction.RECV_EPR,
-            name=name,
-            purpose_id=purpose_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-        )
-
-    @contextmanager
-    def recv_epr_context(self, name, purpose_id=0, number=1, sequential=False):
-        try:
-            instruction = Instruction.RECV_EPR
-            pre_commands, loop_register, ent_info_array, q, pair = self._pre_epr_context(
-                instruction=instruction,
-                name=name,
-                purpose_id=purpose_id,
-                number=number,
-                sequential=sequential,
-            )
-            yield q, pair
-        finally:
-            self._post_epr_context(
-                pre_commands=pre_commands,
-                number=number,
-                loop_register=loop_register,
-                ent_info_array=ent_info_array,
-                pair=pair,
-            )
-
-    def _get_remote_node_id(self, name):
-        raise NotImplementedError
-
-    def _get_remote_node_name(self, remote_node_id):
-        raise NotImplementedError
 
     def put_commands(self, commands, **kwargs):
         calling_lineno = self._line_tracker.get_line()
@@ -503,7 +330,11 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         bin_subroutine = self._pre_process_subroutine(subroutine)
 
         # Commit the subroutine to the quantum device
-        self.commit(bin_subroutine, block=block)
+        self._logger.debug(f"Puts the next subroutine:\n{subroutine}")
+        self._commit_message(
+            msg=Message(type=MessageType.SUBROUTINE, msg=bin_subroutine),
+            block=block,
+        )
 
         self._reset()
 
@@ -532,8 +363,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             init_arrays.append(Command(
                 instruction=Instruction.ARRAY,
                 operands=[
-                    Constant(len(array)),
-                    Address(Constant(array.address)),
+                    len(array),
+                    Address(array.address),
                 ],
                 lineno=array.lineno,
             ))
@@ -545,8 +376,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                     init_arrays.append(Command(
                         instruction=Instruction.STORE,
                         operands=[
-                            Constant(value),
-                            ArrayEntry(Address(Constant(array.address)), i),
+                            value,
+                            ArrayEntry(Address(array.address), i),
                         ],
                         lineno=array.lineno,
                     ))
@@ -554,7 +385,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return_arrays.append(Command(
                 instruction=Instruction.RET_ARR,
                 operands=[
-                    Address(Constant(array.address)),
+                    Address(array.address),
                 ],
                 lineno=array.lineno,
             ))
@@ -582,6 +413,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         Can be subclassed and overried for more elaborate compiling.
         """
         subroutine = assemble_subroutine(subroutine)
+        if self._compiler is not None:
+            self._compiler.compile(subroutine=subroutine)
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return bytes(subroutine)
@@ -589,13 +422,30 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _log_subroutine(self, subroutine):
         self._commited_subroutines.append(subroutine)
 
-    @abc.abstractmethod
-    def commit(self, msg, block=True):
-        pass
-
     def block(self):
         """Block until flushed subroutines finish"""
         raise NotImplementedError
+
+    def _single_qubit_rotation(self, instruction, virtual_qubit_id, n=0, d=0, angle=None):
+        if angle is not None:
+            nds = get_angle_spec_from_float(angle=angle)
+            for n, d in nds:
+                self._single_qubit_rotation(
+                    instruction=instruction,
+                    virtual_qubit_id=virtual_qubit_id,
+                    n=n,
+                    d=d,
+                )
+            return
+        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
+            raise ValueError(f'{n} * pi / 2 ^ {d} is not a valid angle specification')
+        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
+        rot_command = Command(
+            instruction=instruction,
+            operands=[register, n, d],
+        )
+        commands = set_commands + [rot_command]
+        self.put_commands(commands)
 
     # TODO stop using qID (not pep8) when not inheriting from CQC anymore
     def _put_netqasm_commands(self, command, **kwargs):
@@ -618,7 +468,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         q_address = qID
         register, set_commands = self._get_set_qubit_reg_commands(q_address)
         # Construct the qubit command
-        instr = _CQC_TO_NETQASM_INSTR[command]
+        if isinstance(command, Instruction):
+            instr = command
+        else:
+            instr = _CQC_TO_NETQASM_INSTR[command]
         qubit_command = Command(
             instruction=instr,
             operands=[register],
@@ -636,7 +489,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 instruction=Instruction.SET,
                 operands=[
                     register,
-                    Constant(q_address),
+                    q_address,
                 ],
             )]
         else:
@@ -696,57 +549,72 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         commands = set_commands + [qalloc_command, init_command]
         self.put_commands(commands)
 
-    def _handle_epr_arguments(self, instruction, name, number, purpose_id, sequential):
-        if instruction == Instruction.CREATE_EPR:
-            self._logger.debug(f"App {self.name} puts command to create EPR with {name}")
-            rule_tp = 'create'
-        elif instruction == Instruction.RECV_EPR:
-            self._logger.debug(f"App {self.name} puts command to recv EPR from {name}")
-            rule_tp = 'recv'
-        else:
-            raise ValueError(f"Not an epr instruction {instruction}")
-
-        remote_node_id = self._get_remote_node_id(name)
-        self._assert_has_rule(tp=rule_tp, remote_node_id=remote_node_id, purpose_id=purpose_id)
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
-        qubits = self._create_ent_qubits(
-            num_pairs=number,
-            ent_info_array=ent_info_array,
-            sequential=sequential,
-        )
-        return qubits, remote_node_id, ent_info_array
-
     def _put_epr_commands(
         self,
         instruction,
         virtual_qubit_ids,
         remote_node_id,
-        purpose_id,
+        epr_socket_id,
         number,
         ent_info_array,
         wait_all,
+        tp,
+        random_basis_local=None,
+        random_basis_remote=None,
         **kwargs,
     ):
         # qubit addresses
-        qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
+        if tp == EPRType.K:
+            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
+            qubit_ids_array_address = qubit_ids_array.address
+        else:
+            qubit_ids_array = None
+            # NOTE since this argument won't be used just set it to some
+            # constant register for now
+            qubit_ids_array_address = Register(RegisterName.C, 0)
 
         if instruction == Instruction.CREATE_EPR:
-            # arguments
+            # request arguments
             # TODO add other args
-            num_args = CREATE_FIELDS
+            create_kwargs = {}
+            create_kwargs['type'] = tp
+            create_kwargs['number'] = number
+            # TODO currently this give 50 / 50 since with the current link layer
+            # This should change and not be hardcoded here
+            if random_basis_local is not None:
+                # NOTE Currently there is not value one can set to specify
+                # a uniform distribution for three bases. This needs to be changed
+                # in the underlying link layer/network stack
+                assert random_basis_local not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                       "Can only random measure in one of two bases for now")
+                create_kwargs['random_basis_local'] = random_basis_local
+                create_kwargs['probability_dist_local1'] = 128
+            if random_basis_remote is not None:
+                assert random_basis_remote not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                       "Can only random measure in one of two bases for now")
+                create_kwargs['random_basis_remote'] = random_basis_remote
+                create_kwargs['probability_dist_remote1'] = 128
+
+            create_args = []
+            # NOTE we don't include the two first args since this is remote_node_id
+            # and epr_socket_id which comes as immediates
+            for field in LinkLayerCreate._fields[2:]:
+                arg = create_kwargs.get(field)
+                # If Enum, use its value
+                if isinstance(arg, Enum):
+                    arg = arg.value
+                create_args.append(arg)
             # TODO don't create a new array if already created from previous command
-            create_args = [None] * num_args
-            create_args[1] = number  # Number of pairs
             create_args_array = self.new_array(init_values=create_args)
             epr_cmd_operands = [
-                Constant(qubit_ids_array.address),
-                Constant(create_args_array.address),
-                Constant(ent_info_array.address),
+                qubit_ids_array_address,
+                create_args_array.address,
+                ent_info_array.address,
             ]
         elif instruction == Instruction.RECV_EPR:
             epr_cmd_operands = [
-                Constant(qubit_ids_array.address),
-                Constant(ent_info_array.address),
+                qubit_ids_array_address,
+                ent_info_array.address,
             ]
         else:
             raise ValueError(f"Not an epr instruction {instruction}")
@@ -754,7 +622,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # epr command
         epr_cmd = Command(
             instruction=instruction,
-            args=[Constant(remote_node_id), Constant(purpose_id)],
+            args=[remote_node_id, epr_socket_id],
             operands=epr_cmd_operands,
         )
 
@@ -772,7 +640,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         return qubit_ids_array
 
-    def _put_post_commands(self, qubit_ids, number, ent_info_array, post_routine=None):
+    def _put_post_commands(self, qubit_ids, number, ent_info_array, tp, post_routine=None):
         if post_routine is None:
             return []
 
@@ -785,9 +653,16 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 ent_info_array=ent_info_array,
                 pair=pair,
             )
-            q_id = qubit_ids.get_future_index(pair)
-            q = _FutureQubit(conn=conn, future_id=q_id)
-            post_routine(self, q, pair)
+            if tp == EPRType.K:
+                q_id = qubit_ids.get_future_index(pair)
+                q = _FutureQubit(conn=conn, future_id=q_id)
+                post_routine(self, q, pair)
+            elif tp == EPRType.M:
+                slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+                ent_info_slice = ent_info_array.get_future_slice(slc)
+                post_routine(self, ent_info_slice, pair)
+            else:
+                raise NotImplementedError
 
         # TODO use loop context
         self.loop_body(post_loop, stop=number, loop_register=loop_register)
@@ -804,7 +679,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         for reg in created_regs:
             self.put_command(Command(
                 instruction=Instruction.SET,
-                operands=[reg, Constant(0)],
+                operands=[reg, 0],
             ))
 
         # Multiply pair * OK_FIELDS
@@ -819,7 +694,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Let tmp be pair + 1
         self.put_command(Command(
             instruction=Instruction.ADD,
-            operands=[tmp, pair, Constant(1)],
+            operands=[tmp, pair, 1],
         ))
 
         # Multiply (tmp = pair + 1) * OK_FIELDS
@@ -839,6 +714,229 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         for reg in created_regs:
             self._remove_active_register(register=reg)
+
+    def _handle_request(
+        self,
+        instruction,
+        remote_node_id,
+        epr_socket_id,
+        number,
+        post_routine,
+        sequential,
+        tp,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
+        self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential, tp=tp)
+        # NOTE the `output` is either a list of qubits or a list of entanglement information
+        # depending on the type of the request.
+        output, ent_info_array = self._handle_arguments(
+            instruction=instruction,
+            remote_node_id=remote_node_id,
+            number=number,
+            tp=tp,
+            sequential=sequential,
+        )
+        if tp == EPRType.K:
+            virtual_qubit_ids = [q._qID for q in output]
+        else:
+            virtual_qubit_ids = None
+        wait_all = post_routine is None
+        qubit_ids_array = self._put_epr_commands(
+            instruction=instruction,
+            virtual_qubit_ids=virtual_qubit_ids,
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+            number=number,
+            ent_info_array=ent_info_array,
+            wait_all=wait_all,
+            tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
+        )
+
+        self._put_post_commands(qubit_ids_array, number, ent_info_array, tp, post_routine)
+
+        return output
+
+    def _pre_epr_context(self, instruction, remote_node_id, epr_socket_id, number=1, sequential=False, tp=EPRType.K):
+        # NOTE since this is in a context there will be a post_routine
+        self._assert_epr_args(number=number, post_routine=True, sequential=sequential, tp=tp)
+        output, ent_info_array = self._handle_arguments(
+            instruction=instruction,
+            remote_node_id=remote_node_id,
+            number=number,
+            tp=tp,
+            sequential=sequential,
+        )
+        if tp == EPRType.K:
+            virtual_qubit_ids = [q._qID for q in output]
+        else:
+            raise ValueError("EPR generation as a context is only allowed for K type requests")
+        qubit_ids_array = self._put_epr_commands(
+            instruction=instruction,
+            virtual_qubit_ids=virtual_qubit_ids,
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+            number=number,
+            ent_info_array=ent_info_array,
+            wait_all=False,
+            tp=tp,
+        )
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
+        pair = loop_register
+        if tp == EPRType.K:
+            q_id = qubit_ids_array.get_future_index(pair)
+            q = _FutureQubit(conn=self, future_id=q_id)
+            output = q
+        # elif tp == EPRType.M:
+        #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+        #     ent_info_slice = ent_info_array.get_future_slice(slc)
+        #     output = ent_info_slice
+        else:
+            raise NotImplementedError
+        return pre_commands, loop_register, ent_info_array, output, pair
+
+    def _post_epr_context(self, pre_commands, number, loop_register, ent_info_array, pair):
+        body_commands = self._pop_pending_commands()
+        self._put_wait_for_ent_info_cmd(
+            ent_info_array=ent_info_array,
+            pair=pair,
+        )
+        wait_cmds = self._pop_pending_commands()
+        body_commands = wait_cmds + body_commands
+        self._put_loop_commands(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=number,
+            start=0,
+            step=1,
+            loop_register=loop_register,
+        )
+        self._remove_active_register(register=loop_register)
+
+    def _assert_epr_args(self, number, post_routine, sequential, tp):
+        assert isinstance(tp, EPRType), "tp is not an EPRType"
+        if sequential and number > 1:
+            if post_routine is None:
+                raise ValueError("When using sequential mode with more than one pair "
+                                 "a post_routine needs to be specified which consumes the "
+                                 "generated pair as they come in.")
+        if tp == EPRType.K and not sequential and number > self._max_qubits:
+            raise ValueError(f"When not using sequential mode for K type, the number of pairs {number} cannot be "
+                             f"greater than the maximum number of qubits specified ({self._max_qubits}).")
+
+    def _handle_arguments(self, instruction, remote_node_id, number, tp, sequential):
+        if instruction == Instruction.CREATE_EPR:
+            self._logger.debug(f"App {self.name} puts command to create EPR with {remote_node_id}")
+        elif instruction == Instruction.RECV_EPR:
+            self._logger.debug(f"App {self.name} puts command to recv EPR from {remote_node_id}")
+        else:
+            raise ValueError(f"Not an epr instruction {instruction}")
+
+        ent_info_array = self.new_array(length=OK_FIELDS * number)
+        ent_info_slices = self._create_ent_info_slices(
+            num_pairs=number,
+            ent_info_array=ent_info_array,
+            tp=tp,
+        )
+        if tp == EPRType.K:
+            qubits = self._create_ent_qubits(
+                ent_info_slices=ent_info_slices,
+                sequential=sequential,
+            )
+            return qubits, ent_info_array
+        elif tp == EPRType.M:
+            return ent_info_slices, ent_info_array
+        else:
+            raise NotImplementedError
+
+    def _create_ent_info_slices(self, num_pairs, ent_info_array, tp):
+        ent_info_slices = []
+        for i in range(num_pairs):
+            ent_info_slice = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
+            ent_info_slice = self.__class__.ENT_INFO[tp](*ent_info_slice)
+            ent_info_slices.append(ent_info_slice)
+        return ent_info_slices
+
+    def _create_ent_qubits(self, ent_info_slices, sequential):
+        qubits = []
+        virtual_address = None
+        for i, ent_info_slice in enumerate(ent_info_slices):
+            # If sequential we want all qubits to have the same ID
+            if sequential:
+                if i == 0:
+                    qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
+                    virtual_address = qubit._qID
+                else:
+                    qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
+            else:
+                qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
+            qubits.append(qubit)
+        return qubits
+
+    def createEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
+        """Receives EPR pair with a remote node
+
+        NOTE: this method is deprecated and :class:`~.sdk.epr_socket.EPRSocket` should be used instead.
+        """
+        warnings.warn(
+            "This function is deprecated, use the `netqasm.sdk.EPRSocket`-class instead.",
+            DeprecationWarning,
+        )
+        remote_node_id = self._get_node_id(node_name=remote_node_name)
+        return self._create_epr(remote_node_id=remote_node_id, epr_socket_id=epr_socket_id, **kwargs)
+
+    def _create_epr(
+        self,
+        remote_node_id,
+        epr_socket_id,
+        number=1,
+        post_routine=None,
+        sequential=False,
+        tp=EPRType.K,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
+        """Receives EPR pair with a remote node"""
+        if not isinstance(remote_node_id, int):
+            raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
+        return self._handle_request(
+            instruction=Instruction.CREATE_EPR,
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
+        )
+
+    def recvEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
+        """Receives EPR pair with a remote node
+
+        NOTE: this method is deprecated and :class:`~.sdk.epr_socket.EPRSocket` should be used instead.
+        """
+        warnings.warn(
+            "This function is deprecated, use the `netqasm.sdk.EPRSocket`-class instead.",
+            DeprecationWarning,
+        )
+        remote_node_id = self._get_node_id(node_name=remote_node_name)
+        return self._recv_epr(remote_node_id=remote_node_id, epr_socket_id=epr_socket_id, **kwargs)
+
+    def _recv_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False, tp=EPRType.K):
+        """Receives EPR pair with a remote node"""
+        return self._handle_request(
+            instruction=Instruction.RECV_EPR,
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=tp,
+        )
 
     def _handle_factory_response(self, num_iter, response_amount, should_notify=False):
         # NOTE this is to comply with CQC abstract class
@@ -951,9 +1049,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 cond_values.append(reg)
                 if_start.append(load)
             elif isinstance(x, int):
-                cond_values.append(Constant(x))
-            elif isinstance(x, Constant):
-                cond_values.append(x.value)
+                cond_values.append(x)
             else:
                 raise TypeError(f"Cannot do conditional statement with type {type(x)}")
         branch = Command(
@@ -1095,14 +1191,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         entry_loop = [
             Command(
                 instruction=Instruction.SET,
-                operands=[loop_register, Constant(start)],
+                operands=[loop_register, start],
             ),
             BranchLabel(entry_label),
             Command(
                 instruction=Instruction.BEQ,
                 operands=[
                     loop_register,
-                    Constant(stop),
+                    stop,
                     Label(exit_label),
                 ],
             ),
@@ -1113,7 +1209,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 operands=[
                     loop_register,
                     loop_register,
-                    Constant(step),
+                    step,
                 ],
             ),
             Command(
@@ -1183,30 +1279,27 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
 class DebugConnection(NetQASMConnection):
 
-    _node_ids = {}
-
-    @classmethod
-    def set_node_ids(cls, node_ids):
-        """Used to set node IDs for node names in a network for this debug connection"""
-        cls._node_ids = node_ids
+    node_ids = {}
 
     def __init__(self, *args, **kwargs):
         """A connection that simply stores the subroutine it commits"""
-        super().__init__(*args, **kwargs)
         self.storage = []
+        super().__init__(*args, **kwargs)
 
-    def commit(self, subroutine, block=True):
-        self.storage.append(subroutine)
+    def _commit_message(self, msg, block=False):
+        """Commit a message to the backend/qnodeos"""
+        self.storage.append(msg)
 
-    def _get_circuit_rules(self, epr_to=None, epr_from=None):
-        # Don't do anything for this debug connection
-        pass
-
-    def _get_remote_node_id(self, name):
-        node_id = self.__class__._node_ids.get(name)
+    def _get_node_id(self, node_name):
+        """Returns the node id for the node with the given name"""
+        node_id = self.__class__.node_ids.get(node_name)
         if node_id is None:
-            raise ValueError(f"node {name} is not known")
+            raise ValueError(f"{node_name} is not a known node name")
         return node_id
 
-    def _assert_has_rule(self, tp, remote_node_id, purpose_id):
-        pass
+    def _get_node_name(self, node_id):
+        """Returns the node name for the node with the given ID"""
+        for n_name, n_id in self.__class__.node_ids.items():
+            if n_id == node_id:
+                return n_name
+        raise ValueError(f"{node_id} is not a known node ID")

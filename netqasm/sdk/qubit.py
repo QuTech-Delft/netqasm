@@ -1,6 +1,8 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
+from netqasm.instructions import Instruction
+
 
 class Qubit(qubit):
     def __init__(self, conn, put_new_command=True, ent_info=None, virtual_address=None):
@@ -58,9 +60,51 @@ class Qubit(qubit):
             return None
         # Lookup remote entangled node
         remote_node_id = self.entanglement_info.remote_node_id
-        remote_node_name = self._conn._get_remote_node_name(remote_node_id)
+        remote_node_name = self._conn._get_node_name(node_id=remote_node_id)
         self._remote_ent_node = remote_node_name
         return remote_node_name
+
+    def S(self):
+        self._conn._put_netqasm_single_qubit_command(
+            command=Instruction.S,
+            qID=self._qID,
+        )
+
+    def rot_X(self, n=0, d=0, angle=None):
+        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_X,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+            angle=angle,
+        )
+
+    def rot_Y(self, n=0, d=0, angle=None):
+        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_Y,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+            angle=angle,
+        )
+
+    def rot_Z(self, n=0, d=0, angle=None):
+        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`
+        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """
+        self._conn._single_qubit_rotation(
+            instruction=Instruction.ROT_Z,
+            virtual_qubit_id=self._qID,
+            n=n,
+            d=d,
+            angle=angle,
+        )
 
 
 class _FutureQubit(Qubit):

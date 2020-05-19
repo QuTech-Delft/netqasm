@@ -1,23 +1,19 @@
 import abc
 from dataclasses import dataclass
-from typing import List
+
+from qlink_interface import LinkLayerCreate, LinkLayerOKTypeK
 
 
 # Number of elements in a create request etc
-CREATE_FIELDS = 20
-OK_FIELDS = 9
+# NOTE minus 2 since remote_node_id and epr_socket_id comes as immediates
+CREATE_FIELDS = len(LinkLayerCreate._fields) - 2
+OK_FIELDS = len(LinkLayerOKTypeK._fields)
 
 
 @dataclass(eq=True, frozen=True)
-class Rule:
-    remote_node_id: int
-    purpose_id: int
-
-
-@dataclass
-class CircuitRules:
-    recv_rules: List[Rule]
-    create_rules: List[Rule]
+class Address:
+    node_id: int
+    epr_socket_id: int
 
 
 class BaseNetworkStack(abc.ABC):
@@ -27,6 +23,6 @@ class BaseNetworkStack(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def setup_circuits(self, circuit_rules, timeout=1):
+    def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id, timeout=1):
         """Asks the network stack to setup circuits to be used"""
         pass

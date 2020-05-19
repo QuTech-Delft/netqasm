@@ -1,0 +1,5 @@
+# NETQASM 0.0
+# APPID 0
+add 1 2 3
+addm 4 5 6 0
+set R0 1
