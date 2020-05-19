@@ -1,10 +1,13 @@
 import abc
 from dataclasses import dataclass
 
+from qlink_interface import LinkLayerCreate, LinkLayerOKTypeK
+
 
 # Number of elements in a create request etc
-CREATE_FIELDS = 20
-OK_FIELDS = 9
+# NOTE minus 2 since remote_node_id and epr_socket_id comes as immediates
+CREATE_FIELDS = len(LinkLayerCreate._fields) - 2
+OK_FIELDS = len(LinkLayerOKTypeK._fields)
 
 
 @dataclass(eq=True, frozen=True)

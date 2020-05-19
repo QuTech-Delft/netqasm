@@ -1,6 +1,7 @@
 import abc
-from enum import Enum, auto
 from contextlib import contextmanager
+
+from qlink_interface import EPRType
 
 from netqasm.logging import get_netqasm_logger
 from netqasm.instructions import Instruction
@@ -8,12 +9,6 @@ from netqasm.instructions import Instruction
 
 class NoCircuitError(RuntimeError):
     pass
-
-
-class EPRType(Enum):
-    K = 0
-    M = auto()
-    R = auto()
 
 
 def _assert_has_conn(method):
@@ -61,7 +56,15 @@ class EPRSocket(abc.ABC):
         self._remote_node_id = self._get_node_id(node_name=self._remote_node_name)
 
     @_assert_has_conn
-    def create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K):
+    def create(
+        self,
+        number=1,
+        post_routine=None,
+        sequential=False,
+        tp=EPRType.K,
+        random_basis_local=None,
+        random_basis_remote=None,
+    ):
         """Creates EPR pair with a remote node
 
         Parameters
@@ -121,6 +124,8 @@ class EPRSocket(abc.ABC):
             post_routine=post_routine,
             sequential=sequential,
             tp=tp,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
         )
 
     @contextmanager

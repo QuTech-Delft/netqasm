@@ -1,8 +1,10 @@
 import logging
 
+from qlink_interface import EPRType
+
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
-from netqasm.sdk.epr_socket import EPRSocket, EPRType
+from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.logging import set_log_level
 from netqasm.subroutine import (
     Subroutine,

@@ -58,8 +58,11 @@ class _SocketHub:
                                          f"for socket {socket.remote_key} but object is garbage collected")
                 else:
                     method()
-            self._open_sockets.remove(socket.key)
-            self._remote_sockets.remove(socket.remote_key)
+
+            if socket.key in self._open_sockets:
+                self._open_sockets.remove(socket.key)
+            if socket.remote_key in self._remote_sockets:
+                self._remote_sockets.remove(socket.remote_key)
             self._recv_callbacks.pop(socket.key, None)
             self._conn_lost_callbacks.pop(socket.key, None)
 

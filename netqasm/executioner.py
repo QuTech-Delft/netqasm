@@ -1,11 +1,17 @@
 import operator
+import numpy as np
 from enum import Enum, auto
 from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
 
-import numpy as np
+from qlink_interface import (
+    RequestType,
+    ReturnType,
+    LinkLayerCreate,
+    get_creator_node_id,
+)
 
 from netqasm.logging import get_netqasm_logger, _setup_instr_logger_formatter, setup_file_logger
 from netqasm.logging import _INSTR_LOGGER_FIELDS, _InstrLogHeaders
@@ -13,6 +19,7 @@ from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Addres
 from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
+from netqasm.parsing import parse_address
 
 
 class OperandType(Enum):
@@ -122,6 +129,12 @@ class Executioner:
         # Keep track of the recv epr requests in progress
         self._epr_recv_requests = defaultdict(list)
 
+        # Handle responsed for entanglement generation
+        self._epr_response_handlers = self._get_epr_response_handlers()
+
+        # Keep track of pending epr responses to handle
+        self._pending_epr_responses = []
+
         # Network stack
         self._network_stack = None
 
@@ -220,6 +233,16 @@ class Executioner:
             instr: getattr(self, f"_instr_{instruction_to_string(instr)}") for instr in Instruction
         }
         return instruction_handlers
+
+    def _get_epr_response_handlers(self):
+        epr_response_handlers = {
+            ReturnType.ERR: self._handle_epr_err_response,
+            ReturnType.OK_K: self._handle_epr_ok_k_response,
+            ReturnType.OK_M: self._handle_epr_ok_m_response,
+            ReturnType.OK_R: self._handle_epr_ok_r_response,
+        }
+
+        return epr_response_handlers
 
     def _consume_execute_subroutine(self, subroutine):
         """Consumes the generator returned by execute_subroutine"""
@@ -612,7 +635,7 @@ class Executioner:
             arg_array_address=arg_array_address,
         )
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        if self._is_create_keep_request(create_request):
+        if create_request.type == RequestType.K:
             num_qubits = len(self._app_arrays[app_id][q_array_address, :])
             assert num_qubits == create_request.number, "Not enough qubit addresses"
         create_id = self.network_stack.put(request=create_request)
@@ -625,13 +648,38 @@ class Executioner:
             pairs_left=create_request.number,
         )
 
-    def _is_create_keep_request(self, request):
-        # Should be subclassed
-        raise NotImplementedError
-
     def _get_create_request(self, subroutine_id, remote_node_id, epr_socket_id, arg_array_address):
+        purpose_id = self._get_purpose_id(
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+        )
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        args = self._app_arrays[app_id][arg_array_address, :]
+        args = [remote_node_id, purpose_id] + args
+
+        # Use defaults if not specified
+        expected_num_args = len(LinkLayerCreate._fields)
+        if len(args) != expected_num_args:
+            raise ValueError(f"Expected {expected_num_args} arguments, but got {len(args)}")
+        kwargs = {}
+        for arg, field, default in zip(args, LinkLayerCreate._fields, LinkLayerCreate.__new__.__defaults__):
+            if arg is None:
+                kwargs[field] = default
+            else:
+                kwargs[field] = arg
+        kwargs["type"] = RequestType(kwargs["type"])
+
+        return LinkLayerCreate(**kwargs)
+
+    def _get_purpose_id(self, remote_node_id, epr_socket_id):
         # Should be subclassed
-        raise NotImplementedError
+        # Note this is for now since we communicate directly to link layer
+        if self._network_stack is None:
+            raise RuntimeError("Exectioner has not network stack")
+        return self._network_stack._get_purpose_id(
+            remote_node_id=remote_node_id,
+            epr_socket_id=epr_socket_id,
+        )
 
     @inc_program_counter
     @log_instr
@@ -879,3 +927,139 @@ class Executioner:
         if subroutine is None:
             raise ValueError(f"Unknown subroutine with ID {subroutine_id}")
         return subroutine.app_id
+
+    def _handle_epr_response(self, response):
+        self._pending_epr_responses.append(response)
+        self._handle_pending_epr_responses()
+
+    def _handle_pending_epr_responses(self):
+        # NOTE this will probably be handled differently in an actual implementation
+        # but is done in a simple way for now to allow for simulation
+        if len(self._pending_epr_responses) == 0:
+            return
+
+        response = self._pending_epr_responses[0]
+
+        if response.type == ReturnType.ERR:
+            self._handle_epr_err_response(response)
+        else:
+            self._logger.debug("Handling EPR OK ({response.type}) response from network stack")
+            info = self._extract_epr_info(response=response)
+            if info is not None:
+                epr_cmd_data, pair_index, is_creator, request_key = info
+                handled = self._epr_response_handlers[response.type](
+                    epr_cmd_data=epr_cmd_data,
+                    response=response,
+                    pair_index=pair_index,
+                )
+            else:
+                handled = False
+            if handled:
+                epr_cmd_data.pairs_left -= 1
+
+                self._handle_last_epr_pair(
+                    epr_cmd_data=epr_cmd_data,
+                    is_creator=is_creator,
+                    request_key=request_key,
+                )
+
+                self._store_ent_info(
+                    epr_cmd_data=epr_cmd_data,
+                    response=response,
+                    pair_index=pair_index,
+                )
+                self._pending_epr_responses.pop(0)
+            else:
+                self._wait_to_handle_epr_responses()
+                return
+
+        self._handle_pending_epr_responses()
+
+    def _wait_to_handle_epr_responses(self):
+        # This can be subclassed to sleep a little before handling again
+        self._handle_pending_epr_responses()
+
+    def _handle_epr_err_response(self, response):
+        raise RuntimeError(f"Got the following error from the network stack: {response}")
+
+    def _extract_epr_info(self, response):
+        creator_node_id = get_creator_node_id(self._node.ID, response)
+
+        # Retreive the data for this request (depending on if we are creator or receiver
+        if creator_node_id == self._node.ID:
+            is_creator = True
+            create_id = response.create_id
+            epr_cmd_data = self._epr_create_requests[create_id]
+            request_key = create_id
+        else:
+            is_creator = False
+            purpose_id = response.purpose_id
+            if len(self._epr_recv_requests[purpose_id]) == 0:
+                self._logger.debug(f"Since there is yet not recv request for purpose ID {purpose_id}, "
+                                   "handling of epr will wait and try again.")
+                return None
+            epr_cmd_data = self._epr_recv_requests[purpose_id][0]
+            request_key = purpose_id
+
+        pair_index = epr_cmd_data.tot_pairs - epr_cmd_data.pairs_left
+
+        return epr_cmd_data, pair_index, is_creator, request_key
+
+    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, request_key):
+        # Check if this was the last pair
+        if epr_cmd_data.pairs_left == 0:
+            if is_creator:
+                self._epr_create_requests.pop(request_key)
+            else:
+                self._epr_recv_requests[request_key].pop(0)
+
+    def _store_ent_info(self, epr_cmd_data, response, pair_index):
+        self._logger.debug("Storing entanglement information for pair {pair_index}")
+        # Store the entanglement information
+        ent_info = [entry.value if isinstance(entry, Enum) else entry for entry in response]
+        ent_info_array_address = epr_cmd_data.ent_info_array_address
+        # Start and stop of slice
+        arr_start = pair_index * OK_FIELDS
+        arr_stop = (pair_index + 1) * OK_FIELDS
+        subroutine_id = epr_cmd_data.subroutine_id
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
+
+    def _handle_epr_ok_k_response(self, epr_cmd_data, response, pair_index):
+
+        # Extract qubit addresses
+        subroutine_id = epr_cmd_data.subroutine_id
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        virtual_address = self._get_virtual_address_from_epr_data(epr_cmd_data, pair_index, app_id)
+
+        # If the virtual address is currently in use, we should wait
+        if self._has_virtual_address(app_id=app_id, virtual_address=virtual_address):
+            self._logger.debug(f"Since virtual address {virtual_address} is in use, "
+                               "handling of epr will wait and try again.")
+            return False
+
+        # Update qubit mapping
+        physical_address = response.logical_qubit_id
+        self._logger.debug(f"Virtual qubit address {virtual_address} will now be mapped to "
+                           f"physical address {physical_address}")
+        self._allocate_physical_qubit(
+            subroutine_id=subroutine_id,
+            virtual_address=virtual_address,
+            physical_address=physical_address,
+        )
+
+        return True
+
+    def _get_virtual_address_from_epr_data(self, epr_cmd_data, pair_index, app_id):
+        q_array_address = epr_cmd_data.q_array_address
+        array_entry = parse_address(f"@{q_array_address}[{pair_index}]")
+        virtual_address = self._get_array_entry(app_id=app_id, array_entry=array_entry)
+        return virtual_address
+
+    def _handle_epr_ok_m_response(self, epr_cmd_data, response, pair_index):
+        # M request are always handled
+        return True
+
+    def _handle_epr_ok_r_response(self, response):
+        raise NotImplementedError
+        return True
