@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2020-05-20 (0.0.3)
+------------------
+- Fixed bug when checking that num random bases is 2.
+
 2020-05-19 (0.0.2)
 ------------------
 - Create EPR of request M now supported.
