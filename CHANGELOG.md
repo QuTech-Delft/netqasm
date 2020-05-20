@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2020-05-20 (0.0.4)
+------------------
+- Output logs are now in yaml format
+
 2020-05-20 (0.0.3)
 ------------------
 - Fixed bug when checking that num random bases is 2.
