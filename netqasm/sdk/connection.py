@@ -585,12 +585,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 # NOTE Currently there is not value one can set to specify
                 # a uniform distribution for three bases. This needs to be changed
                 # in the underlying link layer/network stack
-                assert random_basis_local not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                assert random_basis_local in [RandomBasis.XZ, RandomBasis.CHSH], (
                        "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_local'] = random_basis_local
                 create_kwargs['probability_dist_local1'] = 128
             if random_basis_remote is not None:
-                assert random_basis_remote not in [RandomBasis.XZ, RandomBasis.CHSH], (
+                assert random_basis_remote in [RandomBasis.XZ, RandomBasis.CHSH], (
                        "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
