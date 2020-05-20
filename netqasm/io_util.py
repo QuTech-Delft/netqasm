@@ -3,10 +3,10 @@ import os
 from netqasm.parsing import parse_text_subroutine
 from netqasm.executioner import Executioner
 from netqasm.logging import set_log_level
+from netqasm.messages import Message, MessageType, InitNewAppMessage
 try:
     from squidasm.qnodeos import SubroutineHandler
     from squidasm.network_setup import get_node
-    from squidasm.messages import Message, MessageType, InitNewAppMessage
     from squidasm.queues import Signal
     import netsquid as ns
 except ModuleNotFoundError:
