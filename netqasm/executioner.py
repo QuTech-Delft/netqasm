@@ -250,13 +250,13 @@ class Executioner:
             prog_counter = self._program_counters[subroutine_id]
             command = commands[prog_counter]
             try:
-                output = self._execute_command(subroutine_id, command)
+                output = self._execute_command(subroutine_id, command, prog_counter)
                 if isinstance(output, GeneratorType):  # sanity check: should always be the case
                     yield from output
             except Exception as exc:
                 raise exc.__class__(f"At line {prog_counter}: {exc}") from exc
 
-    def _execute_command(self, subroutine_id, command):
+    def _execute_command(self, subroutine_id, command, program_counter):
         """Executes a single instruction"""
         if not isinstance(command, Command):
             raise TypeError(f"Expected a Command, not {type(command)}")
@@ -269,6 +269,7 @@ class Executioner:
                 subroutine_id=subroutine_id,
                 command=command,
                 output=output,
+                program_counter=program_counter
             )
 
     @inc_program_counter

@@ -85,7 +85,7 @@ class InstrLogger(StructuredLogger):
         output = kwargs['output']
         wall_time = str(datetime.now())
         sim_time = self._executioner._get_simulated_time()
-        program_counter = self._executioner._program_counters[subroutine_id]
+        program_counter = kwargs['program_counter']
         instr_name = instruction_to_string(command.instruction)
         operands = command.operands
         ops_str = [str(op) for op in operands]
