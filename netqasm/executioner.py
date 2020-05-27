@@ -54,6 +54,8 @@ def inc_program_counter(method):
 
 class Executioner:
 
+    _INSTR_LOGGERS = {}
+
     def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.
 
@@ -123,13 +125,27 @@ class Executioner:
         if instr_log_dir is None:
             self._instr_logger = None
         else:
-            filename = f"{str(self._name).lower()}_instrs.yaml"
-            self._instr_logger = InstrLogger(
-                filepath=os.path.join(instr_log_dir, filename),
+            self._instr_logger = self.__class__.get_instr_logger(
+                node_name=self._name,
+                instr_log_dir=instr_log_dir,
                 executioner=self,
             )
 
+        # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
+
+    @classmethod
+    def get_instr_logger(cls, node_name, instr_log_dir, executioner):
+        instr_logger = cls._INSTR_LOGGERS.get(node_name)
+        if instr_logger is None:
+            filename = f"{str(node_name).lower()}_instrs.yaml"
+            filepath = os.path.join(instr_log_dir, filename)
+            instr_logger = InstrLogger(
+                filepath=filepath,
+                executioner=executioner,
+            )
+            cls._INSTR_LOGGERS[node_name] = instr_logger
+        return instr_logger
 
     def _get_simulated_time(self):
         return 0
@@ -180,8 +196,6 @@ class Executioner:
         self._clear_registers(app_id=app_id)
         self._clear_arrays(app_id=app_id)
         self._clear_shared_memory(app_id=app_id)
-        if self._instr_logger is not None:
-            self._instr_logger.save()
 
     def _clear_qubits(self, app_id):
         unit_module = self._qubit_unit_modules.pop(app_id)
