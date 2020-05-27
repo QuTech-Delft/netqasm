@@ -261,6 +261,7 @@ class Executioner:
         if not isinstance(command, Command):
             raise TypeError(f"Expected a Command, not {type(command)}")
         self._assert_number_args(command.args, num=0)
+        prog_counter = self._program_counters[subroutine_id]
         output = self._instruction_handlers[command.instruction](subroutine_id, command.operands)
         if isinstance(output, GeneratorType):
             output = yield from output
@@ -269,6 +270,7 @@ class Executioner:
                 subroutine_id=subroutine_id,
                 command=command,
                 output=output,
+                program_counter=prog_counter
             )
 
     @inc_program_counter
