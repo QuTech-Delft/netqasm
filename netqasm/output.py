@@ -30,11 +30,24 @@ class InstrField(Enum):
     LOG = "LOG"  # Human-readable message
 
 
+# Keep track of all structured loggers
+# to be able to save them while finished applications
+_STRUCT_LOGGERS = []
+
+
+def save_all_struct_loggers():
+    while len(_STRUCT_LOGGERS) > 0:
+        struct_logger = _STRUCT_LOGGERS.pop()
+        struct_logger.save()
+
+
 class StructuredLogger(abc.ABC):
     def __init__(self, filepath):
         self._filepath = filepath
 
         self._storage = []
+
+        _STRUCT_LOGGERS.append(self)
 
     def log(self, **kwargs):
         entry = self._construct_entry(**kwargs)
@@ -67,9 +80,6 @@ class StructuredLogger(abc.ABC):
 
     def save(self):
         dump_yaml(self._storage, self._filepath)
-
-    def __del__(self):
-        self.save()
 
 
 class InstrLogger(StructuredLogger):

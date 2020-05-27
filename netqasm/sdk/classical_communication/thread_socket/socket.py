@@ -70,6 +70,9 @@ def log_recv(method):
 
 
 class ThreadSocket(Socket):
+
+    _COMM_LOGGERS = {}
+
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
                  use_callbacks=False, comm_log_dir=None, track_lines=True):
         """Socket used when applications run under the same process in different threads.
@@ -118,12 +121,23 @@ class ThreadSocket(Socket):
         if comm_log_dir is None:
             self._comm_logger = None
         else:
-            filename = f"{str(self.node_name).lower()}_class_comm.yaml"
-            filepath = os.path.join(comm_log_dir, filename)
-            self._comm_logger = ClassCommLogger(filepath=filepath)
+            self._comm_logger = self.__class__.get_comm_logger(
+                node_name=self.node_name,
+                comm_log_dir=comm_log_dir,
+            )
 
         # Connect
         self._socket_hub.connect(self, timeout=timeout)
+
+    @classmethod
+    def get_comm_logger(cls, node_name, comm_log_dir):
+        comm_logger = cls._COMM_LOGGERS.get(node_name)
+        if comm_logger is None:
+            filename = f"{str(node_name).lower()}_class_comm.yaml"
+            filepath = os.path.join(comm_log_dir, filename)
+            comm_logger = ClassCommLogger(filepath=filepath)
+            cls._COMM_LOGGERS[node_name] = comm_logger
+        return comm_logger
 
     def __del__(self):
         if self.connected:
