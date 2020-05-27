@@ -27,6 +27,8 @@ class ThreadBroadcastChannel(BroadcastChannel):
         self._sockets = {remote_node_name: StorageThreadSocket(
             node_name=node_name,
             remote_node_name=remote_node_name,
+            # TODO better way to do this?
+            _line_track_level=5,
             **kwargs)
             for remote_node_name in remote_node_names
         }

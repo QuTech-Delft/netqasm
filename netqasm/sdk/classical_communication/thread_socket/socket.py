@@ -71,7 +71,9 @@ def log_recv(method):
 
 class ThreadSocket(Socket):
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None, track_lines=True):
+                 use_callbacks=False, comm_log_dir=None, track_lines=True,
+                 # TODO better way to do this?
+                 _line_track_level=2):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -97,7 +99,7 @@ class ThreadSocket(Socket):
         self._remote_node_name = remote_node_name
         self._id = socket_id
 
-        self._line_tracker = LineTracker(level=2, track_lines=track_lines)
+        self._line_tracker = LineTracker(level=_line_track_level, track_lines=track_lines)
         self._track_lines = track_lines
 
         # Use callbacks

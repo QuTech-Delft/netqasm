@@ -1,4 +1,7 @@
 import inspect
+from netqasm.logging import get_netqasm_logger
+
+logger = get_netqasm_logger()
 
 
 class LineTracker:
@@ -8,16 +11,25 @@ class LineTracker:
         if not self._track_lines:
             return
         # Get the file-name of the calling host application
+        # TODO better way to do this?
         frame = inspect.currentframe()
         for _ in range(level):
             frame = frame.f_back
+            if frame is None:
+                break
         self._calling_filename = self._get_file_from_frame(frame)
 
     def _get_file_from_frame(self, frame):
-        return str(frame).split(',')[1][7:-1]
+        if frame is not None:
+            return str(frame).split(',')[1][7:-1]
+        else:
+            return None
 
     def get_line(self):
         if not self._track_lines:
+            return None
+        if self._calling_filename is None:
+            logger.warning("Did not find the correct calling filename")
             return None
         frame = inspect.currentframe()
         while True:
