@@ -58,9 +58,11 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
         # Start role
         role = _Role.start
         q = up_epr_socket.create()[0]
+        conn = up_epr_socket._conn
         m = 0
     else:
         q = down_epr_socket.recv()[0]
+        conn = down_epr_socket._conn
         if up_epr_socket is None:
             # End role
             role = _Role.end
@@ -73,6 +75,8 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
             q.cnot(q_up)
             m = q_up.measure()
 
+    conn.flush()
+
     if do_corrections:
         if role == _Role.start:
             _assert_socket(up_socket)
@@ -84,7 +88,6 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
                 q.X()
             if role == _Role.middle:
                 # Flush the subroutine
-                down_epr_socket._conn.flush()
                 _assert_socket(up_socket)
                 corr = (corr + m) % 2
                 up_socket.send(str(corr))
