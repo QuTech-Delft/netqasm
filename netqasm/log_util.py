@@ -1,4 +1,5 @@
 import inspect
+import os
 
 
 class HostLine:
@@ -30,4 +31,5 @@ class LineTracker:
             if frame is None:
                 raise RuntimeError(f"No frame found in directory {self.app_dir}")
 
-        return HostLine(frame.f_code.co_filename, frame.f_lineno)
+        filename = os.path.abspath(frame.f_code.co_filename)
+        return HostLine(filename, frame.f_lineno)
