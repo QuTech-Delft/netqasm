@@ -1,29 +1,33 @@
 import inspect
 
 
+class HostLine:
+    def __init__(self, filename, lineno):
+        self.filename = filename
+        self.lineno = lineno
+
+
 class LineTracker:
-    # level: int, How many levels 'up' (in the call hierarchy) the host app is
-    def __init__(self, level, track_lines=True):
+    def __init__(self, track_lines=True, app_dir=None):
         self._track_lines = track_lines
         if not self._track_lines:
             return
-        # Get the file-name of the calling host application
-        frame = inspect.currentframe()
-        for _ in range(level):
-            frame = frame.f_back
-        self._calling_filename = self._get_file_from_frame(frame)
+        if app_dir is None:
+            raise RuntimeError("Cannot create Linetracker because app_dir is None")
+        self.app_dir = app_dir
 
     def _get_file_from_frame(self, frame):
-        return str(frame).split(',')[1][7:-1]
+        return frame.f_code.co_filename
 
-    def get_line(self):
+    def get_line(self) -> HostLine:
         if not self._track_lines:
             return None
         frame = inspect.currentframe()
         while True:
-            if self._get_file_from_frame(frame) == self._calling_filename:
+            if self.app_dir in self._get_file_from_frame(frame):
                 break
             frame = frame.f_back
-        else:
-            raise RuntimeError(f"Different calling file than {self._calling_filename}")
-        return frame.f_lineno
+            if frame is None:
+                raise RuntimeError(f"No frame found in directory {self.app_dir}")
+
+        return HostLine(frame.f_code.co_filename, frame.f_lineno)
