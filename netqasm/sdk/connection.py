@@ -193,7 +193,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             self._save_log_subroutines()
 
     @abc.abstractmethod
-    def _commit_message(self, msg, block=False):
+    def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
         pass
@@ -317,14 +317,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         else:
             self._put_netqasm_commands(command, **kwargs)
 
-    def flush(self, block=True):
+    def flush(self, block=True, callback=None):
         subroutine = self._pop_pending_subroutine()
         if subroutine is None:
             return
 
-        self._commit_subroutine(subroutine=subroutine, block=block)
+        self._commit_subroutine(
+            subroutine=subroutine,
+            block=block,
+            callback=callback,
+        )
 
-    def _commit_subroutine(self, subroutine, block=True):
+    def _commit_subroutine(self, subroutine, block=True, callback=None):
         self._logger.info(f"Flushing subroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
@@ -335,6 +339,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._commit_message(
             msg=Message(type=MessageType.SUBROUTINE, msg=bin_subroutine),
             block=block,
+            callback=callback,
         )
 
         self._reset()
@@ -875,6 +880,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             else:
                 qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
             qubits.append(qubit)
+
+        print(f'qubit ids for node {self.name}: {[q._qID for q in qubits]}')
         return qubits
 
     def createEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
@@ -1287,7 +1294,7 @@ class DebugConnection(NetQASMConnection):
         self.storage = []
         super().__init__(*args, **kwargs)
 
-    def _commit_message(self, msg, block=False):
+    def _commit_message(self, msg, block=True):
         """Commit a message to the backend/qnodeos"""
         self.storage.append(msg)
 

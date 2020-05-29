@@ -11,6 +11,7 @@ class Qubit(qubit):
             self._qID = self._conn.new_qubitID()
         else:
             self._qID = virtual_address
+        print(f'new qubit with id {self._qID} for node {conn.name}')
         # NOTE this is needed to be compatible with CQC abstract class
         self.notify = False
 

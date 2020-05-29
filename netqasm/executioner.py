@@ -271,6 +271,8 @@ class Executioner:
             raise TypeError(f"Expected a Command, not {type(command)}")
         self._assert_number_args(command.args, num=0)
         prog_counter = self._program_counters[subroutine_id]
+        # if command.instruction == Instruction.INIT:
+        #     print("DOING INIT")
         output = self._instruction_handlers[command.instruction](subroutine_id, command.operands)
         if isinstance(output, GeneratorType):
             output = yield from output
@@ -281,6 +283,8 @@ class Executioner:
                 output=output,
                 program_counter=prog_counter
             )
+        # if command.instruction == Instruction.INIT:
+        #     print("FIN DOING INIT")
 
     @inc_program_counter
     def _instr_set(self, subroutine_id, operands):
@@ -572,7 +576,8 @@ class Executioner:
         q_address = self._get_register(app_id=app_id, register=operands[0])
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
                            f"placing the outcome in register {operands[1]}")
-        outcome = self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
+        print(f'measuring qubit {q_address} for node {self._name}')
+        outcome = yield from self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
         self._set_register(app_id=app_id, register=operands[1], value=outcome)
         return outcome
 
@@ -764,6 +769,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=operands[0])
         self._logger.debug(f"Freeing qubit at virtual address {q_address}")
+        print(f"Freeing qubit at virtual address {q_address} for node {self._name}")
         self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
@@ -881,6 +887,7 @@ class Executioner:
             raise RuntimeError(f"QubitAddress at address {address} for application {app_id} is not allocated "
                                "and cannot be freed")
         else:
+            print(f'freeing qubit with address {address} for node {self._name}')
             physical_address = unit_module[address]
             unit_module[address] = None
             self._used_physical_qubit_addresses.remove(physical_address)
@@ -931,11 +938,15 @@ class Executioner:
             info = self._extract_epr_info(response=response)
             if info is not None:
                 epr_cmd_data, pair_index, is_creator, request_key = info
+                print(f'calling epr resp for type {response.type} {response}')
                 handled = self._epr_response_handlers[response.type](
                     epr_cmd_data=epr_cmd_data,
                     response=response,
                     pair_index=pair_index,
                 )
+                # TOOD
+                # print(f'response = {response}')
+                # print(f'info = {info}')
             else:
                 handled = False
             if handled:
@@ -975,6 +986,8 @@ class Executioner:
             create_id = response.create_id
             epr_cmd_data = self._epr_create_requests[create_id]
             request_key = create_id
+            # TODO
+            # print(f'========{response}')
         else:
             is_creator = False
             purpose_id = response.purpose_id
@@ -998,7 +1011,7 @@ class Executioner:
                 self._epr_recv_requests[request_key].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
-        self._logger.debug("Storing entanglement information for pair {pair_index}")
+        self._logger.debug(f"Storing entanglement information for pair {pair_index}")
         # Store the entanglement information
         ent_info = [entry.value if isinstance(entry, Enum) else entry for entry in response]
         ent_info_array_address = epr_cmd_data.ent_info_array_address
@@ -1008,8 +1021,10 @@ class Executioner:
         subroutine_id = epr_cmd_data.subroutine_id
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
+        print('fin storing')
 
     def _handle_epr_ok_k_response(self, epr_cmd_data, response, pair_index):
+        print('HANDLE_EPR_OK_K')
 
         # Extract qubit addresses
         subroutine_id = epr_cmd_data.subroutine_id
@@ -1026,6 +1041,8 @@ class Executioner:
         physical_address = response.logical_qubit_id
         self._logger.debug(f"Virtual qubit address {virtual_address} will now be mapped to "
                            f"physical address {physical_address}")
+        print(f"Virtual qubit address {virtual_address} will now be mapped to "
+                           f"physical address {physical_address} for node {self._name}")
         self._allocate_physical_qubit(
             subroutine_id=subroutine_id,
             virtual_address=virtual_address,
