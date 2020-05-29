@@ -124,6 +124,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         app_id=None,
         max_qubits=5,
         track_lines=False,
+        app_dir=None,
         log_subroutines_dir=None,
         epr_sockets=None,
         compiler=None,
@@ -155,7 +156,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(level=3, track_lines=track_lines)
+        self._line_tracker = LineTracker(track_lines=track_lines, app_dir=app_dir)
         self._track_lines = track_lines
 
         # Should subroutines commited be saved for logging/debugging

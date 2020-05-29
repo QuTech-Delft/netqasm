@@ -9,10 +9,13 @@ from netqasm.output import SocketOperation, ClassCommLogger
 
 def log_send(method):
     def new_method(self, msg):
-        if self._line_tracker is None:
-            hln = None
-        else:
-            hln = self._line_tracker.get_line()
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
 
         if self._comm_logger is not None:
             log = f"Send classical message to {self.remote_node_name}: {msg}"
@@ -23,6 +26,7 @@ def log_send(method):
                 receiver=self._remote_node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -33,10 +37,13 @@ def log_send(method):
 
 def log_recv(method):
     def new_method(self, block=True, timeout=None):
-        if self._line_tracker is None:
-            hln = None
-        else:
-            hln = self._line_tracker.get_line()
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
 
         if self._comm_logger is not None:
             log = f"Waiting for a classical message from {self.remote_node_name}..."
@@ -47,6 +54,7 @@ def log_recv(method):
                 receiver=self._node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -61,6 +69,7 @@ def log_recv(method):
                 receiver=self._node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -74,7 +83,7 @@ class ThreadSocket(Socket):
     _COMM_LOGGERS = {}
 
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None, track_lines=True):
+                 use_callbacks=False, comm_log_dir=None, track_lines=True, app_dir=None):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -100,7 +109,7 @@ class ThreadSocket(Socket):
         self._remote_node_name = remote_node_name
         self._id = socket_id
 
-        self._line_tracker = LineTracker(level=2, track_lines=track_lines)
+        self._line_tracker = LineTracker(track_lines=track_lines, app_dir=app_dir)
         self._track_lines = track_lines
 
         # Use callbacks

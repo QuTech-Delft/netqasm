@@ -22,6 +22,7 @@ class InstrField(Enum):
     SID = "SID"  # Subroutine ID
     PRC = "PRC"  # Program counter
     HLN = "HLN"  # Host line number
+    HFL = "HFL"  # Host file
     INS = "INS"  # Instruction
     OPR = "OPR"  # Operands (register, array-entries..)
     OPV = "OPV"  # Values of operands as stored in memory
@@ -136,7 +137,8 @@ class SocketOperation(Enum):
 
 class ClassCommField(Enum):
     WCT = InstrField.WCT.value  # Wall clock time
-    HLN = InstrField.HLN.value  # Simulated time
+    HLN = InstrField.HLN.value  # Host line number
+    HFL = InstrField.HFL.value  # Host file
     INS = InstrField.INS.value  # Instruction (SEND, WAIT_RECV or RECV)
     MSG = "MSG"  # Message sent or received
     SEN = "SEN"  # Sender
@@ -153,11 +155,13 @@ class ClassCommLogger(StructuredLogger):
         receiver = kwargs['receiver']
         socket_id = kwargs['socket_id']
         hln = kwargs['hln']
+        hfl = kwargs['hfl']
         log = kwargs['log']
         wall_time = str(datetime.now())
         return {
             ClassCommField.WCT.value: wall_time,
             ClassCommField.HLN.value: hln,
+            ClassCommField.HFL.value: hfl,
             ClassCommField.INS.value: socket_op.value,
             ClassCommField.MSG.value: msg,
             ClassCommField.SEN.value: sender,
