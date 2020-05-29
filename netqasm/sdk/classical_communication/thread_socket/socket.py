@@ -83,7 +83,7 @@ class ThreadSocket(Socket):
     _COMM_LOGGERS = {}
 
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None, track_lines=False, app_dir=None):
+                 use_callbacks=False, comm_log_dir=None, track_lines=True, app_dir=None):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
