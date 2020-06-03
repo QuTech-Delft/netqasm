@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 from netqasm.encoding import (
     SingleQubitCommand,
     TwoQubitCommand,
@@ -24,58 +24,58 @@ from netqasm.encoding import (
 
 class Instruction(Enum):
     # Allocation
-    QALLOC = auto()
+    QALLOC = 1
     # Initialization
-    INIT = auto()
-    ARRAY = auto()
-    SET = auto()
+    INIT = 2
+    ARRAY = 3
+    SET = 4
     # Memory
-    STORE = auto()
-    LOAD = auto()
-    UNDEF = auto()
-    LEA = auto()
+    STORE = 5
+    LOAD = 6
+    UNDEF = 7
+    LEA = 8
     # Classical logic
-    JMP = auto()
-    BEZ = auto()
-    BNZ = auto()
-    BEQ = auto()
-    BNE = auto()
-    BLT = auto()
-    BGE = auto()
+    JMP = 9
+    BEZ = 10
+    BNZ = 11
+    BEQ = 12
+    BNE = 13
+    BLT = 14
+    BGE = 15
     # Classical operations
-    ADD = auto()
-    SUB = auto()
-    ADDM = auto()
-    SUBM = auto()
+    ADD = 16
+    SUB = 17
+    ADDM = 18
+    SUBM = 19
     # Single-qubit gates
-    X = auto()
-    Y = auto()
-    Z = auto()
-    H = auto()
-    S = auto()
-    K = auto()
-    T = auto()
+    X = 20
+    Y = 21
+    Z = 22
+    H = 23
+    S = 24
+    K = 25
+    T = 26
     # Single-qubit rotations
-    ROT_X = auto()
-    ROT_Y = auto()
-    ROT_Z = auto()
+    ROT_X = 27
+    ROT_Y = 28
+    ROT_Z = 29
     # Two-qubit gates
-    CNOT = auto()
-    CPHASE = auto()
+    CNOT = 30
+    CPHASE = 31
     # Measurement
-    MEAS = auto()
+    MEAS = 32
     # Entanglement generation
-    CREATE_EPR = auto()
-    RECV_EPR = auto()
+    CREATE_EPR = 33
+    RECV_EPR = 34
     # Waiting
-    WAIT_ALL = auto()
-    WAIT_ANY = auto()
-    WAIT_SINGLE = auto()
+    WAIT_ALL = 35
+    WAIT_ANY = 36
+    WAIT_SINGLE = 37
     # Deallocation
-    QFREE = auto()
+    QFREE = 38
     # Return
-    RET_REG = auto()
-    RET_ARR = auto()
+    RET_REG = 39
+    RET_ARR = 40
 
 
 _COMMAND_GROUPS = {
