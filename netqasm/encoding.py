@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 import ctypes
 
 ############
@@ -47,11 +47,11 @@ class RegisterName(Enum):
     # Standard register
     R = 0
     # Register for constants
-    C = auto()
+    C = 1
     # Qubit addresses
-    Q = auto()
+    Q = 2
     # Measurment outcomes
-    M = auto()
+    M = 3
 
 
 class Register(ctypes.Structure):

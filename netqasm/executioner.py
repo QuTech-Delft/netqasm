@@ -1,6 +1,6 @@
 import operator
 import numpy as np
-from enum import Enum, auto
+from enum import Enum
 from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
@@ -20,14 +20,6 @@ from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
-
-
-class OperandType(Enum):
-    """Types of operands that a command can have"""
-    QUBIT = auto()
-    READ = auto()
-    WRITE = auto()
-    ADDRESS = auto()
 
 
 @dataclass
