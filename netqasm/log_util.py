@@ -7,6 +7,9 @@ class HostLine:
         self.filename = filename
         self.lineno = lineno
 
+    def __str__(self):
+        return str(self.lineno)
+
 
 class LineTracker:
     def __init__(self, track_lines=True, app_dir=None):

@@ -1,3 +1,4 @@
+import os
 import abc
 from enum import Enum
 from datetime import datetime
@@ -11,6 +12,7 @@ from netqasm.instructions import (
 )
 from netqasm.subroutine import Register, ArrayEntry
 from netqasm.yaml_util import dump_yaml
+from netqasm.log_util import LineTracker
 
 
 INSTR_TO_LOG = QUBIT_GATES + EPR_INSTR + [Instruction.MEAS]
@@ -50,13 +52,13 @@ class StructuredLogger(abc.ABC):
 
         _STRUCT_LOGGERS.append(self)
 
-    def log(self, **kwargs):
-        entry = self._construct_entry(**kwargs)
+    def log(self, *args, **kwargs):
+        entry = self._construct_entry(*args, **kwargs)
         if entry is not None:
             self._storage.append(entry)
 
     @abc.abstractmethod
-    def _construct_entry(self, **kwargs):
+    def _construct_entry(self, *args, **kwargs):
         pass
 
     def _get_current_qubit_state(self, subroutine_id, qubit_address_reg):
@@ -88,7 +90,7 @@ class InstrLogger(StructuredLogger):
         super().__init__(filepath)
         self._executioner = executioner
 
-    def _construct_entry(self, **kwargs):
+    def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
         if command.instruction not in INSTR_TO_LOG:
             return None
@@ -148,7 +150,7 @@ class ClassCommField(Enum):
 
 
 class ClassCommLogger(StructuredLogger):
-    def _construct_entry(self, **kwargs):
+    def _construct_entry(self, *args, **kwargs):
         socket_op = kwargs['socket_op']
         msg = kwargs['msg']
         sender = kwargs['sender']
@@ -169,3 +171,40 @@ class ClassCommLogger(StructuredLogger):
             ClassCommField.SOD.value: socket_id,
             ClassCommField.LOG.value: log,
         }
+
+
+class AppLogField(Enum):
+    WCT = InstrField.WCT.value  # Wall clock time
+    HLN = InstrField.HLN.value  # Host line number
+    HFL = InstrField.HFL.value  # Host file
+    LOG = InstrField.LOG.value  # Human-readable message
+
+
+class AppLogger(StructuredLogger):
+    def __init__(self, filepath, app_dir=None):
+        super().__init__(filepath=filepath)
+
+        self._line_tracker = LineTracker(track_lines=True, app_dir=app_dir)
+
+    def _construct_entry(self, *args, **kwargs):
+        log = kwargs.get("log", None)
+        if log is None:
+            assert len(args) == 1, "AppLogger only takes on argument"
+            log = args[0]
+        host_line = self._line_tracker.get_line()
+        hln = host_line.lineno
+        hfl = host_line.filename
+        wall_time = str(datetime.now())
+        return {
+            AppLogField.WCT.value: wall_time,
+            AppLogField.HLN.value: hln,
+            AppLogField.HFL.value: hfl,
+            AppLogField.LOG.value: log,
+        }
+
+
+def get_new_app_logger(node_name, log_dir, app_dir):
+    filename = f"{str(node_name).lower()}_app_log.yaml"
+    filepath = os.path.join(log_dir, filename)
+    app_logger = AppLogger(filepath=filepath, app_dir=app_dir)
+    return app_logger
