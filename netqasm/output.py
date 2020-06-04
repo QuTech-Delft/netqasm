@@ -8,6 +8,7 @@ from netqasm.instructions import (
     instruction_to_string,
     QUBIT_GATES,
     SINGLE_QUBIT_GATES,
+    TWO_QUBIT_GATES,
     EPR_INSTR,
 )
 from netqasm.subroutine import Register, ArrayEntry
@@ -30,6 +31,7 @@ class InstrField(Enum):
     OPV = "OPV"  # Values of operands as stored in memory
     OUT = "OUT"  # Measurement outcome
     QST = "QST"  # Single-qubit state after operation
+    ENT = "ENT"  # Is qubit entangled (bool)
     LOG = "LOG"  # Human-readable message
 
 
@@ -64,8 +66,8 @@ class StructuredLogger(abc.ABC):
     def _get_current_qubit_state(self, subroutine_id, qubit_address_reg):
         app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
         virtual_address = self._executioner._get_register(app_id=app_id, register=qubit_address_reg)
-        state = self._executioner._get_qubit_state(app_id=app_id, virtual_address=virtual_address)
-        return state.tolist()
+        q_state = self._executioner._get_qubit_state(app_id=app_id, virtual_address=virtual_address)
+        return q_state.state.tolist(), q_state.is_entangled
 
     def _get_op_values(self, subroutine_id, operands):
         values = []
@@ -104,14 +106,15 @@ class InstrLogger(StructuredLogger):
         ops_str = [str(op) for op in operands]
         op_values = self._get_op_values(subroutine_id=subroutine_id, operands=operands)
         log = f"Doing instruction {instr_name} with operands {ops_str}"
-        if command.instruction in SINGLE_QUBIT_GATES + [Instruction.MEAS]:
+        if command.instruction in SINGLE_QUBIT_GATES + TWO_QUBIT_GATES + [Instruction.MEAS]:
             qubit_address_reg = operands[0]
-            qubit_state = self._get_current_qubit_state(
+            qubit_state, is_entangled = self._get_current_qubit_state(
                 subroutine_id=subroutine_id,
                 qubit_address_reg=qubit_address_reg,
             )
         else:
             qubit_state = None
+            is_entangled = None
         if command.instruction == Instruction.MEAS:
             outcome = output
         else:
@@ -127,6 +130,7 @@ class InstrLogger(StructuredLogger):
             InstrField.OPV.value: op_values,
             InstrField.OUT.value: outcome,
             InstrField.QST.value: qubit_state,
+            InstrField.ENT.value: is_entangled,
             InstrField.LOG.value: log,
         }
 
