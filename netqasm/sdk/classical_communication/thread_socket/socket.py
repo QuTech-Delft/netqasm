@@ -233,26 +233,18 @@ class ThreadSocket(Socket):
         """
         return self._socket_hub.recv(self, block=block, timeout=timeout)
 
-    def recv_callback(self, msg):
-        """This method gets called when a message is received.
-
-        Subclass to define behaviour.
-
-        NOTE: This only happens if `self.use_callbacks` is set to `True`.
-        """
-        pass
-
-    def conn_lost_callback(self):
-        """This method gets called when the connection is lost.
-
-        Subclass to define behaviour.
-
-        NOTE: This only happens if `self.use_callbacks` is set to `True`.
-        """
-        pass
-
     def wait(self):
         """Waits until the connection gets lost"""
         while True:
             if not self.connected:
                 return
+
+
+class StorageThreadSocket(ThreadSocket):
+    def __init__(self, node_name, remote_node_name, **kwargs):
+        """ThreadSocket that simply stores any message comming in"""
+        self._storage = []
+        super().__init__(node_name, remote_node_name, use_callbacks=True, **kwargs)
+
+    def recv_callback(self, msg):
+        self._storage.append(msg)

@@ -924,7 +924,7 @@ class Executioner:
         if response.type == ReturnType.ERR:
             self._handle_epr_err_response(response)
         else:
-            self._logger.debug("Handling EPR OK ({response.type}) response from network stack")
+            self._logger.debug(f"Handling EPR OK ({response.type}) response from network stack")
             info = self._extract_epr_info(response=response)
             if info is not None:
                 epr_cmd_data, pair_index, is_creator, request_key = info
