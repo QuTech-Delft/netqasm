@@ -5,7 +5,7 @@ from enum import Enum
 from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from qlink_interface import (
     RequestType,
@@ -21,6 +21,9 @@ from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
+
+
+QubitState = namedtuple('QubitState', ['state', 'is_entangled'])
 
 
 @dataclass
