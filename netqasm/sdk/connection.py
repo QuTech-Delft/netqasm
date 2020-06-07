@@ -881,7 +881,6 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
             qubits.append(qubit)
 
-        print(f'qubit ids for node {self.name}: {[q._qID for q in qubits]}')
         return qubits
 
     def createEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
