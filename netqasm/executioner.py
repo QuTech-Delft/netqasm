@@ -13,7 +13,6 @@ from qlink_interface import (
     LinkLayerCreate,
     get_creator_node_id,
 )
-import netsquid as ns
 
 from netqasm.logging import get_netqasm_logger
 from netqasm.output import InstrLogger
@@ -1021,7 +1020,7 @@ class Executioner:
 
         # If the virtual address is currently in use, we should wait
         if self._has_virtual_address(app_id=app_id, virtual_address=virtual_address):
-            self._logger.debug(f"{ns.sim_time()}: Since virtual address {virtual_address} is in use, "
+            self._logger.debug(f"Since virtual address {virtual_address} is in use, "
                                "handling of epr will wait and try again.")
             return False
 
