@@ -1293,7 +1293,7 @@ class DebugConnection(NetQASMConnection):
         self.storage = []
         super().__init__(*args, **kwargs)
 
-    def _commit_message(self, msg, block=True):
+    def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         self.storage.append(msg)
 

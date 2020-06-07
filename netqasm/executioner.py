@@ -579,6 +579,7 @@ class Executioner:
     def _do_meas(self, subroutine_id, q_address):
         """Performs a measurement on a single qubit"""
         # Always give outcome zero in the default debug class
+        yield
         return 0
 
     @inc_program_counter
