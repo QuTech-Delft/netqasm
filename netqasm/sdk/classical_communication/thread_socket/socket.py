@@ -5,6 +5,7 @@ from ..socket import Socket
 from .socket_hub import _socket_hub
 from netqasm.log_util import LineTracker
 from netqasm.output import SocketOperation, ClassCommLogger
+from netqasm.sdk.config import default_log_config
 
 
 def log_send(method):
@@ -83,7 +84,7 @@ class ThreadSocket(Socket):
     _COMM_LOGGERS = {}
 
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None, track_lines=False, app_dir=None, lib_dirs=[]):
+                 use_callbacks=False, log_config=None):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -109,8 +110,11 @@ class ThreadSocket(Socket):
         self._remote_node_name = remote_node_name
         self._id = socket_id
 
-        self._line_tracker = LineTracker(track_lines=track_lines, app_dir=app_dir, lib_dirs=lib_dirs)
-        self._track_lines = track_lines
+        if log_config is None:
+            log_config = default_log_config()
+
+        self._line_tracker = LineTracker(log_config=log_config)
+        self._track_lines = log_config.track_lines
 
         # Use callbacks
         self._use_callbacks = use_callbacks
@@ -127,12 +131,12 @@ class ThreadSocket(Socket):
         self._logger.debug(f"Setting up connection")
 
         # Classical communication logger
-        if comm_log_dir is None:
+        if log_config.comm_log_dir is None:
             self._comm_logger = None
         else:
             self._comm_logger = self.__class__.get_comm_logger(
                 node_name=self.node_name,
-                comm_log_dir=comm_log_dir,
+                comm_log_dir=log_config.comm_log_dir,
             )
 
         # Connect

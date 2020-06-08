@@ -1,6 +1,8 @@
 import inspect
 import os
 
+from netqasm.sdk.config import LogConfig
+
 
 class HostLine:
     def __init__(self, filename, lineno):
@@ -12,14 +14,14 @@ class HostLine:
 
 
 class LineTracker:
-    def __init__(self, track_lines=True, app_dir=None, lib_dirs=[]):
-        self._track_lines = track_lines
+    def __init__(self, log_config: LogConfig):
+        self._track_lines = log_config.track_lines
         if not self._track_lines:
             return
-        if app_dir is None:
+        if log_config.app_dir is None:
             raise RuntimeError("Cannot create Linetracker because app_dir is None")
-        self.app_dir = app_dir
-        self.lib_dirs = lib_dirs
+        self.app_dir = log_config.app_dir
+        self.lib_dirs = log_config.lib_dirs
 
     def _get_file_from_frame(self, frame):
         return frame.f_code.co_filename

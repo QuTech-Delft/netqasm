@@ -185,10 +185,10 @@ class AppLogField(Enum):
 
 
 class AppLogger(StructuredLogger):
-    def __init__(self, filepath, app_dir=None):
+    def __init__(self, filepath, log_config):
         super().__init__(filepath=filepath)
 
-        self._line_tracker = LineTracker(track_lines=True, app_dir=app_dir)
+        self._line_tracker = LineTracker(log_config)
 
     def _construct_entry(self, *args, **kwargs):
         log = kwargs.get("log", None)
@@ -207,8 +207,9 @@ class AppLogger(StructuredLogger):
         }
 
 
-def get_new_app_logger(node_name, log_dir, app_dir):
+def get_new_app_logger(node_name, log_config):
     filename = f"{str(node_name).lower()}_app_log.yaml"
+    log_dir = log_config.log_subroutines_dir
     filepath = os.path.join(log_dir, filename)
-    app_logger = AppLogger(filepath=filepath, app_dir=app_dir)
+    app_logger = AppLogger(filepath=filepath, log_config=log_config)
     return app_logger
