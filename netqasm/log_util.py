@@ -1,8 +1,6 @@
 import inspect
 import os
 
-from netqasm.sdk.config import LogConfig
-
 
 class HostLine:
     def __init__(self, filename, lineno):
@@ -14,7 +12,12 @@ class HostLine:
 
 
 class LineTracker:
-    def __init__(self, log_config: LogConfig):
+    def __init__(self, log_config):
+        """
+        Parameters
+        ----------
+        log_config : :class:`~.sdk.config.LogConfig`
+        """
         self._track_lines = log_config.track_lines
         if not self._track_lines:
             return
