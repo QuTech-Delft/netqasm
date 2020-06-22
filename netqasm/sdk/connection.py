@@ -62,6 +62,7 @@ from netqasm.messages import (
     StopAppMessage,
     OpenEPRSocketMessage,
 )
+from netqasm.sdk.config import default_log_config
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
@@ -122,11 +123,8 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self,
         name,
         app_id=None,
-        lib_dirs=[],
         max_qubits=5,
-        track_lines=False,
-        app_dir=None,
-        log_subroutines_dir=None,
+        log_config=None,
         epr_sockets=None,
         compiler=None,
     ):
@@ -157,11 +155,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(track_lines=track_lines, app_dir=app_dir, lib_dirs=lib_dirs)
-        self._track_lines = track_lines
+        if log_config is None:
+            log_config = default_log_config()
+
+        self._line_tracker = LineTracker(log_config=log_config)
+        self._track_lines = log_config.track_lines
 
         # Should subroutines commited be saved for logging/debugging
-        self._log_subroutines_dir = log_subroutines_dir
+        self._log_subroutines_dir = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
         self._commited_subroutines = []
 
