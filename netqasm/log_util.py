@@ -20,11 +20,14 @@ class LineTracker:
             return
         if log_config.app_dir is None:
             raise RuntimeError("Cannot create Linetracker because app_dir is None")
-        self.app_dir = log_config.app_dir
-        self.lib_dirs = log_config.lib_dirs
+
+        self.app_dir = os.path.abspath(log_config.app_dir)
+
+        lib_dirs = log_config.lib_dirs
+        self.lib_dirs = [os.path.abspath(dir) for dir in lib_dirs]
 
     def _get_file_from_frame(self, frame):
-        return frame.f_code.co_filename
+        return os.path.abspath(frame.f_code.co_filename)
 
     def get_line(self) -> HostLine:
         if not self._track_lines:
@@ -37,12 +40,12 @@ class LineTracker:
 
             # first check if it's coming from one of the lib directories
             for lib_dir in self.lib_dirs:
-                if lib_dir in frame_file:
+                if frame_file.startswith(lib_dir):
                     frame_found = True
                     break
 
             # check in app directory itself
-            if self.app_dir in frame_file:
+            if frame_file.startswith(self.app_dir):
                 frame_found = True
 
             if frame_found:
