@@ -81,6 +81,7 @@ def are_matrices_equal(*matrices):
             return False
         # Check what phase to apply to the matrix so that it is the same as the first
         phase = np.angle(matrices[0][first_non_zero] / matrix[first_non_zero])
+        print(np.exp(phase * 1j) * matrix)
         if not np.allclose(matrices[0], np.exp(phase * 1j) * matrix):
             return False
     return True
