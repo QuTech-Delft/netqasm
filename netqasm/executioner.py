@@ -572,13 +572,14 @@ class Executioner:
         q_address = self._get_register(app_id=app_id, register=operands[0])
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
                            f"placing the outcome in register {operands[1]}")
-        outcome = self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
+        outcome = yield from self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
         self._set_register(app_id=app_id, register=operands[1], value=outcome)
         return outcome
 
     def _do_meas(self, subroutine_id, q_address):
         """Performs a measurement on a single qubit"""
         # Always give outcome zero in the default debug class
+        yield
         return 0
 
     @inc_program_counter
@@ -716,15 +717,16 @@ class Executioner:
         array_slice = operands[0]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for all entries in array slice {array_slice} to become defined")
+        address, index = self._expand_array_part(app_id=app_id, array_part=array_slice)
         while True:
-            values = self._get_array_slice(app_id=app_id, array_slice=array_slice)
+            values = self._app_arrays[app_id][address, index]
             if any(value is None for value in values):
                 output = self._do_wait()
                 if isinstance(output, GeneratorType):
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
     def _instr_wait_any(self, subroutine_id, operands):
@@ -739,7 +741,7 @@ class Executioner:
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
     def _instr_wait_single(self, subroutine_id, operands):
@@ -754,7 +756,7 @@ class Executioner:
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array entry {array_entry}")
 
     def _do_wait(self):
         pass
@@ -808,7 +810,8 @@ class Executioner:
                              f"of size {len(unit_module)}")
         position = unit_module[address]
         if position is None:
-            raise RuntimeError(f"The qubit with address {address} was not allocated for app ID {app_id}")
+            raise RuntimeError(f"The qubit with address {address} was not allocated "
+                               f"for app ID {app_id} for node {self._name}")
         return position
 
     def _get_array(self, app_id, address):
@@ -998,10 +1001,11 @@ class Executioner:
                 self._epr_recv_requests[request_key].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
-        self._logger.debug("Storing entanglement information for pair {pair_index}")
         # Store the entanglement information
         ent_info = [entry.value if isinstance(entry, Enum) else entry for entry in response]
         ent_info_array_address = epr_cmd_data.ent_info_array_address
+        self._logger.debug(f"Storing entanglement information for pair {pair_index} "
+                           f"in array at address {ent_info_array_address}")
         # Start and stop of slice
         arr_start = pair_index * OK_FIELDS
         arr_stop = (pair_index + 1) * OK_FIELDS
@@ -1010,7 +1014,6 @@ class Executioner:
         self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
 
     def _handle_epr_ok_k_response(self, epr_cmd_data, response, pair_index):
-
         # Extract qubit addresses
         subroutine_id = epr_cmd_data.subroutine_id
         app_id = self._get_app_id(subroutine_id=subroutine_id)
