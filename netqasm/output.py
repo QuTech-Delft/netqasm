@@ -40,6 +40,11 @@ class InstrField(Enum):
 _STRUCT_LOGGERS = []
 
 
+def reset_struct_loggers():
+    while len(_STRUCT_LOGGERS) > 0:
+        _STRUCT_LOGGERS.pop()
+
+
 def save_all_struct_loggers():
     while len(_STRUCT_LOGGERS) > 0:
         struct_logger = _STRUCT_LOGGERS.pop()
