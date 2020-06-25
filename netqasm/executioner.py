@@ -613,7 +613,7 @@ class Executioner:
         ent_info_array_address,
     ):
         if self.network_stack is None:
-            raise RuntimeError(f"SubroutineHandler has no network stack")
+            raise RuntimeError("SubroutineHandler has no network stack")
         create_request = self._get_create_request(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,

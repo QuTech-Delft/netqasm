@@ -65,5 +65,5 @@ class ThreadBroadcastChannel(BroadcastChannel):
                 t_now = timer()
                 t_elapsed = t_now - t_start
                 if t_elapsed > timeout:
-                    raise TimeoutError(f"Timeout while trying to receive broadcasted message")
+                    raise TimeoutError("Timeout while trying to receive broadcasted message")
         raise RuntimeError("No message broadcasted")

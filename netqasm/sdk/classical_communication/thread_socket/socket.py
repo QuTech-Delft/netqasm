@@ -128,7 +128,7 @@ class ThreadSocket(Socket):
         # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
-        self._logger.debug(f"Setting up connection")
+        self._logger.debug("Setting up connection")
 
         # Classical communication logger
         if log_config.comm_log_dir is None:
@@ -154,7 +154,7 @@ class ThreadSocket(Socket):
 
     def __del__(self):
         if self.connected:
-            self._logger.debug(f"Closing connection")
+            self._logger.debug("Closing connection")
         self._connected = False
         self._socket_hub.disconnect(self)
 

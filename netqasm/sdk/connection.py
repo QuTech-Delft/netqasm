@@ -1160,7 +1160,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 if activate:
                     self._add_active_register(register=register)
                 return register
-        raise RuntimeError(f"could not find an available loop register")
+        raise RuntimeError("could not find an available loop register")
 
     @contextmanager
     def _activate_register(self, register):
