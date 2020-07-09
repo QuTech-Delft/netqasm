@@ -131,3 +131,7 @@ class _SocketHub:
 
 
 _socket_hub = _SocketHub()
+
+
+def reset_socket_hub():
+    _socket_hub.__init__()

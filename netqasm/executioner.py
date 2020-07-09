@@ -1,11 +1,11 @@
 import os
 import operator
 import numpy as np
-from enum import Enum, auto
+from enum import Enum
 from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from qlink_interface import (
     RequestType,
@@ -23,12 +23,7 @@ from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
 
 
-class OperandType(Enum):
-    """Types of operands that a command can have"""
-    QUBIT = auto()
-    READ = auto()
-    WRITE = auto()
-    ADDRESS = auto()
+QubitState = namedtuple('QubitState', ['state', 'is_entangled'])
 
 
 @dataclass
@@ -53,6 +48,8 @@ def inc_program_counter(method):
 
 
 class Executioner:
+
+    _INSTR_LOGGERS = {}
 
     def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.
@@ -123,13 +120,27 @@ class Executioner:
         if instr_log_dir is None:
             self._instr_logger = None
         else:
-            filename = f"{str(self._name).lower()}_instrs.yaml"
-            self._instr_logger = InstrLogger(
-                filepath=os.path.join(instr_log_dir, filename),
+            self._instr_logger = self.__class__.get_instr_logger(
+                node_name=self._name,
+                instr_log_dir=instr_log_dir,
                 executioner=self,
             )
 
+        # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._name})")
+
+    @classmethod
+    def get_instr_logger(cls, node_name, instr_log_dir, executioner):
+        instr_logger = cls._INSTR_LOGGERS.get(node_name)
+        if instr_logger is None:
+            filename = f"{str(node_name).lower()}_instrs.yaml"
+            filepath = os.path.join(instr_log_dir, filename)
+            instr_logger = InstrLogger(
+                filepath=filepath,
+                executioner=executioner,
+            )
+            cls._INSTR_LOGGERS[node_name] = instr_logger
+        return instr_logger
 
     def _get_simulated_time(self):
         return 0
@@ -180,8 +191,6 @@ class Executioner:
         self._clear_registers(app_id=app_id)
         self._clear_arrays(app_id=app_id)
         self._clear_shared_memory(app_id=app_id)
-        if self._instr_logger is not None:
-            self._instr_logger.save()
 
     def _clear_qubits(self, app_id):
         unit_module = self._qubit_unit_modules.pop(app_id)
@@ -261,6 +270,7 @@ class Executioner:
         if not isinstance(command, Command):
             raise TypeError(f"Expected a Command, not {type(command)}")
         self._assert_number_args(command.args, num=0)
+        prog_counter = self._program_counters[subroutine_id]
         output = self._instruction_handlers[command.instruction](subroutine_id, command.operands)
         if isinstance(output, GeneratorType):
             output = yield from output
@@ -269,6 +279,7 @@ class Executioner:
                 subroutine_id=subroutine_id,
                 command=command,
                 output=output,
+                program_counter=prog_counter
             )
 
     @inc_program_counter
@@ -561,13 +572,14 @@ class Executioner:
         q_address = self._get_register(app_id=app_id, register=operands[0])
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
                            f"placing the outcome in register {operands[1]}")
-        outcome = self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
+        outcome = yield from self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
         self._set_register(app_id=app_id, register=operands[1], value=outcome)
         return outcome
 
     def _do_meas(self, subroutine_id, q_address):
         """Performs a measurement on a single qubit"""
         # Always give outcome zero in the default debug class
+        yield
         return 0
 
     @inc_program_counter
@@ -601,7 +613,7 @@ class Executioner:
         ent_info_array_address,
     ):
         if self.network_stack is None:
-            raise RuntimeError(f"SubroutineHandler has no network stack")
+            raise RuntimeError("SubroutineHandler has no network stack")
         create_request = self._get_create_request(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
@@ -705,15 +717,16 @@ class Executioner:
         array_slice = operands[0]
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for all entries in array slice {array_slice} to become defined")
+        address, index = self._expand_array_part(app_id=app_id, array_part=array_slice)
         while True:
-            values = self._get_array_slice(app_id=app_id, array_slice=array_slice)
+            values = self._app_arrays[app_id][address, index]
             if any(value is None for value in values):
                 output = self._do_wait()
                 if isinstance(output, GeneratorType):
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
     def _instr_wait_any(self, subroutine_id, operands):
@@ -728,7 +741,7 @@ class Executioner:
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
     def _instr_wait_single(self, subroutine_id, operands):
@@ -743,7 +756,7 @@ class Executioner:
                     yield from output
             else:
                 break
-        self._logger.debug(f"Finished waiting")
+        self._logger.debug(f"Finished waiting for array entry {array_entry}")
 
     def _do_wait(self):
         pass
@@ -797,7 +810,8 @@ class Executioner:
                              f"of size {len(unit_module)}")
         position = unit_module[address]
         if position is None:
-            raise RuntimeError(f"The qubit with address {address} was not allocated for app ID {app_id}")
+            raise RuntimeError(f"The qubit with address {address} was not allocated "
+                               f"for app ID {app_id} for node {self._name}")
         return position
 
     def _get_array(self, app_id, address):
@@ -916,7 +930,7 @@ class Executioner:
         if response.type == ReturnType.ERR:
             self._handle_epr_err_response(response)
         else:
-            self._logger.debug("Handling EPR OK ({response.type}) response from network stack")
+            self._logger.debug(f"Handling EPR OK ({response.type}) response from network stack")
             info = self._extract_epr_info(response=response)
             if info is not None:
                 epr_cmd_data, pair_index, is_creator, request_key = info
@@ -987,10 +1001,11 @@ class Executioner:
                 self._epr_recv_requests[request_key].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
-        self._logger.debug("Storing entanglement information for pair {pair_index}")
         # Store the entanglement information
         ent_info = [entry.value if isinstance(entry, Enum) else entry for entry in response]
         ent_info_array_address = epr_cmd_data.ent_info_array_address
+        self._logger.debug(f"Storing entanglement information for pair {pair_index} "
+                           f"in array at address {ent_info_array_address}")
         # Start and stop of slice
         arr_start = pair_index * OK_FIELDS
         arr_stop = (pair_index + 1) * OK_FIELDS
@@ -999,7 +1014,6 @@ class Executioner:
         self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
 
     def _handle_epr_ok_k_response(self, epr_cmd_data, response, pair_index):
-
         # Extract qubit addresses
         subroutine_id = epr_cmd_data.subroutine_id
         app_id = self._get_app_id(subroutine_id=subroutine_id)

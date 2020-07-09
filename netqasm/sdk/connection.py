@@ -62,6 +62,7 @@ from netqasm.messages import (
     StopAppMessage,
     OpenEPRSocketMessage,
 )
+from netqasm.sdk.config import default_log_config
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
@@ -123,8 +124,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         name,
         app_id=None,
         max_qubits=5,
-        track_lines=False,
-        log_subroutines_dir=None,
+        log_config=None,
         epr_sockets=None,
         compiler=None,
     ):
@@ -155,11 +155,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
 
-        self._line_tracker = LineTracker(level=3, track_lines=track_lines)
-        self._track_lines = track_lines
+        if log_config is None:
+            log_config = default_log_config()
+
+        self._line_tracker = LineTracker(log_config=log_config)
+        self._track_lines = log_config.track_lines
 
         # Should subroutines commited be saved for logging/debugging
-        self._log_subroutines_dir = log_subroutines_dir
+        self._log_subroutines_dir = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
         self._commited_subroutines = []
 
@@ -192,7 +195,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             self._save_log_subroutines()
 
     @abc.abstractmethod
-    def _commit_message(self, msg, block=False):
+    def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
         pass
@@ -316,14 +319,18 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         else:
             self._put_netqasm_commands(command, **kwargs)
 
-    def flush(self, block=True):
+    def flush(self, block=True, callback=None):
         subroutine = self._pop_pending_subroutine()
         if subroutine is None:
             return
 
-        self._commit_subroutine(subroutine=subroutine, block=block)
+        self._commit_subroutine(
+            subroutine=subroutine,
+            block=block,
+            callback=callback,
+        )
 
-    def _commit_subroutine(self, subroutine, block=True):
+    def _commit_subroutine(self, subroutine, block=True, callback=None):
         self._logger.info(f"Flushing subroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
@@ -334,6 +341,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._commit_message(
             msg=Message(type=MessageType.SUBROUTINE, msg=bin_subroutine),
             block=block,
+            callback=callback,
         )
 
         self._reset()
@@ -874,6 +882,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             else:
                 qubit = Qubit(self, put_new_command=False, ent_info=ent_info_slice)
             qubits.append(qubit)
+
         return qubits
 
     def createEPR(self, remote_node_name, epr_socket_id=0, **kwargs):
@@ -1151,7 +1160,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
                 if activate:
                     self._add_active_register(register=register)
                 return register
-        raise RuntimeError(f"could not find an available loop register")
+        raise RuntimeError("could not find an available loop register")
 
     @contextmanager
     def _activate_register(self, register):
@@ -1286,7 +1295,7 @@ class DebugConnection(NetQASMConnection):
         self.storage = []
         super().__init__(*args, **kwargs)
 
-    def _commit_message(self, msg, block=False):
+    def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         self.storage.append(msg)
 

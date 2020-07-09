@@ -5,14 +5,18 @@ from ..socket import Socket
 from .socket_hub import _socket_hub
 from netqasm.log_util import LineTracker
 from netqasm.output import SocketOperation, ClassCommLogger
+from netqasm.sdk.config import default_log_config
 
 
 def log_send(method):
     def new_method(self, msg):
-        if self._line_tracker is None:
-            hln = None
-        else:
-            hln = self._line_tracker.get_line()
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
 
         if self._comm_logger is not None:
             log = f"Send classical message to {self.remote_node_name}: {msg}"
@@ -23,6 +27,7 @@ def log_send(method):
                 receiver=self._remote_node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -33,10 +38,13 @@ def log_send(method):
 
 def log_recv(method):
     def new_method(self, block=True, timeout=None):
-        if self._line_tracker is None:
-            hln = None
-        else:
-            hln = self._line_tracker.get_line()
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
 
         if self._comm_logger is not None:
             log = f"Waiting for a classical message from {self.remote_node_name}..."
@@ -47,6 +55,7 @@ def log_recv(method):
                 receiver=self._node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -61,6 +70,7 @@ def log_recv(method):
                 receiver=self._node_name,
                 socket_id=self._id,
                 hln=hln,
+                hfl=hfl,
                 log=log,
             )
 
@@ -70,8 +80,11 @@ def log_recv(method):
 
 
 class ThreadSocket(Socket):
+
+    _COMM_LOGGERS = {}
+
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False, comm_log_dir=None, track_lines=True):
+                 use_callbacks=False, log_config=None):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -97,8 +110,11 @@ class ThreadSocket(Socket):
         self._remote_node_name = remote_node_name
         self._id = socket_id
 
-        self._line_tracker = LineTracker(level=2, track_lines=track_lines)
-        self._track_lines = track_lines
+        if log_config is None:
+            log_config = default_log_config()
+
+        self._line_tracker = LineTracker(log_config=log_config)
+        self._track_lines = log_config.track_lines
 
         # Use callbacks
         self._use_callbacks = use_callbacks
@@ -112,22 +128,33 @@ class ThreadSocket(Socket):
         # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
-        self._logger.debug(f"Setting up connection")
+        self._logger.debug("Setting up connection")
 
         # Classical communication logger
-        if comm_log_dir is None:
+        if log_config.comm_log_dir is None:
             self._comm_logger = None
         else:
-            filename = f"{str(self.node_name).lower()}_class_comm.yaml"
-            filepath = os.path.join(comm_log_dir, filename)
-            self._comm_logger = ClassCommLogger(filepath=filepath)
+            self._comm_logger = self.__class__.get_comm_logger(
+                node_name=self.node_name,
+                comm_log_dir=log_config.comm_log_dir,
+            )
 
         # Connect
         self._socket_hub.connect(self, timeout=timeout)
 
+    @classmethod
+    def get_comm_logger(cls, node_name, comm_log_dir):
+        comm_logger = cls._COMM_LOGGERS.get(node_name)
+        if comm_logger is None:
+            filename = f"{str(node_name).lower()}_class_comm.yaml"
+            filepath = os.path.join(comm_log_dir, filename)
+            comm_logger = ClassCommLogger(filepath=filepath)
+            cls._COMM_LOGGERS[node_name] = comm_logger
+        return comm_logger
+
     def __del__(self):
         if self.connected:
-            self._logger.debug(f"Closing connection")
+            self._logger.debug("Closing connection")
         self._connected = False
         self._socket_hub.disconnect(self)
 
@@ -210,26 +237,18 @@ class ThreadSocket(Socket):
         """
         return self._socket_hub.recv(self, block=block, timeout=timeout)
 
-    def recv_callback(self, msg):
-        """This method gets called when a message is received.
-
-        Subclass to define behaviour.
-
-        NOTE: This only happens if `self.use_callbacks` is set to `True`.
-        """
-        pass
-
-    def conn_lost_callback(self):
-        """This method gets called when the connection is lost.
-
-        Subclass to define behaviour.
-
-        NOTE: This only happens if `self.use_callbacks` is set to `True`.
-        """
-        pass
-
     def wait(self):
         """Waits until the connection gets lost"""
         while True:
             if not self.connected:
                 return
+
+
+class StorageThreadSocket(ThreadSocket):
+    def __init__(self, node_name, remote_node_name, **kwargs):
+        """ThreadSocket that simply stores any message comming in"""
+        self._storage = []
+        super().__init__(node_name, remote_node_name, use_callbacks=True, **kwargs)
+
+    def recv_callback(self, msg):
+        self._storage.append(msg)

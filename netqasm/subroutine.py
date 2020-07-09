@@ -183,8 +183,6 @@ class Command:
         command = COMMAND_STRUCTS[self.instruction]
         args = [arg.cstruct if hasattr(arg, 'cstruct') else arg for arg in self.args]
         operands = [op.cstruct if hasattr(op, 'cstruct') else op for op in self.operands]
-        if any(isinstance(op, Address) for op in operands):
-            breakpoint()
         fields = args + operands
         if not len(fields) != len(command._fields_):
             raise NetQASMInstrError(f"Unexpected number of fields for command {command}, "

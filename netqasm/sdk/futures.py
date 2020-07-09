@@ -124,13 +124,30 @@ class Future(int):
         return value
 
     def add(self, other, mod=None):
-        if not isinstance(other, int):
-            raise NotImplementedError
-        tmp_register = self._connection._get_inactive_register()
+        if isinstance(other, str):
+            other = parse_register(other)
+
+        # Store self in a temporary register
+        tmp_register = self._connection._get_inactive_register(activate=True)
+        load_commands = self._get_load_commands(tmp_register)
+        store_commands = self._get_store_commands(tmp_register)
+
+        # If other is a Future, also load this into a temporary register
+        if isinstance(other, Future):
+            other_tmp_register = self._connection._get_inactive_register(activate=True)
+            other_operand = other_tmp_register
+            load_commands += other._get_load_commands(other_tmp_register)
+            store_commands += other._get_store_commands(other_tmp_register)
+        elif isinstance(other, Register) or isinstance(other, int):
+            other_tmp_register = None
+            other_operand = other
+        else:
+            raise NotImplementedError('for type {type(other)}')
+
         add_operands = [
             tmp_register,
             tmp_register,
-            other,
+            other_operand,
         ]
         if mod is None:
             add_instr = Instruction.ADD
@@ -140,14 +157,19 @@ class Future(int):
             add_instr = Instruction.ADDM
             add_operands.append(mod)
 
-        commands = []
-        with self._connection._activate_register(tmp_register):
-            commands += self._get_load_commands(tmp_register)
-            commands += [Command(
+        commands = (
+            load_commands +
+            [Command(
                 instruction=add_instr,
                 operands=add_operands,
-            )]
-            commands += self._get_store_commands(tmp_register)
+            )] +
+            store_commands
+        )
+
+        self._connection._remove_active_register(tmp_register)
+        if other_tmp_register is not None:
+            self._connection._remove_active_register(other_tmp_register)
+
         self._connection.put_commands(commands)
 
     def _get_load_commands(self, register):

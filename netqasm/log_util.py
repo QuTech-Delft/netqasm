@@ -1,29 +1,62 @@
 import inspect
+import os
+
+
+class HostLine:
+    def __init__(self, filename, lineno):
+        self.filename = filename
+        self.lineno = lineno
+
+    def __str__(self):
+        return str(self.lineno)
 
 
 class LineTracker:
-    # level: int, How many levels 'up' (in the call hierarchy) the host app is
-    def __init__(self, level, track_lines=True):
-        self._track_lines = track_lines
+    def __init__(self, log_config):
+        """
+        Parameters
+        ----------
+        log_config : :class:`~.sdk.config.LogConfig`
+        """
+        self._track_lines = log_config.track_lines
         if not self._track_lines:
             return
-        # Get the file-name of the calling host application
-        frame = inspect.currentframe()
-        for _ in range(level):
-            frame = frame.f_back
-        self._calling_filename = self._get_file_from_frame(frame)
+        if log_config.app_dir is None:
+            raise RuntimeError("Cannot create Linetracker because app_dir is None")
+
+        self.app_dir = os.path.abspath(log_config.app_dir)
+
+        lib_dirs = log_config.lib_dirs
+        self.lib_dirs = [os.path.abspath(dir) for dir in lib_dirs]
 
     def _get_file_from_frame(self, frame):
-        return str(frame).split(',')[1][7:-1]
+        return os.path.abspath(frame.f_code.co_filename)
 
-    def get_line(self):
+    def get_line(self) -> HostLine:
         if not self._track_lines:
             return None
+
         frame = inspect.currentframe()
-        while True:
-            if self._get_file_from_frame(frame) == self._calling_filename:
+        frame_found = False
+        while not frame_found:
+            frame_file = self._get_file_from_frame(frame)
+
+            # first check if it's coming from one of the lib directories
+            for lib_dir in self.lib_dirs:
+                if frame_file.startswith(lib_dir):
+                    frame_found = True
+                    break
+
+            # check in app directory itself
+            if frame_file.startswith(self.app_dir):
+                frame_found = True
+
+            if frame_found:
                 break
+
             frame = frame.f_back
-        else:
-            raise RuntimeError(f"Different calling file than {self._calling_filename}")
-        return frame.f_lineno
+            if frame is None:
+                raise RuntimeError(f"No frame found in directory {self.app_dir}")
+
+        filename = os.path.abspath(frame.f_code.co_filename)
+        return HostLine(filename, frame.f_lineno)
