@@ -4,7 +4,7 @@ from netqasm.logging import set_log_level
 
 
 def main(no_output=False):
-    with DebugConnection("Alice", track_lines=True) as alice:
+    with DebugConnection("Alice") as alice:
         num = 10
 
         outcomes = alice.new_array(num)

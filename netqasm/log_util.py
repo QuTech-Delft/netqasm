@@ -27,6 +27,8 @@ class LineTracker:
         self.app_dir = os.path.abspath(log_config.app_dir)
 
         lib_dirs = log_config.lib_dirs
+        if lib_dirs is None:
+            lib_dirs = []
         self.lib_dirs = [os.path.abspath(dir) for dir in lib_dirs]
 
     def _get_file_from_frame(self, frame):

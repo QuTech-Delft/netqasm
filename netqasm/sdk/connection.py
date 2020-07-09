@@ -62,7 +62,7 @@ from netqasm.messages import (
     StopAppMessage,
     OpenEPRSocketMessage,
 )
-from netqasm.sdk.config import default_log_config
+from netqasm.sdk.config import LogConfig
 
 
 _Command = namedtuple("Command", ["qID", "command", "kwargs"])
@@ -156,7 +156,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._stop_backend_on_exit = True
 
         if log_config is None:
-            log_config = default_log_config()
+            log_config = LogConfig()
 
         self._line_tracker = LineTracker(log_config=log_config)
         self._track_lines = log_config.track_lines
