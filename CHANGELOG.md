@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2020-07-09 (0.0.6)
+------------------
+- Fixed failing examples and changed default config to only use the dataclass.
+
 2020-07-09 (0.0.5)
 ------------------
 - Fixed bug when logging PRC.
