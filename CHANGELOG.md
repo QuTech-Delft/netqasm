@@ -1,6 +1,19 @@
 CHANGELOG
 =========
 
+2020-07-09 (0.0.5)
+------------------
+- Fixed bug when logging PRC.
+- SDK now supports addition of future.
+- Loggers are saved at end of simulation.
+- Log host line numbers across multiple files.
+- Function in SDK to generate GHZ state.
+- Added broadcast-channel to SDK.
+- Alignment to QNodeOS.
+- Application logger.
+- Log if a qubit is entangled.
+- Allow for parallel execution of subroutines.
+
 2020-05-20 (0.0.4)
 ------------------
 - Output logs are now in yaml format
