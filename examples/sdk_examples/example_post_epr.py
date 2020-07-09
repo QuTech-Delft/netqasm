@@ -12,7 +12,7 @@ def main(no_output=False):
     num = 10
 
     epr_socket = EPRSocket(remote_node_name="Bob")
-    with DebugConnection("Alice", epr_sockets=[epr_socket], track_lines=True) as alice:
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
 
         outcomes = alice.new_array(num)
 

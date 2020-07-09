@@ -5,7 +5,7 @@ from ..socket import Socket
 from .socket_hub import _socket_hub
 from netqasm.log_util import LineTracker
 from netqasm.output import SocketOperation, ClassCommLogger
-from netqasm.sdk.config import default_log_config
+from netqasm.sdk.config import LogConfig
 
 
 def log_send(method):
@@ -111,7 +111,7 @@ class ThreadSocket(Socket):
         self._id = socket_id
 
         if log_config is None:
-            log_config = default_log_config()
+            log_config = LogConfig()
 
         self._line_tracker = LineTracker(log_config=log_config)
         self._track_lines = log_config.track_lines

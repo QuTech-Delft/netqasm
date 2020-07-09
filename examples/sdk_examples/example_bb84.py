@@ -14,7 +14,7 @@ def main(no_output=False):
     n = 10
 
     epr_socket = EPRSocket(remote_node_name="Bob")
-    with DebugConnection("Alice", epr_sockets=[epr_socket], track_lines=True) as alice:
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         bit_flips = alice.new_array(init_values=[random.randint(0, 1) for _ in range(n)])
         basis_flips = alice.new_array(init_values=[random.randint(0, 1) for _ in range(n)])
         outcomes = alice.new_array(n)
