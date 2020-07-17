@@ -1,33 +1,38 @@
 from itertools import count
 from collections import defaultdict
+from typing import List, Dict
 
 from netqasm.string_util import group_by_word, is_variable_name, is_number
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
     Label,
-    Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
+    # Register,
+    # Address,
+    # ArrayEntry,
+    # ArraySlice,
     Command,
     BranchLabel,
     Subroutine,
     Symbols,
 )
 from netqasm.instructions import Instruction, string_to_instruction
+from netqasm.oop.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.oop.vanilla import get_vanilla_map
+from netqasm.oop.instr import NetQASMInstruction
 
 
 def parse_text_subroutine(
-    subroutine,
+    subroutine: str,
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
 ):
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
-    preamble_data = _parse_preamble(preamble_lines)
-    body_lines = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
+    preamble_data: Dict[str, List[str]] = _parse_preamble(preamble_lines)
+    print(f"preamble_data = {preamble_data}")
+    body_lines: List[str] = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
     subroutine = _create_subroutine(preamble_data, body_lines)
     subroutine = assemble_subroutine(
         subroutine=subroutine,
@@ -50,10 +55,26 @@ def assemble_subroutine(
         _replace_constants(subroutine)
     if assign_branch_labels:
         _assign_branch_labels(subroutine)
+
+    oopify(subroutine)
+    
     return subroutine
 
 
-def _create_subroutine(preamble_data, body_lines):
+def oopify(subroutine: Subroutine):
+    new_commands = []
+    for command in subroutine.commands:
+        assert isinstance(command, Command)
+
+        vanilla_map = get_vanilla_map()
+        instr = vanilla_map.name_map[command.instruction.name.lower()]
+        new_command = instr.parse_from(command.operands)
+
+        new_commands.append(new_command)
+    subroutine.commands = new_commands
+
+
+def _create_subroutine(preamble_data, body_lines: List[str]):
     commands = []
     for line in body_lines:
         if line.endswith(Symbols.BRANCH_END):
@@ -65,9 +86,14 @@ def _create_subroutine(preamble_data, body_lines):
         else:
             words = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
             instr_name, args = _split_instr_and_args(words[0])
+
+            # vanilla_map = get_vanilla_map()
+            # instr = vanilla_map.name_map[instr_name]
+
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
             operands = _parse_operands(words[1:])
+            # command = instr.parse_from(operands)
             command = Command(
                 instruction=instr,
                 args=args,
@@ -217,7 +243,7 @@ def _split_of_bracket(word, brackets):
     return address, content
 
 
-def _split_preamble_body(subroutine):
+def _split_preamble_body(subroutine) -> (List[str], List[str]):
     """Splits the preamble from the body of the subroutine"""
     is_preamble = True
     preamble_lines = []
@@ -241,7 +267,7 @@ def _split_preamble_body(subroutine):
     return preamble_lines, body_lines
 
 
-def _apply_macros(body_lines, macros):
+def _apply_macros(body_lines, macros) -> List[str]:
     """Applies macros to the body lines"""
     if len(body_lines) == 0:
         return []
@@ -257,7 +283,7 @@ def _remove_comments_from_line(line):
     return line.split(Symbols.COMMENT_START)[0]
 
 
-def _parse_preamble(preamble_lines):
+def _parse_preamble(preamble_lines: List[str]) -> Dict[str, List[str]]:
     """Parses the preamble lines"""
 
     preamble_instructions = defaultdict(list)
@@ -342,20 +368,22 @@ def _assign_branch_labels(subroutine):
     _update_labels(subroutine, branch_labels)
 
 
-def _update_labels(subroutine, variables, from_command=0):
+def _update_labels(subroutine, variables: Dict[str, int], from_command=0):
     """Updates labels in a subroutine with given values"""
     for command in subroutine.commands[from_command:]:
         if isinstance(command, Command):
             _update_labels_in_command(command, variables)
+        elif isinstance(command, NetQASMInstruction):
+            command.update_labels(variables)
 
 
-def _update_labels_in_command(command, variables):
+def _update_labels_in_command(command, variables: Dict[str, int]):
     for i, operand in enumerate(command.operands):
         new_operand = _update_labels_in_operand(operand, variables)
         command.operands[i] = new_operand
 
 
-def _update_labels_in_operand(operand, labels):
+def _update_labels_in_operand(operand, labels: Dict[str, int]):
     if isinstance(operand, Label):
         for label, value in labels.items():
             if operand.name == label:

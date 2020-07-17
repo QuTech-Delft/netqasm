@@ -230,6 +230,7 @@ def _create_command_struct(instr, command_group):
     )
 
 
+# Dict[Instruction, ctypes.Structure]
 COMMAND_STRUCTS = {
     instr: _create_command_struct(instr, command_group)
     for command_group, instrs in _COMMAND_GROUPS.items()

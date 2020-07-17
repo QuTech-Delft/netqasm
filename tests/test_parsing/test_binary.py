@@ -1,4 +1,8 @@
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
+import netqasm
+
+from netqasm.oop.serde import Deserializer
+from netqasm.oop.vanilla import get_vanilla_map
 
 
 def test():
@@ -9,7 +13,7 @@ def test():
 
 // Setup classical registers
 set Q0 0
-array(10) ms!
+array 10 ms!
 set R0 0
 
 // Loop entry
@@ -39,13 +43,19 @@ ret_reg M0
     data = bytes(subroutine)
     print(data)
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    # parsed_subroutine = parse_binary_subroutine(data)
+    deserializer = Deserializer(instr_map=get_vanilla_map())
+    parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
         print()
         print(repr(command))
         print(repr(parsed_command))
+        print(f"command: {command}, parsed_command: {parsed_command}")
+        if isinstance(command, netqasm.oop.instr.StoreInstruction):
+            print(f"type(command.entry) = {type(command.entry)}")
+            print(f"type(parsed_command.entry) = {type(parsed_command.entry)}")
         assert command == parsed_command
 
     assert subroutine == parsed_subroutine
@@ -70,21 +80,29 @@ qfree Q0
 
     subroutine = parse_text_subroutine(subroutine)
     print(subroutine)
+    for command in subroutine.commands:
+        print(f"command: {command}")
+        if command.__class__ == netqasm.oop.instr.QAllocInstruction:
+            print(f"qalloc reg: {command.qreg}")
     data = bytes(subroutine)
-    print(data)
+    print(f"binary subroutine: {data}")
+    # print(type(data))
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    # parsed_subroutine = parse_binary_subroutine(data)
+    deserializer = Deserializer(instr_map=get_vanilla_map())
+    parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
-        print()
-        print(repr(command))
-        print(repr(parsed_command))
+        # print()
+        # print(repr(command))
+        # print(repr(parsed_command))
+        print(f"command: {command}, parsed_command: {parsed_command}")
         assert command == parsed_command
 
     assert subroutine == parsed_subroutine
 
 
 if __name__ == "__main__":
-    # test()
+    test()
     test_rotations()
