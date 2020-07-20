@@ -101,3 +101,42 @@ def test_failing_executioner(subroutine_str, error_type, error_line):
 
     print(f"Exception: {exc.value}")
     assert str(exc.value).startswith(f"At line {error_line}")
+
+if __name__ == '__main__':
+    # subroutine_str = """
+    #     # NETQASM 1.0
+    #     # APPID 0
+    #     # DEFINE op h
+    #     # DEFINE q Q0
+    #     # DEFINE m M0
+    #     set q! 0
+    #     qalloc q!
+    #     init q!
+    #     op! q! // this is a comment
+    #     meas q! m!
+    #     // this is also a comment
+    #     beq m! 0 EXIT
+    #     x q!
+    #     EXIT:
+    #     qfree q!
+    #     """
+    # expected_register = Register(RegisterName.M, 0)
+    # expected_output = 0
+
+
+    subroutine_str = """
+        # NETQASM 1.0
+        # APPID 0
+        # DEFINE i R0
+        set i! 0
+        LOOP:
+        beq i! 10 EXIT
+        add i! i! 1
+        beq 0 0 LOOP
+        EXIT:
+        """
+    expected_register = Register(RegisterName.R, 0)
+    expected_output = 10
+
+    set_log_level(logging.INFO)
+    test_executioner(subroutine_str, expected_register, expected_output)

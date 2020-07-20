@@ -69,6 +69,7 @@ def oopify(subroutine: Subroutine):
         vanilla_map = get_vanilla_map()
         instr = vanilla_map.name_map[command.instruction.name.lower()]
         new_command = instr.parse_from(command.operands)
+        new_command.lineno = command.lineno
 
         new_commands.append(new_command)
     subroutine.commands = new_commands

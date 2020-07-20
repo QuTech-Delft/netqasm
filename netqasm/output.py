@@ -15,8 +15,34 @@ from netqasm.subroutine import Register, ArrayEntry
 from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
 
+from netqasm import oop
+
 
 INSTR_TO_LOG = QUBIT_GATES + EPR_INSTR + [Instruction.MEAS]
+
+def should_log_instr(instr):
+    return (
+        isinstance(instr, oop.instr.SingleQubitInstruction)
+        or isinstance(instr, oop.instr.TwoQubitInstruction)
+        or isinstance(instr, oop.instr.CreateEPRInstruction)
+        or isinstance(instr, oop.instr.RecvEPRInstruction)
+        or isinstance(instr, oop.instr.MeasInstruction)
+    ) and not (
+        isinstance(instr, oop.instr.QAllocInstruction)
+        or isinstance(instr, oop.instr.InitInstruction)
+        or isinstance(instr, oop.instr.QFreeInstruction)
+    )
+
+def should_check_qubit_state(instr):
+    return (
+        isinstance(instr, oop.instr.SingleQubitInstruction)
+        or isinstance(instr, oop.instr.TwoQubitInstruction)
+        or isinstance(instr, oop.instr.MeasInstruction)
+    ) and not (
+        isinstance(instr, oop.instr.QAllocInstruction)
+        or isinstance(instr, oop.instr.InitInstruction)
+        or isinstance(instr, oop.instr.QFreeInstruction)
+    )
 
 
 class InstrField(Enum):
@@ -99,19 +125,22 @@ class InstrLogger(StructuredLogger):
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
-        if command.instruction not in INSTR_TO_LOG:
+        # if command.instruction not in INSTR_TO_LOG:
+        if not should_log_instr(command):
             return None
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
         sim_time = self._executioner._get_simulated_time()
         program_counter = kwargs['program_counter']
-        instr_name = instruction_to_string(command.instruction)
+        # instr_name = instruction_to_string(command.instruction)
+        instr_name = command.mnemonic
         operands = command.operands
         ops_str = [str(op) for op in operands]
         op_values = self._get_op_values(subroutine_id=subroutine_id, operands=operands)
         log = f"Doing instruction {instr_name} with operands {ops_str}"
-        if command.instruction in SINGLE_QUBIT_GATES + TWO_QUBIT_GATES + [Instruction.MEAS]:
+        # if command.instruction in SINGLE_QUBIT_GATES + TWO_QUBIT_GATES + [Instruction.MEAS]:
+        if should_check_qubit_state(command):
             qubit_address_reg = operands[0]
             qubit_state, is_entangled = self._get_current_qubit_state(
                 subroutine_id=subroutine_id,
@@ -120,7 +149,8 @@ class InstrLogger(StructuredLogger):
         else:
             qubit_state = None
             is_entangled = None
-        if command.instruction == Instruction.MEAS:
+        # if command.instruction == Instruction.MEAS:
+        if isinstance(command, oop.instr.MeasInstruction):
             outcome = output
         else:
             outcome = None

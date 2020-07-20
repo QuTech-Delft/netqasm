@@ -266,9 +266,9 @@ class Subroutine:
         )
         # return [metadata] + [command.cstruct for command in self.commands]
         for command in self.commands:
-            print(f"evaluating cstruct for command {command}")
+            # print(f"evaluating cstruct for command {command}")
             ser = command.serialize()
-            print(f"ser: {ser}")
+            # print(f"ser: {ser}")
             bytes(command.serialize())
         return [metadata] + [command.serialize() for command in self.commands]
 

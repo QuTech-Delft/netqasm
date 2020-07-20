@@ -4,6 +4,7 @@ from typing import List, Dict
 
 from netqasm.string_util import rspaces
 from netqasm import encoding
+from netqasm.log_util import HostLine
 
 from netqasm.oop.operand import (
     Operand,
@@ -20,17 +21,21 @@ from netqasm.oop.operand import (
 class NetQASMInstruction:
     id: int = -1
     mnemonic: str = None
-    lineno: int = None
+    lineno: HostLine = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return []
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         pass
 
-    @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def serialize(self) -> bytes:
         pass
 
-    def serialize(self) -> bytes:
+    @classmethod
+    def parse_from(cls, operands: List[Operand]):
         pass
 
     def __str__(self):
@@ -44,7 +49,7 @@ class NetQASMInstruction:
         if self.lineno is None:
             lineno = "()"
         else:
-            self.lineno = f"({lineno})"
+            lineno = f"({self.lineno})"
         return f"{rspaces(lineno, min_chars=5)} "
 
     def _build_str(self, show_lineno=False):
@@ -64,6 +69,10 @@ class NetQASMInstruction:
 @dataclass
 class SingleQubitInstruction(NetQASMInstruction):
     qreg: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.qreg]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -94,6 +103,10 @@ class SingleQubitInstruction(NetQASMInstruction):
 class TwoQubitInstruction(NetQASMInstruction):
     qreg0: Register = None
     qreg1: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.qreg0, self.qreg1]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -127,6 +140,10 @@ class GenericMeasInstruction(NetQASMInstruction):
     qreg: Register = None
     creg: Register = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.qreg, self.creg]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.MeasCommand.from_buffer_copy(raw)
@@ -159,6 +176,10 @@ class RotationInstruction(NetQASMInstruction):
     qreg: Register = None
     angle_num: Immediate = None
     angle_denom: Immediate = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.qreg, self.angle_num, self.angle_denom]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -200,6 +221,10 @@ class ClassicalOpInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.regout, self.reg0, self.reg1]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.ClassicalOpCommand.from_buffer_copy(raw)
@@ -240,6 +265,10 @@ class ClassicalOpModInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
     regmod: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.regout, self.reg0, self.reg1, self.regmod]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -284,6 +313,10 @@ class GenericJumpInstruction(NetQASMInstruction):
     line: Immediate = None
     line_label: Label = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.line]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.JumpCommand.from_buffer_copy(raw)
@@ -316,6 +349,10 @@ class BranchUnaryInstruction(NetQASMInstruction):
     reg: Register = None
     line: Immediate = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg, self.line]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.BranchUnaryCommand.from_buffer_copy(raw)
@@ -343,11 +380,18 @@ class BranchUnaryInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.line)}"
 
+    def check_condition(self, a) -> bool:
+        raise RuntimeError("check_condition called on the base BranchUnaryInstruction class")
+
 @dataclass
 class BranchBinaryInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
     line: Immediate = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg0, self.reg1, self.line]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -379,10 +423,17 @@ class BranchBinaryInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.line)}"
 
+    def check_condition(self, a, b) -> bool:
+        raise RuntimeError("check_condition called on the base BranchBinaryInstruction class")
+
 @dataclass
 class GenericSetInstruction(NetQASMInstruction):
     reg: Register = None
     value: Immediate = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg, self.value]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -419,6 +470,10 @@ class LoadStoreInstruction(NetQASMInstruction):
     reg: Register = None
     entry: ArrayEntry = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg, self.entry]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.LoadStoreCommand.from_buffer_copy(raw)
@@ -454,6 +509,10 @@ class GenericLeaInstruction(NetQASMInstruction):
     reg: Register = None
     address: Address = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg, self.address]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.LeaCommand.from_buffer_copy(raw)
@@ -487,6 +546,11 @@ class GenericLeaInstruction(NetQASMInstruction):
 @dataclass
 class SingleArrayEntryInstruction(NetQASMInstruction):
     entry: ArrayEntry = None
+    address: Address = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.address]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -518,6 +582,10 @@ class SingleArrayEntryInstruction(NetQASMInstruction):
 class SingleArraySliceInstruction(NetQASMInstruction):
     slice: ArraySlice = None
 
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.slice]
+
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.SingleArraySliceCommand.from_buffer_copy(raw)
@@ -547,6 +615,10 @@ class SingleArraySliceInstruction(NetQASMInstruction):
 @dataclass
 class GenericSingleRegisterInstruction(NetQASMInstruction):
     reg: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -578,6 +650,10 @@ class GenericSingleRegisterInstruction(NetQASMInstruction):
 class GenericArrayInstruction(NetQASMInstruction):
     size: Register = None
     address: Address = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.size, self.address]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -612,6 +688,12 @@ class GenericArrayInstruction(NetQASMInstruction):
 @dataclass
 class GenericRetArrInstruction(NetQASMInstruction):
     address: Address = None
+    # address: ArraySlice = None
+    # TODO: should it be an Address or ArraySlice?
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.address]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -632,6 +714,7 @@ class GenericRetArrInstruction(NetQASMInstruction):
         assert len(operands) == 1
         addr = operands[0]
         assert isinstance(addr, Address)
+        # assert isinstance(addr, ArraySlice)
         return cls(
             address=addr
         )
@@ -646,6 +729,10 @@ class GenericCreateEPRInstruction(NetQASMInstruction):
     qubit_addr_array: Register = None
     arg_array: Register = None
     ent_info_array: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.remote_node_id, self.epr_socket_id, self.qubit_addr_array, self.arg_array, self.ent_info_array]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -696,6 +783,10 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
     epr_socket_id: Register = None
     qubit_addr_array: Register = None
     ent_info_array: Register = None
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.remote_node_id, self.epr_socket_id, self.qubit_addr_array, self.ent_info_array]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
@@ -787,30 +878,48 @@ class BezInstruction(BranchUnaryInstruction):
     id: int = 10
     mnemonic: str = "bez"
 
+    def check_condition(self, a) -> bool:
+        return a == 0
+
 @dataclass
 class BnzInstruction(BranchUnaryInstruction):
     id: int = 11
     mnemonic: str = "bnz"
+
+    def check_condition(self, a) -> bool:
+        return a != 0
 
 @dataclass
 class BeqInstruction(BranchBinaryInstruction):
     id: int = 12
     mnemonic: str = "beq"
 
+    def check_condition(self, a, b) -> bool:
+        return a == b
+
 @dataclass
 class BneInstruction(BranchBinaryInstruction):
     id: int = 13
     mnemonic: str = "bne"
+
+    def check_condition(self, a, b) -> bool:
+        return a != b
 
 @dataclass
 class BltInstruction(BranchBinaryInstruction):
     id: int = 14
     mnemonic: str = "blt"
 
+    def check_condition(self, a, b) -> bool:
+        return a < b
+
 @dataclass
 class BgeInstruction(BranchBinaryInstruction):
     id: int = 15
     mnemonic: str = "bge"
+
+    def check_condition(self, a, b) -> bool:
+        return a >= b
 
 @dataclass
 class AddInstruction(ClassicalOpInstruction):

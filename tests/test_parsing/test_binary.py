@@ -1,7 +1,7 @@
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
 import netqasm
 
-from netqasm.oop.serde import Deserializer
+# from netqasm.oop.serde import Deserializer
 from netqasm.oop.vanilla import get_vanilla_map
 
 
@@ -43,9 +43,9 @@ ret_reg M0
     data = bytes(subroutine)
     print(data)
 
-    # parsed_subroutine = parse_binary_subroutine(data)
-    deserializer = Deserializer(instr_map=get_vanilla_map())
-    parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
+    parsed_subroutine = parse_binary_subroutine(data)
+    # deserializer = Deserializer(instr_map=get_vanilla_map())
+    # parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
@@ -88,9 +88,9 @@ qfree Q0
     print(f"binary subroutine: {data}")
     # print(type(data))
 
-    # parsed_subroutine = parse_binary_subroutine(data)
-    deserializer = Deserializer(instr_map=get_vanilla_map())
-    parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
+    parsed_subroutine = parse_binary_subroutine(data)
+    # deserializer = Deserializer(instr_map=get_vanilla_map())
+    # parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):

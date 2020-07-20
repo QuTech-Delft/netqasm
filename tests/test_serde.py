@@ -1,4 +1,3 @@
-from netqasm.oop.serde import Deserializer
 from netqasm.oop.vanilla import get_vanilla_map
 from netqasm.oop.vanilla import CphaseInstruction
 
@@ -9,10 +8,11 @@ def test_deserialize_subroutine():
     cphase_gate = b"\x1F\x00\x00\x00\x00\x00\x00"
     raw = bytes(metadata + cphase_gate)
     print(raw)
-    vanilla = get_vanilla_map()
+    # vanilla = get_vanilla_map()
     # print(f"vanilla: {vanilla}")
-    deser = Deserializer(instr_map=vanilla)
-    subroutine = deser.deserialize_subroutine(raw)
+    # deser = Deserializer(instr_map=vanilla)
+    # subroutine = deser.deserialize_subroutine(raw)
+    subroutine = parse_binary_subroutine(raw)
     print(subroutine)
     for instr in subroutine.commands:
         if isinstance(instr, CphaseInstruction):
