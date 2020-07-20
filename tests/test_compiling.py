@@ -7,6 +7,8 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.instructions import Instruction, QUBIT_GATES
 from netqasm.compiling import NVSubroutineCompiler
 
+from netqasm.instr2 import core, vanilla, nv
+
 
 @pytest.mark.parametrize(
     'abstract_gate, nv_gates',
@@ -44,10 +46,17 @@ rot_z Q0 1 2
     NVSubroutineCompiler.compile(subroutine)
     print(subroutine)
     # Check that all gates are now x and y rotations
-    for command in subroutine.commands:
-        instr = command.instruction
-        if instr in QUBIT_GATES:
-            assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+    for instr in subroutine.commands:
+        # instr = command.instruction
+        # if instr in QUBIT_GATES:
+        if (isinstance(instr, core.SingleQubitInstruction)
+            # and not (isinstance(instr, core.QAllocInstruction)
+            #     or isinstance(instr, core.QFreeInstruction)
+            #     or isinstance(instr, core.InitInstruction))):
+            # print(f"insrt: {type(instr)}")
+            # assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+            assert (isinstance(instr, vanilla.RotXInstruction)
+                or isinstance(instr, vanilla.RotYInstruction))
 
 
 def test_compiling_nv_using_sdk():
@@ -71,3 +80,6 @@ def test_compiling_nv_using_sdk():
         instr = command.instruction
         if instr in QUBIT_GATES:
             assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+
+if __name__ == '__main__':
+    test_compiling_nv()

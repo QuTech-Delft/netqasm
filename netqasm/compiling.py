@@ -1,4 +1,5 @@
 import abc
+from typing import List
 
 from netqasm.subroutine import Command
 from netqasm.instructions import (
@@ -7,6 +8,9 @@ from netqasm.instructions import (
     SINGLE_QUBIT_ROTATION_GATES,
     TWO_QUBIT_GATES,
 )
+
+from netqasm.subroutine import Subroutine
+from netqasm.instr2.core import NetQASMInstruction
 
 
 class SubroutineCompiler(abc.ABC):
@@ -19,6 +23,10 @@ class SubroutineCompiler(abc.ABC):
         subroutine : :class:`netqasm.subroutine.Subroutine`
             The subroutine to compile
         """
+        pass
+
+    @abc.abstractclassmethod
+    def map_instr(self, instr: NetQASMInstruction) -> List[NetQASMInstruction]:
         pass
 
 
@@ -54,21 +62,32 @@ class NVSubroutineCompiler(SubroutineCompiler):
     }
 
     @classmethod
-    def compile(cls, subroutine):
+    def map_instr(cls, instr: NetQASMInstruction) -> List[NetQASMInstruction]:
+        return [instr]
+
+    @classmethod
+    def compile(cls, subroutine: Subroutine):
         i = 0
-        while i < len(subroutine.commands):
-            command = subroutine.commands[i]
-            if command.instruction in STATIC_SINGLE_QUBIT_GATES:
-                new_commands = cls._handle_single_qubit_static_gate(command)
-            elif command.instruction in SINGLE_QUBIT_ROTATION_GATES:
-                new_commands = cls._handle_single_qubit_rotations(command)
-            elif command.instruction in TWO_QUBIT_GATES:
-                new_commands = cls._handle_two_qubit_gate(command)
-            else:
-                # No need to do anything for classical operations
-                new_commands = [command]
-            subroutine.commands = subroutine.commands[:i] + new_commands + subroutine.commands[i + 1:]
-            i += len(new_commands)
+
+        new_commands = []
+
+        # while i < len(subroutine.commands):
+        #     command = subroutine.commands[i]
+        #     if command.instruction in STATIC_SINGLE_QUBIT_GATES:
+        #         new_commands = cls._handle_single_qubit_static_gate(command)
+        #     elif command.instruction in SINGLE_QUBIT_ROTATION_GATES:
+        #         new_commands = cls._handle_single_qubit_rotations(command)
+        #     elif command.instruction in TWO_QUBIT_GATES:
+        #         new_commands = cls._handle_two_qubit_gate(command)
+        #     else:
+        #         # No need to do anything for classical operations
+        #         new_commands = [command]
+        #     subroutine.commands = subroutine.commands[:i] + new_commands + subroutine.commands[i + 1:]
+        #     i += len(new_commands)
+        for instr in subroutine.commands:
+            new_commands += cls.map_instr(instr)
+
+        subroutine.commands = new_commands
 
     @classmethod
     def _handle_single_qubit_static_gate(cls, command):
