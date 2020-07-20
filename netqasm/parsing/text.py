@@ -20,6 +20,7 @@ from netqasm.instr2.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.instr2.vanilla import get_vanilla_map
 from netqasm.instr2.core import NetQASMInstruction
 from netqasm.subroutine import Subroutine
+from netqasm.instr2.flavour import Flavour, VanillaFlavour
 
 
 def parse_text_subroutine(
@@ -27,6 +28,7 @@ def parse_text_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
+    flavour: Flavour = None
 ) -> Subroutine:
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
@@ -39,6 +41,7 @@ def parse_text_subroutine(
         assign_branch_labels=assign_branch_labels,
         make_args_operands=make_args_operands,
         replace_constants=replace_constants,
+        flavour=flavour
     )
     return subroutine
 
@@ -48,6 +51,7 @@ def assemble_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
+    flavour: Flavour = None
 ) -> Subroutine:
     if make_args_operands:
         _make_args_operands(subroutine)
@@ -56,12 +60,14 @@ def assemble_subroutine(
     if assign_branch_labels:
         _assign_branch_labels(subroutine)
 
-    subroutine = build_subroutine(subroutine)
+    if flavour is None:
+        flavour = VanillaFlavour()
+    subroutine = build_subroutine(subroutine, flavour)
     
     return subroutine
 
 
-def build_subroutine(pre_subroutine: PreSubroutine):
+def build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
     subroutine = Subroutine(
         netqasm_version=pre_subroutine.netqasm_version,
         app_id=pre_subroutine.app_id,
@@ -71,8 +77,9 @@ def build_subroutine(pre_subroutine: PreSubroutine):
     for command in pre_subroutine.commands:
         assert isinstance(command, Command)
 
-        vanilla_map = get_vanilla_map()
-        instr = vanilla_map.name_map[command.instruction.name.lower()]
+        # vanilla_map = get_vanilla_map()
+        # instr = vanilla_map.name_map[command.instruction.name.lower()]
+        instr = flavour.get_instr_by_name(command.instruction.name.lower())
         new_command = instr.parse_from(command.operands)
         new_command.lineno = command.lineno
 

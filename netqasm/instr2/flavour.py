@@ -48,7 +48,7 @@ class Flavour:
         return self.id_map[id]
 
     def get_instr_by_name(self, name: str):
-        return self.name_map[id]
+        return self.name_map[name]
 
 
 class VanillaFlavour(Flavour):
