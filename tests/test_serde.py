@@ -1,5 +1,5 @@
-from netqasm.oop.vanilla import get_vanilla_map
-from netqasm.oop.vanilla import CphaseInstruction
+from netqasm.instr2.vanilla import get_vanilla_map
+from netqasm.instr2.vanilla import CphaseInstruction
 
 from netqasm.parsing import parse_binary_subroutine
 

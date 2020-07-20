@@ -7,31 +7,31 @@ from netqasm.subroutine import Register, ArrayEntry
 from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
 
-from netqasm import oop
+from netqasm import instr2
 
 
 def should_log_instr(instr):
     return (
-        isinstance(instr, oop.instr.SingleQubitInstruction)
-        or isinstance(instr, oop.instr.TwoQubitInstruction)
-        or isinstance(instr, oop.instr.CreateEPRInstruction)
-        or isinstance(instr, oop.instr.RecvEPRInstruction)
-        or isinstance(instr, oop.instr.MeasInstruction)
+        isinstance(instr, instr2.core.SingleQubitInstruction)
+        or isinstance(instr, instr2.core.TwoQubitInstruction)
+        or isinstance(instr, instr2.core.CreateEPRInstruction)
+        or isinstance(instr, instr2.core.RecvEPRInstruction)
+        or isinstance(instr, instr2.core.MeasInstruction)
     ) and not (
-        isinstance(instr, oop.instr.QAllocInstruction)
-        or isinstance(instr, oop.instr.InitInstruction)
-        or isinstance(instr, oop.instr.QFreeInstruction)
+        isinstance(instr, instr2.core.QAllocInstruction)
+        or isinstance(instr, instr2.core.InitInstruction)
+        or isinstance(instr, instr2.core.QFreeInstruction)
     )
 
 def should_check_qubit_state(instr):
     return (
-        isinstance(instr, oop.instr.SingleQubitInstruction)
-        or isinstance(instr, oop.instr.TwoQubitInstruction)
-        or isinstance(instr, oop.instr.MeasInstruction)
+        isinstance(instr, instr2.core.SingleQubitInstruction)
+        or isinstance(instr, instr2.core.TwoQubitInstruction)
+        or isinstance(instr, instr2.core.MeasInstruction)
     ) and not (
-        isinstance(instr, oop.instr.QAllocInstruction)
-        or isinstance(instr, oop.instr.InitInstruction)
-        or isinstance(instr, oop.instr.QFreeInstruction)
+        isinstance(instr, instr2.core.QAllocInstruction)
+        or isinstance(instr, instr2.core.InitInstruction)
+        or isinstance(instr, instr2.core.QFreeInstruction)
     )
 
 
@@ -136,7 +136,7 @@ class InstrLogger(StructuredLogger):
         else:
             qubit_state = None
             is_entangled = None
-        if isinstance(command, oop.instr.MeasInstruction):
+        if isinstance(command, instr2.core.MeasInstruction):
             outcome = output
         else:
             outcome = None

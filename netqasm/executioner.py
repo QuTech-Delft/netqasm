@@ -22,8 +22,8 @@ from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
 
-from netqasm.oop.instr import NetQASMInstruction, get_core_map
-from netqasm import oop
+from netqasm.instr2.core import NetQASMInstruction, get_core_map
+from netqasm import instr2
 
 
 QubitState = namedtuple('QubitState', ['state', 'is_entangled'])
@@ -284,18 +284,18 @@ class Executioner:
         if command.mnemonic in self._instruction_handlers:
             output = self._instruction_handlers[command.mnemonic](subroutine_id, command)
         else:
-            if isinstance(command, oop.instr.SingleQubitInstruction):
+            if isinstance(command, instr2.core.SingleQubitInstruction):
                 output = self._handle_single_qubit_instr(subroutine_id, command)
-            elif isinstance(command, oop.instr.TwoQubitInstruction):
+            elif isinstance(command, instr2.core.TwoQubitInstruction):
                 output = self._handle_two_qubit_instr(subroutine_id, command)
-            elif isinstance(command, oop.instr.RotationInstruction):
+            elif isinstance(command, instr2.core.RotationInstruction):
                 output = self._handle_single_qubit_rotation(subroutine_id, command)
-            elif (isinstance(command, oop.instr.JmpInstruction)
-                    or isinstance(command, oop.instr.BranchUnaryInstruction)
-                    or isinstance(command, oop.instr.BranchBinaryInstruction)):
+            elif (isinstance(command, instr2.core.JmpInstruction)
+                    or isinstance(command, instr2.core.BranchUnaryInstruction)
+                    or isinstance(command, instr2.core.BranchBinaryInstruction)):
                 self._handle_branch_instr(subroutine_id, command)
-            elif (isinstance(command, oop.instr.ClassicalOpInstruction)
-                    or isinstance(command, oop.instr.ClassicalOpModInstruction)):
+            elif (isinstance(command, instr2.core.ClassicalOpInstruction)
+                    or isinstance(command, instr2.core.ClassicalOpModInstruction)):
                 output = self._handle_binary_classical_instr(subroutine_id, command)
             else:
                 raise RuntimeError(f"unknown instr type")
@@ -311,7 +311,7 @@ class Executioner:
             )
 
     @inc_program_counter
-    def _instr_set(self, subroutine_id, instr: oop.instr.SetInstruction):
+    def _instr_set(self, subroutine_id, instr: instr2.core.SetInstruction):
         self._logger.debug(f"Set register {instr.reg} to {instr.value}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id, instr.reg, instr.value.value)
@@ -323,14 +323,14 @@ class Executioner:
         return self._registers[app_id][register.name][register.index]
 
     @inc_program_counter
-    def _instr_qalloc(self, subroutine_id, instr: oop.instr.QAllocInstruction):
+    def _instr_qalloc(self, subroutine_id, instr: instr2.core.QAllocInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, instr.qreg)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
         self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
-    def _instr_store(self, subroutine_id, instr: oop.instr.StoreInstruction):
+    def _instr_store(self, subroutine_id, instr: instr2.core.StoreInstruction):
         register = instr.reg
         array_entry = instr.entry
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -339,7 +339,7 @@ class Executioner:
         self._set_array_entry(app_id=app_id, array_entry=array_entry, value=value)
 
     @inc_program_counter
-    def _instr_load(self, subroutine_id, instr: oop.instr.LoadInstruction):
+    def _instr_load(self, subroutine_id, instr: instr2.core.LoadInstruction):
         register = instr.reg
         array_entry = instr.entry
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -348,7 +348,7 @@ class Executioner:
         self._set_register(app_id, register, value)
 
     @inc_program_counter
-    def _instr_lea(self, subroutine_id, instr: oop.instr.LeaInstruction):
+    def _instr_lea(self, subroutine_id, instr: instr2.core.LeaInstruction):
         register = instr.reg
         address = instr.address
         self._logger.debug(f"Storing address of {address} to register {register}")
@@ -356,14 +356,14 @@ class Executioner:
         self._set_register(app_id=app_id, register=register, value=address.address)
 
     @inc_program_counter
-    def _instr_undef(self, subroutine_id, instr: oop.instr.UndefInstruction):
+    def _instr_undef(self, subroutine_id, instr: instr2.core.UndefInstruction):
         array_entry = instr.entry
         self._logger.debug(f"Unset array entry {array_entry}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_array_entry(app_id=app_id, array_entry=array_entry, value=None)
 
     @inc_program_counter
-    def _instr_array(self, subroutine_id, instr: oop.instr.ArrayInstruction):
+    def _instr_array(self, subroutine_id, instr: instr2.core.ArrayInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         length = self._get_register(app_id, instr.size)
         address = instr.address
@@ -374,23 +374,23 @@ class Executioner:
         arrays = self._app_arrays[app_id]
         arrays.init_new_array(address.address, length)
 
-    def _handle_branch_instr(self, subroutine_id, instr: [oop.instr.BranchBinaryInstruction, oop.instr.JmpInstruction]):
+    def _handle_branch_instr(self, subroutine_id, instr: [instr2.core.BranchBinaryInstruction, instr2.core.JmpInstruction]):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
         registers = []
-        if isinstance(instr, oop.instr.BranchUnaryInstruction):
+        if isinstance(instr, instr2.core.BranchUnaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg)
             registers = [instr.reg]
-        elif isinstance(instr, oop.instr.BranchBinaryInstruction):
+        elif isinstance(instr, instr2.core.BranchBinaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg0)
             b = self._get_register(app_id=app_id, register=instr.reg1)
             registers = [instr.reg0, instr.reg1]
 
-        if isinstance(instr, oop.instr.JmpInstruction):
+        if isinstance(instr, instr2.core.JmpInstruction):
             condition = True
-        elif isinstance(instr, oop.instr.BranchUnaryInstruction):
+        elif isinstance(instr, instr2.core.BranchUnaryInstruction):
             condition = instr.check_condition(a)
-        elif isinstance(instr, oop.instr.BranchBinaryInstruction):
+        elif isinstance(instr, instr2.core.BranchBinaryInstruction):
             condition = instr.check_condition(a, b)
         
         if condition:
@@ -404,10 +404,10 @@ class Executioner:
             self._program_counters[subroutine_id] += 1
 
     @inc_program_counter
-    def _handle_binary_classical_instr(self, subroutine_id, instr: Union[oop.instr.ClassicalOpInstruction, oop.instr.ClassicalOpModInstruction]):
+    def _handle_binary_classical_instr(self, subroutine_id, instr: Union[instr2.core.ClassicalOpInstruction, instr2.core.ClassicalOpModInstruction]):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         # if instr in [Instruction.ADDM, Instruction.SUBM]:
-        if isinstance(instr, oop.instr.ClassicalOpModInstruction):
+        if isinstance(instr, instr2.core.ClassicalOpModInstruction):
             mod = self._get_register(app_id=app_id, register=instr.regmod)
         else:
             mod = None
@@ -422,17 +422,17 @@ class Executioner:
         self._set_register(app_id=app_id, register=instr.regout, value=value)
 
     def _compute_binary_classical_instr(self, instr, a, b, mod=1):
-        if isinstance(instr, oop.instr.AddInstruction):
+        if isinstance(instr, instr2.core.AddInstruction):
             return a + b
-        elif isinstance(instr, oop.instr.AddmInstruction):
+        elif isinstance(instr, instr2.core.AddmInstruction):
             return (a + b) % mod
-        elif isinstance(instr, oop.instr.SubInstruction):
+        elif isinstance(instr, instr2.core.SubInstruction):
             return a - b
-        elif isinstance(instr, oop.instr.SubmInstruction):
+        elif isinstance(instr, instr2.core.SubmInstruction):
             return (a - b) % mod
 
     @inc_program_counter
-    def _handle_single_qubit_instr(self, subroutine_id, instr: oop.instr.SingleQubitInstruction):
+    def _handle_single_qubit_instr(self, subroutine_id, instr: instr2.core.SingleQubitInstruction):
         print(f"instr: {instr}, type(instr): {type(instr)}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
@@ -446,7 +446,7 @@ class Executioner:
         pass
 
     @inc_program_counter
-    def _handle_single_qubit_rotation(self, subroutine_id, instr: oop.instr.RotationInstruction):
+    def _handle_single_qubit_rotation(self, subroutine_id, instr: instr2.core.RotationInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
         angle = self._get_rotation_angle_from_operands(app_id=app_id, n=instr.angle_num.value, d=instr.angle_denom.value)
@@ -464,7 +464,7 @@ class Executioner:
         pass
 
     @inc_program_counter
-    def _handle_two_qubit_instr(self, subroutine_id, instr: oop.instr.TwoQubitInstruction):
+    def _handle_two_qubit_instr(self, subroutine_id, instr: instr2.core.TwoQubitInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address1 = self._get_register(app_id=app_id, register=instr.qreg0)
         q_address2 = self._get_register(app_id=app_id, register=instr.qreg1)
@@ -478,7 +478,7 @@ class Executioner:
         pass
 
     @inc_program_counter
-    def _instr_meas(self, subroutine_id, instr: oop.instr.MeasInstruction):
+    def _instr_meas(self, subroutine_id, instr: instr2.core.MeasInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
@@ -494,7 +494,7 @@ class Executioner:
         return 0
 
     @inc_program_counter
-    def _instr_create_epr(self, subroutine_id, instr: oop.instr.CreateEPRInstruction):
+    def _instr_create_epr(self, subroutine_id, instr: instr2.core.CreateEPRInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=instr.remote_node_id)
         epr_socket_id = self._get_register(app_id=app_id, register=instr.epr_socket_id)
@@ -579,7 +579,7 @@ class Executioner:
         )
 
     @inc_program_counter
-    def _instr_recv_epr(self, subroutine_id, instr: oop.instr.RecvEPRInstruction):
+    def _instr_recv_epr(self, subroutine_id, instr: instr2.core.RecvEPRInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(app_id=app_id, register=instr.remote_node_id)
         epr_socket_id = self._get_register(app_id=app_id, register=instr.epr_socket_id)
@@ -624,7 +624,7 @@ class Executioner:
         return int(len(self._app_arrays[app_id][ent_info_array_address, :]) / OK_FIELDS)
 
     @inc_program_counter
-    def _instr_wait_all(self, subroutine_id, instr: oop.instr.WaitAllInstruction):
+    def _instr_wait_all(self, subroutine_id, instr: instr2.core.WaitAllInstruction):
         array_slice = instr.slice
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for all entries in array slice {array_slice} to become defined")
@@ -640,7 +640,7 @@ class Executioner:
         self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
-    def _instr_wait_any(self, subroutine_id, instr: oop.instr.WaitAnyInstruction):
+    def _instr_wait_any(self, subroutine_id, instr: instr2.core.WaitAnyInstruction):
         array_slice = instr.slice
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for any entry in array slice {array_slice} to become defined")
@@ -655,7 +655,7 @@ class Executioner:
         self._logger.debug(f"Finished waiting for array slice {array_slice}")
 
     @inc_program_counter
-    def _instr_wait_single(self, subroutine_id, instr: oop.instr.WaitSingleInstruction):
+    def _instr_wait_single(self, subroutine_id, instr: instr2.core.WaitSingleInstruction):
         array_entry = instr.entry
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(f"Waiting for array entry {array_entry} to become defined")
@@ -673,21 +673,21 @@ class Executioner:
         pass
 
     @inc_program_counter
-    def _instr_qfree(self, subroutine_id, instr: oop.instr.QFreeInstruction):
+    def _instr_qfree(self, subroutine_id, instr: instr2.core.QFreeInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
         self._logger.debug(f"Freeing qubit at virtual address {q_address}")
         self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
-    def _instr_ret_reg(self, subroutine_id, instr: oop.instr.RetRegInstruction):
+    def _instr_ret_reg(self, subroutine_id, instr: instr2.core.RetRegInstruction):
         register = instr.reg
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         value = self._get_register(app_id=app_id, register=register)
         self._update_shared_memory(app_id=app_id, entry=register, value=value)
 
     @inc_program_counter
-    def _instr_ret_arr(self, subroutine_id, instr: oop.instr.RetArrInstruction):
+    def _instr_ret_arr(self, subroutine_id, instr: instr2.core.RetArrInstruction):
         address = instr.address
         app_id = self._get_app_id(subroutine_id=subroutine_id)
 

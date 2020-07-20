@@ -12,16 +12,17 @@ from netqasm.subroutine import (
 )
 
 from netqasm.subroutine import Subroutine, Command
-from netqasm.oop.instr import InstrMap
-from netqasm.oop.vanilla import get_vanilla_map
+from netqasm.instr2.core import InstrMap
+from netqasm.instr2.vanilla import get_vanilla_map
+from netqasm.instr2.flavour import Flavour, VanillaFlavour
 
 from netqasm import subroutine
 
 INSTR_ID = ctypes.c_uint8
 
 class Deserializer:
-    def __init__(self, instr_map: InstrMap):
-        self.instr_map = instr_map
+    def __init__(self, flavour: Flavour):
+        self.flavour = flavour
 
     def _parse_metadata(self, raw):
         metadata = raw[:encoding.METADATA_BYTES]
@@ -45,11 +46,14 @@ class Deserializer:
 
     def deserialize_command(self, raw: bytes) -> Command:
         # peek next byte to check instruction type
-        instr_id = INSTR_ID.from_buffer_copy(raw[:1]).value
-        instr_cls = self.instr_map.id_map[instr_id]
+        id = INSTR_ID.from_buffer_copy(raw[:1]).value
+        # instr_cls = self.instr_map.id_map[id]
+        instr_cls = self.flavour.get_instr_by_id(id)
         instr = instr_cls.deserialize_from(raw)
         return instr
 
 
-def parse_binary_subroutine(data: bytes) -> Subroutine:
-    return Deserializer(instr_map=get_vanilla_map()).deserialize_subroutine(data)
+def parse_binary_subroutine(data: bytes, flavour=None) -> Subroutine:
+    if flavour is None:
+        flavour = VanillaFlavour()
+    return Deserializer(flavour).deserialize_subroutine(data)

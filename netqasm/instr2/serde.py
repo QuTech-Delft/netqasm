@@ -2,7 +2,7 @@ import ctypes
 
 from netqasm.subroutine import Subroutine, Command
 from netqasm import encoding
-from netqasm.oop.instr import InstrMap
+from netqasm.instr2.core import InstrMap
 
 INSTR_ID = ctypes.c_uint8
 

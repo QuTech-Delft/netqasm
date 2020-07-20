@@ -8,8 +8,8 @@ from netqasm.string_util import rspaces
 from netqasm.instructions import Instruction, COMMAND_STRUCTS, instruction_to_string
 from netqasm.symbols import Symbols
 
-from netqasm.oop.instr import NetQASMInstruction
-from netqasm.oop.operand import (
+from netqasm.instr2.core import NetQASMInstruction
+from netqasm.instr2.operand import (
     Register,
     Address,
     ArrayEntry,

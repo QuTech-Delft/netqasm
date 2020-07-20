@@ -13,8 +13,8 @@ from netqasm.parsing import parse_text_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.instructions import Instruction
 
-from netqasm import oop
-from netqasm.oop.operand import (
+from netqasm import instr2
+from netqasm.instr2.operand import (
     Register,
     RegisterName,
     Immediate,
@@ -62,63 +62,63 @@ ret_arr @0[0:1]
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
                 value=Immediate(0),
             ),
-            oop.instr.StoreInstruction(
+            instr2.core.StoreInstruction(
                 reg=Register(RegisterName.R, 0),
                 entry=ArrayEntry(Address(0), Register(RegisterName.R, 2)),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            oop.instr.InitInstruction(
+            instr2.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(4),
             ),
-            oop.instr.ArrayInstruction(
+            instr2.core.ArrayInstruction(
                 size=Register(RegisterName.R, 3),
                 address=Address(address=2),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(1),
             ),
-            oop.instr.AddInstruction(
+            instr2.core.AddInstruction(
                 regout=Register(RegisterName.R, 1),
                 reg0=Register(RegisterName.R, 2),
                 reg1=Register(RegisterName.R, 3),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(0),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 4),
                 value=Immediate(0),
             ),
-            oop.instr.BeqInstruction(
+            instr2.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 3),
                 reg1=Register(RegisterName.R, 4),
                 line=Immediate(11),
             ),
-            oop.instr.RetRegInstruction(
+            instr2.core.RetRegInstruction(
                 reg=Register(RegisterName.R, 0),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(0),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 4),
                 value=Immediate(1),
             ),
-            oop.instr.RetArrInstruction(
+            instr2.core.RetArrInstruction(
                 address=ArraySlice(
                     Address(0),
                     Register(RegisterName.R, 3),
@@ -177,60 +177,60 @@ EXIT:
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.C, 1),
                 value=Immediate(1),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.C, 10),
                 value=Immediate(10),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
                 value=Immediate(0),
             ),
-            oop.instr.ArrayInstruction(
+            instr2.core.ArrayInstruction(
                 size=Register(RegisterName.C, 10),
                 address=Address(0),
             ),
-            oop.instr.BeqInstruction(
+            instr2.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 0),
                 reg1=Register(RegisterName.C, 10),
                 line=Immediate(14),
             ),
-            oop.instr.QAllocInstruction(
+            instr2.core.QAllocInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.instr.InitInstruction(
+            instr2.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
             oop.vanilla.GateHInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.instr.MeasInstruction(
+            instr2.core.MeasInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 creg=Register(RegisterName.M, 0),
             ),
-            oop.instr.StoreInstruction(
+            instr2.core.StoreInstruction(
                 reg=Register(RegisterName.M, 0),
                 entry=ArrayEntry(
                     address=Address(0),
                     index=Register(RegisterName.R, 0),
                 ),
             ),
-            oop.instr.QFreeInstruction(
+            instr2.core.QFreeInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.instr.AddInstruction(
+            instr2.core.AddInstruction(
                 regout=Register(RegisterName.R, 0),
                 reg0=Register(RegisterName.R, 0),
                 reg1=Register(RegisterName.C, 1),
             ),
-            oop.instr.JmpInstruction(
+            instr2.core.JmpInstruction(
                 line=Immediate(5),
             ),
         ],
@@ -267,14 +267,14 @@ qfree Q0
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            oop.instr.SetInstruction(
+            instr2.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            oop.instr.QAllocInstruction(
+            instr2.core.QAllocInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.instr.InitInstruction(
+            instr2.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
             # Rotations
@@ -293,7 +293,7 @@ qfree Q0
                 angle_num=Immediate(7),
                 angle_denom=Immediate(22),
             ),
-            oop.instr.QFreeInstruction(
+            instr2.core.QFreeInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
         ],

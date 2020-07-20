@@ -16,9 +16,9 @@ from netqasm.subroutine import (
     PreSubroutine
 )
 from netqasm.instructions import Instruction, string_to_instruction
-from netqasm.oop.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.oop.vanilla import get_vanilla_map
-from netqasm.oop.instr import NetQASMInstruction
+from netqasm.instr2.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.instr2.vanilla import get_vanilla_map
+from netqasm.instr2.core import NetQASMInstruction
 from netqasm.subroutine import Subroutine
 
 

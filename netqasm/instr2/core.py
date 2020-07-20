@@ -6,7 +6,7 @@ from netqasm.string_util import rspaces
 from netqasm import encoding
 from netqasm.log_util import HostLine
 
-from netqasm.oop.operand import (
+from netqasm.instr2.operand import (
     Operand,
     Register,
     Immediate,

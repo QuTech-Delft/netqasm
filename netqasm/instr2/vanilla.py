@@ -7,9 +7,9 @@ from typing import Dict
 #     TwoQubitInstruction,
 #     RotationInstruction,
 # )
-from netqasm.oop.instr import InstrMap, get_core_map
+from netqasm.instr2.core import InstrMap, get_core_map
 
-import netqasm.oop.instr as core
+import netqasm.instr2.core as core
 
 @dataclass
 class GateXInstruction(core.SingleQubitInstruction):
