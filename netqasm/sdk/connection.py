@@ -44,6 +44,7 @@ from netqasm.log_util import LineTracker
 from netqasm.network_stack import OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
+    PreSubroutine,
     Subroutine,
     Command,
     Register,
@@ -402,7 +403,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _subroutine_from_commands(self, commands):
         # Build sub-routine
         metadata = self._get_metadata()
-        return Subroutine(**metadata, commands=commands)
+        return PreSubroutine(**metadata, commands=commands)
 
     def _get_metadata(self):
         return {
@@ -415,12 +416,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pending_commands = []
         return commands
 
-    def _pre_process_subroutine(self, subroutine):
+    def _pre_process_subroutine(self, subroutine: PreSubroutine):
         """Parses and assembles the subroutine.
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        subroutine = assemble_subroutine(subroutine)
+        subroutine: Subroutine = assemble_subroutine(subroutine)
         if self._compiler is not None:
             self._compiler.compile(subroutine=subroutine)
         if self._track_lines:

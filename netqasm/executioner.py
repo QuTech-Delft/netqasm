@@ -18,7 +18,6 @@ from qlink_interface import (
 from netqasm.logging import get_netqasm_logger
 from netqasm.output import InstrLogger
 from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address
-from netqasm.instructions import Instruction, instruction_to_string
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
@@ -227,12 +226,7 @@ class Executioner:
         mnemonic_mapping = [
             'qalloc', 'array', 'set', 'store', 'load', 'undef', 'lea', 'meas', 'create_epr', 'recv_epr', 'wait_all', 'wait_any', 'wait_single', 'qfree', 'ret_reg', 'ret_arr'
         ]
-
-        # core_instrs = list(get_core_map().id_map.values())
-        # blacklist = ['jmp', 'bez', 'bnz', 'beq', 'bne', 'blt', 'bge', 'add', 'sub', 'addm', 'subm', 'init']
-        # core_instrs = list(filter(lambda a: a.mnemonic not in blacklist, core_instrs))
         instruction_handlers = {
-            # instr: getattr(self, f"_instr_{instruction_to_string(instr)}") for instr in Instruction
             mne: getattr(self, f"_instr_{mne}") for mne in mnemonic_mapping
         }
         return instruction_handlers

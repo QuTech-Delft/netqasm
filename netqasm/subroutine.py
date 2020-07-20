@@ -6,130 +6,16 @@ from netqasm.util import NetQASMInstrError
 from netqasm.encoding import RegisterName
 from netqasm.string_util import rspaces
 from netqasm.instructions import Instruction, COMMAND_STRUCTS, instruction_to_string
+from netqasm.symbols import Symbols
 
 from netqasm.oop.instr import NetQASMInstruction
 from netqasm.oop.operand import (
     Register,
     Address,
     ArrayEntry,
-    ArraySlice
+    ArraySlice,
+    Label
 )
-
-
-@dataclass(eq=True, frozen=True)
-class Label:
-    name: str
-
-    def _assert_types(self):
-        assert isinstance(self.name, str)
-
-    def __str__(self):
-        return self.name
-
-
-# @dataclass(eq=True, frozen=True)
-# class Register:
-#     name: RegisterName
-#     index: int
-
-#     def _assert_types(self):
-#         assert isinstance(self.name, RegisterName)
-#         assert isinstance(self.index, int)
-
-#     def __str__(self):
-#         return f"{self.name.name}{self.index}"
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.Register(self.name.value, self.index)
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
-
-#     @classmethod
-#     def from_raw(cls, raw: encoding.Register):
-#         return cls(name=raw.register_name, index=raw.register_index)
-
-
-# @dataclass(eq=True, frozen=True)
-# class Address:
-#     address: int
-
-#     def _assert_types(self):
-#         assert isinstance(self.address, int)
-
-#     def __str__(self):
-#         return f"{Symbols.ADDRESS_START}{self.address}"
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.Address(self.address)
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
-
-
-# @dataclass
-# class ArrayEntry:
-#     address: Address
-#     index: Register
-
-#     def __post_init__(self):
-#         if isinstance(self.address, int):
-#             self.address = Address(self.address)
-
-#     def _assert_types(self):
-#         assert isinstance(self.address, Address)
-#         assert isinstance(self.index, Register)
-
-#     def __str__(self):
-#         index = f"{Symbols.INDEX_BRACKETS[0]}{self.index}{Symbols.INDEX_BRACKETS[1]}"
-#         return f"{self.address}{index}"
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.ArrayEntry(
-#             self.address.cstruct,
-#             self.index.cstruct,
-#         )
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
-
-
-# @dataclass
-# class ArraySlice:
-#     address: Address
-#     start: Register
-#     stop: Register
-
-#     def __post_init__(self):
-#         if isinstance(self.address, int):
-#             self.address = Address(self.address)
-
-#     def _assert_types(self):
-#         assert isinstance(self.address, Address)
-#         assert isinstance(self.start, Register)
-#         assert isinstance(self.stop, Register)
-
-#     def __str__(self):
-#         index = f"{Symbols.INDEX_BRACKETS[0]}{self.start}{Symbols.SLICE_DELIM}{self.stop}{Symbols.INDEX_BRACKETS[1]}"
-#         return f"{self.address}{index}"
-
-#     @property
-#     def cstruct(self):
-#         self._assert_types()
-#         return encoding.ArraySlice(
-#             self.address.cstruct,
-#             self.start.cstruct,
-#             self.stop.cstruct,
-#         )
-
-#     def __bytes__(self):
-#         return bytes(self.cstruct)
 
 
 _OPERAND_UNION = Union[
@@ -231,12 +117,11 @@ class BranchLabel:
 _COMMAND_UNION = Union[
     Command,
     BranchLabel,
-    NetQASMInstruction
 ]
 
 
 @dataclass
-class Subroutine:
+class PreSubroutine:
     netqasm_version: tuple
     app_id: int
     commands: List[_COMMAND_UNION]
@@ -264,30 +149,35 @@ class Subroutine:
             netqasm_version=self.netqasm_version,
             app_id=self.app_id,
         )
-        # return [metadata] + [command.cstruct for command in self.commands]
-        for command in self.commands:
-            # print(f"evaluating cstruct for command {command}")
-            ser = command.serialize()
-            # print(f"ser: {ser}")
-            bytes(command.serialize())
         return [metadata] + [command.serialize() for command in self.commands]
 
     def __bytes__(self):
         return b''.join(bytes(cstruct) for cstruct in self.cstructs)
 
 
-class Symbols:
-    COMMENT_START = '//'
-    BRANCH_END = ':'
-    MACRO_END = '!'
-    ADDRESS_START = '@'
-    ARGS_BRACKETS = '()'
-    ARGS_DELIM = ','
-    INDEX_BRACKETS = '[]'
-    SLICE_DELIM = ':'
+@dataclass
+class Subroutine:
+    netqasm_version: tuple
+    app_id: int
+    commands: List[NetQASMInstruction]
 
-    PREAMBLE_START = '#'
-    PREAMBLE_NETQASM = 'NETQASM'
-    PREAMBLE_APPID = 'APPID'
-    PREAMBLE_DEFINE = 'DEFINE'
-    PREAMBLE_DEFINE_BRACKETS = r'{}'
+    def __str__(self):
+        to_return = f"Subroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
+        to_return += " LN | HLN | CMD\n"
+        for i, command in enumerate(self.commands):
+            to_return += f"{rspaces(i)} {command.debug_str}\n"
+        return to_return
+
+    def __len__(self):
+        return len(self.commands)
+
+    @property
+    def cstructs(self):
+        metadata = encoding.Metadata(
+            netqasm_version=self.netqasm_version,
+            app_id=self.app_id,
+        )
+        return [metadata] + [command.serialize() for command in self.commands]
+
+    def __bytes__(self):
+        return b''.join(bytes(cstruct) for cstruct in self.cstructs)
