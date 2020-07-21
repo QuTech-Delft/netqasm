@@ -61,6 +61,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
     }
 
     def __init__(self, subroutine: Subroutine):
+        print(f"compiler __init__")
+        print(f"subroutine: {subroutine}")
         self._subroutine = subroutine
         self._used_registers: Set[Register] = set()
         self._register_values: Dict[Register, Immediate] = dict()
@@ -143,23 +145,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
 
     def compile(self):
-        i = 0
 
         new_commands = []
 
-        # while i < len(subroutine.commands):
-        #     command = subroutine.commands[i]
-        #     if command.instruction in STATIC_SINGLE_QUBIT_GATES:
-        #         new_commands = cls._handle_single_qubit_static_gate(command)
-        #     elif command.instruction in SINGLE_QUBIT_ROTATION_GATES:
-        #         new_commands = cls._handle_single_qubit_rotations(command)
-        #     elif command.instruction in TWO_QUBIT_GATES:
-        #         new_commands = cls._handle_two_qubit_gate(command)
-        #     else:
-        #         # No need to do anything for classical operations
-        #         new_commands = [command]
-        #     subroutine.commands = subroutine.commands[:i] + new_commands + subroutine.commands[i + 1:]
-        #     i += len(new_commands)
         for instr in self._subroutine.commands:
             if isinstance(instr, core.SetInstruction):
                 self._register_values[instr.reg] = instr.value
@@ -169,9 +157,11 @@ class NVSubroutineCompiler(SubroutineCompiler):
                     self._used_registers.update([op])
             
             print(f"compiling instr {instr}")
+            print(f"type(instr) = {type(instr)}")
 
             if (isinstance(instr, core.SingleQubitInstruction)
                 or isinstance(instr, core.RotationInstruction)):
+                print(f"instr is a single Q gate")
                 new_commands += self._handle_single_qubit_gate(instr)
             elif isinstance(instr, core.TwoQubitInstruction):
                 new_commands += self._handle_two_qubit_gate(instr)
@@ -180,10 +170,12 @@ class NVSubroutineCompiler(SubroutineCompiler):
             
         # print(f"new_commands = {new_commands}")
         print(f"type(new_commands) = {type(new_commands)}")
-        # for comm in new_commands:
-        #     print(f"comm: {comm}")
+        for comm in new_commands:
+            print(f"comm: {comm}")
 
         self._subroutine.commands = new_commands
+        for comm in self._subroutine.commands:
+            print(f"_subroutine comm: {comm}")
         return self._subroutine
 
     def _handle_two_qubit_gate(
@@ -326,6 +318,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         instr: core.SingleQubitInstruction
     ) -> List[core.NetQASMInstruction]:
         if isinstance(instr, vanilla.GateXInstruction):
+            print(f"mapping X gate to RotX")
             return [
                 nv.RotXInstruction(
                 qreg=instr.qreg, angle_num=Immediate(1), angle_denom=Immediate(0))

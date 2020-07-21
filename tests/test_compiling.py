@@ -8,6 +8,7 @@ from netqasm.instructions import Instruction, QUBIT_GATES
 from netqasm.compiling import NVSubroutineCompiler
 
 from netqasm.instr2 import core, vanilla, nv
+from netqasm.instr2.flavour import VanillaFlavour, NVFlavour, CORE_INSTRUCTIONS
 
 
 @pytest.mark.parametrize(
@@ -50,18 +51,11 @@ cnot Q0 Q1
     print(f"before compiling: {original_subroutine}")
     subroutine = NVSubroutineCompiler(original_subroutine).compile()
     print(f"after compiling: {subroutine}")
-    # Check that all gates are now x and y rotations
+
     for instr in subroutine.commands:
-        # instr = command.instruction
-        # if instr in QUBIT_GATES:
-        if (isinstance(instr, core.SingleQubitInstruction)):
-            # and not (isinstance(instr, core.QAllocInstruction)
-            #     or isinstance(instr, core.QFreeInstruction)
-            #     or isinstance(instr, core.InitInstruction))):
-            # print(f"insrt: {type(instr)}")
-            # assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
-            assert (isinstance(instr, vanilla.RotXInstruction)
-                or isinstance(instr, vanilla.RotYInstruction))
+        assert (
+            instr.__class__ not in VanillaFlavour.instrs
+        )
 
 
 def test_compiling_nv_using_sdk():
@@ -80,11 +74,16 @@ def test_compiling_nv_using_sdk():
         q.rot_Z(n=1, d=2)
 
     assert len(alice.storage) == 4
-    subroutine = parse_binary_subroutine(alice.storage[1].msg)
-    for command in subroutine.commands:
-        instr = command.instruction
-        if instr in QUBIT_GATES:
-            assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+    subroutine = parse_binary_subroutine(alice.storage[1].msg, flavour=NVFlavour())
+    # for command in subroutine.commands:
+    #     instr = command.instruction
+    #     if instr in QUBIT_GATES:
+    #         assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+    for instr in subroutine.commands:
+        assert (
+            instr.__class__ not in VanillaFlavour.instrs
+        )
 
 if __name__ == '__main__':
-    test_compiling_nv()
+    # test_compiling_nv()
+    test_compiling_nv_using_sdk()

@@ -423,7 +423,9 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         """
         subroutine: Subroutine = assemble_subroutine(subroutine)
         if self._compiler is not None:
-            self._compiler.compile(subroutine=subroutine)
+            subroutine = self._compiler(subroutine=subroutine).compile()
+            print(f"subroutine in connection:")
+            print(subroutine)
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return bytes(subroutine)
