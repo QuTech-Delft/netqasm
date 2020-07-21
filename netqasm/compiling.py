@@ -27,9 +27,13 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self._register_values: Dict[Register, Immediate] = dict()
 
     def get_reg_value(self, reg: Register) -> Immediate:
+        """Get the value of a register at this moment"""
         return self._register_values[reg]
 
     def get_unused_register(self) -> Register:
+        """
+        Naive approach: try to use Q7 if possible, otherwise Q6, etc.
+        """
         for i in range(7, -1, -1):
             reg = Register(RegisterName.Q, i)
             if reg not in self._used_registers:
@@ -42,6 +46,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
         electron: Register,
         carbon: Register,
     ) -> List[core.NetQASMInstruction]:
+        """
+        Swap the states of the electron and a carbon
+        """
         electron_hadamard = self._map_single_gate_electron(
             instr=vanilla.GateHInstruction(lineno=lineno, qreg=electron)
         )
@@ -71,13 +78,19 @@ class NVSubroutineCompiler(SubroutineCompiler):
         return gates
 
     def compile(self):
+        """
+        Very simple compiling pass: iterate over all instructions once and rewrite them in-line.
+        While iterating, keep track of which registers are in use and what their values are.
+        """
         new_commands = []
 
         for instr in self._subroutine.commands:
             if isinstance(instr, core.SetInstruction):
+                # update register value
                 self._register_values[instr.reg] = instr.value
 
             for op in instr.operands:
+                # update used registers
                 if isinstance(op, Register):
                     self._used_registers.update([op])
 
@@ -100,6 +113,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         qubit_id1 = self.get_reg_value(instr.qreg1).value
         assert qubit_id0 != qubit_id1
 
+        # It is assumed that there is only one electron, and that its virtual ID is 0.
         if isinstance(instr, vanilla.CnotInstruction):
             if qubit_id0 == 0:
                 return self._map_cnot_electron_carbon(instr)

@@ -16,8 +16,14 @@ from netqasm.instructions.operand import (
 )
 
 
+# Abstract instruction types. Should not be instantiated directly.
+# Some of these are named 'Generic_XXX' to distinguish them from the explicit instruction classes below.
+
 @dataclass
 class NetQASMInstruction:
+    """
+    Base NetQASM instruction class.
+    """
     id: int = -1
     mnemonic: str = None
     lineno: HostLine = None
@@ -845,6 +851,8 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
         return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
 {str(self.ent_info_array)}"
 
+
+# Explicit core NetQASM instructions.
 
 @dataclass
 class QAllocInstruction(SingleQubitInstruction):

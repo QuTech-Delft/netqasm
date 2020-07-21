@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
-
 import netqasm.instructions.core as core
 
+
+# Explicit instruction types in the Vanilla flavour.
 
 @dataclass
 class GateXInstruction(core.SingleQubitInstruction):
