@@ -791,7 +791,7 @@ class GenericCreateEPRInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
-            {str(self.arg_array)} {str(self.ent_info_array)}"
+{str(self.arg_array)} {str(self.ent_info_array)}"
 
 
 @dataclass
@@ -842,8 +842,8 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)}\
-            {str(self.ent_info_array)}"
+        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
+{str(self.ent_info_array)}"
 
 
 @dataclass

@@ -51,4 +51,11 @@ def execute(netqasm_file, backend, num_qubits, output_file, flavour, log_level):
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    execute_subroutine(backend, num_qubits, netqasm_file=netqasm_file, output_file=output_file, flavour=flavour, log_level=log_level)
+    execute_subroutine(
+        backend,
+        num_qubits,
+        netqasm_file=netqasm_file,
+        output_file=output_file,
+        flavour=flavour,
+        log_level=log_level
+    )
