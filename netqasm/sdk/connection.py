@@ -6,6 +6,7 @@ from enum import Enum
 from itertools import count
 from collections import namedtuple
 from contextlib import contextmanager
+from typing import List
 
 from qlink_interface import (
     EPRType,
@@ -165,7 +166,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Should subroutines commited be saved for logging/debugging
         self._log_subroutines_dir = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
-        self._commited_subroutines = []
+        self._commited_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
         self._compiler = compiler
@@ -331,7 +332,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             callback=callback,
         )
 
-    def _commit_subroutine(self, subroutine, block=True, callback=None):
+    def _commit_subroutine(self, subroutine: PreSubroutine, block=True, callback=None):
         self._logger.info(f"Flushing subroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
@@ -347,7 +348,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         self._reset()
 
-    def _pop_pending_subroutine(self):
+    def _pop_pending_subroutine(self) -> PreSubroutine:
         # Add commands for initialising and returning arrays
         self._put_array_commands()
         if len(self._pending_commands) > 0:
@@ -400,7 +401,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             ))
         return init_arrays, return_arrays
 
-    def _subroutine_from_commands(self, commands):
+    def _subroutine_from_commands(self, commands) -> PreSubroutine:
         # Build sub-routine
         metadata = self._get_metadata()
         return PreSubroutine(**metadata, commands=commands)
@@ -416,16 +417,14 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pending_commands = []
         return commands
 
-    def _pre_process_subroutine(self, subroutine: PreSubroutine):
+    def _pre_process_subroutine(self, pre_subroutine: PreSubroutine):
         """Parses and assembles the subroutine.
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        subroutine: Subroutine = assemble_subroutine(subroutine)
+        subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).compile()
-            print(f"subroutine in connection:")
-            print(subroutine)
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return bytes(subroutine)

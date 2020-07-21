@@ -274,12 +274,8 @@ class Executioner:
     def _execute_command(self, subroutine_id, command):
         """Executes a single instruction"""
         if not isinstance(command, NetQASMInstruction):
-            print(f"command = {command}")
-            print(f"subroutine = {self._subroutines[subroutine_id]}")
             raise TypeError(f"Expected a NetQASMInstruction, not {type(command)}")
-        # self._assert_number_args(command.args, num=0)
         prog_counter = self._program_counters[subroutine_id]
-        # output = self._instruction_handlers[command.instruction](subroutine_id, command.operands)
         output = None
         if command.mnemonic in self._instruction_handlers:
             output = self._instruction_handlers[command.mnemonic](subroutine_id, command)
@@ -433,7 +429,6 @@ class Executioner:
 
     @inc_program_counter
     def _handle_single_qubit_instr(self, subroutine_id, instr: instr2.core.SingleQubitInstruction):
-        print(f"instr: {instr}, type(instr): {type(instr)}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
         self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")

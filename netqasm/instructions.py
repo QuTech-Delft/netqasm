@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import Dict
+import ctypes
 from netqasm.encoding import (
     SingleQubitCommand,
     TwoQubitCommand,
@@ -230,8 +232,7 @@ def _create_command_struct(instr, command_group):
     )
 
 
-# Dict[Instruction, ctypes.Structure]
-COMMAND_STRUCTS = {
+COMMAND_STRUCTS: Dict[Instruction, ctypes.Structure] = {
     instr: _create_command_struct(instr, command_group)
     for command_group, instrs in _COMMAND_GROUPS.items()
     for instr in instrs

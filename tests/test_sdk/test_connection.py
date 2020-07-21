@@ -1,4 +1,3 @@
-
 import logging
 
 from qlink_interface import EPRType
@@ -10,10 +9,6 @@ from netqasm.logging import set_log_level
 from netqasm.subroutine import (
     Subroutine,
     Command,
-    # Register,
-    # Address,
-    # ArrayEntry,
-    # ArraySlice,
 )
 from netqasm.encoding import RegisterName
 from netqasm.instructions import Instruction

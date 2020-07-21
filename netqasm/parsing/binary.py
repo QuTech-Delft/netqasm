@@ -16,8 +16,6 @@ from netqasm.instr2.core import InstrMap
 from netqasm.instr2.vanilla import get_vanilla_map
 from netqasm.instr2.flavour import Flavour, VanillaFlavour
 
-from netqasm import subroutine
-
 INSTR_ID = ctypes.c_uint8
 
 class Deserializer:
@@ -47,7 +45,6 @@ class Deserializer:
     def deserialize_command(self, raw: bytes) -> Command:
         # peek next byte to check instruction type
         id = INSTR_ID.from_buffer_copy(raw[:1]).value
-        # instr_cls = self.instr_map.id_map[id]
         instr_cls = self.flavour.get_instr_by_id(id)
         instr = instr_cls.deserialize_from(raw)
         return instr

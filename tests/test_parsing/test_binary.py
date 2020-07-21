@@ -1,8 +1,8 @@
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
-import netqasm
 
-# from netqasm.instr2.serde import Deserializer
+import netqasm
 from netqasm.instr2.vanilla import get_vanilla_map
+from netqasm.instr2.vanilla import CphaseInstruction
 
 
 def test():
@@ -44,18 +44,12 @@ ret_reg M0
     print(data)
 
     parsed_subroutine = parse_binary_subroutine(data)
-    # deserializer = Deserializer(instr_map=get_vanilla_map())
-    # parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
         print()
         print(repr(command))
         print(repr(parsed_command))
-        print(f"command: {command}, parsed_command: {parsed_command}")
-        if isinstance(command, netqasm.instr2.core.StoreInstruction):
-            print(f"type(command.entry) = {type(command.entry)}")
-            print(f"type(parsed_command.entry) = {type(parsed_command.entry)}")
         assert command == parsed_command
 
     assert subroutine == parsed_subroutine
@@ -80,29 +74,38 @@ qfree Q0
 
     subroutine = parse_text_subroutine(subroutine)
     print(subroutine)
-    for command in subroutine.commands:
-        print(f"command: {command}")
-        if command.__class__ == netqasm.instr2.core.QAllocInstruction:
-            print(f"qalloc reg: {command.qreg}")
     data = bytes(subroutine)
     print(f"binary subroutine: {data}")
-    # print(type(data))
 
     parsed_subroutine = parse_binary_subroutine(data)
-    # deserializer = Deserializer(instr_map=get_vanilla_map())
-    # parsed_subroutine = deserializer.deserialize_subroutine(raw=data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
-        # print()
-        # print(repr(command))
-        # print(repr(parsed_command))
         print(f"command: {command}, parsed_command: {parsed_command}")
         assert command == parsed_command
 
     assert subroutine == parsed_subroutine
 
 
-if __name__ == "__main__":
+def test_deserialize_subroutine():
+    metadata = b"\x00\x00\x00\x00"
+    cphase_gate = b"\x1F\x00\x00\x00\x00\x00\x00"
+    raw = bytes(metadata + cphase_gate)
+    print(raw)
+    # vanilla = get_vanilla_map()
+    # print(f"vanilla: {vanilla}")
+    # deser = Deserializer(instr_map=vanilla)
+    # subroutine = deser.deserialize_subroutine(raw)
+    subroutine = parse_binary_subroutine(raw)
+    print(subroutine)
+    for instr in subroutine.commands:
+        if isinstance(instr, CphaseInstruction):
+            print(f"qreg0: {instr.qreg0}, qreg1: {instr.qreg1}")
+
+    subroutine2 = parse_binary_subroutine(raw)
+    print(subroutine2)
+
+if __name__ == '__main__':
     test()
     test_rotations()
+    test_deserialize_subroutine()

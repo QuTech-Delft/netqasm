@@ -1,14 +1,10 @@
 import pytest
 
 from netqasm.subroutine import (
-    # Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
     Command,
     Subroutine,
 )
-# from netqasm.encoding import RegisterName
+from netqasm.encoding import RegisterName
 from netqasm.parsing import parse_text_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.instructions import Instruction
@@ -16,7 +12,6 @@ from netqasm.instructions import Instruction
 from netqasm import instr2
 from netqasm.instr2.operand import (
     Register,
-    RegisterName,
     Immediate,
     Address,
     ArrayEntry,
@@ -311,5 +306,5 @@ qfree Q0
 
 if __name__ == "__main__":
     test_simple()
-    # test_loop()
-    # test_rotations()
+    test_loop()
+    test_rotations()

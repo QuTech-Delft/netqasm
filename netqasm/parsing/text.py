@@ -33,7 +33,6 @@ def parse_text_subroutine(
     """Parses a subroutine and splits the preamble and body into separate parts."""
     preamble_lines, body_lines = _split_preamble_body(subroutine)
     preamble_data: Dict[str, List[str]] = _parse_preamble(preamble_lines)
-    print(f"preamble_data = {preamble_data}")
     body_lines: List[str] = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
     subroutine = _create_subroutine(preamble_data, body_lines)
     subroutine = assemble_subroutine(
@@ -77,8 +76,6 @@ def build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
     for command in pre_subroutine.commands:
         assert isinstance(command, Command)
 
-        # vanilla_map = get_vanilla_map()
-        # instr = vanilla_map.name_map[command.instruction.name.lower()]
         instr = flavour.get_instr_by_name(command.instruction.name.lower())
         new_command = instr.parse_from(command.operands)
         new_command.lineno = command.lineno
@@ -98,14 +95,9 @@ def _create_subroutine(preamble_data, body_lines: List[str]):
         else:
             words = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
             instr_name, args = _split_instr_and_args(words[0])
-
-            # vanilla_map = get_vanilla_map()
-            # instr = vanilla_map.name_map[instr_name]
-
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
             operands = _parse_operands(words[1:])
-            # command = instr.parse_from(operands)
             command = Command(
                 instruction=instr,
                 args=args,
@@ -113,7 +105,7 @@ def _create_subroutine(preamble_data, body_lines: List[str]):
             )
             commands.append(command)
 
-    return Subroutine(
+    return PreSubroutine(
         netqasm_version=_parse_netqasm_version(preamble_data[Symbols.PREAMBLE_NETQASM][0][0]),
         app_id=int(preamble_data[Symbols.PREAMBLE_APPID][0][0]),
         commands=commands,
