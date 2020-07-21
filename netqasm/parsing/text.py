@@ -8,12 +8,12 @@ from netqasm.encoding import RegisterName, REG_INDEX_BITS
 
 from netqasm.symbols import Symbols
 
-from netqasm.instr2.operand import Label
+from netqasm.instructions.operand import Label
 from netqasm.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
-from netqasm.instructions import Instruction, string_to_instruction
-from netqasm.instr2.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.instr2.core import NetQASMInstruction
-from netqasm.instr2.flavour import Flavour, VanillaFlavour
+from netqasm.instructions.instr_enum import Instruction, string_to_instruction
+from netqasm.instructions.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.instructions.core import NetQASMInstruction
+from netqasm.instructions.flavour import Flavour, VanillaFlavour
 
 
 def parse_text_subroutine(

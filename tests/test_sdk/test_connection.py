@@ -11,8 +11,8 @@ from netqasm.encoding import RegisterName
 from netqasm.parsing import parse_binary_subroutine
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 
-from netqasm import instr2
-from netqasm.instr2.operand import (
+from netqasm import instructions
+from netqasm.instructions.operand import (
     Register,
     Immediate,
     Address,
@@ -40,52 +40,52 @@ def test_simple():
     assert len(alice.storage) == 4
     subroutine = parse_binary_subroutine(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.core.QAllocInstruction(
+        instructions.core.QAllocInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.InitInstruction(
+        instructions.core.InitInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
-        instr2.core.QAllocInstruction(
+        instructions.core.QAllocInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.InitInstruction(
+        instructions.core.InitInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.vanilla.GateHInstruction(
+        instructions.vanilla.GateHInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
-        instr2.vanilla.GateXInstruction(
+        instructions.vanilla.GateXInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.vanilla.GateXInstruction(
+        instructions.vanilla.GateXInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
-        instr2.vanilla.GateHInstruction(
+        instructions.vanilla.GateHInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
         # NOTE qubits are now freed when application ends
@@ -124,21 +124,21 @@ def test_rotations():
     assert len(alice.storage) == 4
     subroutine = parse_binary_subroutine(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.core.QAllocInstruction(
+        instructions.core.QAllocInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.InitInstruction(
+        instructions.core.InitInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.vanilla.RotXInstruction(
+        instructions.vanilla.RotXInstruction(
             qreg=Register(RegisterName.Q, 0),
             angle_num=Immediate(1),
             angle_denom=Immediate(1),
@@ -168,92 +168,92 @@ def test_epr():
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(OK_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(0),
         ),
         # Qubit address array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(1),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
         ),
         # ent info array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(CREATE_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(2),
         ),
         # tp arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(2, index=Register(RegisterName.R, 1)),
         ),
         # num pairs arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(2, index=Register(RegisterName.R, 1)),
         ),
         # create cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 3),
             value=Immediate(2),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 4),
             value=Immediate(0),
         ),
-        instr2.core.CreateEPRInstruction(
+        instructions.core.CreateEPRInstruction(
             remote_node_id=Register(RegisterName.R, 0),
             epr_socket_id=Register(RegisterName.R, 1),
             qubit_addr_array=Register(RegisterName.R, 2),
@@ -261,15 +261,15 @@ def test_epr():
             ent_info_array=Register(RegisterName.R, 4),
         ),
         # wait cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(OK_FIELDS),
         ),
-        instr2.core.WaitAllInstruction(
+        instructions.core.WaitAllInstruction(
             slice=ArraySlice(
                 address=Address(0),
                 start=Register(RegisterName.R, 0),
@@ -277,11 +277,11 @@ def test_epr():
             ),
         ),
         # Hadamard
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.vanilla.GateHInstruction(
+        instructions.vanilla.GateHInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
         # free qubit
@@ -295,13 +295,13 @@ def test_epr():
         #     Register(RegisterName.Q, 0),
         # ]),
         # return cmds
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(0),
         ),
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(1),
         ),
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(2),
         ),
     ])
@@ -332,104 +332,104 @@ def test_two_epr():
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(2 * OK_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(0),
         ),
         # Qubit address array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(2),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
         ),
         # ent info array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(CREATE_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 0),
             address=Address(2),
         ),
         # tp arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(2, index=Register(RegisterName.R, 1)),
         ),
         # num pairs arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(2),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(2, index=Register(RegisterName.R, 1)),
         ),
         # create cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 3),
             value=Immediate(2),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 4),
             value=Immediate(0),
         ),
-        instr2.core.CreateEPRInstruction(
+        instructions.core.CreateEPRInstruction(
             remote_node_id=Register(RegisterName.R, 0),
             epr_socket_id=Register(RegisterName.R, 1),
             qubit_addr_array=Register(RegisterName.R, 2),
@@ -437,15 +437,15 @@ def test_two_epr():
             ent_info_array=Register(RegisterName.R, 4),
         ),
         # wait cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(2 * OK_FIELDS),
         ),
-        instr2.core.WaitAllInstruction(
+        instructions.core.WaitAllInstruction(
             slice=ArraySlice(
                 address=Address(0),
                 start=Register(RegisterName.R, 0),
@@ -453,28 +453,28 @@ def test_two_epr():
             ),
         ),
         # Hadamards
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
-        instr2.vanilla.GateHInstruction(
+        instructions.vanilla.GateHInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
-        instr2.vanilla.GateHInstruction(
+        instructions.vanilla.GateHInstruction(
             qreg=Register(RegisterName.Q, 0),
         ),
         # return cmds
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(0),
         ),
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(1),
         ),
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(2),
         ),
     ])
@@ -506,67 +506,67 @@ def test_epr_m():
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(OK_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 1),
             address=Address(0),
         ),
         # ent info array
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(CREATE_FIELDS),
         ),
-        instr2.core.ArrayInstruction(
+        instructions.core.ArrayInstruction(
             size=Register(RegisterName.R, 1),
             address=Address(1),
         ),
         # tp arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(0),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 1),
             entry=ArrayEntry(1, index=Register(RegisterName.R, 2)),
         ),
         # num pairs arg
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(1),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 1),
             entry=ArrayEntry(1, index=Register(RegisterName.R, 2)),
         ),
         # create cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 3),
             value=Immediate(1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 4),
             value=Immediate(0),
         ),
-        instr2.core.CreateEPRInstruction(
+        instructions.core.CreateEPRInstruction(
             remote_node_id=Register(RegisterName.R, 1),
             epr_socket_id=Register(RegisterName.R, 2),
             qubit_addr_array=Register(RegisterName.C, 0),
@@ -574,15 +574,15 @@ def test_epr_m():
             ent_info_array=Register(RegisterName.R, 4),
         ),
         # wait cmd
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 2),
             value=Immediate(OK_FIELDS),
         ),
-        instr2.core.WaitAllInstruction(
+        instructions.core.WaitAllInstruction(
             slice=ArraySlice(
                 address=Address(0),
                 start=Register(RegisterName.R, 1),
@@ -590,51 +590,51 @@ def test_epr_m():
             ),
         ),
         # if statement
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(2),
         ),
-        instr2.core.LoadInstruction(
+        instructions.core.LoadInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(
                 address=Address(0),
                 index=Register(RegisterName.R, 1),
             ),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(0),
         ),
-        instr2.core.BneInstruction(
+        instructions.core.BneInstruction(
             reg0=Register(RegisterName.R, 0),
             reg1=Register(RegisterName.R, 1),
             line=Immediate(28),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(2),
         ),
-        instr2.core.LoadInstruction(
+        instructions.core.LoadInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(
                 address=Address(0),
                 index=Register(RegisterName.R, 1),
             ),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(1),
         ),
-        instr2.core.AddInstruction(
+        instructions.core.AddInstruction(
             regout=Register(RegisterName.R, 0),
             reg0=Register(RegisterName.R, 0),
             reg1=Register(RegisterName.R, 1),
         ),
-        instr2.core.SetInstruction(
+        instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),
             value=Immediate(2),
         ),
-        instr2.core.StoreInstruction(
+        instructions.core.StoreInstruction(
             reg=Register(RegisterName.R, 0),
             entry=ArrayEntry(
                 address=Address(0),
@@ -642,10 +642,10 @@ def test_epr_m():
             ),
         ),
         # return cmds
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(0),
         ),
-        instr2.core.RetArrInstruction(
+        instructions.core.RetArrInstruction(
             address=Address(1),
         ),
     ])

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-import netqasm.instr2.core as core
+
+import netqasm.instructions.core as core
 
 
 @dataclass
@@ -28,24 +29,6 @@ class GateHInstruction(core.SingleQubitInstruction):
 
 
 @dataclass
-class GateSInstruction(core.SingleQubitInstruction):
-    id: int = 24
-    mnemonic: str = "s"
-
-
-@dataclass
-class GateKInstruction(core.SingleQubitInstruction):
-    id: int = 25
-    mnemonic: str = "k"
-
-
-@dataclass
-class GateTInstruction(core.SingleQubitInstruction):
-    id: int = 26
-    mnemonic: str = "t"
-
-
-@dataclass
 class RotXInstruction(core.RotationInstruction):
     id: int = 27
     mnemonic: str = "rot_x"
@@ -70,6 +53,6 @@ class CnotInstruction(core.TwoQubitInstruction):
 
 
 @dataclass
-class CphaseInstruction(core.TwoQubitInstruction):
+class CSqrtXInstruction(core.TwoQubitInstruction):
     id: int = 31
-    mnemonic: str = "cphase"
+    mnemonic: str = "csqx"

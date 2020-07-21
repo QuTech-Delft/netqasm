@@ -1,7 +1,7 @@
 from cqc.pythonLib import qubit
 from cqc.cqcHeader import CQC_CMD_NEW, CQC_CMD_MEASURE
 
-from netqasm.instructions import Instruction
+from netqasm.instructions.instr_enum import Instruction
 
 
 class Qubit(qubit):

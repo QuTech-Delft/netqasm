@@ -2,8 +2,8 @@ import abc
 from typing import List, Set, Dict
 
 from netqasm.subroutine import Subroutine
-from netqasm.instr2 import core, vanilla, nv
-from netqasm.instr2.operand import Register, RegisterName, Immediate
+from netqasm.instructions import core, vanilla, nv
+from netqasm.instructions.operand import Register, RegisterName, Immediate
 
 
 class SubroutineCompiler(abc.ABC):

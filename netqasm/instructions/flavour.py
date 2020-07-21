@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from netqasm.instr2 import vanilla, core, nv
+from netqasm.instructions import vanilla, core, nv
 
 
 @dataclass

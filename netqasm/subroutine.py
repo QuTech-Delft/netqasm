@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 from netqasm import encoding
 from netqasm.string_util import rspaces
-from netqasm.instructions import Instruction
+from netqasm.instructions.instr_enum import Instruction
 from netqasm.symbols import Symbols
 
-from netqasm.instr2.core import NetQASMInstruction
-from netqasm.instr2.operand import (
+from netqasm.instructions.core import NetQASMInstruction
+from netqasm.instructions.operand import (
     Register,
     Address,
     ArrayEntry,

@@ -36,7 +36,7 @@ from cqc.cqcHeader import (
 from netqasm import NETQASM_VERSION
 from netqasm.logging import get_netqasm_logger
 from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
-from netqasm.instructions import Instruction, flip_branch_instr
+from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array

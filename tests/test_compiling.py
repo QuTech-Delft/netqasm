@@ -6,7 +6,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.compiling import NVSubroutineCompiler
 
-from netqasm.instr2.flavour import VanillaFlavour, NVFlavour
+from netqasm.instructions.flavour import VanillaFlavour, NVFlavour
 
 
 # @pytest.mark.parametrize(

@@ -5,8 +5,8 @@ from netqasm.encoding import RegisterName
 from netqasm.parsing import parse_text_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
 
-from netqasm import instr2
-from netqasm.instr2.operand import (
+from netqasm import instructions
+from netqasm.instructions.operand import (
     Register,
     Immediate,
     Address,
@@ -53,63 +53,63 @@ ret_arr @0[0:1]
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
                 value=Immediate(0),
             ),
-            instr2.core.StoreInstruction(
+            instructions.core.StoreInstruction(
                 reg=Register(RegisterName.R, 0),
                 entry=ArrayEntry(Address(0), Register(RegisterName.R, 2)),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            instr2.core.InitInstruction(
+            instructions.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(4),
             ),
-            instr2.core.ArrayInstruction(
+            instructions.core.ArrayInstruction(
                 size=Register(RegisterName.R, 3),
                 address=Address(address=2),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(1),
             ),
-            instr2.core.AddInstruction(
+            instructions.core.AddInstruction(
                 regout=Register(RegisterName.R, 1),
                 reg0=Register(RegisterName.R, 2),
                 reg1=Register(RegisterName.R, 3),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(0),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 4),
                 value=Immediate(0),
             ),
-            instr2.core.BeqInstruction(
+            instructions.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 3),
                 reg1=Register(RegisterName.R, 4),
                 line=Immediate(11),
             ),
-            instr2.core.RetRegInstruction(
+            instructions.core.RetRegInstruction(
                 reg=Register(RegisterName.R, 0),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
                 value=Immediate(0),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 4),
                 value=Immediate(1),
             ),
-            instr2.core.RetArrInstruction(
+            instructions.core.RetArrInstruction(
                 address=ArraySlice(
                     Address(0),
                     Register(RegisterName.R, 3),
@@ -168,60 +168,60 @@ EXIT:
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.C, 1),
                 value=Immediate(1),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.C, 10),
                 value=Immediate(10),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
                 value=Immediate(0),
             ),
-            instr2.core.ArrayInstruction(
+            instructions.core.ArrayInstruction(
                 size=Register(RegisterName.C, 10),
                 address=Address(0),
             ),
-            instr2.core.BeqInstruction(
+            instructions.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 0),
                 reg1=Register(RegisterName.C, 10),
                 line=Immediate(14),
             ),
-            instr2.core.QAllocInstruction(
+            instructions.core.QAllocInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.core.InitInstruction(
+            instructions.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.vanilla.GateHInstruction(
+            instructions.vanilla.GateHInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.core.MeasInstruction(
+            instructions.core.MeasInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 creg=Register(RegisterName.M, 0),
             ),
-            instr2.core.StoreInstruction(
+            instructions.core.StoreInstruction(
                 reg=Register(RegisterName.M, 0),
                 entry=ArrayEntry(
                     address=Address(0),
                     index=Register(RegisterName.R, 0),
                 ),
             ),
-            instr2.core.QFreeInstruction(
+            instructions.core.QFreeInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.core.AddInstruction(
+            instructions.core.AddInstruction(
                 regout=Register(RegisterName.R, 0),
                 reg0=Register(RegisterName.R, 0),
                 reg1=Register(RegisterName.C, 1),
             ),
-            instr2.core.JmpInstruction(
+            instructions.core.JmpInstruction(
                 line=Immediate(5),
             ),
         ],
@@ -258,33 +258,33 @@ qfree Q0
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            instr2.core.SetInstruction(
+            instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 value=Immediate(0),
             ),
-            instr2.core.QAllocInstruction(
+            instructions.core.QAllocInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            instr2.core.InitInstruction(
+            instructions.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
             # Rotations
-            instr2.vanilla.RotXInstruction(
+            instructions.vanilla.RotXInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(1),
             ),
-            instr2.vanilla.RotXInstruction(
+            instructions.vanilla.RotXInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(4),
             ),
-            instr2.vanilla.RotYInstruction(
+            instructions.vanilla.RotYInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(7),
                 angle_denom=Immediate(22),
             ),
-            instr2.core.QFreeInstruction(
+            instructions.core.QFreeInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
         ],

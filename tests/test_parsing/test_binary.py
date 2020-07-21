@@ -1,6 +1,6 @@
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
 
-from netqasm.instr2.vanilla import CphaseInstruction
+from netqasm.instructions.vanilla import CphaseInstruction
 
 
 def test():
