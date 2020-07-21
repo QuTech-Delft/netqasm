@@ -28,9 +28,13 @@ def test_compiling_nv():
     text_subroutine = """
 # NETQASM 0.0
 # APPID 0
-set Q0 0
+set Q0 3
 qalloc Q0
 init Q0
+set Q1 1
+qalloc Q1
+init Q1
+cnot Q0 Q1
 // x Q0
 // y Q0
 // z Q0
@@ -38,7 +42,7 @@ init Q0
 // k Q0
 // s Q0
 // t Q0
-rot_x Q0 1 2
+// rot_x Q0 1 2
 // rot_y Q0 1 2
 // rot_z Q0 1 2
 """

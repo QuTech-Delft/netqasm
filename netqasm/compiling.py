@@ -28,10 +28,6 @@ class SubroutineCompiler(abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
-    def map_instr(self, instr: NetQASMInstruction) -> List[NetQASMInstruction]:
-        pass
-
 
 class NVSubroutineCompiler(SubroutineCompiler):
 
@@ -145,22 +141,6 @@ class NVSubroutineCompiler(SubroutineCompiler):
             + self.swap(electron, carbon)
         )
 
-    def map_instr(self, instr: NetQASMInstruction) -> List[NetQASMInstruction]:
-        if isinstance(instr, vanilla.GateXInstruction):
-            reg = instr.qreg
-            print(f"reg = {reg}")
-            qubit_id = self.get_reg_value(reg).value
-            print(f"qubit_id = {qubit_id}")
-            if qubit_id == 0:
-                print(f"X Gate on electron, OK")
-            else:
-                print(f"X Gate on carbon, inserting SWAP with electron")
-                # return self.swap_and_do_gate_on_electron(
-                #     carbon_id=qubit_id,
-                #     gate=instr.__class__
-                # )
-                
-        return [instr]
 
     def compile(self):
         i = 0
@@ -193,6 +173,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
             if (isinstance(instr, core.SingleQubitInstruction)
                 or isinstance(instr, core.RotationInstruction)):
                 new_commands += self._handle_single_qubit_gate(instr)
+            elif isinstance(instr, core.TwoQubitInstruction):
+                new_commands += self._handle_two_qubit_gate(instr)
             else:
                 new_commands += [instr]
             
@@ -203,6 +185,120 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         self._subroutine.commands = new_commands
         return self._subroutine
+
+    def _handle_two_qubit_gate(
+        self,
+        instr: core.TwoQubitInstruction
+    ) -> List[core.NetQASMInstruction]:
+        qubit_id0 = self.get_reg_value(instr.qreg0).value
+        qubit_id1 = self.get_reg_value(instr.qreg1).value
+        assert qubit_id0 != qubit_id1
+
+        if isinstance(instr, vanilla.CnotInstruction):
+            if qubit_id0 == 0:
+                return self._map_cnot_electron_carbon(instr)
+            elif qubit_id1 == 0:
+                return self._map_cnot_carbon_electron(instr)
+            else:
+                return self._map_cnot_carbon_carbon(instr)
+        elif isinstance(instr, vanilla.CphaseInstruction):
+            if qubit_id0 == 0:
+                return self._map_cphase_electron_carbon(instr)
+            elif qubit_id1 == 0:
+                swapped = vanilla.CphaseInstruction(
+                    qreg0=instr.qreg1,
+                    qreg1=instr.qreg0
+                )
+                return self._map_cphase_electron_carbon(swapped)
+            else:
+                return self._map_cphase_carbon_carbon(instr)
+        else:
+            raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
+
+    def _map_cphase_electron_carbon(
+        self,
+        instr: vanilla.CphaseInstruction,
+    ) -> List[core.NetQASMInstruction]:
+        electron = instr.qreg0
+        carbon = instr.qreg1
+
+        return [
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.RotZInstruction(qreg=carbon, angle_num=Immediate(3), angle_denom=Immediate(1)),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.RotZInstruction(qreg=carbon, angle_num=Immediate(1), angle_denom=Immediate(1)),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+        ]
+
+    def _map_cphase_carbon_carbon(
+        self,
+        instr: vanilla.CphaseInstruction
+    ) -> List[core.NetQASMInstruction]:
+            electron = self.get_unused_register()
+            carbon = instr.qreg0
+            set_electron = core.SetInstruction(reg=electron, value=Immediate(0))
+            instr.qreg0 = electron
+            return ([set_electron]
+                + self.swap(electron, carbon)
+                + self._map_cphase_electron_carbon(instr)
+                + self.swap(electron, carbon)
+            )
+
+    def _map_cnot_electron_carbon(
+        self,
+        instr: vanilla.CnotInstruction,
+    ) -> List[core.NetQASMInstruction]:
+        electron = instr.qreg0
+        carbon = instr.qreg1
+
+        return [
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon)
+        ]
+
+    def _map_cnot_carbon_electron(
+        self,
+        instr: vanilla.CnotInstruction,
+    ) -> List[core.NetQASMInstruction]:
+        electron = instr.qreg0
+        carbon = instr.qreg1
+
+        electron_hadamard = self._map_single_gate_electron(
+            instr=vanilla.GateHInstruction(qreg=electron)
+        )
+
+        gates = []
+        gates += electron_hadamard
+        gates += [
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.RotZInstruction(qreg=carbon, angle_num=Immediate(3), angle_denom=Immediate(1)),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+            nv.RotZInstruction(qreg=carbon, angle_num=Immediate(1), angle_denom=Immediate(1)),
+            nv.CSqrtXInstruction(qreg0=electron, qreg1=carbon),
+        ]
+        gates += electron_hadamard
+
+        return gates
+
+    def _map_cnot_carbon_carbon(
+        self,
+        instr: vanilla.CnotInstruction
+    ) -> List[core.NetQASMInstruction]:
+            electron = self.get_unused_register()
+            carbon = instr.qreg0
+            set_electron = core.SetInstruction(reg=electron, value=Immediate(0))
+            instr.qreg0 = electron
+            return ([set_electron]
+                + self.swap(electron, carbon)
+                + self._map_cnot_electron_carbon(instr)
+                + self.swap(electron, carbon)
+            )
 
     def _handle_single_qubit_gate(
         self,
@@ -317,44 +413,49 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 qreg=instr.qreg, angle_num=Immediate(1), angle_denom=Immediate(0))
             ]
         else:
-            return self.swap_and_do_instr_on_electron(
-                carbon=instr.qreg,
-                instr=instr
+            electron = self.get_unused_register()
+            carbon = instr.qreg
+            set_electron = core.SetInstruction(reg=electron, value=Immediate(0))
+            instr.qreg = electron
+            return ([set_electron]
+                + self.swap(electron, carbon)
+                + self._map_single_gate_electron(instr)
+                + self.swap(electron, carbon)
             )
 
 
-    @classmethod
-    def _handle_single_qubit_rotations(cls, command):
-        # We only need to handle Z-rotations
-        if command.instruction == Instruction.ROT_Z:
-            qubit = command.operands[0]
-            n = command.operands[1]
-            d = command.operands[2]
-            return [
-                Command(Instruction.ROT_X, operands=[qubit, 3, 1]),  # 3 pi / 2
-                Command(Instruction.ROT_Y, operands=[qubit, 2 * 2 ** d - n, d]),  # - n pi / 2 ^ d
-                Command(Instruction.ROT_X, operands=[qubit, 1, 1]),  # pi / 2
-            ]
-        elif command.instruction in [Instruction.ROT_X, Instruction.ROT_Y]:
-            return [command]
-        else:
-            raise ValueError(f"Unknown rotation instruction {command.instruction}")
+    # @classmethod
+    # def _handle_single_qubit_rotations(cls, command):
+    #     # We only need to handle Z-rotations
+    #     if command.instruction == Instruction.ROT_Z:
+    #         qubit = command.operands[0]
+    #         n = command.operands[1]
+    #         d = command.operands[2]
+    #         return [
+    #             Command(Instruction.ROT_X, operands=[qubit, 3, 1]),  # 3 pi / 2
+    #             Command(Instruction.ROT_Y, operands=[qubit, 2 * 2 ** d - n, d]),  # - n pi / 2 ^ d
+    #             Command(Instruction.ROT_X, operands=[qubit, 1, 1]),  # pi / 2
+    #         ]
+    #     elif command.instruction in [Instruction.ROT_X, Instruction.ROT_Y]:
+    #         return [command]
+    #     else:
+    #         raise ValueError(f"Unknown rotation instruction {command.instruction}")
 
-    @classmethod
-    def _handle_two_qubit_gate(cls, command):
-        # TODO below is just a simple mapping from CPHASE TO CNOT
-        # However, one needs to replace CNOT between qubits which does not have
-        # connectivity in the hardware with effective CNOTs using the center-qubit
-        raise NotImplementedError("Compilation of two qubit gates are not yet implemented")
-        if command.instruction == Instruction.CNOT:
-            return [command]
-        elif command.instruction == Instruction.CPHASE:
-            target = command.operands[1]
-            hadamard_gates = cls._handle_single_qubit_static_gate(Command(
-                instruction=Instruction.H,
-                operands=[target],
-            ))
-            cnot_gate = Command(Instruction.CNOT, operands=list(command.operands))
-            return hadamard_gates + [cnot_gate] + hadamard_gates
-        else:
-            raise ValueError(f"Unknown two qubit instruction {command.instruction}")
+    # @classmethod
+    # def _handle_two_qubit_gate(cls, command):
+    #     # TODO below is just a simple mapping from CPHASE TO CNOT
+    #     # However, one needs to replace CNOT between qubits which does not have
+    #     # connectivity in the hardware with effective CNOTs using the center-qubit
+    #     raise NotImplementedError("Compilation of two qubit gates are not yet implemented")
+    #     if command.instruction == Instruction.CNOT:
+    #         return [command]
+    #     elif command.instruction == Instruction.CPHASE:
+    #         target = command.operands[1]
+    #         hadamard_gates = cls._handle_single_qubit_static_gate(Command(
+    #             instruction=Instruction.H,
+    #             operands=[target],
+    #         ))
+    #         cnot_gate = Command(Instruction.CNOT, operands=list(command.operands))
+    #         return hadamard_gates + [cnot_gate] + hadamard_gates
+    #     else:
+    #         raise ValueError(f"Unknown two qubit instruction {command.instruction}")
