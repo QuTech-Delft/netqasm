@@ -1,6 +1,5 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Dict, Union
+from typing import List, Union
 
 from netqasm.string_util import rspaces
 from netqasm import encoding
@@ -58,7 +57,7 @@ class NetQASMInstruction:
         else:
             lineno_str = ""
         return f"{lineno_str}{self._pretty_print()}"
-    
+
     def _pretty_print(self):
         return f"{self.__class__}"
 
@@ -135,6 +134,7 @@ class TwoQubitInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.qreg0)} {str(self.qreg1)}"
 
+
 @dataclass
 class GenericMeasInstruction(NetQASMInstruction):
     qreg: Register = None
@@ -170,6 +170,7 @@ class GenericMeasInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.qreg)} {str(self.creg)}"
+
 
 @dataclass
 class RotationInstruction(NetQASMInstruction):
@@ -215,6 +216,7 @@ class RotationInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.qreg)} {str(self.angle_num)} {str(self.angle_denom)}"
 
+
 @dataclass
 class ClassicalOpInstruction(NetQASMInstruction):
     regout: Register = None
@@ -258,6 +260,7 @@ class ClassicalOpInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.regout)} {str(self.reg0)} {str(self.reg1)}"
+
 
 @dataclass
 class ClassicalOpModInstruction(NetQASMInstruction):
@@ -308,6 +311,7 @@ class ClassicalOpModInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.regout)} {str(self.reg0)} {str(self.reg1)} {str(self.regmod)}"
 
+
 @dataclass
 class GenericJumpInstruction(NetQASMInstruction):
     line: Immediate = None
@@ -339,10 +343,11 @@ class GenericJumpInstruction(NetQASMInstruction):
         if isinstance(line, int):
             return cls(line=Immediate(value=line))
         elif isinstance(line, Label):
-            return cls(line_label = line)
+            return cls(line_label=line)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.line)}"
+
 
 @dataclass
 class BranchUnaryInstruction(NetQASMInstruction):
@@ -382,6 +387,7 @@ class BranchUnaryInstruction(NetQASMInstruction):
 
     def check_condition(self, a) -> bool:
         raise RuntimeError("check_condition called on the base BranchUnaryInstruction class")
+
 
 @dataclass
 class BranchBinaryInstruction(NetQASMInstruction):
@@ -426,6 +432,7 @@ class BranchBinaryInstruction(NetQASMInstruction):
     def check_condition(self, a, b) -> bool:
         raise RuntimeError("check_condition called on the base BranchBinaryInstruction class")
 
+
 @dataclass
 class GenericSetInstruction(NetQASMInstruction):
     reg: Register = None
@@ -464,6 +471,7 @@ class GenericSetInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.value)}"
+
 
 @dataclass
 class LoadStoreInstruction(NetQASMInstruction):
@@ -504,6 +512,7 @@ class LoadStoreInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.entry)}"
 
+
 @dataclass
 class GenericLeaInstruction(NetQASMInstruction):
     reg: Register = None
@@ -543,6 +552,7 @@ class GenericLeaInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.address)}"
 
+
 @dataclass
 class SingleArrayEntryInstruction(NetQASMInstruction):
     entry: ArrayEntry = None
@@ -578,6 +588,7 @@ class SingleArrayEntryInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.entry)}"
 
+
 @dataclass
 class SingleArraySliceInstruction(NetQASMInstruction):
     slice: ArraySlice = None
@@ -612,6 +623,7 @@ class SingleArraySliceInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.slice)}"
 
+
 @dataclass
 class GenericSingleRegisterInstruction(NetQASMInstruction):
     reg: Register = None
@@ -645,6 +657,7 @@ class GenericSingleRegisterInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)}"
+
 
 @dataclass
 class GenericArrayInstruction(NetQASMInstruction):
@@ -685,6 +698,7 @@ class GenericArrayInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.size)} {str(self.address)}"
 
+
 @dataclass
 class GenericRetArrInstruction(NetQASMInstruction):
     address: Union[Address, ArraySlice] = None
@@ -721,6 +735,7 @@ class GenericRetArrInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.address)}"
+
 
 @dataclass
 class GenericCreateEPRInstruction(NetQASMInstruction):
@@ -775,7 +790,9 @@ class GenericCreateEPRInstruction(NetQASMInstruction):
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} {str(self.arg_array)} {str(self.ent_info_array)}"
+        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
+            {str(self.arg_array)} {str(self.ent_info_array)}"
+
 
 @dataclass
 class GenericRecvEPRInstruction(NetQASMInstruction):
@@ -825,7 +842,8 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} {str(self.ent_info_array)}"
+        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)}\
+            {str(self.ent_info_array)}"
 
 
 @dataclass
@@ -833,45 +851,54 @@ class QAllocInstruction(SingleQubitInstruction):
     id: int = 1
     mnemonic: str = "qalloc"
 
+
 @dataclass
 class InitInstruction(SingleQubitInstruction):
     id: int = 2
     mnemonic: str = "init"
+
 
 @dataclass
 class ArrayInstruction(GenericArrayInstruction):
     id: int = 3
     mnemonic: str = "array"
 
+
 @dataclass
 class SetInstruction(GenericSetInstruction):
     id: int = 4
     mnemonic: str = "set"
+
 
 @dataclass
 class StoreInstruction(LoadStoreInstruction):
     id: int = 5
     mnemonic: str = "store"
 
+
 @dataclass
 class LoadInstruction(LoadStoreInstruction):
     id: int = 6
     mnemonic: str = "load"
+
 
 @dataclass
 class UndefInstruction(SingleArrayEntryInstruction):
     id: int = 7
     mnemonic: str = "undef"
 
+
 @dataclass
 class LeaInstruction(GenericLeaInstruction):
     id: int = 8
     mnemonic: str = "lea"
 
+
 @dataclass
 class JmpInstruction(GenericJumpInstruction):
     id: int = 9
     mnemonic: str = "jmp"
+
 
 @dataclass
 class BezInstruction(BranchUnaryInstruction):
@@ -881,6 +908,7 @@ class BezInstruction(BranchUnaryInstruction):
     def check_condition(self, a) -> bool:
         return a == 0
 
+
 @dataclass
 class BnzInstruction(BranchUnaryInstruction):
     id: int = 11
@@ -888,6 +916,7 @@ class BnzInstruction(BranchUnaryInstruction):
 
     def check_condition(self, a) -> bool:
         return a != 0
+
 
 @dataclass
 class BeqInstruction(BranchBinaryInstruction):
@@ -897,6 +926,7 @@ class BeqInstruction(BranchBinaryInstruction):
     def check_condition(self, a, b) -> bool:
         return a == b
 
+
 @dataclass
 class BneInstruction(BranchBinaryInstruction):
     id: int = 13
@@ -904,6 +934,7 @@ class BneInstruction(BranchBinaryInstruction):
 
     def check_condition(self, a, b) -> bool:
         return a != b
+
 
 @dataclass
 class BltInstruction(BranchBinaryInstruction):
@@ -913,6 +944,7 @@ class BltInstruction(BranchBinaryInstruction):
     def check_condition(self, a, b) -> bool:
         return a < b
 
+
 @dataclass
 class BgeInstruction(BranchBinaryInstruction):
     id: int = 15
@@ -921,136 +953,80 @@ class BgeInstruction(BranchBinaryInstruction):
     def check_condition(self, a, b) -> bool:
         return a >= b
 
+
 @dataclass
 class AddInstruction(ClassicalOpInstruction):
     id: int = 16
     mnemonic: str = "add"
+
 
 @dataclass
 class SubInstruction(ClassicalOpInstruction):
     id: int = 17
     mnemonic: str = "sub"
 
+
 @dataclass
 class AddmInstruction(ClassicalOpModInstruction):
     id: int = 18
     mnemonic: str = "addm"
+
 
 @dataclass
 class SubmInstruction(ClassicalOpModInstruction):
     id: int = 19
     mnemonic: str = "subm"
 
+
 @dataclass
 class MeasInstruction(GenericMeasInstruction):
     id: int = 32
     mnemonic: str = "meas"
+
 
 @dataclass
 class CreateEPRInstruction(GenericCreateEPRInstruction):
     id: int = 33
     mnemonic: str = "create_epr"
 
+
 @dataclass
 class RecvEPRInstruction(GenericRecvEPRInstruction):
     id: int = 34
     mnemonic: str = "recv_epr"
+
 
 @dataclass
 class WaitAllInstruction(SingleArraySliceInstruction):
     id: int = 35
     mnemonic: str = "wait_all"
 
+
 @dataclass
 class WaitAnyInstruction(SingleArraySliceInstruction):
     id: int = 36
     mnemonic: str = "wait_any"
+
 
 @dataclass
 class WaitSingleInstruction(SingleArrayEntryInstruction):
     id: int = 37
     mnemonic: str = "wait_single"
 
+
 @dataclass
 class QFreeInstruction(SingleQubitInstruction):
     id: int = 38
     mnemonic: str = "qfree"
+
 
 @dataclass
 class RetRegInstruction(GenericSingleRegisterInstruction):
     id: int = 39
     mnemonic: str = "ret_reg"
 
+
 @dataclass
 class RetArrInstruction(GenericRetArrInstruction):
     id: int = 40
     mnemonic: str = "ret_arr"
-
-
-
-@dataclass
-class InstrMap:
-    id_map: Dict[int, NetQASMInstruction] = None
-    name_map: Dict[str, NetQASMInstruction] = None
-
-def get_core_map() -> InstrMap:
-    return InstrMap(id_map = {
-        1: QAllocInstruction,
-        2: InitInstruction,
-        3: ArrayInstruction,
-        4: SetInstruction,
-        5: StoreInstruction,
-        6: LoadInstruction,
-        7: UndefInstruction,
-        8: LeaInstruction,
-        9: JmpInstruction,
-        10: BezInstruction,
-        11: BnzInstruction,
-        12: BeqInstruction,
-        13: BneInstruction,
-        14: BltInstruction,
-        15: BgeInstruction,
-        16: AddInstruction,
-        17: SubInstruction,
-        18: AddmInstruction,
-        19: SubmInstruction,
-        32: MeasInstruction,
-        33: CreateEPRInstruction,
-        34: RecvEPRInstruction,
-        35: WaitAllInstruction,
-        36: WaitAnyInstruction,
-        37: WaitSingleInstruction,
-        38: QFreeInstruction,
-        39: RetRegInstruction,
-        40: RetArrInstruction
-    }, name_map = {
-        'qalloc': QAllocInstruction,
-        'init': InitInstruction,
-        'array': ArrayInstruction,
-        'set': SetInstruction,
-        'store': StoreInstruction,
-        'load': LoadInstruction,
-        'undef': UndefInstruction,
-        'lea': LeaInstruction,
-        'jmp': JmpInstruction,
-        'bez': BezInstruction,
-        'bnz': BnzInstruction,
-        'beq': BeqInstruction,
-        'bne': BneInstruction,
-        'blt': BltInstruction,
-        'bge': BgeInstruction,
-        'add': AddInstruction,
-        'sub': SubInstruction,
-        'addm': AddmInstruction,
-        'subm': SubmInstruction,
-        'meas': MeasInstruction,
-        'create_epr': CreateEPRInstruction,
-        'recv_epr': RecvEPRInstruction,
-        'wait_all': WaitAllInstruction,
-        'wait_any': WaitAnyInstruction,
-        'wait_single': WaitSingleInstruction,
-        'qfree': QFreeInstruction,
-        'ret_reg': RetRegInstruction,
-        'ret_arr': RetArrInstruction
-    })
-

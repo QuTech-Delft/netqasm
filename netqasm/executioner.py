@@ -1,5 +1,4 @@
 import os
-import operator
 import numpy as np
 from enum import Enum
 from itertools import count
@@ -17,12 +16,12 @@ from qlink_interface import (
 
 from netqasm.logging import get_netqasm_logger
 from netqasm.output import InstrLogger
-from netqasm.subroutine import Command, Register, ArrayEntry, ArraySlice, Address
+from netqasm.instr2.operand import Register, ArrayEntry, ArraySlice, Address
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
 
-from netqasm.instr2.core import NetQASMInstruction, get_core_map
+from netqasm.instr2.core import NetQASMInstruction
 from netqasm import instr2
 
 
@@ -224,7 +223,8 @@ class Executioner:
     def _get_instruction_handlers(self):
         """Creates the dictionary of instruction handlers"""
         mnemonic_mapping = [
-            'qalloc', 'array', 'set', 'store', 'load', 'undef', 'lea', 'meas', 'create_epr', 'recv_epr', 'wait_all', 'wait_any', 'wait_single', 'qfree', 'ret_reg', 'ret_arr'
+            'qalloc', 'array', 'set', 'store', 'load', 'undef', 'lea', 'meas', 'create_epr',
+            'recv_epr', 'wait_all', 'wait_any', 'wait_single', 'qfree', 'ret_reg', 'ret_arr'
         ]
         instruction_handlers = {
             mne: getattr(self, f"_instr_{mne}") for mne in mnemonic_mapping
@@ -370,7 +370,11 @@ class Executioner:
         arrays = self._app_arrays[app_id]
         arrays.init_new_array(address.address, length)
 
-    def _handle_branch_instr(self, subroutine_id, instr: [instr2.core.BranchBinaryInstruction, instr2.core.JmpInstruction]):
+    def _handle_branch_instr(
+        self,
+        subroutine_id,
+        instr: [instr2.core.BranchBinaryInstruction, instr2.core.JmpInstruction]
+    ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
         registers = []
@@ -388,7 +392,7 @@ class Executioner:
             condition = instr.check_condition(a)
         elif isinstance(instr, instr2.core.BranchBinaryInstruction):
             condition = instr.check_condition(a, b)
-        
+
         if condition:
             jump_address = instr.line
             self._logger.debug(f"Branching to line {jump_address}, since {instr}(a={a}, b={b}) "
@@ -400,7 +404,11 @@ class Executioner:
             self._program_counters[subroutine_id] += 1
 
     @inc_program_counter
-    def _handle_binary_classical_instr(self, subroutine_id, instr: Union[instr2.core.ClassicalOpInstruction, instr2.core.ClassicalOpModInstruction]):
+    def _handle_binary_classical_instr(
+        self,
+        subroutine_id,
+        instr: Union[instr2.core.ClassicalOpInstruction, instr2.core.ClassicalOpModInstruction]
+    ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         # if instr in [Instruction.ADDM, Instruction.SUBM]:
         if isinstance(instr, instr2.core.ClassicalOpModInstruction):
@@ -444,7 +452,11 @@ class Executioner:
     def _handle_single_qubit_rotation(self, subroutine_id, instr: instr2.core.RotationInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
-        angle = self._get_rotation_angle_from_operands(app_id=app_id, n=instr.angle_num.value, d=instr.angle_denom.value)
+        angle = self._get_rotation_angle_from_operands(
+            app_id=app_id,
+            n=instr.angle_num.value,
+            d=instr.angle_denom.value
+        )
         self._logger.debug(f"Performing {instr} with angle {angle} "
                            f"on the qubit at address {q_address}")
         output = self._do_single_qubit_rotation(instr, subroutine_id, q_address, angle=angle)

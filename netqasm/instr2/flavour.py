@@ -3,10 +3,12 @@ from typing import Dict, List
 
 from netqasm.instr2 import vanilla, core, nv
 
+
 @dataclass
 class InstrMap:
     id_map: Dict[int, core.NetQASMInstruction] = None
     name_map: Dict[str, core.NetQASMInstruction] = None
+
 
 CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
     core.QAllocInstruction,
@@ -39,13 +41,14 @@ CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
     core.RetArrInstruction
 ]
 
+
 class Flavour:
     def __init__(self, flavour_specific: List[core.NetQASMInstruction]):
-        self.id_map = { instr.id: instr for instr in CORE_INSTRUCTIONS }
-        self.id_map.update({ instr.id: instr for instr in flavour_specific })
+        self.id_map = {instr.id: instr for instr in CORE_INSTRUCTIONS}
+        self.id_map.update({instr.id: instr for instr in flavour_specific})
 
-        self.name_map = { instr.mnemonic: instr for instr in CORE_INSTRUCTIONS }
-        self.name_map.update({ instr.mnemonic: instr for instr in flavour_specific })
+        self.name_map = {instr.mnemonic: instr for instr in CORE_INSTRUCTIONS}
+        self.name_map.update({instr.mnemonic: instr for instr in flavour_specific})
 
     def get_instr_by_id(self, id: int):
         return self.id_map[id]
@@ -73,6 +76,7 @@ class VanillaFlavour(Flavour):
     def __init__(self):
         super().__init__(self.instrs)
 
+
 class NVFlavour(Flavour):
     instrs = [
         nv.GateXInstruction,
@@ -88,4 +92,3 @@ class NVFlavour(Flavour):
 
     def __init__(self):
         super().__init__(self.instrs)
-

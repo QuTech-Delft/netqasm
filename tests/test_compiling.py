@@ -1,14 +1,12 @@
 import pytest
 from netqasm.logging import set_log_level
 from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
-from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
+# from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
-from netqasm.instructions import Instruction, QUBIT_GATES
 from netqasm.compiling import NVSubroutineCompiler
 
-from netqasm.instr2 import core, vanilla, nv
-from netqasm.instr2.flavour import VanillaFlavour, NVFlavour, CORE_INSTRUCTIONS
+from netqasm.instr2.flavour import VanillaFlavour, NVFlavour
 
 
 # @pytest.mark.parametrize(
@@ -56,7 +54,7 @@ rot_z Q0 1 2
 
 @pytest.mark.parametrize("subroutine_str", [
     (
-        """ 
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
@@ -69,7 +67,7 @@ rot_z Q0 1 2
         """
     ),
     (
-        """ 
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
@@ -116,6 +114,7 @@ def test_compiling_nv_using_sdk():
         assert (
             instr.__class__ not in VanillaFlavour.instrs
         )
+
 
 if __name__ == '__main__':
     test_compiling_nv_using_sdk()

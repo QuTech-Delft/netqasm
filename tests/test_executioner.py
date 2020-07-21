@@ -102,6 +102,7 @@ def test_failing_executioner(subroutine_str, error_type, error_line):
     print(f"Exception: {exc.value}")
     assert str(exc.value).startswith(f"At line {error_line}")
 
+
 if __name__ == '__main__':
     subroutine_str = """
         # NETQASM 1.0

@@ -1,22 +1,12 @@
 import ctypes
 
 from netqasm import encoding
-from netqasm.instructions import Instruction, COMMAND_STRUCTS
-from netqasm.subroutine import (
-    Command,
-    Register,
-    Address,
-    Subroutine,
-    ArrayEntry,
-    ArraySlice,
-)
-
-from netqasm.subroutine import Subroutine, Command
-from netqasm.instr2.core import InstrMap
-from netqasm.instr2.vanilla import get_vanilla_map
+from netqasm.subroutine import Subroutine
 from netqasm.instr2.flavour import Flavour, VanillaFlavour
+from netqasm.instr2.core import NetQASMInstruction
 
 INSTR_ID = ctypes.c_uint8
+
 
 class Deserializer:
     def __init__(self, flavour: Flavour):
@@ -42,7 +32,7 @@ class Deserializer:
             commands=commands,
         )
 
-    def deserialize_command(self, raw: bytes) -> Command:
+    def deserialize_command(self, raw: bytes) -> NetQASMInstruction:
         # peek next byte to check instruction type
         id = INSTR_ID.from_buffer_copy(raw[:1]).value
         instr_cls = self.flavour.get_instr_by_id(id)

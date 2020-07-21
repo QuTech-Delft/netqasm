@@ -2,8 +2,6 @@ from typing import List, Union
 from dataclasses import dataclass
 
 from netqasm import encoding
-from netqasm.util import NetQASMInstrError
-from netqasm.encoding import RegisterName
 from netqasm.string_util import rspaces
 from netqasm.instructions import Instruction
 from netqasm.symbols import Symbols
@@ -71,7 +69,6 @@ class BranchLabel:
         else:
             lineno_str = ""
         return f"{lineno_str}{self.name}{Symbols.BRANCH_END}"
-
 
 
 @dataclass

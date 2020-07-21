@@ -6,12 +6,8 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.logging import set_log_level
-from netqasm.subroutine import (
-    Subroutine,
-    Command,
-)
+from netqasm.subroutine import Subroutine
 from netqasm.encoding import RegisterName
-from netqasm.instructions import Instruction
 from netqasm.parsing import parse_binary_subroutine
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 

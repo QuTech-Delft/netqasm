@@ -4,6 +4,7 @@ from netqasm import encoding
 from netqasm.encoding import RegisterName
 from netqasm.symbols import Symbols
 
+
 class Operand:
     pass
 
@@ -14,6 +15,7 @@ class Immediate(Operand):
 
     def __str__(self):
         return str(self.value)
+
 
 @dataclass(eq=True, frozen=True)
 class Register(Operand):

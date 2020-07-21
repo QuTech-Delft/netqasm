@@ -8,18 +8,11 @@ from netqasm.encoding import RegisterName, REG_INDEX_BITS
 
 from netqasm.symbols import Symbols
 
-from netqasm.subroutine import (
-    Label,
-    Command,
-    BranchLabel,
-    Subroutine,
-    PreSubroutine
-)
+from netqasm.instr2.operand import Label
+from netqasm.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
 from netqasm.instructions import Instruction, string_to_instruction
 from netqasm.instr2.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.instr2.vanilla import get_vanilla_map
 from netqasm.instr2.core import NetQASMInstruction
-from netqasm.subroutine import Subroutine
 from netqasm.instr2.flavour import Flavour, VanillaFlavour
 
 
@@ -62,7 +55,7 @@ def assemble_subroutine(
     if flavour is None:
         flavour = VanillaFlavour()
     subroutine = build_subroutine(subroutine, flavour)
-    
+
     return subroutine
 
 
@@ -82,6 +75,7 @@ def build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
 
         subroutine.commands.append(new_command)
     return subroutine
+
 
 def _create_subroutine(preamble_data, body_lines: List[str]):
     commands = []

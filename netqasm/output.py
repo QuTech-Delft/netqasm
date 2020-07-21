@@ -23,6 +23,7 @@ def should_log_instr(instr):
         or isinstance(instr, instr2.core.QFreeInstruction)
     )
 
+
 def should_check_qubit_state(instr):
     return (
         isinstance(instr, instr2.core.SingleQubitInstruction)

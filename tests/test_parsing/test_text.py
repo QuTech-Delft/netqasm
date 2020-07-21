@@ -1,13 +1,9 @@
 import pytest
 
-from netqasm.subroutine import (
-    Command,
-    Subroutine,
-)
+from netqasm.subroutine import Subroutine
 from netqasm.encoding import RegisterName
 from netqasm.parsing import parse_text_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
-from netqasm.instructions import Instruction
 
 from netqasm import instr2
 from netqasm.instr2.operand import (
