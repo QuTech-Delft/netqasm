@@ -222,6 +222,9 @@ class Executioner:
 
     def _get_instruction_handlers(self):
         """Creates the dictionary of instruction handlers"""
+
+        # For these core instructions, we provide a direct "_instr_{name}" method
+        # The other types are handled in _execute_command
         mnemonic_mapping = [
             'qalloc', 'array', 'set', 'store', 'load', 'undef', 'lea', 'meas', 'create_epr',
             'recv_epr', 'wait_all', 'wait_any', 'wait_single', 'qfree', 'ret_reg', 'ret_arr'
@@ -275,7 +278,9 @@ class Executioner:
         """Executes a single instruction"""
         if not isinstance(command, NetQASMInstruction):
             raise TypeError(f"Expected a NetQASMInstruction, not {type(command)}")
+
         prog_counter = self._program_counters[subroutine_id]
+
         output = None
         if command.mnemonic in self._instruction_handlers:
             output = self._instruction_handlers[command.mnemonic](subroutine_id, command)
@@ -410,7 +415,6 @@ class Executioner:
         instr: Union[instructions.core.ClassicalOpInstruction, instructions.core.ClassicalOpModInstruction]
     ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        # if instr in [Instruction.ADDM, Instruction.SUBM]:
         if isinstance(instr, instructions.core.ClassicalOpModInstruction):
             mod = self._get_register(app_id=app_id, register=instr.regmod)
         else:

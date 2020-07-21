@@ -23,7 +23,12 @@ def parse_text_subroutine(
     replace_constants=True,
     flavour: Flavour = None
 ) -> Subroutine:
-    """Parses a subroutine and splits the preamble and body into separate parts."""
+    """
+    Convert a text representation of a subroutine into a Subroutine object.
+
+    Internally, first a `PreSubroutine` object is created, consisting of `Command`s.
+    This is then converted into a `Subroutine` using `assemble_subroutine`.
+    """
     preamble_lines, body_lines = _split_preamble_body(subroutine)
     preamble_data: Dict[str, List[str]] = _parse_preamble(preamble_lines)
     body_lines: List[str] = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
@@ -45,6 +50,9 @@ def assemble_subroutine(
     replace_constants=True,
     flavour: Flavour = None
 ) -> Subroutine:
+    """
+    Convert a `PreSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).
+    """
     if make_args_operands:
         _make_args_operands(subroutine)
     if replace_constants:
@@ -54,12 +62,12 @@ def assemble_subroutine(
 
     if flavour is None:
         flavour = VanillaFlavour()
-    subroutine = build_subroutine(subroutine, flavour)
+    subroutine = _build_subroutine(subroutine, flavour)
 
     return subroutine
 
 
-def build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
+def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
     subroutine = Subroutine(
         netqasm_version=pre_subroutine.netqasm_version,
         app_id=pre_subroutine.app_id,
