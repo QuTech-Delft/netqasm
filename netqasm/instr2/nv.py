@@ -6,6 +6,26 @@ from netqasm.instr2.core import InstrMap, get_core_map
 import netqasm.instr2.core as core
 
 @dataclass
+class GateXInstruction(core.SingleQubitInstruction):
+    id: int = 20
+    mnemonic: str = "x"
+
+@dataclass
+class GateYInstruction(core.SingleQubitInstruction):
+    id: int = 21
+    mnemonic: str = "y"
+
+@dataclass
+class GateZInstruction(core.SingleQubitInstruction):
+    id: int = 22
+    mnemonic: str = "z"
+
+@dataclass
+class GateHInstruction(core.SingleQubitInstruction):
+    id: int = 23
+    mnemonic: str = "h"
+
+@dataclass
 class RotXInstruction(core.RotationInstruction):
     id: int = 27
     mnemonic: str = "rot_x"
@@ -21,27 +41,11 @@ class RotZInstruction(core.RotationInstruction):
     mnemonic: str = "rot_z"
 
 @dataclass
-class CSqrtXInstruction(core.TwoQubitInstruction):
+class CnotInstruction(core.TwoQubitInstruction):
     id: int = 30
+    mnemonic: str = "cnot"
+
+@dataclass
+class CSqrtXInstruction(core.TwoQubitInstruction):
+    id: int = 31
     mnemonic: str = "csqx"
-
-
-def get_nv_map() -> InstrMap:
-    core_map = get_core_map()
-    id_map = core_map.id_map
-    id_map.update({
-        27: RotXInstruction,
-        28: RotYInstruction,
-        29: RotZInstruction,
-        30: CSqrtXInstruction,
-    })
-
-    name_map = core_map.name_map
-    name_map.update({
-        'rot_x': RotXInstruction,
-        'rot_y': RotYInstruction,
-        'rot_z': RotZInstruction,
-        'csqx': CSqrtXInstruction,
-    })
-
-    return InstrMap(id_map=id_map, name_map=name_map)

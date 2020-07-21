@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
-from netqasm.instr2 import vanilla, core
+from netqasm.instr2 import vanilla, core, nv
 
 @dataclass
 class InstrMap:
@@ -40,9 +40,12 @@ CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
 ]
 
 class Flavour:
-    def __init__(self):
+    def __init__(self, flavour_specific: List[core.NetQASMInstruction]):
         self.id_map = { instr.id: instr for instr in CORE_INSTRUCTIONS }
+        self.id_map.update({ instr.id: instr for instr in flavour_specific })
+
         self.name_map = { instr.mnemonic: instr for instr in CORE_INSTRUCTIONS }
+        self.name_map.update({ instr.mnemonic: instr for instr in flavour_specific })
 
     def get_instr_by_id(self, id: int):
         return self.id_map[id]
@@ -53,7 +56,6 @@ class Flavour:
 
 class VanillaFlavour(Flavour):
     instrs = [
-        vanilla.GateHInstruction,
         vanilla.GateXInstruction,
         vanilla.GateYInstruction,
         vanilla.GateZInstruction,
@@ -69,7 +71,21 @@ class VanillaFlavour(Flavour):
     ]
 
     def __init__(self):
-        super().__init__()
-        self.id_map.update({ instr.id: instr for instr in self.instrs })
-        self.name_map.update({ instr.mnemonic: instr for instr in self.instrs })
+        super().__init__(self.instrs)
+
+class NVFlavour(Flavour):
+    instrs = [
+        nv.GateXInstruction,
+        nv.GateYInstruction,
+        nv.GateZInstruction,
+        nv.GateHInstruction,
+        nv.RotXInstruction,
+        nv.RotYInstruction,
+        nv.RotZInstruction,
+        nv.CnotInstruction,
+        nv.CSqrtXInstruction
+    ]
+
+    def __init__(self):
+        super().__init__(self.instrs)
 

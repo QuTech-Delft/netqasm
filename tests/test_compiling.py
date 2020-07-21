@@ -31,20 +31,21 @@ def test_compiling_nv():
 set Q0 0
 qalloc Q0
 init Q0
-x Q0
-y Q0
-z Q0
-h Q0
-k Q0
-s Q0
-t Q0
+// x Q0
+// y Q0
+// z Q0
+// h Q0
+// k Q0
+// s Q0
+// t Q0
 rot_x Q0 1 2
-rot_y Q0 1 2
-rot_z Q0 1 2
+// rot_y Q0 1 2
+// rot_z Q0 1 2
 """
-    subroutine = parse_text_subroutine(text_subroutine)
-    NVSubroutineCompiler.compile(subroutine)
-    print(subroutine)
+    original_subroutine = parse_text_subroutine(text_subroutine)
+    print(f"before compiling: {original_subroutine}")
+    subroutine = NVSubroutineCompiler(original_subroutine).compile()
+    print(f"after compiling: {subroutine}")
     # Check that all gates are now x and y rotations
     for instr in subroutine.commands:
         # instr = command.instruction
