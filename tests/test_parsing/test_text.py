@@ -208,7 +208,7 @@ EXIT:
             instr2.core.InitInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
-            oop.vanilla.GateHInstruction(
+            instr2.vanilla.GateHInstruction(
                 qreg=Register(RegisterName.Q, 0),
             ),
             instr2.core.MeasInstruction(
@@ -278,17 +278,17 @@ qfree Q0
                 qreg=Register(RegisterName.Q, 0),
             ),
             # Rotations
-            oop.vanilla.RotXInstruction(
+            instr2.vanilla.RotXInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(1),
             ),
-            oop.vanilla.RotXInstruction(
+            instr2.vanilla.RotXInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(4),
             ),
-            oop.vanilla.RotYInstruction(
+            instr2.vanilla.RotYInstruction(
                 qreg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(7),
                 angle_denom=Immediate(22),

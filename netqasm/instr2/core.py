@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from netqasm.string_util import rspaces
 from netqasm import encoding
@@ -687,7 +687,7 @@ class GenericArrayInstruction(NetQASMInstruction):
 
 @dataclass
 class GenericRetArrInstruction(NetQASMInstruction):
-    address: Address = None
+    address: Union[Address, ArraySlice] = None
     # address: ArraySlice = None
     # TODO: should it be an Address or ArraySlice?
 
@@ -713,7 +713,7 @@ class GenericRetArrInstruction(NetQASMInstruction):
     def parse_from(cls, operands: List[Operand]):
         assert len(operands) == 1
         addr = operands[0]
-        assert isinstance(addr, Address)
+        assert isinstance(addr, Address) or isinstance(addr, ArraySlice)
         # assert isinstance(addr, ArraySlice)
         return cls(
             address=addr

@@ -49,7 +49,7 @@ rot_z Q0 1 2
     for instr in subroutine.commands:
         # instr = command.instruction
         # if instr in QUBIT_GATES:
-        if (isinstance(instr, core.SingleQubitInstruction)
+        if (isinstance(instr, core.SingleQubitInstruction)):
             # and not (isinstance(instr, core.QAllocInstruction)
             #     or isinstance(instr, core.QFreeInstruction)
             #     or isinstance(instr, core.InitInstruction))):
