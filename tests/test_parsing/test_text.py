@@ -110,7 +110,7 @@ ret_arr @0[0:1]
                 value=Immediate(1),
             ),
             instructions.core.RetArrInstruction(
-                address=ArraySlice(
+                slice=ArraySlice(
                     Address(0),
                     Register(RegisterName.R, 3),
                     Register(RegisterName.R, 4),

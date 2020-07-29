@@ -395,7 +395,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return_arrays.append(Command(
                 instruction=Instruction.RET_ARR,
                 operands=[
-                    Address(array.address),
+                    ArraySlice(array.address, start=0, stop=len(array)),
                 ],
                 lineno=array.lineno,
             ))

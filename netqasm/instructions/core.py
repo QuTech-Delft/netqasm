@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List
 
 from netqasm.string_util import rspaces
 from netqasm import encoding
@@ -704,40 +704,37 @@ class GenericArrayInstruction(NetQASMInstruction):
 
 @dataclass
 class GenericRetArrInstruction(NetQASMInstruction):
-    address: Union[Address, ArraySlice] = None
-    # address: ArraySlice = None
-    # TODO: should it be an Address or ArraySlice?
+    slice: ArraySlice = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.address]
+        return [self.slice]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.RetArrCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        address = Address.from_raw(c_struct.address)
-        return cls(address=address)
+        slice = ArraySlice.from_raw(c_struct.array_slice)
+        return cls(slice=slice)
 
     def serialize(self) -> bytes:
         c_struct = encoding.RetArrCommand(
             id=self.id,
-            address=self.address.cstruct
+            array_slice=self.slice.cstruct
         )
         return bytes(c_struct)
 
     @classmethod
     def parse_from(cls, operands: List[Operand]):
         assert len(operands) == 1
-        addr = operands[0]
-        assert isinstance(addr, Address) or isinstance(addr, ArraySlice)
-        # assert isinstance(addr, ArraySlice)
+        slice = operands[0]
+        assert isinstance(slice, ArraySlice)
         return cls(
-            address=addr
+            slice=slice
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.address)}"
+        return f"{self.mnemonic} {str(self.slice)}"
 
 
 @dataclass
