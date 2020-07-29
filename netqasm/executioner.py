@@ -378,7 +378,7 @@ class Executioner:
     def _handle_branch_instr(
         self,
         subroutine_id,
-        instr: [instructions.core.BranchBinaryInstruction, instructions.core.JmpInstruction]
+        instr: Union[instructions.core.BranchBinaryInstruction, instructions.core.JmpInstruction]
     ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
