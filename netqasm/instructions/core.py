@@ -67,9 +67,6 @@ class NetQASMInstruction:
     def _pretty_print(self):
         return f"{self.__class__}"
 
-    def update_labels(self, labels):
-        pass
-
 
 @dataclass
 class SingleQubitInstruction(NetQASMInstruction):
