@@ -91,13 +91,11 @@ class Command(ctypes.Structure):
         ('id', INSTR_ID),
     ]
 
-    # ID = 0
-
-    # def __init__(self, *args, **kwargs):
-    #     try:
-    #         super().__init__(self.ID, *args, **kwargs)
-    #     except TypeError as err:
-    #         raise TypeError(f"command {self.__class__.__name__} could not be created, since: {err}")
+    def __init__(self, *args, **kwargs):
+        try:
+            super().__init__(*args, **kwargs)
+        except TypeError as err:
+            raise TypeError(f"command {self.__class__.__name__} could not be created, since: {err}")
 
 
 def add_padding(fields):
