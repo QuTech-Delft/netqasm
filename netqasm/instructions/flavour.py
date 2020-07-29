@@ -44,6 +44,16 @@ CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
 
 
 class Flavour(ABC):
+    """
+    A Flavour represents an explicit instruction set that adheres to the Core NetQASM specification.
+    Typically, a flavour is used for each specific target hardware.
+
+    A flavour 'inherits' all classical instructions from the core, but can specify explicitly
+    the quantum instructions that the hardware supports, by listing the corresponding instruction classes.
+
+    Examples of flavours are the Vanilla flavour (with instructions defined in vanilla.py)
+    and the Nitrogen-Vacancy (NV) flavour (instructions in nv.py).
+    """
     def __init__(self, flavour_specific: List[core.NetQASMInstruction]):
         self.id_map = {instr.id: instr for instr in CORE_INSTRUCTIONS}
         self.id_map.update({instr.id: instr for instr in flavour_specific})
