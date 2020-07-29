@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, List
+from abc import ABC, abstractmethod
 
 from netqasm.instructions import vanilla, core, nv
 
@@ -42,7 +43,7 @@ CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
 ]
 
 
-class Flavour:
+class Flavour(ABC):
     def __init__(self, flavour_specific: List[core.NetQASMInstruction]):
         self.id_map = {instr.id: instr for instr in CORE_INSTRUCTIONS}
         self.id_map.update({instr.id: instr for instr in flavour_specific})
@@ -56,39 +57,50 @@ class Flavour:
     def get_instr_by_name(self, name: str):
         return self.name_map[name]
 
+    @property
+    @abstractmethod
+    def instrs(self):
+        pass
+
 
 class VanillaFlavour(Flavour):
-    instrs = [
-        vanilla.GateXInstruction,
-        vanilla.GateYInstruction,
-        vanilla.GateZInstruction,
-        vanilla.GateHInstruction,
-        vanilla.GateSInstruction,
-        vanilla.GateKInstruction,
-        vanilla.GateTInstruction,
-        vanilla.RotXInstruction,
-        vanilla.RotYInstruction,
-        vanilla.RotZInstruction,
-        vanilla.CnotInstruction,
-        vanilla.CphaseInstruction
-    ]
+
+    @property
+    def instrs(self):
+        return [
+            vanilla.GateXInstruction,
+            vanilla.GateYInstruction,
+            vanilla.GateZInstruction,
+            vanilla.GateHInstruction,
+            vanilla.GateSInstruction,
+            vanilla.GateKInstruction,
+            vanilla.GateTInstruction,
+            vanilla.RotXInstruction,
+            vanilla.RotYInstruction,
+            vanilla.RotZInstruction,
+            vanilla.CnotInstruction,
+            vanilla.CphaseInstruction
+        ]
 
     def __init__(self):
         super().__init__(self.instrs)
 
 
 class NVFlavour(Flavour):
-    instrs = [
-        nv.GateXInstruction,
-        nv.GateYInstruction,
-        nv.GateZInstruction,
-        nv.GateHInstruction,
-        nv.RotXInstruction,
-        nv.RotYInstruction,
-        nv.RotZInstruction,
-        nv.CnotInstruction,
-        nv.CSqrtXInstruction
-    ]
+
+    @property
+    def instrs(self):
+        return [
+            nv.GateXInstruction,
+            nv.GateYInstruction,
+            nv.GateZInstruction,
+            nv.GateHInstruction,
+            nv.RotXInstruction,
+            nv.RotYInstruction,
+            nv.RotZInstruction,
+            nv.CnotInstruction,
+            nv.CSqrtXInstruction
+        ]
 
     def __init__(self):
         super().__init__(self.instrs)

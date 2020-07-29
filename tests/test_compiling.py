@@ -48,7 +48,7 @@ rot_z Q0 1 2
 
     for instr in subroutine.commands:
         assert (
-            instr.__class__ not in VanillaFlavour.instrs
+            instr.__class__ not in VanillaFlavour().instrs
         )
 
 
@@ -88,7 +88,7 @@ def test_compiling_nv_text(subroutine_str):
 
     for instr in compiled.commands:
         assert (
-            instr.__class__ not in VanillaFlavour.instrs
+            instr.__class__ not in VanillaFlavour().instrs
         )
 
 
@@ -112,7 +112,7 @@ def test_compiling_nv_using_sdk():
 
     for instr in subroutine.commands:
         assert (
-            instr.__class__ not in VanillaFlavour.instrs
+            instr.__class__ not in VanillaFlavour().instrs
         )
 
 

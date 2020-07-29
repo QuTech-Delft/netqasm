@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import netqasm.instructions.core as core
 
 
-# Explicit instruction types in the Vanilla flavour.
+# Explicit instruction types in the NV flavour.
 
 @dataclass
 class GateXInstruction(core.SingleQubitInstruction):
