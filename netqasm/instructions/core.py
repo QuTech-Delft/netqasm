@@ -318,7 +318,6 @@ class ClassicalOpModInstruction(NetQASMInstruction):
 @dataclass
 class GenericJumpInstruction(NetQASMInstruction):
     line: Immediate = None
-    line_label: Label = None
 
     @property
     def operands(self) -> List[Operand]:
@@ -342,11 +341,9 @@ class GenericJumpInstruction(NetQASMInstruction):
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         line = operands[0]
-        assert (isinstance(line, int) or isinstance(line, Label))
+        assert isinstance(line, int)
         if isinstance(line, int):
             return cls(line=Immediate(value=line))
-        elif isinstance(line, Label):
-            return cls(line_label=line)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.line)}"

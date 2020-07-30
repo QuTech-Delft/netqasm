@@ -69,7 +69,6 @@ class Command:
         return f"{lineno_str}{instr_name}{args} {operands}"
 
 
-
 @dataclass
 class BranchLabel:
     name: str
