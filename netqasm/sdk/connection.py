@@ -327,18 +327,19 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return
 
         self._commit_subroutine(
-            subroutine=subroutine,
+            presubroutine=subroutine,
             block=block,
             callback=callback,
         )
 
-    def _commit_subroutine(self, subroutine: PreSubroutine, block=True, callback=None):
-        self._logger.info(f"Flushing presubroutine:\n{subroutine}")
+    def _commit_subroutine(self, presubroutine: PreSubroutine, block=True, callback=None):
+        self._logger.info(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        bin_subroutine = self._pre_process_subroutine(subroutine)
+        subroutine = self._pre_process_subroutine(presubroutine)
+        self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
-        self._logger.info(f"Flushing subroutine:\n{bin_subroutine}")
+        bin_subroutine = bytes(subroutine)
 
         # Commit the subroutine to the quantum device
         self._logger.debug(f"Puts the next subroutine:\n{subroutine}")
@@ -419,7 +420,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pending_commands = []
         return commands
 
-    def _pre_process_subroutine(self, pre_subroutine: PreSubroutine):
+    def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Parses and assembles the subroutine.
 
         Can be subclassed and overried for more elaborate compiling.
@@ -429,7 +430,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             subroutine = self._compiler(subroutine=subroutine).compile()
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
-        return bytes(subroutine)
+        return subroutine
 
     def _log_subroutine(self, subroutine):
         self._commited_subroutines.append(subroutine)

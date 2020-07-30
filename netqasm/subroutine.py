@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from netqasm import encoding
 from netqasm.string_util import rspaces
-from netqasm.instructions.instr_enum import Instruction
+from netqasm.instructions.instr_enum import Instruction, instruction_to_string
 from netqasm.symbols import Symbols
 
 from netqasm.instructions.core import NetQASMInstruction
@@ -47,6 +47,28 @@ class Command:
         if self.operands is None:
             self.operands = []
 
+    def __str__(self):
+        return self._build_str(show_lineno=False)
+
+    @property
+    def debug_str(self):
+        return self._build_str(show_lineno=True)
+
+    def _build_str(self, show_lineno=False):
+        if len(self.args) == 0:
+            args = ''
+        else:
+            args = Symbols.ARGS_DELIM.join(str(arg) for arg in self.args)
+            args = Symbols.ARGS_BRACKETS[0] + args + Symbols.ARGS_BRACKETS[1]
+        operands = ' '.join(str(operand) for operand in self.operands)
+        instr_name = instruction_to_string(self.instruction)
+        if show_lineno:
+            lineno_str = _get_lineo_str(self.lineno)
+        else:
+            lineno_str = ""
+        return f"{lineno_str}{instr_name}{args} {operands}"
+
+
 
 @dataclass
 class BranchLabel:
@@ -85,6 +107,13 @@ class PreSubroutine:
     netqasm_version: tuple
     app_id: int
     commands: List[Union[Command, BranchLabel]]
+
+    def __str__(self):
+        to_return = f"PreSubroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
+        to_return += " LN | HLN | CMD\n"
+        for i, command in enumerate(self.commands):
+            to_return += f"{rspaces(i)} {command.debug_str}\n"
+        return to_return
 
 
 @dataclass
