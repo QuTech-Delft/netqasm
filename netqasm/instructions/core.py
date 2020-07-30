@@ -40,7 +40,7 @@ class NetQASMInstruction:
         pass
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         pass
 
     def __str__(self):
@@ -91,7 +91,7 @@ class SingleQubitInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         qreg = operands[0]
         assert isinstance(qreg, Register)
@@ -127,7 +127,7 @@ class TwoQubitInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         qreg0, qreg1 = operands
         assert isinstance(qreg0, Register)
@@ -164,7 +164,7 @@ class GenericMeasInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         qreg, creg = operands
         assert isinstance(qreg, Register)
@@ -204,7 +204,7 @@ class RotationInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
         qreg, num, denom = operands
         assert isinstance(qreg, Register)
@@ -249,7 +249,7 @@ class ClassicalOpInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
         regout, reg0, reg1 = operands
         assert isinstance(regout, Register)
@@ -297,7 +297,7 @@ class ClassicalOpModInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 4
         regout, reg0, reg1, regmod = operands
         assert isinstance(regout, Register)
@@ -339,7 +339,7 @@ class GenericJumpInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         line = operands[0]
         assert (isinstance(line, int) or isinstance(line, Label))
@@ -378,7 +378,7 @@ class BranchUnaryInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         reg, line = operands
         assert isinstance(reg, Register)
@@ -421,7 +421,7 @@ class BranchBinaryInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
         reg0, reg1, line = operands
         assert isinstance(reg0, Register)
@@ -462,7 +462,7 @@ class GenericSetInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         reg, value = operands
         assert isinstance(reg, Register)
@@ -502,7 +502,7 @@ class LoadStoreInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         reg, entry = operands
         assert isinstance(reg, Register)
@@ -542,7 +542,7 @@ class GenericLeaInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         reg, addr = operands
         assert isinstance(reg, Register)
@@ -580,7 +580,7 @@ class SingleArrayEntryInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         entry = operands[0]
         assert isinstance(entry, ArrayEntry)
@@ -615,7 +615,7 @@ class SingleArraySliceInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         slice = operands[0]
         assert isinstance(slice, ArraySlice)
@@ -650,7 +650,7 @@ class GenericSingleRegisterInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         reg = operands[0]
         assert isinstance(reg, Register)
@@ -688,7 +688,7 @@ class GenericArrayInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
         size, addr = operands
         assert isinstance(size, Register)
@@ -725,7 +725,7 @@ class GenericRetArrInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
         slice = operands[0]
         assert isinstance(slice, ArraySlice)
@@ -773,7 +773,7 @@ class GenericCreateEPRInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 5
         rem_nid, epr_sid, q_aid, arg_arr, ent_info_arr = operands
         assert isinstance(rem_nid, Register)
@@ -827,7 +827,7 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def parse_from(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 4
         rem_nid, epr_sid, q_aid, ent_info_arr = operands
         assert isinstance(rem_nid, Register)

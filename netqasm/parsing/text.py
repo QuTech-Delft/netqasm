@@ -78,7 +78,7 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
         assert isinstance(command, Command)
 
         instr = flavour.get_instr_by_name(command.instruction.name.lower())
-        new_command = instr.parse_from(command.operands)
+        new_command = instr.from_operands(command.operands)
         new_command.lineno = command.lineno
 
         subroutine.commands.append(new_command)
