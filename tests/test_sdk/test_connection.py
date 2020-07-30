@@ -8,7 +8,7 @@ from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.logging import set_log_level
 from netqasm.subroutine import Subroutine
 from netqasm.encoding import RegisterName
-from netqasm.parsing import parse_binary_subroutine
+from netqasm.parsing import deserialize
 from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
 
 from netqasm import instructions
@@ -38,7 +38,7 @@ def test_simple():
 
     # 4 messages: init, subroutine, stop app and stop backend
     assert len(alice.storage) == 4
-    subroutine = parse_binary_subroutine(alice.storage[1].msg)
+    subroutine = deserialize(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
@@ -122,7 +122,7 @@ def test_rotations():
 
     # 4 messages: init, subroutine, stop app and stop backend
     assert len(alice.storage) == 4
-    subroutine = parse_binary_subroutine(alice.storage[1].msg)
+    subroutine = deserialize(alice.storage[1].msg)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
@@ -164,7 +164,7 @@ def test_epr():
 
     # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
     assert len(alice.storage) == 5
-    subroutine = parse_binary_subroutine(alice.storage[2].msg)
+    subroutine = deserialize(alice.storage[2].msg)
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array
@@ -328,7 +328,7 @@ def test_two_epr():
 
     # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
     assert len(alice.storage) == 5
-    subroutine = parse_binary_subroutine(alice.storage[2].msg)
+    subroutine = deserialize(alice.storage[2].msg)
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array
@@ -502,7 +502,7 @@ def test_epr_m():
 
     # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
     assert len(alice.storage) == 5
-    subroutine = parse_binary_subroutine(alice.storage[2].msg)
+    subroutine = deserialize(alice.storage[2].msg)
     print(subroutine)
     expected = Subroutine(netqasm_version=(0, 0), app_id=0, commands=[
         # Arg array

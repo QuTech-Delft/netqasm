@@ -1,4 +1,4 @@
-from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
+from netqasm.parsing import parse_text_subroutine, deserialize
 
 from netqasm.instructions.vanilla import CphaseInstruction
 
@@ -41,7 +41,7 @@ ret_reg M0
     data = bytes(subroutine)
     print(data)
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
@@ -75,7 +75,7 @@ qfree Q0
     data = bytes(subroutine)
     print(f"binary subroutine: {data}")
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
@@ -90,13 +90,13 @@ def test_deserialize_subroutine():
     cphase_gate = b"\x1F\x00\x00\x00\x00\x00\x00"
     raw = bytes(metadata + cphase_gate)
     print(raw)
-    subroutine = parse_binary_subroutine(raw)
+    subroutine = deserialize(raw)
     print(subroutine)
     for instr in subroutine.commands:
         if isinstance(instr, CphaseInstruction):
             print(f"qreg0: {instr.qreg0}, qreg1: {instr.qreg1}")
 
-    subroutine2 = parse_binary_subroutine(raw)
+    subroutine2 = deserialize(raw)
     print(subroutine2)
 
 

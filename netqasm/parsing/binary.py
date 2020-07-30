@@ -53,7 +53,7 @@ class Deserializer:
         return instr
 
 
-def parse_binary_subroutine(data: bytes, flavour=None) -> Subroutine:
+def deserialize(data: bytes, flavour=None) -> Subroutine:
     """
     Convert a binary encoding into a Subroutine object.
     The Vanilla flavour is used by default.

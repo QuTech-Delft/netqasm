@@ -1,6 +1,6 @@
 import pytest
 from netqasm.logging import set_log_level
-from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
+from netqasm.parsing import parse_text_subroutine, deserialize
 # from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
@@ -108,7 +108,7 @@ def test_compiling_nv_using_sdk():
         q.rot_Z(n=1, d=2)
 
     assert len(alice.storage) == 4
-    subroutine = parse_binary_subroutine(alice.storage[1].msg, flavour=NVFlavour())
+    subroutine = deserialize(alice.storage[1].msg, flavour=NVFlavour())
 
     for instr in subroutine.commands:
         assert (
