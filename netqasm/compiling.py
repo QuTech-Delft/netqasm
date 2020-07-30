@@ -32,9 +32,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
     def get_unused_register(self) -> Register:
         """
-        Naive approach: try to use Q7 if possible, otherwise Q6, etc.
+        Naive approach: try to use Q0 if possible, otherwise Q1, etc.
         """
-        for i in range(7, -1, -1):
+        for i in range(16):
             reg = Register(RegisterName.Q, i)
             if reg not in self._used_registers:
                 return reg
