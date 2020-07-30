@@ -229,7 +229,7 @@ class ArrayCommand(Command):
 
 class RetArrCommand(Command):
     _fields_ = add_padding([
-        ('array_slice', ArraySlice),
+        ('address', Address),
     ])
 
 

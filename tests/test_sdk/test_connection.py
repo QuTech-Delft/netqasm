@@ -295,52 +295,14 @@ def test_epr():
         #     Register(RegisterName.Q, 0),
         # ]),
         # return cmds
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(10),
+        instructions.core.RetArrInstruction(
+            address=Address(0),
         ),
         instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(0),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
-        ),
-
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(1),
+            address=Address(1),
         ),
         instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(1),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
-        ),
-
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(20),
-        ),
-        instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(2),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
+            address=Address(2),
         ),
     ])
     for i, command in enumerate(subroutine.commands):
@@ -506,52 +468,14 @@ def test_two_epr():
             qreg=Register(RegisterName.Q, 0),
         ),
         # return cmds
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(20),
+        instructions.core.RetArrInstruction(
+            address=Address(0),
         ),
         instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(0),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
-        ),
-
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(2),
+            address=Address(1),
         ),
         instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(1),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
-        ),
-
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 0),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(20),
-        ),
-        instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(2),
-                start=Register(RegisterName.R, 0),
-                stop=Register(RegisterName.R, 1),
-            ),
+            address=Address(2),
         ),
     ])
     for i, command in enumerate(subroutine.commands):
@@ -718,39 +642,11 @@ def test_epr_m():
             ),
         ),
         # return cmds
-        # instructions.core.RetArrInstruction(
-        #     address=Address(0),
-        # ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 2),
-            value=Immediate(10),
+        instructions.core.RetArrInstruction(
+            address=Address(0),
         ),
         instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(0),
-                start=Register(RegisterName.R, 1),
-                stop=Register(RegisterName.R, 2),
-            ),
-        ),
-
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 1),
-            value=Immediate(0),
-        ),
-        instructions.core.SetInstruction(
-            reg=Register(RegisterName.R, 2),
-            value=Immediate(20),
-        ),
-        instructions.core.RetArrInstruction(
-            slice=ArraySlice(
-                address=Address(1),
-                start=Register(RegisterName.R, 1),
-                stop=Register(RegisterName.R, 2),
-            ),
+            address=Address(1),
         ),
     ])
     for i, command in enumerate(subroutine.commands):

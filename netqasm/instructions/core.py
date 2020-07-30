@@ -704,37 +704,37 @@ class GenericArrayInstruction(NetQASMInstruction):
 
 @dataclass
 class GenericRetArrInstruction(NetQASMInstruction):
-    slice: ArraySlice = None
+    address: Address = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.slice]
+        return [self.address]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.RetArrCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        slice = ArraySlice.from_raw(c_struct.array_slice)
-        return cls(slice=slice)
+        address = Address.from_raw(c_struct.address)
+        return cls(address=address)
 
     def serialize(self) -> bytes:
         c_struct = encoding.RetArrCommand(
             id=self.id,
-            array_slice=self.slice.cstruct
+            address=self.address.cstruct
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
-        slice = operands[0]
-        assert isinstance(slice, ArraySlice)
+        addr = operands[0]
+        assert isinstance(addr, Address)
         return cls(
-            slice=slice
+            address=addr
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.slice)}"
+        return f"{self.mnemonic} {str(self.address)}"
 
 
 @dataclass

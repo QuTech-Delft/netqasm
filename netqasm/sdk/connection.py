@@ -333,10 +333,12 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         )
 
     def _commit_subroutine(self, subroutine: PreSubroutine, block=True, callback=None):
-        self._logger.info(f"Flushing subroutine:\n{subroutine}")
+        self._logger.info(f"Flushing presubroutine:\n{subroutine}")
 
         # Parse, assembly and possibly compile the subroutine
         bin_subroutine = self._pre_process_subroutine(subroutine)
+
+        self._logger.info(f"Flushing subroutine:\n{bin_subroutine}")
 
         # Commit the subroutine to the quantum device
         self._logger.debug(f"Puts the next subroutine:\n{subroutine}")
@@ -395,7 +397,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return_arrays.append(Command(
                 instruction=Instruction.RET_ARR,
                 operands=[
-                    ArraySlice(array.address, start=0, stop=len(array)),
+                    Address(array.address),
                 ],
                 lineno=array.lineno,
             ))

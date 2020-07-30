@@ -699,7 +699,7 @@ class Executioner:
 
     @inc_program_counter
     def _instr_ret_arr(self, subroutine_id, instr: instructions.core.RetArrInstruction):
-        address = instr.slice
+        address = instr.address
         app_id = self._get_app_id(subroutine_id=subroutine_id)
 
         array = self._get_array(app_id=app_id, address=address)

@@ -46,7 +46,7 @@ add R1 R2 1
 beq 0 0 EXIT
 EXIT:
 ret_reg R0
-ret_arr @0[0:1]
+ret_arr @0
 """
 
     expected = Subroutine(
@@ -101,20 +101,8 @@ ret_arr @0[0:1]
             instructions.core.RetRegInstruction(
                 reg=Register(RegisterName.R, 0),
             ),
-            instructions.core.SetInstruction(
-                reg=Register(RegisterName.R, 3),
-                value=Immediate(0),
-            ),
-            instructions.core.SetInstruction(
-                reg=Register(RegisterName.R, 4),
-                value=Immediate(1),
-            ),
             instructions.core.RetArrInstruction(
-                slice=ArraySlice(
-                    Address(0),
-                    Register(RegisterName.R, 3),
-                    Register(RegisterName.R, 4),
-                ),
+                address=Address(0),
             ),
         ])
 
