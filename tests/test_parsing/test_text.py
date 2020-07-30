@@ -11,7 +11,6 @@ from netqasm.instructions.operand import (
     Immediate,
     Address,
     ArrayEntry,
-    ArraySlice,
 )
 
 
