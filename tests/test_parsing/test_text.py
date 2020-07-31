@@ -54,7 +54,7 @@ ret_arr @0
         commands=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.StoreInstruction(
                 reg=Register(RegisterName.R, 0),
@@ -62,35 +62,35 @@ ret_arr @0
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.InitInstruction(
                 reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
-                value=Immediate(4),
+                imm=Immediate(4),
             ),
             instructions.core.ArrayInstruction(
-                size=Register(RegisterName.R, 3),
+                reg=Register(RegisterName.R, 3),
                 address=Address(address=2),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
-                value=Immediate(1),
+                imm=Immediate(1),
             ),
             instructions.core.AddInstruction(
-                regout=Register(RegisterName.R, 1),
-                reg0=Register(RegisterName.R, 2),
-                reg1=Register(RegisterName.R, 3),
+                reg0=Register(RegisterName.R, 1),
+                reg1=Register(RegisterName.R, 2),
+                reg2=Register(RegisterName.R, 3),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 4),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 3),
@@ -157,22 +157,22 @@ EXIT:
         commands=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.C, 1),
-                value=Immediate(1),
+                imm=Immediate(1),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.C, 10),
-                value=Immediate(10),
+                imm=Immediate(10),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.ArrayInstruction(
-                size=Register(RegisterName.C, 10),
+                reg=Register(RegisterName.C, 10),
                 address=Address(0),
             ),
             instructions.core.BeqInstruction(
@@ -190,8 +190,8 @@ EXIT:
                 reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.MeasInstruction(
-                reg=Register(RegisterName.Q, 0),
-                creg=Register(RegisterName.M, 0),
+                reg0=Register(RegisterName.Q, 0),
+                reg1=Register(RegisterName.M, 0),
             ),
             instructions.core.StoreInstruction(
                 reg=Register(RegisterName.M, 0),
@@ -204,12 +204,12 @@ EXIT:
                 reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.AddInstruction(
-                regout=Register(RegisterName.R, 0),
                 reg0=Register(RegisterName.R, 0),
-                reg1=Register(RegisterName.C, 1),
+                reg1=Register(RegisterName.R, 0),
+                reg2=Register(RegisterName.C, 1),
             ),
             instructions.core.JmpInstruction(
-                line=Immediate(5),
+                imm=Immediate(5),
             ),
         ],
     )
@@ -247,7 +247,7 @@ qfree Q0
         commands=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
-                value=Immediate(0),
+                imm=Immediate(0),
             ),
             instructions.core.QAllocInstruction(
                 reg=Register(RegisterName.Q, 0),
@@ -258,18 +258,18 @@ qfree Q0
             # Rotations
             instructions.vanilla.RotXInstruction(
                 reg=Register(RegisterName.Q, 0),
-                angle_num=Immediate(1),
-                angle_denom=Immediate(1),
+                imm0=Immediate(1),
+                imm1=Immediate(1),
             ),
             instructions.vanilla.RotXInstruction(
                 reg=Register(RegisterName.Q, 0),
-                angle_num=Immediate(1),
-                angle_denom=Immediate(4),
+                imm0=Immediate(1),
+                imm1=Immediate(4),
             ),
             instructions.vanilla.RotYInstruction(
                 reg=Register(RegisterName.Q, 0),
-                angle_num=Immediate(7),
-                angle_denom=Immediate(22),
+                imm0=Immediate(7),
+                imm1=Immediate(22),
             ),
             instructions.core.QFreeInstruction(
                 reg=Register(RegisterName.Q, 0),

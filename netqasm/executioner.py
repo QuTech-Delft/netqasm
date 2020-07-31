@@ -313,9 +313,9 @@ class Executioner:
 
     @inc_program_counter
     def _instr_set(self, subroutine_id, instr: instructions.core.SetInstruction):
-        self._logger.debug(f"Set register {instr.reg} to {instr.value}")
+        self._logger.debug(f"Set register {instr.reg} to {instr.imm}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        self._set_register(app_id, instr.reg, instr.value.value)
+        self._set_register(app_id, instr.reg, instr.imm.value)
 
     def _set_register(self, app_id, register, value):
         self._registers[app_id][register.name][register.index] = value
@@ -421,8 +421,8 @@ class Executioner:
             mod = None
         if mod is not None and mod < 1:
             raise RuntimeError(f"Modulus needs to be greater or equal to 1, not {mod}")
-        a = self._get_register(app_id=app_id, register=instr.reg0)
-        b = self._get_register(app_id=app_id, register=instr.reg1)
+        a = self._get_register(app_id=app_id, register=instr.regin0)
+        b = self._get_register(app_id=app_id, register=instr.regin1)
         value = self._compute_binary_classical_instr(instr, a, b, mod=mod)
         mod_str = "" if mod is None else f"(mod {mod})"
         self._logger.debug(f"Performing {instr} of a={a} and b={b} {mod_str} "
@@ -491,7 +491,7 @@ class Executioner:
     @inc_program_counter
     def _instr_meas(self, subroutine_id, instr: instructions.core.MeasInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=instr.reg)
+        q_address = self._get_register(app_id=app_id, register=instr.qreg)
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
                            f"placing the outcome in register {instr.creg}")
         outcome = yield from self._do_meas(subroutine_id=subroutine_id, q_address=q_address)

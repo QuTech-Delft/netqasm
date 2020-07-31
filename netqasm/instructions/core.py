@@ -16,7 +16,6 @@ from netqasm.instructions.operand import (
 
 
 # Abstract instruction types. Should not be instantiated directly.
-# Some of these are named 'Generic_XXX' to distinguish them from the explicit instruction classes below.
 
 @dataclass
 class NetQASMInstruction:
@@ -68,7 +67,7 @@ class NetQASMInstruction:
 
 
 @dataclass
-class SingleQubitInstruction(NetQASMInstruction):
+class RegInstruction(NetQASMInstruction):
     reg: Register = None
 
     @property
@@ -101,7 +100,7 @@ class SingleQubitInstruction(NetQASMInstruction):
 
 
 @dataclass
-class TwoQubitInstruction(NetQASMInstruction):
+class RegRegInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
 
@@ -138,214 +137,176 @@ class TwoQubitInstruction(NetQASMInstruction):
 
 
 @dataclass
-class GenericMeasInstruction(NetQASMInstruction):
+class RegImmImmInstruction(NetQASMInstruction):
     reg: Register = None
-    creg: Register = None
+    imm0: Immediate = None
+    imm1: Immediate = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.reg, self.creg]
-
-    @classmethod
-    def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.MeasCommand.from_buffer_copy(raw)
-        assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.qubit)
-        creg = Register.from_raw(c_struct.outcome)
-        return cls(reg=reg, creg=creg)
-
-    def serialize(self) -> bytes:
-        c_struct = encoding.MeasCommand(
-            id=self.id,
-            qubit=self.reg.cstruct,
-            outcome=self.creg.cstruct
-        )
-        return bytes(c_struct)
-
-    @classmethod
-    def from_operands(cls, operands: List[Operand]):
-        assert len(operands) == 2
-        reg, creg = operands
-        assert isinstance(reg, Register)
-        assert isinstance(creg, Register)
-        return cls(reg=reg, creg=creg)
-
-    def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg)} {str(self.creg)}"
-
-
-@dataclass
-class RotationInstruction(NetQASMInstruction):
-    reg: Register = None
-    angle_num: Immediate = None
-    angle_denom: Immediate = None
-
-    @property
-    def operands(self) -> List[Operand]:
-        return [self.reg, self.angle_num, self.angle_denom]
+        return [self.reg, self.imm0, self.imm1]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.RotationCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
         reg = Register.from_raw(c_struct.qubit)
-        angle_num = Immediate(value=c_struct.angle_numerator)
-        angle_denom = Immediate(value=c_struct.angle_denominator)
-        return cls(reg=reg, angle_num=angle_num, angle_denom=angle_denom)
+        imm0 = Immediate(value=c_struct.angle_numerator)
+        imm1 = Immediate(value=c_struct.angle_denominator)
+        return cls(reg=reg, imm0=imm0, imm1=imm1)
 
     def serialize(self) -> bytes:
         c_struct = encoding.RotationCommand(
             id=self.id,
             qubit=self.reg.cstruct,
-            angle_numerator=self.angle_num.value,
-            angle_denominator=self.angle_denom.value
+            angle_numerator=self.imm0.value,
+            angle_denominator=self.imm1.value
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
-        reg, num, denom = operands
+        reg, imm0, imm1 = operands
         assert isinstance(reg, Register)
-        assert isinstance(num, int)
-        assert isinstance(denom, int)
+        assert isinstance(imm0, int)
+        assert isinstance(imm1, int)
         return cls(
             reg=reg,
-            angle_num=Immediate(value=num),
-            angle_denom=Immediate(value=denom)
+            imm0=Immediate(value=imm0),
+            imm1=Immediate(value=imm1)
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg)} {str(self.angle_num)} {str(self.angle_denom)}"
+        return f"{self.mnemonic} {str(self.reg)} {str(self.imm0)} {str(self.imm1)}"
 
 
 @dataclass
-class ClassicalOpInstruction(NetQASMInstruction):
-    regout: Register = None
+class RegRegRegInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
+    reg2: Register = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.regout, self.reg0, self.reg1]
+        return [self.reg0, self.reg1, self.reg2]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.ClassicalOpCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        regout = Register.from_raw(c_struct.out)
-        reg0 = Register.from_raw(c_struct.a)
-        reg1 = Register.from_raw(c_struct.b)
-        return cls(regout=regout, reg0=reg0, reg1=reg1)
+        reg0 = Register.from_raw(c_struct.out)
+        reg1 = Register.from_raw(c_struct.a)
+        reg2 = Register.from_raw(c_struct.b)
+        return cls(reg0=reg0, reg1=reg1, reg2=reg2)
 
     def serialize(self) -> bytes:
         c_struct = encoding.ClassicalOpCommand(
             id=self.id,
-            out=self.regout.cstruct,
-            a=self.reg0.cstruct,
-            b=self.reg1.cstruct
+            out=self.reg0.cstruct,
+            a=self.reg1.cstruct,
+            b=self.reg2.cstruct
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
-        regout, reg0, reg1 = operands
-        assert isinstance(regout, Register)
+        reg0, reg1, reg2 = operands
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
+        assert isinstance(reg2, Register)
         return cls(
-            regout=regout,
             reg0=reg0,
-            reg1=reg1
+            reg1=reg1,
+            reg2=reg2
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.regout)} {str(self.reg0)} {str(self.reg1)}"
+        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.reg2)}"
 
 
 @dataclass
-class ClassicalOpModInstruction(NetQASMInstruction):
-    regout: Register = None
+class RegRegRegRegInstruction(NetQASMInstruction):
     reg0: Register = None
     reg1: Register = None
-    regmod: Register = None
+    reg2: Register = None
+    reg3: Register = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.regout, self.reg0, self.reg1, self.regmod]
+        return [self.reg0, self.reg1, self.reg2, self.reg3]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.ClassicalOpModCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        regout = Register.from_raw(c_struct.out)
-        reg0 = Register.from_raw(c_struct.a)
-        reg1 = Register.from_raw(c_struct.b)
-        regmod = Register.from_raw(c_struct.mod)
-        return cls(regout=regout, reg0=reg0, reg1=reg1, regmod=regmod)
+        reg0 = Register.from_raw(c_struct.out)
+        reg1 = Register.from_raw(c_struct.a)
+        reg2 = Register.from_raw(c_struct.b)
+        reg3 = Register.from_raw(c_struct.mod)
+        return cls(reg0=reg0, reg1=reg1, reg2=reg2, reg3=reg3)
 
     def serialize(self) -> bytes:
         c_struct = encoding.ClassicalOpModCommand(
             id=self.id,
-            out=self.regout.cstruct,
-            a=self.reg0.cstruct,
-            b=self.reg1.cstruct,
-            mod=self.regmod.cstruct
+            out=self.reg0.cstruct,
+            a=self.reg1.cstruct,
+            b=self.reg2.cstruct,
+            mod=self.reg3.cstruct
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 4
-        regout, reg0, reg1, regmod = operands
-        assert isinstance(regout, Register)
+        reg0, reg1, reg2, reg3 = operands
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
-        assert isinstance(regmod, Register)
+        assert isinstance(reg2, Register)
+        assert isinstance(reg3, Register)
         return cls(
-            regout=regout,
             reg0=reg0,
             reg1=reg1,
-            regmod=regmod
+            reg2=reg2,
+            reg3=reg3,
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.regout)} {str(self.reg0)} {str(self.reg1)} {str(self.regmod)}"
+        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.reg2)} {str(self.reg3)}"
 
 
 @dataclass
-class GenericJumpInstruction(NetQASMInstruction):
-    line: Immediate = None
+class ImmInstruction(NetQASMInstruction):
+    imm: Immediate = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.line]
+        return [self.imm]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.JumpCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        line = Immediate(value=c_struct.line)
-        return cls(line=line)
+        imm = Immediate(value=c_struct.line)
+        return cls(imm=imm)
 
     def serialize(self) -> bytes:
         c_struct = encoding.JumpCommand(
             id=self.id,
-            line=self.line.value
+            line=self.imm.value
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 1
-        line = operands[0]
-        assert isinstance(line, int)
-        if isinstance(line, int):
-            return cls(line=Immediate(value=line))
+        imm = operands[0]
+        assert isinstance(imm, int)
+        return cls(imm=Immediate(value=imm))
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.line)}"
+        return f"{self.mnemonic} {str(self.imm)}"
 
 
 @dataclass
@@ -433,43 +394,43 @@ class BranchBinaryInstruction(NetQASMInstruction):
 
 
 @dataclass
-class GenericSetInstruction(NetQASMInstruction):
+class RegImmInstruction(NetQASMInstruction):
     reg: Register = None
-    value: Immediate = None
+    imm: Immediate = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.reg, self.value]
+        return [self.reg, self.imm]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.SetCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
         reg = Register.from_raw(c_struct.register)
-        value = Immediate(value=c_struct.value)
-        return cls(reg=reg, value=value)
+        imm = Immediate(value=c_struct.value)
+        return cls(reg=reg, imm=imm)
 
     def serialize(self) -> bytes:
         c_struct = encoding.SetCommand(
             id=self.id,
             register=self.reg.cstruct,
-            value=self.value.value
+            value=self.imm.value
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 2
-        reg, value = operands
+        reg, imm = operands
         assert isinstance(reg, Register)
-        assert isinstance(value, int)
+        assert isinstance(imm, int)
         return cls(
             reg=reg,
-            value=Immediate(value=value)
+            imm=Immediate(value=imm)
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg)} {str(self.value)}"
+        return f"{self.mnemonic} {str(self.reg)} {str(self.imm)}"
 
 
 @dataclass
@@ -513,7 +474,7 @@ class LoadStoreInstruction(NetQASMInstruction):
 
 
 @dataclass
-class GenericLeaInstruction(NetQASMInstruction):
+class RegAddrInstruction(NetQASMInstruction):
     reg: Register = None
     address: Address = None
 
@@ -553,7 +514,7 @@ class GenericLeaInstruction(NetQASMInstruction):
 
 
 @dataclass
-class SingleArrayEntryInstruction(NetQASMInstruction):
+class EntryAddrInstruction(NetQASMInstruction):
     entry: ArrayEntry = None
     address: Address = None
 
@@ -589,7 +550,7 @@ class SingleArrayEntryInstruction(NetQASMInstruction):
 
 
 @dataclass
-class SingleArraySliceInstruction(NetQASMInstruction):
+class ArraySliceInstruction(NetQASMInstruction):
     slice: ArraySlice = None
 
     @property
@@ -623,83 +584,83 @@ class SingleArraySliceInstruction(NetQASMInstruction):
         return f"{self.mnemonic} {str(self.slice)}"
 
 
+# @dataclass
+# class GenericSingleRegisterInstruction(NetQASMInstruction):
+#     reg: Register = None
+
+#     @property
+#     def operands(self) -> List[Operand]:
+#         return [self.reg]
+
+#     @classmethod
+#     def deserialize_from(cls, raw: bytes):
+#         c_struct = encoding.SingleRegisterCommand.from_buffer_copy(raw)
+#         assert c_struct.id == cls.id
+#         reg = Register.from_raw(c_struct.register)
+#         return cls(reg=reg)
+
+#     def serialize(self) -> bytes:
+#         c_struct = encoding.SingleRegisterCommand(
+#             id=self.id,
+#             register=self.reg.cstruct
+#         )
+#         return bytes(c_struct)
+
+#     @classmethod
+#     def from_operands(cls, operands: List[Operand]):
+#         assert len(operands) == 1
+#         reg = operands[0]
+#         assert isinstance(reg, Register)
+#         return cls(
+#             reg=reg
+#         )
+
+#     def _pretty_print(self):
+#         return f"{self.mnemonic} {str(self.reg)}"
+
+
+# @dataclass
+# class GenericArrayInstruction(NetQASMInstruction):
+#     size: Register = None
+#     address: Address = None
+
+#     @property
+#     def operands(self) -> List[Operand]:
+#         return [self.size, self.address]
+
+#     @classmethod
+#     def deserialize_from(cls, raw: bytes):
+#         c_struct = encoding.ArrayCommand.from_buffer_copy(raw)
+#         assert c_struct.id == cls.id
+#         size = Register.from_raw(c_struct.size)
+#         address = Address.from_raw(c_struct.address)
+#         return cls(size=size, address=address)
+
+#     def serialize(self) -> bytes:
+#         c_struct = encoding.ArrayCommand(
+#             id=self.id,
+#             size=self.size.cstruct,
+#             address=self.address.cstruct
+#         )
+#         return bytes(c_struct)
+
+#     @classmethod
+#     def from_operands(cls, operands: List[Operand]):
+#         assert len(operands) == 2
+#         size, addr = operands
+#         assert isinstance(size, Register)
+#         assert isinstance(addr, Address)
+#         return cls(
+#             size=size,
+#             address=addr
+#         )
+
+#     def _pretty_print(self):
+#         return f"{self.mnemonic} {str(self.size)} {str(self.address)}"
+
+
 @dataclass
-class GenericSingleRegisterInstruction(NetQASMInstruction):
-    reg: Register = None
-
-    @property
-    def operands(self) -> List[Operand]:
-        return [self.reg]
-
-    @classmethod
-    def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.SingleRegisterCommand.from_buffer_copy(raw)
-        assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.register)
-        return cls(reg=reg)
-
-    def serialize(self) -> bytes:
-        c_struct = encoding.SingleRegisterCommand(
-            id=self.id,
-            register=self.reg.cstruct
-        )
-        return bytes(c_struct)
-
-    @classmethod
-    def from_operands(cls, operands: List[Operand]):
-        assert len(operands) == 1
-        reg = operands[0]
-        assert isinstance(reg, Register)
-        return cls(
-            reg=reg
-        )
-
-    def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg)}"
-
-
-@dataclass
-class GenericArrayInstruction(NetQASMInstruction):
-    size: Register = None
-    address: Address = None
-
-    @property
-    def operands(self) -> List[Operand]:
-        return [self.size, self.address]
-
-    @classmethod
-    def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.ArrayCommand.from_buffer_copy(raw)
-        assert c_struct.id == cls.id
-        size = Register.from_raw(c_struct.size)
-        address = Address.from_raw(c_struct.address)
-        return cls(size=size, address=address)
-
-    def serialize(self) -> bytes:
-        c_struct = encoding.ArrayCommand(
-            id=self.id,
-            size=self.size.cstruct,
-            address=self.address.cstruct
-        )
-        return bytes(c_struct)
-
-    @classmethod
-    def from_operands(cls, operands: List[Operand]):
-        assert len(operands) == 2
-        size, addr = operands
-        assert isinstance(size, Register)
-        assert isinstance(addr, Address)
-        return cls(
-            size=size,
-            address=addr
-        )
-
-    def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.size)} {str(self.address)}"
-
-
-@dataclass
-class GenericRetArrInstruction(NetQASMInstruction):
+class AddressInstruction(NetQASMInstruction):
     address: Address = None
 
     @property
@@ -845,6 +806,124 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
 # Explicit core NetQASM instructions.
 
 @dataclass
+class SingleQubitInstruction(RegInstruction):
+    @property
+    def qreg(self):
+        return self.reg
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg = new_val
+
+
+@dataclass
+class TwoQubitInstruction(RegRegInstruction):
+    @property
+    def qreg0(self):
+        return self.reg0
+
+    @qreg0.setter
+    def qreg0(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def qreg1(self):
+        return self.reg1
+
+    @qreg1.setter
+    def qreg1(self, new_val: Register):
+        self.reg1 = new_val
+
+
+@dataclass
+class RotationInstruction(RegImmImmInstruction):
+    @property
+    def qreg(self):
+        return self.reg
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg = new_val
+
+    @property
+    def angle_num(self):
+        return self.imm0
+
+    @angle_num.setter
+    def angle_num(self, new_val: Register):
+        self.imm0 = new_val
+
+    @property
+    def angle_denom(self):
+        return self.imm1
+
+    @angle_denom.setter
+    def angle_denom(self, new_val: Register):
+        self.imm1 = new_val
+
+
+@dataclass
+class ClassicalOpInstruction(RegRegRegInstruction):
+    @property
+    def regout(self):
+        return self.reg0
+
+    @regout.setter
+    def regout(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def regin0(self):
+        return self.reg1
+
+    @regin0.setter
+    def regin0(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def regin1(self):
+        return self.reg2
+
+    @regin1.setter
+    def regin1(self, new_val: Register):
+        self.reg2 = new_val
+
+@dataclass
+class ClassicalOpModInstruction(RegRegRegRegInstruction):
+    @property
+    def regout(self):
+        return self.reg0
+
+    @regout.setter
+    def regout(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def regin0(self):
+        return self.reg1
+
+    @regin0.setter
+    def regin0(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def regin1(self):
+        return self.reg2
+
+    @regin1.setter
+    def regin1(self, new_val: Register):
+        self.reg2 = new_val
+
+    @property
+    def regmod(self):
+        return self.reg3
+
+    @regmod.setter
+    def regmod(self, new_val: Register):
+        self.reg3 = new_val
+
+
+@dataclass
 class QAllocInstruction(SingleQubitInstruction):
     id: int = 1
     mnemonic: str = "qalloc"
@@ -857,13 +936,21 @@ class InitInstruction(SingleQubitInstruction):
 
 
 @dataclass
-class ArrayInstruction(GenericArrayInstruction):
+class ArrayInstruction(RegAddrInstruction):
     id: int = 3
     mnemonic: str = "array"
 
+    @property
+    def size(self):
+        return self.reg
+    
+    @size.setter
+    def size(self, new_val):
+        self.reg = new_val
+
 
 @dataclass
-class SetInstruction(GenericSetInstruction):
+class SetInstruction(RegImmInstruction):
     id: int = 4
     mnemonic: str = "set"
 
@@ -881,21 +968,29 @@ class LoadInstruction(LoadStoreInstruction):
 
 
 @dataclass
-class UndefInstruction(SingleArrayEntryInstruction):
+class UndefInstruction(EntryAddrInstruction):
     id: int = 7
     mnemonic: str = "undef"
 
 
 @dataclass
-class LeaInstruction(GenericLeaInstruction):
+class LeaInstruction(RegAddrInstruction):
     id: int = 8
     mnemonic: str = "lea"
 
 
 @dataclass
-class JmpInstruction(GenericJumpInstruction):
+class JmpInstruction(ImmInstruction):
     id: int = 9
     mnemonic: str = "jmp"
+
+    @property
+    def line(self):
+        return self.imm
+
+    @line.setter
+    def line(self, new_val):
+        self.imm = new_val
 
 
 @dataclass
@@ -977,9 +1072,25 @@ class SubmInstruction(ClassicalOpModInstruction):
 
 
 @dataclass
-class MeasInstruction(GenericMeasInstruction):
+class MeasInstruction(RegRegInstruction):
     id: int = 32
     mnemonic: str = "meas"
+
+    @property
+    def qreg(self):
+        return self.reg0
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def creg(self):
+        return self.reg1
+
+    @creg.setter
+    def creg(self, new_val: Register):
+        self.reg1 = new_val
 
 
 @dataclass
@@ -995,19 +1106,19 @@ class RecvEPRInstruction(GenericRecvEPRInstruction):
 
 
 @dataclass
-class WaitAllInstruction(SingleArraySliceInstruction):
+class WaitAllInstruction(ArraySliceInstruction):
     id: int = 35
     mnemonic: str = "wait_all"
 
 
 @dataclass
-class WaitAnyInstruction(SingleArraySliceInstruction):
+class WaitAnyInstruction(ArraySliceInstruction):
     id: int = 36
     mnemonic: str = "wait_any"
 
 
 @dataclass
-class WaitSingleInstruction(SingleArrayEntryInstruction):
+class WaitSingleInstruction(EntryAddrInstruction):
     id: int = 37
     mnemonic: str = "wait_single"
 
@@ -1019,12 +1130,12 @@ class QFreeInstruction(SingleQubitInstruction):
 
 
 @dataclass
-class RetRegInstruction(GenericSingleRegisterInstruction):
+class RetRegInstruction(RegInstruction):
     id: int = 39
     mnemonic: str = "ret_reg"
 
 
 @dataclass
-class RetArrInstruction(GenericRetArrInstruction):
+class RetArrInstruction(AddressInstruction):
     id: int = 40
     mnemonic: str = "ret_arr"

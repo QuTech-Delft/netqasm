@@ -64,10 +64,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=lineno, reg=carbon, angle_num=Immediate(3), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=lineno, reg=carbon, angle_num=Immediate(1), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
         ]
         gates += electron_hadamard
@@ -87,7 +87,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         for instr in self._subroutine.commands:
             if isinstance(instr, core.SetInstruction):
                 # update register value
-                self._register_values[instr.reg] = instr.value
+                self._register_values[instr.reg] = instr.imm
 
             for op in instr.operands:
                 # update used registers
@@ -147,10 +147,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, angle_num=Immediate(3), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, angle_num=Immediate(1), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
         ]
 
@@ -160,7 +160,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[core.NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
-        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, value=Immediate(0))
+        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
         instr.reg0 = electron
         return (
             [set_electron]
@@ -198,10 +198,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, angle_num=Immediate(3), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, angle_num=Immediate(1), angle_denom=Immediate(1)),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
             nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
         ]
         gates += electron_hadamard
@@ -214,7 +214,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[core.NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
-        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, value=Immediate(0))
+        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
         instr.reg0 = electron
         return (
             [set_electron]
@@ -245,72 +245,72 @@ class NVSubroutineCompiler(SubroutineCompiler):
         if isinstance(instr, vanilla.GateXInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
             ]
         elif isinstance(instr, vanilla.GateYInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
             ]
         elif isinstance(instr, vanilla.GateZInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(1))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
             ]
         elif isinstance(instr, vanilla.GateHInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
             ]
         elif isinstance(instr, vanilla.GateKInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1)),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
             ]
         elif isinstance(instr, vanilla.GateSInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(1))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
             ]
         elif isinstance(instr, vanilla.GateTInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(7), angle_denom=Immediate(2)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(7), imm1=Immediate(2)),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(1))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
             ]
         elif isinstance(instr, vanilla.RotZInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(3), angle_denom=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=instr.angle_num, angle_denom=instr.angle_denom),
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(1))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
             ]
         elif isinstance(instr, vanilla.RotXInstruction):
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=instr.angle_num, angle_denom=instr.angle_denom)
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
             ]
         elif isinstance(instr, vanilla.RotYInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=instr.angle_num, angle_denom=instr.angle_denom)
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
             ]
         else:
             raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
@@ -322,17 +322,17 @@ class NVSubroutineCompiler(SubroutineCompiler):
         if isinstance(instr, vanilla.RotZInstruction):
             return [
                 nv.RotZInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=instr.angle_num, angle_denom=instr.angle_denom)
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
             ]
         elif isinstance(instr, vanilla.GateZInstruction):
             return [
                 nv.RotZInstruction(
-                    lineno=instr.lineno, reg=instr.reg, angle_num=Immediate(1), angle_denom=Immediate(0))
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
             ]
         else:
             electron = self.get_unused_register()
             carbon = instr.reg
-            set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, value=Immediate(0))
+            set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
             instr.reg = electron
             return (
                 [set_electron]
