@@ -3,6 +3,7 @@ from typing import List, Set, Dict
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
+from netqasm.instructions.base import NetQASMInstruction
 from netqasm.instructions.operand import Register, RegisterName, Immediate
 from netqasm.log_util import HostLine
 
@@ -45,7 +46,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         lineno: HostLine,
         electron: Register,
         carbon: Register,
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         """
         Swap the states of the electron and a carbon
         """
@@ -108,7 +109,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _handle_two_qubit_gate(
         self,
         instr: core.TwoQubitInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         qubit_id0 = self.get_reg_value(instr.reg0).value
         qubit_id1 = self.get_reg_value(instr.reg1).value
         assert qubit_id0 != qubit_id1
@@ -139,7 +140,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cphase_electron_carbon(
         self,
         instr: vanilla.CphaseInstruction,
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
 
@@ -157,7 +158,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cphase_carbon_carbon(
         self,
         instr: vanilla.CphaseInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -172,7 +173,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cnot_electron_carbon(
         self,
         instr: vanilla.CnotInstruction,
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
 
@@ -184,7 +185,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cnot_carbon_electron(
         self,
         instr: vanilla.CnotInstruction,
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
 
@@ -211,7 +212,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cnot_carbon_carbon(
         self,
         instr: vanilla.CnotInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -226,7 +227,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _handle_single_qubit_gate(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         if (isinstance(instr, core.QAllocInstruction)
                 or isinstance(instr, core.QFreeInstruction)
                 or isinstance(instr, core.InitInstruction)):
@@ -241,7 +242,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_single_gate_electron(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         if isinstance(instr, vanilla.GateXInstruction):
             return [
                 nv.RotXInstruction(
@@ -318,7 +319,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_single_gate_carbon(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[core.NetQASMInstruction]:
+    ) -> List[NetQASMInstruction]:
         if isinstance(instr, vanilla.RotZInstruction):
             return [
                 nv.RotZInstruction(

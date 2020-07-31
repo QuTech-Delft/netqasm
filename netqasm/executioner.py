@@ -21,7 +21,7 @@ from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
 
-from netqasm.instructions.core import NetQASMInstruction
+from netqasm.instructions.base import NetQASMInstruction
 from netqasm import instructions
 
 
@@ -292,8 +292,8 @@ class Executioner:
             elif isinstance(command, instructions.core.RotationInstruction):
                 output = self._handle_single_qubit_rotation(subroutine_id, command)
             elif (isinstance(command, instructions.core.JmpInstruction)
-                    or isinstance(command, instructions.core.BranchUnaryInstruction)
-                    or isinstance(command, instructions.core.BranchBinaryInstruction)):
+                    or isinstance(command, instructions.base.BranchUnaryInstruction)
+                    or isinstance(command, instructions.base.BranchBinaryInstruction)):
                 self._handle_branch_instr(subroutine_id, command)
             elif (isinstance(command, instructions.core.ClassicalOpInstruction)
                     or isinstance(command, instructions.core.ClassicalOpModInstruction)):
@@ -378,24 +378,24 @@ class Executioner:
     def _handle_branch_instr(
         self,
         subroutine_id,
-        instr: Union[instructions.core.BranchBinaryInstruction, instructions.core.JmpInstruction]
+        instr: Union[instructions.base.BranchBinaryInstruction, instructions.core.JmpInstruction]
     ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
         registers = []
-        if isinstance(instr, instructions.core.BranchUnaryInstruction):
+        if isinstance(instr, instructions.base.BranchUnaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg)
             registers = [instr.reg]
-        elif isinstance(instr, instructions.core.BranchBinaryInstruction):
+        elif isinstance(instr, instructions.base.BranchBinaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg0)
             b = self._get_register(app_id=app_id, register=instr.reg1)
             registers = [instr.reg0, instr.reg1]
 
         if isinstance(instr, instructions.core.JmpInstruction):
             condition = True
-        elif isinstance(instr, instructions.core.BranchUnaryInstruction):
+        elif isinstance(instr, instructions.base.BranchUnaryInstruction):
             condition = instr.check_condition(a)
-        elif isinstance(instr, instructions.core.BranchBinaryInstruction):
+        elif isinstance(instr, instructions.base.BranchBinaryInstruction):
             condition = instr.check_condition(a, b)
 
         if condition:

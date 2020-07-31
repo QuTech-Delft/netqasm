@@ -3,15 +3,16 @@ from typing import Dict, List
 from abc import ABC, abstractmethod
 
 from netqasm.instructions import vanilla, core, nv
+from netqasm.instructions.base import NetQASMInstruction
 
 
 @dataclass
 class InstrMap:
-    id_map: Dict[int, core.NetQASMInstruction] = None
-    name_map: Dict[str, core.NetQASMInstruction] = None
+    id_map: Dict[int, NetQASMInstruction] = None
+    name_map: Dict[str, NetQASMInstruction] = None
 
 
-CORE_INSTRUCTIONS: List[core.NetQASMInstruction] = [
+CORE_INSTRUCTIONS: List[NetQASMInstruction] = [
     core.QAllocInstruction,
     core.InitInstruction,
     core.ArrayInstruction,
@@ -54,7 +55,7 @@ class Flavour(ABC):
     Examples of flavours are the Vanilla flavour (with instructions defined in vanilla.py)
     and the Nitrogen-Vacancy (NV) flavour (instructions in nv.py).
     """
-    def __init__(self, flavour_specific: List[core.NetQASMInstruction]):
+    def __init__(self, flavour_specific: List[NetQASMInstruction]):
         self.id_map = {instr.id: instr for instr in CORE_INSTRUCTIONS}
         self.id_map.update({instr.id: instr for instr in flavour_specific})
 

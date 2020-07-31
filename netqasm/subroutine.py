@@ -6,7 +6,7 @@ from netqasm.string_util import rspaces
 from netqasm.instructions.instr_enum import Instruction, instruction_to_string
 from netqasm.symbols import Symbols
 
-from netqasm.instructions.core import NetQASMInstruction
+from netqasm.instructions.base import NetQASMInstruction
 from netqasm.instructions.operand import (
     Register,
     Address,
