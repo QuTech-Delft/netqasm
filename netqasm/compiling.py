@@ -86,9 +86,22 @@ class NVSubroutineCompiler(SubroutineCompiler):
         new_commands = []
 
         for instr in self._subroutine.commands:
-            if isinstance(instr, core.SetInstruction):
-                # update register value
-                self._register_values[instr.reg] = instr.imm
+            # check which registers are being written to
+            affected_regs = instr.writes_to()
+
+            for reg in affected_regs:
+                if reg.name != RegisterName.Q:
+                    continue  # for now we are only interested in Q-register values
+
+                if isinstance(instr, core.SetInstruction):
+                    # OK, value is a known Immediate. Update register value:
+                    self._register_values[reg] = instr.imm
+                else:
+                    # don't allow writing to a Q-register by any other instruction type
+                    raise RuntimeError(
+                        f"Cannot compile: the instruction {instr} writes to"
+                        " a Q-register but the value cannot be determined"
+                        " at compile time.")
 
             for op in instr.operands:
                 # update used registers

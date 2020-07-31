@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import List
 
 from netqasm.instructions.operand import Register
 from netqasm.instructions import base
@@ -66,6 +66,9 @@ class RotationInstruction(base.RegImmImmInstruction):
 
 @dataclass
 class ClassicalOpInstruction(base.RegRegRegInstruction):
+    def writes_to(self) -> List[Register]:
+        return [self.regout]
+
     @property
     def regout(self):
         return self.reg0
@@ -93,6 +96,9 @@ class ClassicalOpInstruction(base.RegRegRegInstruction):
 
 @dataclass
 class ClassicalOpModInstruction(base.RegRegRegRegInstruction):
+    def writes_to(self) -> List[Register]:
+        return [self.regout]
+
     @property
     def regout(self):
         return self.reg0
@@ -157,6 +163,9 @@ class SetInstruction(base.RegImmInstruction):
     id: int = 4
     mnemonic: str = "set"
 
+    def writes_to(self) -> List[Register]:
+        return [self.reg]
+
 
 @dataclass
 class StoreInstruction(base.RegEntryInstruction):
@@ -169,6 +178,9 @@ class LoadInstruction(base.RegEntryInstruction):
     id: int = 6
     mnemonic: str = "load"
 
+    def writes_to(self) -> List[Register]:
+        return [self.reg]
+
 
 @dataclass
 class UndefInstruction(base.EntryAddrInstruction):
@@ -180,6 +192,9 @@ class UndefInstruction(base.EntryAddrInstruction):
 class LeaInstruction(base.RegAddrInstruction):
     id: int = 8
     mnemonic: str = "lea"
+
+    def writes_to(self) -> List[Register]:
+        return [self.reg]
 
 
 @dataclass
@@ -278,6 +293,9 @@ class SubmInstruction(ClassicalOpModInstruction):
 class MeasInstruction(base.RegRegInstruction):
     id: int = 32
     mnemonic: str = "meas"
+
+    def writes_to(self) -> List[Register]:
+        return [self.creg]
 
     @property
     def qreg(self):

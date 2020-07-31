@@ -46,6 +46,10 @@ class NetQASMInstruction(ABC):
     def from_operands(cls, operands: List[Operand]):
         pass
 
+    def writes_to(self) -> List[Register]:
+        """Returns a list of Registers that this instruction writes to"""
+        return []
+
     def __str__(self):
         return self._build_str(show_lineno=False)
 
