@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+from abc import ABC, abstractmethod
 
 from netqasm.string_util import rspaces
 from netqasm import encoding
@@ -18,7 +19,7 @@ from netqasm.instructions.operand import (
 
 
 @dataclass
-class NetQASMInstruction:
+class NetQASMInstruction(ABC):
     """
     Base NetQASM instruction class.
     """
@@ -27,17 +28,21 @@ class NetQASMInstruction:
     lineno: HostLine = None
 
     @property
+    @abstractmethod
     def operands(self) -> List[Operand]:
-        return []
+        pass
 
     @classmethod
+    @abstractmethod
     def deserialize_from(cls, raw: bytes):
         pass
 
+    @abstractmethod
     def serialize(self) -> bytes:
         pass
 
     @classmethod
+    @abstractmethod
     def from_operands(cls, operands: List[Operand]):
         pass
 
