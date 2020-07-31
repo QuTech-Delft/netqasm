@@ -65,7 +65,7 @@ ret_arr @0
                 value=Immediate(0),
             ),
             instructions.core.InitInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 3),
@@ -181,16 +181,16 @@ EXIT:
                 line=Immediate(14),
             ),
             instructions.core.QAllocInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.InitInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.vanilla.GateHInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.MeasInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
                 creg=Register(RegisterName.M, 0),
             ),
             instructions.core.StoreInstruction(
@@ -201,7 +201,7 @@ EXIT:
                 ),
             ),
             instructions.core.QFreeInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.AddInstruction(
                 regout=Register(RegisterName.R, 0),
@@ -250,29 +250,29 @@ qfree Q0
                 value=Immediate(0),
             ),
             instructions.core.QAllocInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             instructions.core.InitInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
             # Rotations
             instructions.vanilla.RotXInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(1),
             ),
             instructions.vanilla.RotXInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(1),
                 angle_denom=Immediate(4),
             ),
             instructions.vanilla.RotYInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
                 angle_num=Immediate(7),
                 angle_denom=Immediate(22),
             ),
             instructions.core.QFreeInstruction(
-                qreg=Register(RegisterName.Q, 0),
+                reg=Register(RegisterName.Q, 0),
             ),
         ],
     )

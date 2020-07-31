@@ -326,7 +326,7 @@ class Executioner:
     @inc_program_counter
     def _instr_qalloc(self, subroutine_id, instr: instructions.core.QAllocInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        qubit_address = self._get_register(app_id, instr.qreg)
+        qubit_address = self._get_register(app_id, instr.reg)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
         self._allocate_physical_qubit(subroutine_id, qubit_address)
 
@@ -442,7 +442,7 @@ class Executioner:
     @inc_program_counter
     def _handle_single_qubit_instr(self, subroutine_id, instr: instructions.core.SingleQubitInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=instr.qreg)
+        q_address = self._get_register(app_id=app_id, register=instr.reg)
         self._logger.debug(f"Performing {instr} on the qubit at address {q_address}")
         output = self._do_single_qubit_instr(instr, subroutine_id, q_address)
         if isinstance(output, GeneratorType):
@@ -455,7 +455,7 @@ class Executioner:
     @inc_program_counter
     def _handle_single_qubit_rotation(self, subroutine_id, instr: instructions.core.RotationInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=instr.qreg)
+        q_address = self._get_register(app_id=app_id, register=instr.reg)
         angle = self._get_rotation_angle_from_operands(
             app_id=app_id,
             n=instr.angle_num.value,
@@ -477,8 +477,8 @@ class Executioner:
     @inc_program_counter
     def _handle_two_qubit_instr(self, subroutine_id, instr: instructions.core.TwoQubitInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address1 = self._get_register(app_id=app_id, register=instr.qreg0)
-        q_address2 = self._get_register(app_id=app_id, register=instr.qreg1)
+        q_address1 = self._get_register(app_id=app_id, register=instr.reg0)
+        q_address2 = self._get_register(app_id=app_id, register=instr.reg1)
         self._logger.debug(f"Performing {instr} on the qubits at addresses {q_address1} and {q_address2}")
         output = self._do_two_qubit_instr(instr, subroutine_id, q_address1, q_address2)
         if isinstance(output, GeneratorType):
@@ -491,7 +491,7 @@ class Executioner:
     @inc_program_counter
     def _instr_meas(self, subroutine_id, instr: instructions.core.MeasInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=instr.qreg)
+        q_address = self._get_register(app_id=app_id, register=instr.reg)
         self._logger.debug(f"Measuring the qubit at address {q_address}, "
                            f"placing the outcome in register {instr.creg}")
         outcome = yield from self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
@@ -686,7 +686,7 @@ class Executioner:
     @inc_program_counter
     def _instr_qfree(self, subroutine_id, instr: instructions.core.QFreeInstruction):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
-        q_address = self._get_register(app_id=app_id, register=instr.qreg)
+        q_address = self._get_register(app_id=app_id, register=instr.reg)
         self._logger.debug(f"Freeing qubit at virtual address {q_address}")
         self._free_physical_qubit(subroutine_id, q_address)
 

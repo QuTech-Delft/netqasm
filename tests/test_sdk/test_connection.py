@@ -45,48 +45,48 @@ def test_simple():
             value=Immediate(0),
         ),
         instructions.core.QAllocInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.InitInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
         instructions.core.QAllocInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.InitInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
         instructions.vanilla.GateHInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
         instructions.vanilla.GateXInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
         instructions.vanilla.GateXInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
         instructions.vanilla.GateHInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         # NOTE qubits are now freed when application ends
         # without explicit qfree for each
@@ -129,17 +129,17 @@ def test_rotations():
             value=Immediate(0),
         ),
         instructions.core.QAllocInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.InitInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(0),
         ),
         instructions.vanilla.RotXInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
             angle_num=Immediate(1),
             angle_denom=Immediate(1),
         ),
@@ -282,7 +282,7 @@ def test_epr():
             value=Immediate(0),
         ),
         instructions.vanilla.GateHInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         # free qubit
         # NOTE qubits are now freed when application ends
@@ -458,14 +458,14 @@ def test_two_epr():
             value=Immediate(0),
         ),
         instructions.vanilla.GateHInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.Q, 0),
             value=Immediate(1),
         ),
         instructions.vanilla.GateHInstruction(
-            qreg=Register(RegisterName.Q, 0),
+            reg=Register(RegisterName.Q, 0),
         ),
         # return cmds
         instructions.core.RetArrInstruction(

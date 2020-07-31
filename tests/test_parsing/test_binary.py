@@ -94,7 +94,7 @@ def test_deserialize_subroutine():
     print(subroutine)
     for instr in subroutine.commands:
         if isinstance(instr, CphaseInstruction):
-            print(f"qreg0: {instr.qreg0}, qreg1: {instr.qreg1}")
+            print(f"reg0: {instr.reg0}, reg1: {instr.reg1}")
 
     subroutine2 = deserialize(raw)
     print(subroutine2)
