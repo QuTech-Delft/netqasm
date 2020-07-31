@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import List
+from abc import abstractmethod
+import numpy as np
 
 from netqasm.instructions.operand import Register
 from netqasm.instructions import base
@@ -16,6 +18,10 @@ class SingleQubitInstruction(base.RegInstruction):
     @qreg.setter
     def qreg(self, new_val: Register):
         self.reg = new_val
+
+    @abstractmethod
+    def to_matrix(self) -> np.array:
+        pass
 
 
 @dataclass
@@ -35,6 +41,10 @@ class TwoQubitInstruction(base.RegRegInstruction):
     @qreg1.setter
     def qreg1(self, new_val: Register):
         self.reg1 = new_val
+
+    # @abstractmethod
+    # def to_matrix(self):
+    #     pass
 
 
 @dataclass
@@ -62,6 +72,10 @@ class RotationInstruction(base.RegImmImmInstruction):
     @angle_denom.setter
     def angle_denom(self, new_val: Register):
         self.imm1 = new_val
+
+    @abstractmethod
+    def to_matrix(self):
+        pass
 
 
 @dataclass
@@ -133,13 +147,13 @@ class ClassicalOpModInstruction(base.RegRegRegRegInstruction):
 
 
 @dataclass
-class QAllocInstruction(SingleQubitInstruction):
+class QAllocInstruction(base.RegInstruction):
     id: int = 1
     mnemonic: str = "qalloc"
 
 
 @dataclass
-class InitInstruction(SingleQubitInstruction):
+class InitInstruction(base.RegInstruction):
     id: int = 2
     mnemonic: str = "init"
 
@@ -345,7 +359,7 @@ class WaitSingleInstruction(base.EntryAddrInstruction):
 
 
 @dataclass
-class QFreeInstruction(SingleQubitInstruction):
+class QFreeInstruction(base.RegInstruction):
     id: int = 38
     mnemonic: str = "qfree"
 

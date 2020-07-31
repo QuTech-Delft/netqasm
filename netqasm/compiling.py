@@ -241,11 +241,6 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: core.SingleQubitInstruction
     ) -> List[NetQASMInstruction]:
-        if (isinstance(instr, core.QAllocInstruction)
-                or isinstance(instr, core.QFreeInstruction)
-                or isinstance(instr, core.InitInstruction)):
-            return [instr]
-
         qubit_id = self.get_reg_value(instr.reg).value
         if qubit_id == 0:  # electron
             return self._map_single_gate_electron(instr)

@@ -285,7 +285,10 @@ class Executioner:
         if command.mnemonic in self._instruction_handlers:
             output = self._instruction_handlers[command.mnemonic](subroutine_id, command)
         else:
-            if isinstance(command, instructions.core.SingleQubitInstruction):
+            if (isinstance(command, instructions.core.SingleQubitInstruction)
+                    or isinstance(command, instructions.core.InitInstruction)
+                    or isinstance(command, instructions.core.QAllocInstruction)
+                    or isinstance(command, instructions.core.QFreeInstruction)):
                 output = self._handle_single_qubit_instr(subroutine_id, command)
             elif isinstance(command, instructions.core.TwoQubitInstruction):
                 output = self._handle_two_qubit_instr(subroutine_id, command)
@@ -299,7 +302,7 @@ class Executioner:
                     or isinstance(command, instructions.core.ClassicalOpModInstruction)):
                 output = self._handle_binary_classical_instr(subroutine_id, command)
             else:
-                raise RuntimeError(f"unknown instr type")
+                raise RuntimeError(f"unknown instr type: {type(command)}")
 
         if isinstance(output, GeneratorType):
             output = yield from output

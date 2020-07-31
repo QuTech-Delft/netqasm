@@ -1,7 +1,7 @@
 import pytest
 from netqasm.logging import set_log_level
 from netqasm.parsing import parse_text_subroutine, deserialize
-# from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
+from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.compiling import NVSubroutineCompiler
