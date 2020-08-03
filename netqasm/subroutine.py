@@ -1,12 +1,12 @@
-from typing import List, Union
-from dataclasses import dataclass
+from typing import List, Union, Dict
+from dataclasses import dataclass, field
 
 from netqasm import encoding
 from netqasm.string_util import rspaces
 from netqasm.instructions.instr_enum import Instruction, instruction_to_string
 from netqasm.symbols import Symbols
 
-from netqasm.instructions.base import NetQASMInstruction
+from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
 from netqasm.instructions.operand import (
     Register,
     Address,
@@ -131,7 +131,10 @@ class Subroutine:
         to_return = f"Subroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
         to_return += " LN | HLN | CMD\n"
         for i, command in enumerate(self.commands):
-            to_return += f"{rspaces(i)} {command.debug_str}\n"
+            if isinstance(command, DebugInstruction):
+                to_return += f"# {command.text}\n"
+            else:
+                to_return += f"{rspaces(i)} {command.debug_str}\n"
         return to_return
 
     def __len__(self):

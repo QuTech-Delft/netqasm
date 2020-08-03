@@ -42,9 +42,9 @@ class TwoQubitInstruction(base.RegRegInstruction):
     def qreg1(self, new_val: Register):
         self.reg1 = new_val
 
-    # @abstractmethod
-    # def to_matrix(self):
-    #     pass
+    @abstractmethod
+    def to_matrix(self):
+        pass
 
 
 @dataclass

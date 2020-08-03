@@ -23,6 +23,20 @@ from netqasm.instructions.flavour import VanillaFlavour, NVFlavour
 #     assert are_matrices_equal(abstract_matrix, nv_matrix)
 
 
+def test_mapping():
+    text_subroutine = """
+# NETQASM 0.0
+# APPID 0
+set Q0 1
+qalloc Q0
+init Q0
+x Q0
+"""
+    vanilla_subroutine = parse_text_subroutine(text_subroutine)
+    subroutine = NVSubroutineCompiler(vanilla_subroutine).compile()
+    print(subroutine)
+
+
 def test_compiling_nv():
     text_subroutine = """
 # NETQASM 0.0
@@ -117,4 +131,5 @@ def test_compiling_nv_using_sdk():
 
 
 if __name__ == '__main__':
-    test_compiling_nv_using_sdk()
+    # test_compiling_nv_using_sdk()
+    test_mapping()

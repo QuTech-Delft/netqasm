@@ -122,8 +122,22 @@ class CnotInstruction(core.TwoQubitInstruction):
     id: int = 30
     mnemonic: str = "cnot"
 
+    def to_matrix(self) -> np.array:
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, 1, 0]])
+
 
 @dataclass
 class CphaseInstruction(core.TwoQubitInstruction):
     id: int = 31
     mnemonic: str = "cphase"
+
+    def to_matrix(self) -> np.array:
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, -1]])

@@ -787,3 +787,26 @@ class GenericRecvEPRInstruction(NetQASMInstruction):
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
 {str(self.ent_info_array)}"
+
+
+@dataclass
+class DebugInstruction(NetQASMInstruction):
+    text: str = ""
+
+    @property
+    def operands(self) -> List[Operand]:
+        pass
+
+    @classmethod
+    def deserialize_from(cls, raw: bytes):
+        pass
+
+    def serialize(self) -> bytes:
+        pass
+
+    @classmethod
+    def from_operands(cls, operands: List[Operand]):
+        pass
+
+    def _pretty_print(self):
+        return f"# {self.text}"

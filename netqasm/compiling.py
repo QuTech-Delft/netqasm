@@ -1,10 +1,11 @@
 import abc
 from typing import List, Set, Dict
+from dataclasses import dataclass
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
-from netqasm.instructions.base import NetQASMInstruction
-from netqasm.instructions.operand import Register, RegisterName, Immediate
+from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
+from netqasm.instructions.operand import Register, RegisterName, Immediate, Operand
 from netqasm.log_util import HostLine
 
 
@@ -56,6 +57,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         gates = []
 
+        gates += [DebugInstruction(text="begin SWAP")]
+
         gates += [
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
@@ -76,6 +79,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
         ]
+
+        gates += [DebugInstruction(text="end SWAP")]
+
         return gates
 
     def compile(self):

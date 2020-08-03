@@ -89,8 +89,22 @@ class CnotInstruction(core.TwoQubitInstruction):
     id: int = 30
     mnemonic: str = "cnot"
 
+    def to_matrix(self) -> np.array:
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+            [0, 0, 1, 0]])
+
 
 @dataclass
 class CSqrtXInstruction(core.TwoQubitInstruction):
     id: int = 31
     mnemonic: str = "csqx"
+
+    def to_matrix(self) -> np.array:
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, -1j],
+            [0, 0, -1j, 1]]) / np.sqrt(2)
