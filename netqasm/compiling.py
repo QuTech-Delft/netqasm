@@ -1,11 +1,10 @@
 import abc
 from typing import List, Set, Dict
-from dataclasses import dataclass
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
 from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
-from netqasm.instructions.operand import Register, RegisterName, Immediate, Operand
+from netqasm.instructions.operand import Register, RegisterName, Immediate
 from netqasm.log_util import HostLine
 
 

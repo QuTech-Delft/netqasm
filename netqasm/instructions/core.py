@@ -197,7 +197,7 @@ class LoadInstruction(base.RegEntryInstruction):
 
 
 @dataclass
-class UndefInstruction(base.EntryAddrInstruction):
+class UndefInstruction(base.ArrayEntryInstruction):
     id: int = 7
     mnemonic: str = "undef"
 
@@ -353,7 +353,7 @@ class WaitAnyInstruction(base.ArraySliceInstruction):
 
 
 @dataclass
-class WaitSingleInstruction(base.EntryAddrInstruction):
+class WaitSingleInstruction(base.ArrayEntryInstruction):
     id: int = 37
     mnemonic: str = "wait_single"
 
@@ -371,6 +371,6 @@ class RetRegInstruction(base.RegInstruction):
 
 
 @dataclass
-class RetArrInstruction(base.AddressInstruction):
+class RetArrInstruction(base.AddrInstruction):
     id: int = 40
     mnemonic: str = "ret_arr"

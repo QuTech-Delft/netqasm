@@ -88,15 +88,15 @@ class RegInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.SingleQubitCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        register = Register.from_raw(c_struct.qubit)
-        return cls(id=cls.id, reg=register)
+        reg = Register.from_raw(c_struct.reg)
+        return cls(id=cls.id, reg=reg)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.SingleQubitCommand(
+        c_struct = encoding.RegCommand(
             id=self.id,
-            qubit=self.reg.cstruct
+            reg=self.reg.cstruct
         )
         return bytes(c_struct)
 
@@ -125,17 +125,17 @@ class RegRegInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.TwoQubitCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegRegCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg0 = Register.from_raw(c_struct.qubit1)
-        reg1 = Register.from_raw(c_struct.qubit2)
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
         return cls(reg0=reg0, reg1=reg1)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.TwoQubitCommand(
+        c_struct = encoding.RegRegCommand(
             id=self.id,
-            qubit1=self.reg0.cstruct,
-            qubit2=self.reg1.cstruct
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct
         )
         return bytes(c_struct)
 
@@ -166,19 +166,19 @@ class RegImmImmInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.RotationCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegImmImmCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.qubit)
-        imm0 = Immediate(value=c_struct.angle_numerator)
-        imm1 = Immediate(value=c_struct.angle_denominator)
+        reg = Register.from_raw(c_struct.reg)
+        imm0 = Immediate(value=c_struct.imm0)
+        imm1 = Immediate(value=c_struct.imm1)
         return cls(reg=reg, imm0=imm0, imm1=imm1)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.RotationCommand(
+        c_struct = encoding.RegImmImmCommand(
             id=self.id,
-            qubit=self.reg.cstruct,
-            angle_numerator=self.imm0.value,
-            angle_denominator=self.imm1.value
+            reg=self.reg.cstruct,
+            imm0=self.imm0.value,
+            imm1=self.imm1.value
         )
         return bytes(c_struct)
 
@@ -214,19 +214,19 @@ class RegRegRegInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.ClassicalOpCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegRegRegCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg0 = Register.from_raw(c_struct.out)
-        reg1 = Register.from_raw(c_struct.a)
-        reg2 = Register.from_raw(c_struct.b)
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
+        reg2 = Register.from_raw(c_struct.reg2)
         return cls(reg0=reg0, reg1=reg1, reg2=reg2)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.ClassicalOpCommand(
+        c_struct = encoding.RegRegRegCommand(
             id=self.id,
-            out=self.reg0.cstruct,
-            a=self.reg1.cstruct,
-            b=self.reg2.cstruct
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            reg2=self.reg2.cstruct
         )
         return bytes(c_struct)
 
@@ -263,21 +263,21 @@ class RegRegRegRegInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.ClassicalOpModCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegRegRegRegCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg0 = Register.from_raw(c_struct.out)
-        reg1 = Register.from_raw(c_struct.a)
-        reg2 = Register.from_raw(c_struct.b)
-        reg3 = Register.from_raw(c_struct.mod)
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
+        reg2 = Register.from_raw(c_struct.reg2)
+        reg3 = Register.from_raw(c_struct.reg3)
         return cls(reg0=reg0, reg1=reg1, reg2=reg2, reg3=reg3)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.ClassicalOpModCommand(
+        c_struct = encoding.RegRegRegRegCommand(
             id=self.id,
-            out=self.reg0.cstruct,
-            a=self.reg1.cstruct,
-            b=self.reg2.cstruct,
-            mod=self.reg3.cstruct
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            reg2=self.reg2.cstruct,
+            reg3=self.reg3.cstruct
         )
         return bytes(c_struct)
 
@@ -313,15 +313,15 @@ class ImmInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.JumpCommand.from_buffer_copy(raw)
+        c_struct = encoding.ImmCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        imm = Immediate(value=c_struct.line)
+        imm = Immediate(value=c_struct.imm)
         return cls(imm=imm)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.JumpCommand(
+        c_struct = encoding.ImmCommand(
             id=self.id,
-            line=self.imm.value
+            imm=self.imm.value
         )
         return bytes(c_struct)
 
@@ -444,17 +444,17 @@ class RegImmInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.SetCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegImmCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.register)
-        imm = Immediate(value=c_struct.value)
+        reg = Register.from_raw(c_struct.reg)
+        imm = Immediate(value=c_struct.imm)
         return cls(reg=reg, imm=imm)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.SetCommand(
+        c_struct = encoding.RegImmCommand(
             id=self.id,
-            register=self.reg.cstruct,
-            value=self.imm.value
+            reg=self.reg.cstruct,
+            imm=self.imm.value
         )
         return bytes(c_struct)
 
@@ -487,16 +487,16 @@ class RegEntryInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.LoadStoreCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegEntryCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.register)
+        reg = Register.from_raw(c_struct.reg)
         entry = ArrayEntry.from_raw(c_struct.entry)
         return cls(reg=reg, entry=entry)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.LoadStoreCommand(
+        c_struct = encoding.RegEntryCommand(
             id=self.id,
-            register=self.reg.cstruct,
+            reg=self.reg.cstruct,
             entry=self.entry.cstruct
         )
         return bytes(c_struct)
@@ -530,17 +530,17 @@ class RegAddrInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.LeaCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegAddrCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.register)
-        address = Address.from_raw(c_struct.address)
+        reg = Register.from_raw(c_struct.reg)
+        address = Address.from_raw(c_struct.addr)
         return cls(reg=reg, address=address)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.LeaCommand(
+        c_struct = encoding.RegAddrCommand(
             id=self.id,
-            register=self.reg.cstruct,
-            address=self.address.cstruct
+            reg=self.reg.cstruct,
+            addr=self.address.cstruct
         )
         return bytes(c_struct)
 
@@ -560,28 +560,27 @@ class RegAddrInstruction(NetQASMInstruction):
 
 
 @dataclass
-class EntryAddrInstruction(NetQASMInstruction):
+class ArrayEntryInstruction(NetQASMInstruction):
     """
     An instruction with 1 ArrayEntry operand and one Address operand.
     """
     entry: ArrayEntry = None
-    address: Address = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.address]
+        return [self.entry]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.SingleArrayEntryCommand.from_buffer_copy(raw)
+        c_struct = encoding.ArrayEntryCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        entry = ArrayEntry.from_raw(raw.array_entry)
+        entry = ArrayEntry.from_raw(raw.entry)
         return cls(entry=entry)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.SingleArrayEntryCommand(
+        c_struct = encoding.ArrayEntryCommand(
             id=self.id,
-            array_entry=self.entry.cstruct
+            entry=self.entry.cstruct
         )
         return bytes(c_struct)
 
@@ -611,15 +610,15 @@ class ArraySliceInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.SingleArraySliceCommand.from_buffer_copy(raw)
+        c_struct = encoding.ArraySliceCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        slice = ArraySlice.from_raw(c_struct.array_slice)
+        slice = ArraySlice.from_raw(c_struct.slice)
         return cls(slice=slice)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.SingleArraySliceCommand(
+        c_struct = encoding.ArraySliceCommand(
             id=self.id,
-            array_slice=self.slice.cstruct
+            slice=self.slice.cstruct
         )
         return bytes(c_struct)
 
@@ -637,7 +636,7 @@ class ArraySliceInstruction(NetQASMInstruction):
 
 
 @dataclass
-class AddressInstruction(NetQASMInstruction):
+class AddrInstruction(NetQASMInstruction):
     """
     An instruction with 1 Address operand.
     """
@@ -649,15 +648,15 @@ class AddressInstruction(NetQASMInstruction):
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.RetArrCommand.from_buffer_copy(raw)
+        c_struct = encoding.AddrCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        address = Address.from_raw(c_struct.address)
-        return cls(address=address)
+        addr = Address.from_raw(c_struct.addr)
+        return cls(address=addr)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.RetArrCommand(
+        c_struct = encoding.AddrCommand(
             id=self.id,
-            address=self.address.cstruct
+            addr=self.address.cstruct
         )
         return bytes(c_struct)
 

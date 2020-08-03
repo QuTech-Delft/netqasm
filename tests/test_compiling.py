@@ -1,7 +1,7 @@
 import pytest
 from netqasm.logging import set_log_level
 from netqasm.parsing import parse_text_subroutine, deserialize
-from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
+# from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.compiling import NVSubroutineCompiler
@@ -27,10 +27,14 @@ def test_mapping():
     text_subroutine = """
 # NETQASM 0.0
 # APPID 0
-set Q0 1
+set Q0 0
 qalloc Q0
 init Q0
-x Q0
+set Q1 1
+qalloc Q1
+init Q1
+z Q0
+x Q1
 """
     vanilla_subroutine = parse_text_subroutine(text_subroutine)
     subroutine = NVSubroutineCompiler(vanilla_subroutine).compile()

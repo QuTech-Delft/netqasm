@@ -1,5 +1,5 @@
-from typing import List, Union, Dict
-from dataclasses import dataclass, field
+from typing import List, Union
+from dataclasses import dataclass
 
 from netqasm import encoding
 from netqasm.string_util import rspaces

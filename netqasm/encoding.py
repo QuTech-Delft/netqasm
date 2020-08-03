@@ -114,16 +114,16 @@ def add_padding(fields):
     return new_fields
 
 
-class SingleQubitCommand(Command):
+class RegCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Register),
+        ('reg', Register),
     ])
 
 
-class TwoQubitCommand(Command):
+class RegRegCommand(Command):
     _fields_ = add_padding([
-        ('qubit1', Register),
-        ('qubit2', Register),
+        ('reg0', Register),
+        ('reg1', Register),
     ])
 
 
@@ -134,35 +134,34 @@ class MeasCommand(Command):
     ])
 
 
-class RotationCommand(Command):
+class RegImmImmCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Register),
-        # An angle specified as `m * pi / n`
-        ('angle_numerator', IMMEDIATE),
-        ('angle_denominator', IMMEDIATE),
+        ('reg', Register),
+        ('imm0', IMMEDIATE),
+        ('imm1', IMMEDIATE),
     ])
 
 
-class ClassicalOpCommand(Command):
+class RegRegRegCommand(Command):
     _fields_ = add_padding([
-        ('out', Register),
-        ('a', Register),
-        ('b', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
     ])
 
 
-class ClassicalOpModCommand(Command):
+class RegRegRegRegCommand(Command):
     _fields_ = add_padding([
-        ('out', Register),
-        ('a', Register),
-        ('b', Register),
-        ('mod', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
+        ('reg3', Register),
     ])
 
 
-class JumpCommand(Command):
+class ImmCommand(Command):
     _fields_ = add_padding([
-        ('line', INTEGER),
+        ('imm', INTEGER),
     ])
 
 
@@ -181,36 +180,36 @@ class BranchBinaryCommand(Command):
     ])
 
 
-class SetCommand(Command):
+class RegImmCommand(Command):
     _fields_ = add_padding([
-        ('register', Register),
-        ('value', INTEGER),
+        ('reg', Register),
+        ('imm', INTEGER),
     ])
 
 
-class LoadStoreCommand(Command):
+class RegEntryCommand(Command):
     _fields_ = add_padding([
-        ('register', Register),
+        ('reg', Register),
         ('entry', ArrayEntry),
     ])
 
 
-class LeaCommand(Command):
+class RegAddrCommand(Command):
     _fields_ = add_padding([
-        ('register', Register),
-        ('address', Address),
+        ('reg', Register),
+        ('addr', Address),
     ])
 
 
-class SingleArrayEntryCommand(Command):
+class ArrayEntryCommand(Command):
     _fields_ = add_padding([
-        ('array_entry', ArrayEntry),
+        ('entry', ArrayEntry),
     ])
 
 
-class SingleArraySliceCommand(Command):
+class ArraySliceCommand(Command):
     _fields_ = add_padding([
-        ('array_slice', ArraySlice),
+        ('slice', ArraySlice),
     ])
 
 
@@ -227,9 +226,9 @@ class ArrayCommand(Command):
     ])
 
 
-class RetArrCommand(Command):
+class AddrCommand(Command):
     _fields_ = add_padding([
-        ('address', Address),
+        ('addr', Address),
     ])
 
 
@@ -253,18 +252,18 @@ class RecvEPRCommand(Command):
 
 
 COMMANDS = [
-    SingleQubitCommand,
-    TwoQubitCommand,
+    RegCommand,
+    RegRegCommand,
     MeasCommand,
-    RotationCommand,
-    ClassicalOpCommand,
-    JumpCommand,
+    RegImmImmCommand,
+    RegRegRegCommand,
+    ImmCommand,
     BranchUnaryCommand,
     BranchBinaryCommand,
-    SetCommand,
-    LoadStoreCommand,
-    SingleArrayEntryCommand,
-    SingleArraySliceCommand,
+    RegImmCommand,
+    RegEntryCommand,
+    ArrayEntryCommand,
+    ArraySliceCommand,
     SingleRegisterCommand,
     ArrayCommand,
     CreateEPRCommand,
