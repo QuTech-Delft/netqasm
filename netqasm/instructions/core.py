@@ -3,7 +3,7 @@ from typing import List
 from abc import abstractmethod
 import numpy as np
 
-from netqasm.instructions.operand import Register
+from netqasm.instructions.operand import Register, Immediate
 from netqasm.instructions import base
 
 
@@ -62,7 +62,7 @@ class RotationInstruction(base.RegImmImmInstruction):
         return self.imm0
 
     @angle_num.setter
-    def angle_num(self, new_val: Register):
+    def angle_num(self, new_val: Immediate):
         self.imm0 = new_val
 
     @property
@@ -70,7 +70,7 @@ class RotationInstruction(base.RegImmImmInstruction):
         return self.imm1
 
     @angle_denom.setter
-    def angle_denom(self, new_val: Register):
+    def angle_denom(self, new_val: Immediate):
         self.imm1 = new_val
 
     @abstractmethod

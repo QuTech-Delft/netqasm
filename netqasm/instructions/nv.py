@@ -58,7 +58,7 @@ class RotXInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [1, 0, 0]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -69,7 +69,7 @@ class RotYInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [0, 1, 0]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -80,7 +80,7 @@ class RotZInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [0, 0, 1]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -96,6 +96,12 @@ class CnotInstruction(core.TwoQubitInstruction):
             [0, 0, 0, 1],
             [0, 0, 1, 0]])
 
+    def to_matrix_target_only(self) -> np.array:
+        return np.array([
+            [0, 1],
+            [1, 0]
+        ])
+
 
 @dataclass
 class CSqrtXInstruction(core.TwoQubitInstruction):
@@ -106,5 +112,11 @@ class CSqrtXInstruction(core.TwoQubitInstruction):
         return np.array([
             [1, 0, 0, 0],
             [0, 1, 0, 0],
-            [0, 0, 1, -1j],
-            [0, 0, -1j, 1]]) / np.sqrt(2)
+            [0, 0, 1 * np.sqrt(1j/2), -1j * np.sqrt(1j/2)],
+            [0, 0, -1j * np.sqrt(1j/2), 1 * np.sqrt(1j/2)]])
+
+    def to_matrix_target_only(self) -> np.array:
+        return np.array([
+            [1, -1j],
+            [-1j, 1]
+        ]) * np.sqrt(1j/2)

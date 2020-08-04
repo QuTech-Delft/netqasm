@@ -91,7 +91,7 @@ class RotXInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [1, 0, 0]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -102,7 +102,7 @@ class RotYInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [0, 1, 0]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -113,7 +113,7 @@ class RotZInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.array:
         axis = [0, 0, 1]
-        angle = self.angle_num * np.pi / 2 ** self.angle_denom
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -129,6 +129,12 @@ class CnotInstruction(core.TwoQubitInstruction):
             [0, 0, 0, 1],
             [0, 0, 1, 0]])
 
+    def to_matrix_target_only(self) -> np.array:
+        return np.array([
+            [0, 1],
+            [1, 0]
+        ])
+
 
 @dataclass
 class CphaseInstruction(core.TwoQubitInstruction):
@@ -141,3 +147,9 @@ class CphaseInstruction(core.TwoQubitInstruction):
             [0, 1, 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, -1]])
+
+    def to_matrix_target_only(self) -> np.array:
+        return np.array([
+            [1, 0],
+            [0, -1]
+        ])

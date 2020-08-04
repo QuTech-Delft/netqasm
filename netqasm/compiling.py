@@ -204,8 +204,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: vanilla.CnotInstruction,
     ) -> List[NetQASMInstruction]:
-        electron = instr.reg0
-        carbon = instr.reg1
+        electron = instr.reg1
+        carbon = instr.reg0
 
         electron_hadamard = self._map_single_gate_electron(
             instr=vanilla.GateHInstruction(lineno=instr.lineno, reg=electron)
