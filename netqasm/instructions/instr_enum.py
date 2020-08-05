@@ -9,9 +9,8 @@ from netqasm.encoding import (
     RegRegRegCommand,
     RegRegRegRegCommand,
     ImmCommand,
-    BranchUnaryCommand,
-    BranchBinaryCommand,
     RegImmCommand,
+    RegRegImmCommand,
     RegEntryCommand,
     ArrayEntryCommand,
     ArraySliceCommand,
@@ -19,8 +18,7 @@ from netqasm.encoding import (
     SingleRegisterCommand,
     ArrayCommand,
     AddrCommand,
-    CreateEPRCommand,
-    RecvEPRCommand,
+    Reg5Command,
 )
 
 
@@ -112,15 +110,12 @@ _COMMAND_GROUPS = {
     RegRegRegRegCommand: [
         Instruction.ADDM,
         Instruction.SUBM,
+        Instruction.RECV_EPR,
     ],
     ImmCommand: [
         Instruction.JMP,
     ],
-    BranchUnaryCommand: [
-        Instruction.BEZ,
-        Instruction.BNZ,
-    ],
-    BranchBinaryCommand: [
+    RegRegImmCommand: [
         Instruction.BEQ,
         Instruction.BNE,
         Instruction.BLT,
@@ -128,6 +123,8 @@ _COMMAND_GROUPS = {
     ],
     RegImmCommand: [
         Instruction.SET,
+        Instruction.BEZ,
+        Instruction.BNZ,
     ],
     RegEntryCommand: [
         Instruction.STORE,
@@ -153,11 +150,8 @@ _COMMAND_GROUPS = {
     AddrCommand: [
         Instruction.RET_ARR,
     ],
-    CreateEPRCommand: [
+    Reg5Command: [
         Instruction.CREATE_EPR,
-    ],
-    RecvEPRCommand: [
-        Instruction.RECV_EPR,
     ],
 }
 

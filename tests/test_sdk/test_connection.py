@@ -254,11 +254,11 @@ def test_epr():
             imm=Immediate(0),
         ),
         instructions.core.CreateEPRInstruction(
-            remote_node_id=Register(RegisterName.R, 0),
-            epr_socket_id=Register(RegisterName.R, 1),
-            qubit_addr_array=Register(RegisterName.R, 2),
-            arg_array=Register(RegisterName.R, 3),
-            ent_info_array=Register(RegisterName.R, 4),
+            reg0=Register(RegisterName.R, 0),
+            reg1=Register(RegisterName.R, 1),
+            reg2=Register(RegisterName.R, 2),
+            reg3=Register(RegisterName.R, 3),
+            reg4=Register(RegisterName.R, 4),
         ),
         # wait cmd
         instructions.core.SetInstruction(
@@ -430,11 +430,11 @@ def test_two_epr():
             imm=Immediate(0),
         ),
         instructions.core.CreateEPRInstruction(
-            remote_node_id=Register(RegisterName.R, 0),
-            epr_socket_id=Register(RegisterName.R, 1),
-            qubit_addr_array=Register(RegisterName.R, 2),
-            arg_array=Register(RegisterName.R, 3),
-            ent_info_array=Register(RegisterName.R, 4),
+            reg0=Register(RegisterName.R, 0),
+            reg1=Register(RegisterName.R, 1),
+            reg2=Register(RegisterName.R, 2),
+            reg3=Register(RegisterName.R, 3),
+            reg4=Register(RegisterName.R, 4),
         ),
         # wait cmd
         instructions.core.SetInstruction(
@@ -567,11 +567,11 @@ def test_epr_m():
             imm=Immediate(0),
         ),
         instructions.core.CreateEPRInstruction(
-            remote_node_id=Register(RegisterName.R, 1),
-            epr_socket_id=Register(RegisterName.R, 2),
-            qubit_addr_array=Register(RegisterName.C, 0),
-            arg_array=Register(RegisterName.R, 3),
-            ent_info_array=Register(RegisterName.R, 4),
+            reg0=Register(RegisterName.R, 1),
+            reg1=Register(RegisterName.R, 2),
+            reg2=Register(RegisterName.C, 0),
+            reg3=Register(RegisterName.R, 3),
+            reg4=Register(RegisterName.R, 4),
         ),
         # wait cmd
         instructions.core.SetInstruction(
@@ -608,7 +608,7 @@ def test_epr_m():
         instructions.core.BneInstruction(
             reg0=Register(RegisterName.R, 0),
             reg1=Register(RegisterName.R, 1),
-            line=Immediate(28),
+            imm=Immediate(28),
         ),
         instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 1),

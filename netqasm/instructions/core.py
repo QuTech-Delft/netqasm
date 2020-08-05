@@ -226,7 +226,26 @@ class JmpInstruction(base.ImmInstruction):
 
 
 @dataclass
-class BezInstruction(base.BranchUnaryInstruction):
+class BranchUnaryInstruction(base.RegImmInstruction):
+    """
+    Represents an instruction to branch to a certain line, depending on a
+    unary expression.
+    """
+    @property
+    def line(self):
+        return self.imm
+
+    @line.setter
+    def line(self, new_val):
+        self.imm = new_val
+
+    @abstractmethod
+    def check_condition(self, a) -> bool:
+        raise RuntimeError("check_condition called on the base BranchUnaryInstruction class")
+
+
+@dataclass
+class BezInstruction(BranchUnaryInstruction):
     id: int = 10
     mnemonic: str = "bez"
 
@@ -235,7 +254,7 @@ class BezInstruction(base.BranchUnaryInstruction):
 
 
 @dataclass
-class BnzInstruction(base.BranchUnaryInstruction):
+class BnzInstruction(BranchUnaryInstruction):
     id: int = 11
     mnemonic: str = "bnz"
 
@@ -244,7 +263,26 @@ class BnzInstruction(base.BranchUnaryInstruction):
 
 
 @dataclass
-class BeqInstruction(base.BranchBinaryInstruction):
+class BranchBinaryInstruction(base.RegRegImmInstruction):
+    """
+    Represents an instruction to branch to a certain line, depending on a
+    binary expression.
+    """
+    @property
+    def line(self):
+        return self.imm
+
+    @line.setter
+    def line(self, new_val):
+        self.imm = new_val
+
+    @abstractmethod
+    def check_condition(self, a, b) -> bool:
+        raise RuntimeError("check_condition called on the base BranchBinaryInstruction class")
+
+
+@dataclass
+class BeqInstruction(BranchBinaryInstruction):
     id: int = 12
     mnemonic: str = "beq"
 
@@ -253,7 +291,7 @@ class BeqInstruction(base.BranchBinaryInstruction):
 
 
 @dataclass
-class BneInstruction(base.BranchBinaryInstruction):
+class BneInstruction(BranchBinaryInstruction):
     id: int = 13
     mnemonic: str = "bne"
 
@@ -262,7 +300,7 @@ class BneInstruction(base.BranchBinaryInstruction):
 
 
 @dataclass
-class BltInstruction(base.BranchBinaryInstruction):
+class BltInstruction(BranchBinaryInstruction):
     id: int = 14
     mnemonic: str = "blt"
 
@@ -271,7 +309,7 @@ class BltInstruction(base.BranchBinaryInstruction):
 
 
 @dataclass
-class BgeInstruction(base.BranchBinaryInstruction):
+class BgeInstruction(BranchBinaryInstruction):
     id: int = 15
     mnemonic: str = "bge"
 
@@ -329,15 +367,87 @@ class MeasInstruction(base.RegRegInstruction):
 
 
 @dataclass
-class CreateEPRInstruction(base.GenericCreateEPRInstruction):
+class CreateEPRInstruction(base.Reg5Instruction):
     id: int = 33
     mnemonic: str = "create_epr"
 
+    @property
+    def remote_node_id(self):
+        return self.reg0
+
+    @remote_node_id.setter
+    def creg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def epr_socket_id(self):
+        return self.reg1
+
+    @epr_socket_id.setter
+    def epr_socket_id(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def qubit_addr_array(self):
+        return self.reg2
+
+    @qubit_addr_array.setter
+    def qubit_addr_array(self, new_val: Register):
+        self.reg2 = new_val
+
+    @property
+    def arg_array(self):
+        return self.reg3
+
+    @arg_array.setter
+    def arg_array(self, new_val: Register):
+        self.reg3 = new_val
+
+    @property
+    def ent_info_array(self):
+        return self.reg4
+
+    @ent_info_array.setter
+    def ent_info_array(self, new_val: Register):
+        self.reg4 = new_val
+
 
 @dataclass
-class RecvEPRInstruction(base.GenericRecvEPRInstruction):
+class RecvEPRInstruction(base.RegRegRegRegInstruction):
     id: int = 34
     mnemonic: str = "recv_epr"
+
+    @property
+    def remote_node_id(self):
+        return self.reg0
+
+    @remote_node_id.setter
+    def creg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def epr_socket_id(self):
+        return self.reg1
+
+    @epr_socket_id.setter
+    def epr_socket_id(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def qubit_addr_array(self):
+        return self.reg2
+
+    @qubit_addr_array.setter
+    def qubit_addr_array(self, new_val: Register):
+        self.reg2 = new_val
+
+    @property
+    def ent_info_array(self):
+        return self.reg3
+
+    @ent_info_array.setter
+    def ent_info_array(self, new_val: Register):
+        self.reg3 = new_val
 
 
 @dataclass

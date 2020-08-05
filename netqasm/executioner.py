@@ -295,8 +295,8 @@ class Executioner:
             elif isinstance(command, instructions.core.RotationInstruction):
                 output = self._handle_single_qubit_rotation(subroutine_id, command)
             elif (isinstance(command, instructions.core.JmpInstruction)
-                    or isinstance(command, instructions.base.BranchUnaryInstruction)
-                    or isinstance(command, instructions.base.BranchBinaryInstruction)):
+                    or isinstance(command, instructions.core.BranchUnaryInstruction)
+                    or isinstance(command, instructions.core.BranchBinaryInstruction)):
                 self._handle_branch_instr(subroutine_id, command)
             elif (isinstance(command, instructions.core.ClassicalOpInstruction)
                     or isinstance(command, instructions.core.ClassicalOpModInstruction)):
@@ -381,24 +381,24 @@ class Executioner:
     def _handle_branch_instr(
         self,
         subroutine_id,
-        instr: Union[instructions.base.BranchBinaryInstruction, instructions.core.JmpInstruction]
+        instr: Union[instructions.core.BranchBinaryInstruction, instructions.core.JmpInstruction]
     ):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
         registers = []
-        if isinstance(instr, instructions.base.BranchUnaryInstruction):
+        if isinstance(instr, instructions.core.BranchUnaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg)
             registers = [instr.reg]
-        elif isinstance(instr, instructions.base.BranchBinaryInstruction):
+        elif isinstance(instr, instructions.core.BranchBinaryInstruction):
             a = self._get_register(app_id=app_id, register=instr.reg0)
             b = self._get_register(app_id=app_id, register=instr.reg1)
             registers = [instr.reg0, instr.reg1]
 
         if isinstance(instr, instructions.core.JmpInstruction):
             condition = True
-        elif isinstance(instr, instructions.base.BranchUnaryInstruction):
+        elif isinstance(instr, instructions.core.BranchUnaryInstruction):
             condition = instr.check_condition(a)
-        elif isinstance(instr, instructions.base.BranchBinaryInstruction):
+        elif isinstance(instr, instructions.core.BranchBinaryInstruction):
             condition = instr.check_condition(a, b)
 
         if condition:

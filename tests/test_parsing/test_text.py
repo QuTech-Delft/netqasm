@@ -95,7 +95,7 @@ ret_arr @0
             instructions.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 3),
                 reg1=Register(RegisterName.R, 4),
-                line=Immediate(11),
+                imm=Immediate(11),
             ),
             instructions.core.RetRegInstruction(
                 reg=Register(RegisterName.R, 0),
@@ -178,7 +178,7 @@ EXIT:
             instructions.core.BeqInstruction(
                 reg0=Register(RegisterName.R, 0),
                 reg1=Register(RegisterName.C, 10),
-                line=Immediate(14),
+                imm=Immediate(14),
             ),
             instructions.core.QAllocInstruction(
                 reg=Register(RegisterName.Q, 0),

@@ -337,52 +337,7 @@ class ImmInstruction(NetQASMInstruction):
 
 
 @dataclass
-class BranchUnaryInstruction(NetQASMInstruction):
-    """
-    An instruction with 1 Register operand and one Immediate operand.
-    Represents an instruction to branch to a certain line, depending on a
-    unary expression.
-    """
-    reg: Register = None
-    line: Immediate = None
-
-    @property
-    def operands(self) -> List[Operand]:
-        return [self.reg, self.line]
-
-    @classmethod
-    def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.BranchUnaryCommand.from_buffer_copy(raw)
-        assert c_struct.id == cls.id
-        reg = Register.from_raw(c_struct.a)
-        line = Immediate(value=c_struct.line)
-        return cls(reg=reg, line=line)
-
-    def serialize(self) -> bytes:
-        c_struct = encoding.BranchUnaryCommand(
-            id=self.id,
-            reg=self.reg.cstruct,
-            line=self.line.value
-        )
-        return bytes(c_struct)
-
-    @classmethod
-    def from_operands(cls, operands: List[Operand]):
-        assert len(operands) == 2
-        reg, line = operands
-        assert isinstance(reg, Register)
-        assert isinstance(line, int)
-        return cls(reg=reg, line=Immediate(value=line))
-
-    def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg)} {str(self.line)}"
-
-    def check_condition(self, a) -> bool:
-        raise RuntimeError("check_condition called on the base BranchUnaryInstruction class")
-
-
-@dataclass
-class BranchBinaryInstruction(NetQASMInstruction):
+class RegRegImmInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands and one Immediate operand.
     Represents an instruction to branch to a certain line, depending on a
@@ -390,44 +345,41 @@ class BranchBinaryInstruction(NetQASMInstruction):
     """
     reg0: Register = None
     reg1: Register = None
-    line: Immediate = None
+    imm: Immediate = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.reg0, self.reg1, self.line]
+        return [self.reg0, self.reg1, self.imm]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.BranchBinaryCommand.from_buffer_copy(raw)
+        c_struct = encoding.RegRegImmCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        reg0 = Register.from_raw(c_struct.a)
-        reg1 = Register.from_raw(c_struct.b)
-        line = Immediate(value=c_struct.line)
-        return cls(reg0=reg0, reg1=reg1, line=line)
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
+        imm = Immediate(value=c_struct.imm)
+        return cls(reg0=reg0, reg1=reg1, imm=imm)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.BranchBinaryCommand(
+        c_struct = encoding.RegRegImmCommand(
             id=self.id,
-            a=self.reg0.cstruct,
-            b=self.reg1.cstruct,
-            line=self.line.value
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            imm=self.imm.value
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 3
-        reg0, reg1, line = operands
+        reg0, reg1, imm = operands
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
-        assert isinstance(line, int)
-        return cls(reg0=reg0, reg1=reg1, line=Immediate(value=line))
+        assert isinstance(imm, int)
+        return cls(reg0=reg0, reg1=reg1, imm=Immediate(value=imm))
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.line)}"
-
-    def check_condition(self, a, b) -> bool:
-        raise RuntimeError("check_condition called on the base BranchBinaryInstruction class")
+        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.imm)}"
 
 
 @dataclass
@@ -674,118 +626,63 @@ class AddrInstruction(NetQASMInstruction):
 
 
 @dataclass
-class GenericCreateEPRInstruction(NetQASMInstruction):
+class Reg5Instruction(NetQASMInstruction):
     """
-    An instruction with 5 Register operands. Represents the CreateEPR instruction.
+    An instruction with 5 Register operands.
     """
-    remote_node_id: Register = None
-    epr_socket_id: Register = None
-    qubit_addr_array: Register = None
-    arg_array: Register = None
-    ent_info_array: Register = None
+    reg0: Register = None
+    reg1: Register = None
+    reg2: Register = None
+    reg3: Register = None
+    reg4: Register = None
 
     @property
     def operands(self) -> List[Operand]:
-        return [self.remote_node_id, self.epr_socket_id, self.qubit_addr_array, self.arg_array, self.ent_info_array]
+        return [self.reg0, self.reg1, self.reg2, self.reg3, self.reg4]
 
     @classmethod
     def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.CreateEPRCommand.from_buffer_copy(raw)
+        c_struct = encoding.Reg5Command.from_buffer_copy(raw)
         assert c_struct.id == cls.id
         return cls(
-            remote_node_id=Register.from_raw(c_struct.remote_node_id),
-            epr_socket_id=Register.from_raw(c_struct.epr_socket_id),
-            qubit_addr_array=Register.from_raw(c_struct.qubit_address_array),
-            arg_array=Register.from_raw(c_struct.arg_array),
-            ent_info_array=Register.from_raw(c_struct.ent_info_array)
+            reg0=Register.from_raw(c_struct.reg0),
+            reg1=Register.from_raw(c_struct.reg1),
+            reg2=Register.from_raw(c_struct.reg2),
+            reg3=Register.from_raw(c_struct.reg3),
+            reg4=Register.from_raw(c_struct.reg4)
         )
 
     def serialize(self) -> bytes:
-        c_struct = encoding.CreateEPRCommand(
+        c_struct = encoding.Reg5Command(
             id=self.id,
-            remote_node_id=self.remote_node_id.cstruct,
-            epr_socket_id=self.epr_socket_id.cstruct,
-            qubit_address_array=self.qubit_addr_array.cstruct,
-            arg_array=self.arg_array.cstruct,
-            ent_info_array=self.ent_info_array.cstruct
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            reg2=self.reg2.cstruct,
+            reg3=self.reg3.cstruct,
+            reg4=self.reg4.cstruct
         )
         return bytes(c_struct)
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
         assert len(operands) == 5
-        rem_nid, epr_sid, q_aid, arg_arr, ent_info_arr = operands
-        assert isinstance(rem_nid, Register)
-        assert isinstance(epr_sid, Register)
-        assert isinstance(q_aid, Register)
-        assert isinstance(arg_arr, Register)
-        assert isinstance(ent_info_arr, Register)
+        reg0, reg1, reg2, reg3, reg4 = operands
+        assert isinstance(reg0, Register)
+        assert isinstance(reg1, Register)
+        assert isinstance(reg2, Register)
+        assert isinstance(reg3, Register)
+        assert isinstance(reg4, Register)
         return cls(
-            remote_node_id=rem_nid,
-            epr_socket_id=epr_sid,
-            qubit_addr_array=q_aid,
-            arg_array=arg_arr,
-            ent_info_array=ent_info_arr
+            reg0=reg0,
+            reg1=reg1,
+            reg2=reg2,
+            reg3=reg3,
+            reg4=reg4,
         )
 
     def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
-{str(self.arg_array)} {str(self.ent_info_array)}"
-
-
-@dataclass
-class GenericRecvEPRInstruction(NetQASMInstruction):
-    """
-    An instruction with 4 Register operands. Represents the RecvEPR instruction.
-    """
-    remote_node_id: Register = None
-    epr_socket_id: Register = None
-    qubit_addr_array: Register = None
-    ent_info_array: Register = None
-
-    @property
-    def operands(self) -> List[Operand]:
-        return [self.remote_node_id, self.epr_socket_id, self.qubit_addr_array, self.ent_info_array]
-
-    @classmethod
-    def deserialize_from(cls, raw: bytes):
-        c_struct = encoding.RecvEPRCommand.from_buffer_copy(raw)
-        assert c_struct.id == cls.id
-        return cls(
-            remote_node_id=Register.from_raw(c_struct.remote_node_id),
-            epr_socket_id=Register.from_raw(c_struct.epr_socket_id),
-            qubit_addr_array=Register.from_raw(c_struct.qubit_address_array),
-            ent_info_array=Register.from_raw(c_struct.ent_info_array)
-        )
-
-    def serialize(self) -> bytes:
-        c_struct = encoding.RecvEPRCommand(
-            id=self.id,
-            remote_node_id=self.remote_node_id.cstruct,
-            epr_socket_id=self.epr_socket_id.cstruct,
-            qubit_address_array=self.qubit_addr_array.cstruct,
-            ent_info_array=self.ent_info_array.cstruct
-        )
-        return bytes(c_struct)
-
-    @classmethod
-    def from_operands(cls, operands: List[Operand]):
-        assert len(operands) == 4
-        rem_nid, epr_sid, q_aid, ent_info_arr = operands
-        assert isinstance(rem_nid, Register)
-        assert isinstance(epr_sid, Register)
-        assert isinstance(q_aid, Register)
-        assert isinstance(ent_info_arr, Register)
-        return cls(
-            remote_node_id=rem_nid,
-            epr_socket_id=epr_sid,
-            qubit_addr_array=q_aid,
-            ent_info_array=ent_info_arr
-        )
-
-    def _pretty_print(self):
-        return f"{self.mnemonic} {str(self.remote_node_id)} {str(self.epr_socket_id)} {str(self.qubit_addr_array)} \
-{str(self.ent_info_array)}"
+        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.reg2)} \
+{str(self.reg3)} {str(self.reg4)}"
 
 
 @dataclass

@@ -165,18 +165,11 @@ class ImmCommand(Command):
     ])
 
 
-class BranchUnaryCommand(Command):
+class RegRegImmCommand(Command):
     _fields_ = add_padding([
-        ('a', Register),
-        ('line', INTEGER),
-    ])
-
-
-class BranchBinaryCommand(Command):
-    _fields_ = add_padding([
-        ('a', Register),
-        ('b', Register),
-        ('line', INTEGER),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('imm', INTEGER),
     ])
 
 
@@ -232,13 +225,13 @@ class AddrCommand(Command):
     ])
 
 
-class CreateEPRCommand(Command):
+class Reg5Command(Command):
     _fields_ = add_padding([
-        ('remote_node_id', Register),
-        ('epr_socket_id', Register),
-        ('qubit_address_array', Register),
-        ('arg_array', Register),
-        ('ent_info_array', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
+        ('reg3', Register),
+        ('reg4', Register),
     ])
 
 
@@ -258,14 +251,12 @@ COMMANDS = [
     RegImmImmCommand,
     RegRegRegCommand,
     ImmCommand,
-    BranchUnaryCommand,
-    BranchBinaryCommand,
     RegImmCommand,
+    RegRegImmCommand,
     RegEntryCommand,
     ArrayEntryCommand,
     ArraySliceCommand,
     SingleRegisterCommand,
     ArrayCommand,
-    CreateEPRCommand,
-    RecvEPRCommand,
+    Reg5Command,
 ]
