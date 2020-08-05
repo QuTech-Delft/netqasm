@@ -22,10 +22,11 @@ class SubroutineCompiler(abc.ABC):
 
 
 class NVSubroutineCompiler(SubroutineCompiler):
-    def __init__(self, subroutine: Subroutine):
+    def __init__(self, subroutine: Subroutine, debug=False):
         self._subroutine = subroutine
         self._used_registers: Set[Register] = set()
         self._register_values: Dict[Register, Immediate] = dict()
+        self._debug = debug
 
     def get_reg_value(self, reg: Register) -> Immediate:
         """Get the value of a register at this moment"""
@@ -56,7 +57,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         gates = []
 
-        gates += [DebugInstruction(text="begin SWAP")]
+        if self._debug:
+            gates += [DebugInstruction(text="begin SWAP")]
 
         gates += [
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
@@ -79,7 +81,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
             nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
         ]
 
-        gates += [DebugInstruction(text="end SWAP")]
+        if self._debug:
+            gates += [DebugInstruction(text="end SWAP")]
 
         return gates
 

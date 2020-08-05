@@ -197,7 +197,7 @@ def test_mapping2():
         # APPID 0
         set Q0 0
         set Q1 1
-        rot_x Q0 3 1
+        rot_x Q1 3 1
     """
     vanilla_subroutine = parse_text_subroutine(text_subroutine)
     print(vanilla_subroutine)

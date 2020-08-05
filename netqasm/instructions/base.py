@@ -801,7 +801,7 @@ class DebugInstruction(NetQASMInstruction):
         pass
 
     def serialize(self) -> bytes:
-        pass
+        return b''
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):
