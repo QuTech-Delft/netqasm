@@ -191,27 +191,6 @@ def test_mapping(text_subroutine: str):
     assert are_matrices_equal(vanilla_matrix, compiled_matrix)
 
 
-def test_mapping2():
-    text_subroutine = """
-        # NETQASM 0.0
-        # APPID 0
-        set Q0 0
-        set Q1 1
-        rot_x Q1 3 1
-    """
-    vanilla_subroutine = parse_text_subroutine(text_subroutine)
-    print(vanilla_subroutine)
-    vanilla_matrix = _subroutine_as_matrix(vanilla_subroutine)
-    print(f"vanilla: {vanilla_matrix}")
-
-    compiled_subroutine = NVSubroutineCompiler(vanilla_subroutine).compile()
-    compiled_matrix = _subroutine_as_matrix(compiled_subroutine)
-    print(f"compiled: {np.round(compiled_matrix, 2)}")
-    print(compiled_subroutine)
-
-    assert are_matrices_equal(vanilla_matrix, compiled_matrix)
-
-
 def test_compiling_nv():
     text_subroutine = """
 # NETQASM 0.0
@@ -306,5 +285,4 @@ def test_compiling_nv_using_sdk():
 
 
 if __name__ == '__main__':
-    # test_compiling_nv_using_sdk()
-    test_mapping2()
+    test_compiling_nv_using_sdk()
