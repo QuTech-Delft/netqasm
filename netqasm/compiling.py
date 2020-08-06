@@ -1,17 +1,16 @@
 import abc
+from typing import List, Set, Dict
 
-from netqasm.subroutine import Command
-from netqasm.instructions import (
-    Instruction,
-    STATIC_SINGLE_QUBIT_GATES,
-    SINGLE_QUBIT_ROTATION_GATES,
-    TWO_QUBIT_GATES,
-)
+from netqasm.subroutine import Subroutine
+from netqasm.instructions import core, vanilla, nv
+from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
+from netqasm.instructions.operand import Register, RegisterName, Immediate
+from netqasm.log_util import HostLine
 
 
 class SubroutineCompiler(abc.ABC):
-    @abc.abstractclassmethod
-    def compile(cls, subroutine):
+    @abc.abstractmethod
+    def compile(self, subroutine):
         """Compile a subroutine (inplace) to a specific hardware
 
         Parameters
@@ -23,94 +22,338 @@ class SubroutineCompiler(abc.ABC):
 
 
 class NVSubroutineCompiler(SubroutineCompiler):
+    def __init__(self, subroutine: Subroutine, debug=False):
+        self._subroutine = subroutine
+        self._used_registers: Set[Register] = set()
+        self._register_values: Dict[Register, Immediate] = dict()
+        self._debug = debug
 
-    SINGLE_QUBIT_GATE_MAPPING = {
-        # gate: rotation, angle
-        Instruction.X: [(Instruction.ROT_X, (1, 0))],  # pi
-        Instruction.Y: [(Instruction.ROT_Y, (1, 0))],  # pi
-        Instruction.Z: [
-            (Instruction.ROT_X, (3, 1)),  # - pi / 2
-            (Instruction.ROT_Y, (1, 0)),  # pi
-            (Instruction.ROT_X, (1, 1)),  # pi / 2
-        ],
-        Instruction.H: [
-            (Instruction.ROT_Y, (3, 1)),  # - pi / 2
-            (Instruction.ROT_X, (1, 0)),  # pi
-        ],
-        Instruction.K: [
-            (Instruction.ROT_X, (1, 1)),  # pi / 2
-            (Instruction.ROT_Y, (1, 0)),  # pi
-        ],
-        Instruction.S: [
-            (Instruction.ROT_X, (3, 1)),  # - pi / 2
-            (Instruction.ROT_Y, (3, 1)),  # - pi / 2
-            (Instruction.ROT_X, (1, 1)),  # pi / 2
-        ],
-        Instruction.T: [
-            (Instruction.ROT_X, (3, 1)),  # - pi / 2
-            (Instruction.ROT_Y, (7, 2)),  # - pi / 4
-            (Instruction.ROT_X, (1, 1)),  # pi / 2
-        ],
-    }
+    def get_reg_value(self, reg: Register) -> Immediate:
+        """Get the value of a register at this moment"""
+        return self._register_values[reg]
 
-    @classmethod
-    def compile(cls, subroutine):
-        i = 0
-        while i < len(subroutine.commands):
-            command = subroutine.commands[i]
-            if command.instruction in STATIC_SINGLE_QUBIT_GATES:
-                new_commands = cls._handle_single_qubit_static_gate(command)
-            elif command.instruction in SINGLE_QUBIT_ROTATION_GATES:
-                new_commands = cls._handle_single_qubit_rotations(command)
-            elif command.instruction in TWO_QUBIT_GATES:
-                new_commands = cls._handle_two_qubit_gate(command)
-            else:
-                # No need to do anything for classical operations
-                new_commands = [command]
-            subroutine.commands = subroutine.commands[:i] + new_commands + subroutine.commands[i + 1:]
-            i += len(new_commands)
+    def get_unused_register(self) -> Register:
+        """
+        Naive approach: try to use Q0 if possible, otherwise Q1, etc.
+        """
+        for i in range(16):
+            reg = Register(RegisterName.Q, i)
+            if reg not in self._used_registers:
+                return reg
+        raise RuntimeError("Could not find free register")
 
-    @classmethod
-    def _handle_single_qubit_static_gate(cls, command):
-        qubit = command.operands[0]
-        rotations = cls.SINGLE_QUBIT_GATE_MAPPING[command.instruction]
-        return [
-            Command(instruction=rot_instr, operands=[qubit, n, d])
-            for rot_instr, (n, d) in rotations
+    def swap(
+        self,
+        lineno: HostLine,
+        electron: Register,
+        carbon: Register,
+    ) -> List[NetQASMInstruction]:
+        """
+        Swap the states of the electron and a carbon
+        """
+        electron_hadamard = self._map_single_gate_electron(
+            instr=vanilla.GateHInstruction(lineno=lineno, reg=electron)
+        )
+
+        gates = []
+
+        if self._debug:
+            gates += [DebugInstruction(text="begin SWAP")]
+
+        gates += [
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+        ]
+        gates += electron_hadamard
+        gates += [
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+        ]
+        gates += electron_hadamard
+        gates += [
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
         ]
 
-    @classmethod
-    def _handle_single_qubit_rotations(cls, command):
-        # We only need to handle Z-rotations
-        if command.instruction == Instruction.ROT_Z:
-            qubit = command.operands[0]
-            n = command.operands[1]
-            d = command.operands[2]
-            return [
-                Command(Instruction.ROT_X, operands=[qubit, 3, 1]),  # 3 pi / 2
-                Command(Instruction.ROT_Y, operands=[qubit, 2 * 2 ** d - n, d]),  # - n pi / 2 ^ d
-                Command(Instruction.ROT_X, operands=[qubit, 1, 1]),  # pi / 2
-            ]
-        elif command.instruction in [Instruction.ROT_X, Instruction.ROT_Y]:
-            return [command]
-        else:
-            raise ValueError(f"Unknown rotation instruction {command.instruction}")
+        if self._debug:
+            gates += [DebugInstruction(text="end SWAP")]
 
-    @classmethod
-    def _handle_two_qubit_gate(cls, command):
-        # TODO below is just a simple mapping from CPHASE TO CNOT
-        # However, one needs to replace CNOT between qubits which does not have
-        # connectivity in the hardware with effective CNOTs using the center-qubit
-        raise NotImplementedError("Compilation of two qubit gates are not yet implemented")
-        if command.instruction == Instruction.CNOT:
-            return [command]
-        elif command.instruction == Instruction.CPHASE:
-            target = command.operands[1]
-            hadamard_gates = cls._handle_single_qubit_static_gate(Command(
-                instruction=Instruction.H,
-                operands=[target],
-            ))
-            cnot_gate = Command(Instruction.CNOT, operands=list(command.operands))
-            return hadamard_gates + [cnot_gate] + hadamard_gates
+        return gates
+
+    def compile(self):
+        """
+        Very simple compiling pass: iterate over all instructions once and rewrite them in-line.
+        While iterating, keep track of which registers are in use and what their values are.
+        """
+        new_commands = []
+
+        for instr in self._subroutine.commands:
+            # check which registers are being written to
+            affected_regs = instr.writes_to()
+
+            for reg in affected_regs:
+                if reg.name != RegisterName.Q:
+                    continue  # for now we are only interested in Q-register values
+
+                if isinstance(instr, core.SetInstruction):
+                    # OK, value is a known Immediate. Update register value:
+                    self._register_values[reg] = instr.imm
+                else:
+                    # don't allow writing to a Q-register by any other instruction type
+                    raise RuntimeError(
+                        f"Cannot compile: the instruction {instr} writes to"
+                        " a Q-register but the value cannot be determined"
+                        " at compile time.")
+
+            for op in instr.operands:
+                # update used registers
+                if isinstance(op, Register):
+                    self._used_registers.update([op])
+
+            if (isinstance(instr, core.SingleQubitInstruction)
+                    or isinstance(instr, core.RotationInstruction)):
+                new_commands += self._handle_single_qubit_gate(instr)
+            elif isinstance(instr, core.TwoQubitInstruction):
+                new_commands += self._handle_two_qubit_gate(instr)
+            else:
+                new_commands += [instr]
+
+        self._subroutine.commands = new_commands
+        return self._subroutine
+
+    def _handle_two_qubit_gate(
+        self,
+        instr: core.TwoQubitInstruction
+    ) -> List[NetQASMInstruction]:
+        qubit_id0 = self.get_reg_value(instr.reg0).value
+        qubit_id1 = self.get_reg_value(instr.reg1).value
+        assert qubit_id0 != qubit_id1
+
+        # It is assumed that there is only one electron, and that its virtual ID is 0.
+        if isinstance(instr, vanilla.CnotInstruction):
+            if qubit_id0 == 0:
+                return self._map_cnot_electron_carbon(instr)
+            elif qubit_id1 == 0:
+                return self._map_cnot_carbon_electron(instr)
+            else:
+                return self._map_cnot_carbon_carbon(instr)
+        elif isinstance(instr, vanilla.CphaseInstruction):
+            if qubit_id0 == 0:
+                return self._map_cphase_electron_carbon(instr)
+            elif qubit_id1 == 0:
+                swapped = vanilla.CphaseInstruction(
+                    lineno=instr.lineno,
+                    reg0=instr.reg1,
+                    reg1=instr.reg0
+                )
+                return self._map_cphase_electron_carbon(swapped)
+            else:
+                return self._map_cphase_carbon_carbon(instr)
         else:
-            raise ValueError(f"Unknown two qubit instruction {command.instruction}")
+            raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
+
+    def _map_cphase_electron_carbon(
+        self,
+        instr: vanilla.CphaseInstruction,
+    ) -> List[NetQASMInstruction]:
+        electron = instr.reg0
+        carbon = instr.reg1
+
+        return [
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+        ]
+
+    def _map_cphase_carbon_carbon(
+        self,
+        instr: vanilla.CphaseInstruction
+    ) -> List[NetQASMInstruction]:
+        electron = self.get_unused_register()
+        carbon = instr.reg0
+        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
+        instr.reg0 = electron
+        return (
+            [set_electron]
+            + self.swap(instr.lineno, electron, carbon)
+            + self._map_cphase_electron_carbon(instr)
+            + self.swap(instr.lineno, electron, carbon)
+        )
+
+    def _map_cnot_electron_carbon(
+        self,
+        instr: vanilla.CnotInstruction,
+    ) -> List[NetQASMInstruction]:
+        electron = instr.reg0
+        carbon = instr.reg1
+
+        return [
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon)
+        ]
+
+    def _map_cnot_carbon_electron(
+        self,
+        instr: vanilla.CnotInstruction,
+    ) -> List[NetQASMInstruction]:
+        electron = instr.reg1
+        carbon = instr.reg0
+
+        electron_hadamard = self._map_single_gate_electron(
+            instr=vanilla.GateHInstruction(lineno=instr.lineno, reg=electron)
+        )
+
+        gates = []
+        gates += electron_hadamard
+        gates += [
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
+            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+        ]
+        gates += electron_hadamard
+
+        return gates
+
+    def _map_cnot_carbon_carbon(
+        self,
+        instr: vanilla.CnotInstruction
+    ) -> List[NetQASMInstruction]:
+        electron = self.get_unused_register()
+        carbon = instr.reg0
+        set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
+        instr.reg0 = electron
+        return (
+            [set_electron]
+            + self.swap(instr.lineno, electron, carbon)
+            + self._map_cnot_electron_carbon(instr)
+            + self.swap(instr.lineno, electron, carbon)
+        )
+
+    def _handle_single_qubit_gate(
+        self,
+        instr: core.SingleQubitInstruction
+    ) -> List[NetQASMInstruction]:
+        qubit_id = self.get_reg_value(instr.reg).value
+        if qubit_id == 0:  # electron
+            return self._map_single_gate_electron(instr)
+        else:  # carbon
+            return self._map_single_gate_carbon(instr)
+
+    def _map_single_gate_electron(
+        self,
+        instr: core.SingleQubitInstruction
+    ) -> List[NetQASMInstruction]:
+        if isinstance(instr, vanilla.GateXInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
+            ]
+        elif isinstance(instr, vanilla.GateYInstruction):
+            return [
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
+            ]
+        elif isinstance(instr, vanilla.GateZInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
+            ]
+        elif isinstance(instr, vanilla.GateHInstruction):
+            return [
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
+            ]
+        elif isinstance(instr, vanilla.GateKInstruction):
+            return [
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1)),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
+            ]
+        elif isinstance(instr, vanilla.GateSInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
+            ]
+        elif isinstance(instr, vanilla.GateTInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(7), imm1=Immediate(2)),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
+            ]
+        elif isinstance(instr, vanilla.RotZInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
+            ]
+        elif isinstance(instr, vanilla.RotXInstruction):
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
+            ]
+        elif isinstance(instr, vanilla.RotYInstruction):
+            return [
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
+            ]
+        else:
+            raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
+
+    def _map_single_gate_carbon(
+        self,
+        instr: core.SingleQubitInstruction
+    ) -> List[NetQASMInstruction]:
+        if isinstance(instr, vanilla.RotZInstruction):
+            return [
+                nv.RotZInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
+            ]
+        elif isinstance(instr, vanilla.GateZInstruction):
+            return [
+                nv.RotZInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
+            ]
+        else:
+            electron = self.get_unused_register()
+            carbon = instr.reg
+            set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
+            instr.reg = electron
+            return (
+                [set_electron]
+                + self.swap(instr.lineno, electron, carbon)
+                + self._map_single_gate_electron(instr)
+                + self.swap(instr.lineno, electron, carbon)
+            )

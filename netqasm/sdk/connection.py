@@ -6,6 +6,7 @@ from enum import Enum
 from itertools import count
 from collections import namedtuple
 from contextlib import contextmanager
+from typing import List
 
 from qlink_interface import (
     EPRType,
@@ -35,7 +36,7 @@ from cqc.cqcHeader import (
 from netqasm import NETQASM_VERSION
 from netqasm.logging import get_netqasm_logger
 from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
-from netqasm.instructions import Instruction, flip_branch_instr
+from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, Array
@@ -44,6 +45,7 @@ from netqasm.log_util import LineTracker
 from netqasm.network_stack import OK_FIELDS
 from netqasm.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.subroutine import (
+    PreSubroutine,
     Subroutine,
     Command,
     Register,
@@ -164,7 +166,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         # Should subroutines commited be saved for logging/debugging
         self._log_subroutines_dir = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
-        self._commited_subroutines = []
+        self._commited_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
         self._compiler = compiler
@@ -325,16 +327,19 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             return
 
         self._commit_subroutine(
-            subroutine=subroutine,
+            presubroutine=subroutine,
             block=block,
             callback=callback,
         )
 
-    def _commit_subroutine(self, subroutine, block=True, callback=None):
-        self._logger.info(f"Flushing subroutine:\n{subroutine}")
+    def _commit_subroutine(self, presubroutine: PreSubroutine, block=True, callback=None):
+        self._logger.info(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        bin_subroutine = self._pre_process_subroutine(subroutine)
+        subroutine = self._pre_process_subroutine(presubroutine)
+        self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
+
+        bin_subroutine = bytes(subroutine)
 
         # Commit the subroutine to the quantum device
         self._logger.debug(f"Puts the next subroutine:\n{subroutine}")
@@ -346,7 +351,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         self._reset()
 
-    def _pop_pending_subroutine(self):
+    def _pop_pending_subroutine(self) -> PreSubroutine:
         # Add commands for initialising and returning arrays
         self._put_array_commands()
         if len(self._pending_commands) > 0:
@@ -399,10 +404,10 @@ class NetQASMConnection(CQCHandler, abc.ABC):
             ))
         return init_arrays, return_arrays
 
-    def _subroutine_from_commands(self, commands):
+    def _subroutine_from_commands(self, commands) -> PreSubroutine:
         # Build sub-routine
         metadata = self._get_metadata()
-        return Subroutine(**metadata, commands=commands)
+        return PreSubroutine(**metadata, commands=commands)
 
     def _get_metadata(self):
         return {
@@ -415,17 +420,17 @@ class NetQASMConnection(CQCHandler, abc.ABC):
         self._pending_commands = []
         return commands
 
-    def _pre_process_subroutine(self, subroutine):
+    def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Parses and assembles the subroutine.
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        subroutine = assemble_subroutine(subroutine)
+        subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
-            self._compiler.compile(subroutine=subroutine)
+            subroutine = self._compiler(subroutine=subroutine).compile()
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
-        return bytes(subroutine)
+        return subroutine
 
     def _log_subroutine(self, subroutine):
         self._commited_subroutines.append(subroutine)

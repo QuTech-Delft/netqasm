@@ -91,11 +91,9 @@ class Command(ctypes.Structure):
         ('id', INSTR_ID),
     ]
 
-    ID = 0
-
     def __init__(self, *args, **kwargs):
         try:
-            super().__init__(self.ID, *args, **kwargs)
+            super().__init__(*args, **kwargs)
         except TypeError as err:
             raise TypeError(f"command {self.__class__.__name__} could not be created, since: {err}")
 
@@ -116,16 +114,16 @@ def add_padding(fields):
     return new_fields
 
 
-class SingleQubitCommand(Command):
+class RegCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Register),
+        ('reg', Register),
     ])
 
 
-class TwoQubitCommand(Command):
+class RegRegCommand(Command):
     _fields_ = add_padding([
-        ('qubit1', Register),
-        ('qubit2', Register),
+        ('reg0', Register),
+        ('reg1', Register),
     ])
 
 
@@ -136,83 +134,75 @@ class MeasCommand(Command):
     ])
 
 
-class RotationCommand(Command):
+class RegImmImmCommand(Command):
     _fields_ = add_padding([
-        ('qubit', Register),
-        # An angle specified as `m * pi / n`
-        ('angle_numerator', IMMEDIATE),
-        ('angle_denominator', IMMEDIATE),
+        ('reg', Register),
+        ('imm0', IMMEDIATE),
+        ('imm1', IMMEDIATE),
     ])
 
 
-class ClassicalOpCommand(Command):
+class RegRegRegCommand(Command):
     _fields_ = add_padding([
-        ('out', Register),
-        ('a', Register),
-        ('b', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
     ])
 
 
-class ClassicalOpModCommand(Command):
+class RegRegRegRegCommand(Command):
     _fields_ = add_padding([
-        ('out', Register),
-        ('a', Register),
-        ('b', Register),
-        ('mod', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
+        ('reg3', Register),
     ])
 
 
-class JumpCommand(Command):
+class ImmCommand(Command):
     _fields_ = add_padding([
-        ('line', INTEGER),
+        ('imm', INTEGER),
     ])
 
 
-class BranchUnaryCommand(Command):
+class RegRegImmCommand(Command):
     _fields_ = add_padding([
-        ('a', Register),
-        ('line', INTEGER),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('imm', INTEGER),
     ])
 
 
-class BranchBinaryCommand(Command):
+class RegImmCommand(Command):
     _fields_ = add_padding([
-        ('a', Register),
-        ('b', Register),
-        ('line', INTEGER),
+        ('reg', Register),
+        ('imm', INTEGER),
     ])
 
 
-class SetCommand(Command):
+class RegEntryCommand(Command):
     _fields_ = add_padding([
-        ('register', Register),
-        ('value', INTEGER),
-    ])
-
-
-class LoadStoreCommand(Command):
-    _fields_ = add_padding([
-        ('register', Register),
+        ('reg', Register),
         ('entry', ArrayEntry),
     ])
 
 
-class LeaCommand(Command):
+class RegAddrCommand(Command):
     _fields_ = add_padding([
-        ('register', Register),
-        ('address', Address),
+        ('reg', Register),
+        ('addr', Address),
     ])
 
 
-class SingleArrayEntryCommand(Command):
+class ArrayEntryCommand(Command):
     _fields_ = add_padding([
-        ('array_entry', ArrayEntry),
+        ('entry', ArrayEntry),
     ])
 
 
-class SingleArraySliceCommand(Command):
+class ArraySliceCommand(Command):
     _fields_ = add_padding([
-        ('array_slice', ArraySlice),
+        ('slice', ArraySlice),
     ])
 
 
@@ -229,19 +219,19 @@ class ArrayCommand(Command):
     ])
 
 
-class RetArrCommand(Command):
+class AddrCommand(Command):
     _fields_ = add_padding([
-        ('address', Address),
+        ('addr', Address),
     ])
 
 
-class CreateEPRCommand(Command):
+class Reg5Command(Command):
     _fields_ = add_padding([
-        ('remote_node_id', Register),
-        ('epr_socket_id', Register),
-        ('qubit_address_array', Register),
-        ('arg_array', Register),
-        ('ent_info_array', Register),
+        ('reg0', Register),
+        ('reg1', Register),
+        ('reg2', Register),
+        ('reg3', Register),
+        ('reg4', Register),
     ])
 
 
@@ -255,20 +245,18 @@ class RecvEPRCommand(Command):
 
 
 COMMANDS = [
-    SingleQubitCommand,
-    TwoQubitCommand,
+    RegCommand,
+    RegRegCommand,
     MeasCommand,
-    RotationCommand,
-    ClassicalOpCommand,
-    JumpCommand,
-    BranchUnaryCommand,
-    BranchBinaryCommand,
-    SetCommand,
-    LoadStoreCommand,
-    SingleArrayEntryCommand,
-    SingleArraySliceCommand,
+    RegImmImmCommand,
+    RegRegRegCommand,
+    ImmCommand,
+    RegImmCommand,
+    RegRegImmCommand,
+    RegEntryCommand,
+    ArrayEntryCommand,
+    ArraySliceCommand,
     SingleRegisterCommand,
     ArrayCommand,
-    CreateEPRCommand,
-    RecvEPRCommand,
+    Reg5Command,
 ]

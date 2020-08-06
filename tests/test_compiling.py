@@ -1,25 +1,194 @@
 import pytest
+import numpy as np
+from typing import Dict, Set
+
 from netqasm.logging import set_log_level
-from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
-from netqasm.quantum_gates import gate_to_matrix, are_matrices_equal
+from netqasm.parsing import parse_text_subroutine, deserialize
+from netqasm.quantum_gates import are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
-from netqasm.instructions import Instruction, QUBIT_GATES
 from netqasm.compiling import NVSubroutineCompiler
 
+from netqasm.instructions.flavour import VanillaFlavour, NVFlavour
+from netqasm.subroutine import Subroutine
+from netqasm.instructions import core
+from netqasm.instructions.operand import Register
 
-@pytest.mark.parametrize(
-    'abstract_gate, nv_gates',
-    NVSubroutineCompiler.SINGLE_QUBIT_GATE_MAPPING.items(),
-)
-def test_mapping(abstract_gate, nv_gates):
-    abstract_matrix = gate_to_matrix(abstract_gate)
-    nv_matrix = gate_to_matrix(*nv_gates[0])
-    for nv_gate in nv_gates[1:]:
-        nv_matrix = nv_matrix @ gate_to_matrix(*nv_gate)
-    print(f'abstract_matrix = {abstract_matrix}')
-    print(f'nv_matrix = {nv_matrix}')
-    assert are_matrices_equal(abstract_matrix, nv_matrix)
+
+def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:
+    """Create matrix for `total` qubits where `m` is applied on qubit `index`
+    and identities on the other qubits"""
+    matrix = np.eye(1)
+    for i in range(total):
+        if i == index:
+            matrix = np.kron(matrix, m)
+        else:
+            matrix = np.kron(matrix, np.eye(2))
+    return matrix
+
+
+def pad_controlled_single_matrix(m: np.array, ctrl_index, target_index, total) -> np.array:
+    """Create matrix for `total` qubits where `m` is applied on qubit `target_index`
+    if qubit in `ctrl_index` is 1 (and identities on the other qubits).
+    E.g. pad_controlled_single_matrix(X, 3, 1, 3) returns a 4-qubit matrix representing a CNOT
+    from qubit 3 to 1, while qubits 0 and 2 are not affected (identities).
+    """
+    matrix0 = np.eye(1)
+    for i in range(total):
+        if i == ctrl_index:
+            matrix0 = np.kron(matrix0, np.array([[1, 0], [0, 0]]))
+        else:
+            matrix0 = np.kron(matrix0, np.eye(2))
+
+    matrix1 = np.eye(1)
+    for i in range(total):
+        if i == ctrl_index:
+            matrix1 = np.kron(matrix1, np.array([[0, 0], [0, 1]]))
+        elif i == target_index:
+            matrix1 = np.kron(matrix1, m)
+        else:
+            matrix1 = np.kron(matrix1, np.eye(2))
+
+    return matrix0 + matrix1
+
+
+class SubroutineMatrix:
+    """Matrix representing the quantum operations in a subroutine"""
+    def __init__(self, virt_ids: Set[int]):
+        self._virt_ids = virt_ids
+        self._matrix_indices: Dict[int, int] = dict()  # map of virt ID to index in matrix
+
+        self._matrix = np.eye(1)
+        for i, id in enumerate(virt_ids):
+            self._matrix_indices[id] = i
+            self._matrix = np.kron(self._matrix, np.eye(2))
+
+    def apply_single_qubit_instr(self, instr_matrix: np.array, virt_id: int):
+        m = pad_single_matrix(
+            m=instr_matrix,
+            index=self._matrix_indices[virt_id],
+            total=len(self._matrix_indices.keys()))
+
+        self._matrix = self._matrix @ m
+
+    def apply_two_qubit_instr(
+        self,
+        instr_matrix: np.array,
+        virt_id0: int,
+        virt_id1: int
+    ):
+        m = pad_controlled_single_matrix(
+            m=instr_matrix,
+            ctrl_index=self._matrix_indices[virt_id0],
+            target_index=self._matrix_indices[virt_id1],
+            total=len(self._matrix_indices.keys()))
+
+        self._matrix = self._matrix @ m
+
+    @property
+    def matrix(self):
+        return self._matrix
+
+
+def _subroutine_as_matrix(subroutine: Subroutine) -> np.array:
+    """Try to write quantum instructions in subroutine as one matrix.
+    This function relies on the fact that the subroutine has only "set"
+    instructions for Q registers, and should only be used for subroutines
+    specifically made for testing the NV compiler.
+    """
+    qreg_values: Dict[Register, int] = dict()
+    virt_ids: Set[int] = set()
+
+    # first pass: collect virt IDs used
+    for instr in subroutine.commands:
+        if isinstance(instr, core.SetInstruction):
+            virt_ids.add(instr.imm.value)
+
+    sub_matrix = SubroutineMatrix(virt_ids)
+
+    # second pass: keep track of qreg values and construct matrix
+    for instr in subroutine.commands:
+        if isinstance(instr, core.SetInstruction):
+            qreg_values[instr.reg] = instr.imm.value
+
+        if isinstance(instr, core.SingleQubitInstruction):
+            sub_matrix.apply_single_qubit_instr(instr.to_matrix(), qreg_values[instr.reg])
+        elif isinstance(instr, core.RotationInstruction):
+            sub_matrix.apply_single_qubit_instr(instr.to_matrix(), qreg_values[instr.reg])
+        elif isinstance(instr, core.TwoQubitInstruction):
+            sub_matrix.apply_two_qubit_instr(
+                instr_matrix=instr.to_matrix_target_only(),
+                virt_id0=qreg_values[instr.reg0],
+                virt_id1=qreg_values[instr.reg1],
+            )
+
+    return sub_matrix.matrix
+
+
+@pytest.mark.parametrize("text_subroutine", [
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        z Q0
+        """
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        set Q1 1
+        rot_x Q0 3 1
+        """
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        set Q1 1
+        cnot Q1 Q0
+        """
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        set Q1 1
+        cphase Q1 Q0
+        """
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        set Q1 1
+        set Q2 2
+        cphase Q1 Q2
+        h Q1
+        cnot Q2 Q0
+        """
+    ),
+])
+def test_mapping(text_subroutine: str):
+    """
+    Test whether the NV compiler correctly maps gates by comparing the matrices
+    representing these gates. For this it's sufficient to have simple (incomplete, e.g. no alloc) subroutines.
+    """
+    vanilla_subroutine = parse_text_subroutine(text_subroutine)
+    vanilla_matrix = _subroutine_as_matrix(vanilla_subroutine)
+    print(f"vanilla: {vanilla_matrix}")
+
+    compiled_subroutine = NVSubroutineCompiler(vanilla_subroutine).compile()
+    compiled_matrix = _subroutine_as_matrix(compiled_subroutine)
+    print(f"compiled: {np.round(compiled_matrix, 2)}")
+    print(compiled_subroutine)
+
+    assert are_matrices_equal(vanilla_matrix, compiled_matrix)
 
 
 def test_compiling_nv():
@@ -40,14 +209,55 @@ rot_x Q0 1 2
 rot_y Q0 1 2
 rot_z Q0 1 2
 """
-    subroutine = parse_text_subroutine(text_subroutine)
-    NVSubroutineCompiler.compile(subroutine)
-    print(subroutine)
-    # Check that all gates are now x and y rotations
-    for command in subroutine.commands:
-        instr = command.instruction
-        if instr in QUBIT_GATES:
-            assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+    original_subroutine = parse_text_subroutine(text_subroutine)
+    print(f"before compiling: {original_subroutine}")
+    subroutine = NVSubroutineCompiler(original_subroutine).compile()
+    print(f"after compiling: {subroutine}")
+
+    for instr in subroutine.commands:
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
+
+
+@pytest.mark.parametrize("subroutine_str", [
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        qalloc Q0
+        init Q0
+        set Q1 1
+        qalloc Q1
+        init Q1
+        cnot Q0 Q1
+        """
+    ),
+    (
+        """
+        # NETQASM 0.0
+        # APPID 0
+        set Q0 0
+        qalloc Q0
+        init Q0
+        set Q1 1
+        qalloc Q1
+        init Q1
+        cphase Q1 Q0
+        """
+    )
+])
+def test_compiling_nv_text(subroutine_str):
+    original = parse_text_subroutine(subroutine_str)
+    print(f"before compiling: {original}")
+    compiled = NVSubroutineCompiler(original).compile()
+    print(f"after compiling: {compiled}")
+
+    for instr in compiled.commands:
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
 
 
 def test_compiling_nv_using_sdk():
@@ -66,8 +276,13 @@ def test_compiling_nv_using_sdk():
         q.rot_Z(n=1, d=2)
 
     assert len(alice.storage) == 4
-    subroutine = parse_binary_subroutine(alice.storage[1].msg)
-    for command in subroutine.commands:
-        instr = command.instruction
-        if instr in QUBIT_GATES:
-            assert instr in [Instruction.ROT_X, Instruction.ROT_Y]
+    subroutine = deserialize(alice.storage[1].msg, flavour=NVFlavour())
+
+    for instr in subroutine.commands:
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
+
+
+if __name__ == '__main__':
+    test_compiling_nv_using_sdk()

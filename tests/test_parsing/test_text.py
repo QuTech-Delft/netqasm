@@ -1,17 +1,17 @@
 import pytest
 
-from netqasm.subroutine import (
-    Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Command,
-    Subroutine,
-)
+from netqasm.subroutine import Subroutine
 from netqasm.encoding import RegisterName
 from netqasm.parsing import parse_text_subroutine
 from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
-from netqasm.instructions import Instruction
+
+from netqasm import instructions
+from netqasm.instructions.operand import (
+    Register,
+    Immediate,
+    Address,
+    ArrayEntry,
+)
 
 
 @pytest.mark.parametrize("subroutine, error", [
@@ -45,76 +45,64 @@ add R1 R2 1
 beq 0 0 EXIT
 EXIT:
 ret_reg R0
-ret_arr @0[0:1]
+ret_arr @0
 """
 
     expected = Subroutine(
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 0),
-                0,
-            ]),
-            Command(instruction=Instruction.STORE, operands=[
-                Register(RegisterName.R, 0),
-                ArrayEntry(Address(0), Register(RegisterName.R, 2)),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.Q, 0),
-                0,
-            ]),
-            Command(instruction=Instruction.INIT, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 3),
-                4,
-            ]),
-            Command(instruction=Instruction.ARRAY, operands=[
-                Register(RegisterName.R, 3),
-                Address(address=2),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 3),
-                1,
-            ]),
-            Command(instruction=Instruction.ADD, operands=[
-                Register(RegisterName.R, 1),
-                Register(RegisterName.R, 2),
-                Register(RegisterName.R, 3),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 3),
-                0,
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 4),
-                0,
-            ]),
-            Command(instruction=Instruction.BEQ, operands=[
-                Register(RegisterName.R, 3),
-                Register(RegisterName.R, 4),
-                11,
-            ]),
-            Command(instruction=Instruction.RET_REG, operands=[
-                Register(RegisterName.R, 0),
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 3),
-                0,
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 4),
-                1,
-            ]),
-            Command(instruction=Instruction.RET_ARR, operands=[
-                ArraySlice(
-                    Address(0),
-                    Register(RegisterName.R, 3),
-                    Register(RegisterName.R, 4),
-                ),
-            ]),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(Address(0), Register(RegisterName.R, 2)),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(4),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 3),
+                address=Address(address=2),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(1),
+            ),
+            instructions.core.AddInstruction(
+                reg0=Register(RegisterName.R, 1),
+                reg1=Register(RegisterName.R, 2),
+                reg2=Register(RegisterName.R, 3),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 4),
+                imm=Immediate(0),
+            ),
+            instructions.core.BeqInstruction(
+                reg0=Register(RegisterName.R, 3),
+                reg1=Register(RegisterName.R, 4),
+                imm=Immediate(11),
+            ),
+            instructions.core.RetRegInstruction(
+                reg=Register(RegisterName.R, 0),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(0),
+            ),
         ])
 
     subroutine = parse_text_subroutine(subroutine)
@@ -167,62 +155,62 @@ EXIT:
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.C, 1),
-                1,
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.C, 10),
-                10,
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.Q, 0),
-                0,
-            ]),
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.R, 0),
-                0,
-            ]),
-            Command(instruction=Instruction.ARRAY, operands=[
-                Register(RegisterName.C, 10),
-                Address(0),
-            ]),
-            Command(instruction=Instruction.BEQ, operands=[
-                Register(RegisterName.R, 0),
-                Register(RegisterName.C, 10),
-                14,
-            ]),
-            Command(instruction=Instruction.QALLOC, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.INIT, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.H, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.MEAS, operands=[
-                Register(RegisterName.Q, 0),
-                Register(RegisterName.M, 0),
-            ]),
-            Command(instruction=Instruction.STORE, operands=[
-                Register(RegisterName.M, 0),
-                ArrayEntry(
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.C, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.C, 10),
+                imm=Immediate(10),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.C, 10),
+                address=Address(0),
+            ),
+            instructions.core.BeqInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.C, 10),
+                imm=Immediate(14),
+            ),
+            instructions.core.QAllocInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.vanilla.GateHInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.MeasInstruction(
+                reg0=Register(RegisterName.Q, 0),
+                reg1=Register(RegisterName.M, 0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.M, 0),
+                entry=ArrayEntry(
                     address=Address(0),
                     index=Register(RegisterName.R, 0),
                 ),
-            ]),
-            Command(instruction=Instruction.QFREE, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.ADD, operands=[
-                Register(RegisterName.R, 0),
-                Register(RegisterName.R, 0),
-                Register(RegisterName.C, 1),
-            ]),
-            Command(instruction=Instruction.JMP, operands=[
-                5,
-            ]),
+            ),
+            instructions.core.QFreeInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.AddInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 0),
+                reg2=Register(RegisterName.C, 1),
+            ),
+            instructions.core.JmpInstruction(
+                imm=Immediate(5),
+            ),
         ],
     )
     subroutine = parse_text_subroutine(subroutine)
@@ -257,35 +245,35 @@ qfree Q0
         netqasm_version=(0, 0),
         app_id=0,
         commands=[
-            Command(instruction=Instruction.SET, operands=[
-                Register(RegisterName.Q, 0),
-                0,
-            ]),
-            Command(instruction=Instruction.QALLOC, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
-            Command(instruction=Instruction.INIT, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.QAllocInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
             # Rotations
-            Command(instruction=Instruction.ROT_X, operands=[
-                Register(RegisterName.Q, 0),
-                1,
-                1,
-            ]),
-            Command(instruction=Instruction.ROT_X, operands=[
-                Register(RegisterName.Q, 0),
-                1,
-                4,
-            ]),
-            Command(instruction=Instruction.ROT_Y, operands=[
-                Register(RegisterName.Q, 0),
-                7,
-                22,
-            ]),
-            Command(instruction=Instruction.QFREE, operands=[
-                Register(RegisterName.Q, 0),
-            ]),
+            instructions.vanilla.RotXInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm0=Immediate(1),
+                imm1=Immediate(1),
+            ),
+            instructions.vanilla.RotXInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm0=Immediate(1),
+                imm1=Immediate(4),
+            ),
+            instructions.vanilla.RotYInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm0=Immediate(7),
+                imm1=Immediate(22),
+            ),
+            instructions.core.QFreeInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
         ],
     )
     subroutine = parse_text_subroutine(subroutine)
