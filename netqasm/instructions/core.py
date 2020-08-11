@@ -46,6 +46,10 @@ class TwoQubitInstruction(base.RegRegInstruction):
     def to_matrix(self):
         pass
 
+    @abstractmethod
+    def to_matrix_target_only(self):
+        pass
+
 
 @dataclass
 class RotationInstruction(base.RegImmImmInstruction):

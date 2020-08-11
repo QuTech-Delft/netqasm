@@ -1,8 +1,10 @@
+from typing import Dict, Tuple, Optional
+
 from netqasm.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.parsing import parse_address, parse_register
 from netqasm.subroutine import Symbols
 
-_MEMORIES = {}
+_MEMORIES: Dict[Tuple[str, Optional[int]], Optional['SharedMemory']] = {}  # string literal to fwd declare
 
 
 def reset_memories():

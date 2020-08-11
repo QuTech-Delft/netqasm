@@ -3,8 +3,8 @@ try:
     from yaml import CLoader as Loader
     from yaml import CDumper as Dumper
 except ImportError:
-    from yaml import Loader
-    from yaml import Dumper
+    from yaml import Loader  # type: ignore
+    from yaml import Dumper  # type: ignore
 
 
 def load_yaml(file_path):

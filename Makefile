@@ -29,6 +29,7 @@ clean:
 
 lint:
 	@$(PYTHON3) -m flake8 ${SOURCEDIR} ${TESTDIR} ${EXAMPLEDIR}
+	@$(PYTHON3) -m mypy ${SOURCEDIR} ${TESTDIR} ${EXAMPLEDIR}
 
 tests:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-fail-under=${MINCOV} tests

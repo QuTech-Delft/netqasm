@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from abc import ABC, abstractmethod
 
 from netqasm.string_util import rspaces
@@ -24,8 +24,8 @@ class NetQASMInstruction(ABC):
     Base NetQASM instruction class.
     """
     id: int = -1
-    mnemonic: str = None
-    lineno: HostLine = None
+    mnemonic: str = ""
+    lineno: Optional[HostLine] = None
 
     @property
     @abstractmethod
@@ -34,7 +34,7 @@ class NetQASMInstruction(ABC):
 
     @classmethod
     @abstractmethod
-    def deserialize_from(cls, raw: bytes):
+    def deserialize_from(cls, raw: bytes) -> 'NetQASMInstruction':
         pass
 
     @abstractmethod
@@ -80,7 +80,7 @@ class RegInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand.
     """
-    reg: Register = None
+    reg: Register = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -116,8 +116,8 @@ class RegRegInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands.
     """
-    reg0: Register = None
-    reg1: Register = None
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -156,9 +156,9 @@ class RegImmImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand followed by 2 Immediate operands.
     """
-    reg: Register = None
-    imm0: Immediate = None
-    imm1: Immediate = None
+    reg: Register = None  # type: ignore
+    imm0: Immediate = None  # type: ignore
+    imm1: Immediate = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -204,9 +204,9 @@ class RegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 3 Register operands.
     """
-    reg0: Register = None
-    reg1: Register = None
-    reg2: Register = None
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    reg2: Register = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -252,10 +252,10 @@ class RegRegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 4 Register operands.
     """
-    reg0: Register = None
-    reg1: Register = None
-    reg2: Register = None
-    reg3: Register = None
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    reg2: Register = None  # type: ignore
+    reg3: Register = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -305,7 +305,7 @@ class ImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Immediate operand.
     """
-    imm: Immediate = None
+    imm: Immediate = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -343,9 +343,9 @@ class RegRegImmInstruction(NetQASMInstruction):
     Represents an instruction to branch to a certain line, depending on a
     binary expression.
     """
-    reg0: Register = None
-    reg1: Register = None
-    imm: Immediate = None
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    imm: Immediate = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -387,8 +387,8 @@ class RegImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one Immediate operand.
     """
-    reg: Register = None
-    imm: Immediate = None
+    reg: Register = None  # type: ignore
+    imm: Immediate = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -430,8 +430,8 @@ class RegEntryInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one ArrayEntry operand.
     """
-    reg: Register = None
-    entry: ArrayEntry = None
+    reg: Register = None  # type: ignore
+    entry: ArrayEntry = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -473,8 +473,8 @@ class RegAddrInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one Address operand.
     """
-    reg: Register = None
-    address: Address = None
+    reg: Register = None  # type: ignore
+    address: Address = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -516,7 +516,7 @@ class ArrayEntryInstruction(NetQASMInstruction):
     """
     An instruction with 1 ArrayEntry operand and one Address operand.
     """
-    entry: ArrayEntry = None
+    entry: ArrayEntry = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -526,7 +526,7 @@ class ArrayEntryInstruction(NetQASMInstruction):
     def deserialize_from(cls, raw: bytes):
         c_struct = encoding.ArrayEntryCommand.from_buffer_copy(raw)
         assert c_struct.id == cls.id
-        entry = ArrayEntry.from_raw(raw.entry)
+        entry = ArrayEntry.from_raw(c_struct.entry)
         return cls(entry=entry)
 
     def serialize(self) -> bytes:
@@ -554,7 +554,7 @@ class ArraySliceInstruction(NetQASMInstruction):
     """
     An instruction with 1 ArraySlice operand.
     """
-    slice: ArraySlice = None
+    slice: ArraySlice = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -592,7 +592,7 @@ class AddrInstruction(NetQASMInstruction):
     """
     An instruction with 1 Address operand.
     """
-    address: Address = None
+    address: Address = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:
@@ -630,11 +630,11 @@ class Reg5Instruction(NetQASMInstruction):
     """
     An instruction with 5 Register operands.
     """
-    reg0: Register = None
-    reg1: Register = None
-    reg2: Register = None
-    reg3: Register = None
-    reg4: Register = None
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    reg2: Register = None  # type: ignore
+    reg3: Register = None  # type: ignore
+    reg4: Register = None  # type: ignore
 
     @property
     def operands(self) -> List[Operand]:

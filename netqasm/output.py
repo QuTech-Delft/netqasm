@@ -2,6 +2,7 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
+from typing import List
 
 from netqasm.subroutine import Register, ArrayEntry
 from netqasm.yaml_util import dump_yaml
@@ -54,7 +55,7 @@ class InstrField(Enum):
 
 # Keep track of all structured loggers
 # to be able to save them while finished applications
-_STRUCT_LOGGERS = []
+_STRUCT_LOGGERS: List['StructuredLogger'] = []
 
 
 def reset_struct_loggers():

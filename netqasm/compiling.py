@@ -1,5 +1,5 @@
 import abc
-from typing import List, Set, Dict
+from typing import Set, Dict, Sequence
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
@@ -47,7 +47,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         lineno: HostLine,
         electron: Register,
         carbon: Register,
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         """
         Swap the states of the electron and a carbon
         """
@@ -55,7 +55,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
             instr=vanilla.GateHInstruction(lineno=lineno, reg=electron)
         )
 
-        gates = []
+        gates: Sequence[NetQASMInstruction] = []
 
         if self._debug:
             gates += [DebugInstruction(text="begin SWAP")]
@@ -130,7 +130,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _handle_two_qubit_gate(
         self,
         instr: core.TwoQubitInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         qubit_id0 = self.get_reg_value(instr.reg0).value
         qubit_id1 = self.get_reg_value(instr.reg1).value
         assert qubit_id0 != qubit_id1
@@ -161,7 +161,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cphase_electron_carbon(
         self,
         instr: vanilla.CphaseInstruction,
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
 
@@ -179,7 +179,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cphase_carbon_carbon(
         self,
         instr: vanilla.CphaseInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -189,12 +189,12 @@ class NVSubroutineCompiler(SubroutineCompiler):
             + self.swap(instr.lineno, electron, carbon)
             + self._map_cphase_electron_carbon(instr)
             + self.swap(instr.lineno, electron, carbon)
-        )
+        )  # type: ignore
 
     def _map_cnot_electron_carbon(
         self,
         instr: vanilla.CnotInstruction,
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
 
@@ -206,7 +206,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cnot_carbon_electron(
         self,
         instr: vanilla.CnotInstruction,
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         electron = instr.reg1
         carbon = instr.reg0
 
@@ -233,7 +233,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_cnot_carbon_carbon(
         self,
         instr: vanilla.CnotInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -248,7 +248,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _handle_single_qubit_gate(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         qubit_id = self.get_reg_value(instr.reg).value
         if qubit_id == 0:  # electron
             return self._map_single_gate_electron(instr)
@@ -258,7 +258,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_single_gate_electron(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         if isinstance(instr, vanilla.GateXInstruction):
             return [
                 nv.RotXInstruction(
@@ -335,7 +335,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _map_single_gate_carbon(
         self,
         instr: core.SingleQubitInstruction
-    ) -> List[NetQASMInstruction]:
+    ) -> Sequence[NetQASMInstruction]:
         if isinstance(instr, vanilla.RotZInstruction):
             return [
                 nv.RotZInstruction(

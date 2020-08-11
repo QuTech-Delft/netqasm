@@ -5,7 +5,7 @@ from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict, namedtuple
-from typing import Union
+from typing import Union, Optional, Dict
 
 from qlink_interface import (
     RequestType,
@@ -51,7 +51,7 @@ def inc_program_counter(method):
 
 class Executioner:
 
-    _INSTR_LOGGERS = {}
+    _INSTR_LOGGERS: Dict[str, Optional[InstrLogger]] = {}
 
     def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.

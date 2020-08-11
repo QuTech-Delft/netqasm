@@ -1,6 +1,6 @@
 from itertools import count
 from collections import defaultdict
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
 
 from netqasm.string_util import group_by_word, is_variable_name, is_number
 from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
@@ -12,7 +12,6 @@ from netqasm.instructions.operand import Label
 from netqasm.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
 from netqasm.instructions.instr_enum import Instruction, string_to_instruction
 from netqasm.instructions.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.instructions.base import NetQASMInstruction
 from netqasm.instructions.flavour import Flavour, VanillaFlavour
 
 
@@ -29,22 +28,22 @@ def parse_text_subroutine(
     Internally, first a `PreSubroutine` object is created, consisting of `Command`s.
     This is then converted into a `Subroutine` using `assemble_subroutine`.
     """
-    preamble_lines, body_lines = _split_preamble_body(subroutine)
-    preamble_data: Dict[str, List[str]] = _parse_preamble(preamble_lines)
-    body_lines: List[str] = _apply_macros(body_lines, preamble_data[Symbols.PREAMBLE_DEFINE])
-    subroutine = _create_subroutine(preamble_data, body_lines)
-    subroutine = assemble_subroutine(
-        subroutine=subroutine,
+    preamble_lines, body_lines_with_macros = _split_preamble_body(subroutine)
+    preamble_data: Dict[str, List[List[str]]] = _parse_preamble(preamble_lines)
+    body_lines: List[str] = _apply_macros(body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE])
+    pre_subroutine = _create_subroutine(preamble_data, body_lines)
+    assembled_subroutine = assemble_subroutine(
+        pre_subroutine=pre_subroutine,
         assign_branch_labels=assign_branch_labels,
         make_args_operands=make_args_operands,
         replace_constants=replace_constants,
         flavour=flavour
     )
-    return subroutine
+    return assembled_subroutine
 
 
 def assemble_subroutine(
-    subroutine: PreSubroutine,
+    pre_subroutine: PreSubroutine,
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
@@ -54,20 +53,20 @@ def assemble_subroutine(
     Convert a `PreSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).
     """
     if make_args_operands:
-        _make_args_operands(subroutine)
+        _make_args_operands(pre_subroutine)
     if replace_constants:
-        subroutine.commands = _replace_constants(subroutine.commands)
+        pre_subroutine.commands = _replace_constants(pre_subroutine.commands)
     if assign_branch_labels:
-        _assign_branch_labels(subroutine)
+        _assign_branch_labels(pre_subroutine)
 
     if flavour is None:
         flavour = VanillaFlavour()
-    subroutine = _build_subroutine(subroutine, flavour)
+    subroutine = _build_subroutine(pre_subroutine, flavour)
 
     return subroutine
 
 
-def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
+def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subroutine:
     subroutine = Subroutine(
         netqasm_version=pre_subroutine.netqasm_version,
         app_id=pre_subroutine.app_id,
@@ -85,8 +84,8 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour):
     return subroutine
 
 
-def _create_subroutine(preamble_data, body_lines: List[str]):
-    commands = []
+def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
+    commands: List[Union[Command, BranchLabel]] = []
     for line in body_lines:
         if line.endswith(Symbols.BRANCH_END):
             # A command defining a branch label should end with BRANCH_END
@@ -249,7 +248,7 @@ def _split_of_bracket(word, brackets):
     return address, content
 
 
-def _split_preamble_body(subroutine_text: str) -> (List[str], List[str]):
+def _split_preamble_body(subroutine_text: str) -> Tuple[List[str], List[str]]:
     """Splits the preamble from the body of the subroutine"""
     is_preamble = True
     preamble_lines = []
@@ -289,7 +288,7 @@ def _remove_comments_from_line(line):
     return line.split(Symbols.COMMENT_START)[0]
 
 
-def _parse_preamble(preamble_lines: List[str]) -> Dict[str, List[str]]:
+def _parse_preamble(preamble_lines: List[str]) -> Dict[str, List[List[str]]]:
     """Parses the preamble lines"""
 
     preamble_instructions = defaultdict(list)
@@ -379,8 +378,6 @@ def _update_labels(subroutine, variables: Dict[str, int], from_command=0):
     for command in subroutine.commands[from_command:]:
         if isinstance(command, Command):
             _update_labels_in_command(command, variables)
-        elif isinstance(command, NetQASMInstruction):
-            command.update_labels(variables)
 
 
 def _update_labels_in_command(command, variables: Dict[str, int]):
@@ -430,7 +427,7 @@ for instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
 def _replace_constants(commands: List[Union[Command, BranchLabel]]):
     current_registers = get_current_registers(commands)
 
-    def reg_and_set_cmd(value, tmp_registers, lineno=None):
+    def reg_and_set_cmd(value, tmp_registers: List[Register], lineno=None):
         for i in range(2 ** REG_INDEX_BITS):
             register = Register(RegisterName.R, i)
             if str(register) not in current_registers and register not in tmp_registers:
@@ -453,7 +450,7 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
         if not isinstance(command, Command):
             i += 1
             continue
-        tmp_registers = []
+        tmp_registers: List[Register] = []
         for j, operand in enumerate(command.operands):
             if isinstance(operand, int) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
                 register, set_command = reg_and_set_cmd(operand, tmp_registers, lineno=command.lineno)

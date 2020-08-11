@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from dataclasses import dataclass
 
 from netqasm import encoding
@@ -37,9 +37,9 @@ def _get_lineo_str(lineno):
 @dataclass
 class Command:
     instruction: Instruction
-    args: List[int] = None
-    operands: List[_OPERAND_UNION] = None
-    lineno: int = None
+    args: List[int] = None  # type: ignore
+    operands: List[_OPERAND_UNION] = None  # type: ignore
+    lineno: Optional[int] = None
 
     def __post_init__(self):
         if self.args is None:
@@ -72,7 +72,7 @@ class Command:
 @dataclass
 class BranchLabel:
     name: str
-    lineno: int = None
+    lineno: Optional[int] = None
 
     def _assert_types(self):
         assert isinstance(self.name, str)

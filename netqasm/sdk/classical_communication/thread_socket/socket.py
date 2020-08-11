@@ -1,4 +1,5 @@
 import os
+from typing import Dict, Optional
 
 from netqasm.logging import get_netqasm_logger
 from ..socket import Socket
@@ -81,7 +82,7 @@ def log_recv(method):
 
 class ThreadSocket(Socket):
 
-    _COMM_LOGGERS = {}
+    _COMM_LOGGERS: Dict[str, Optional[ClassCommLogger]] = {}
 
     def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
                  use_callbacks=False, log_config=None):

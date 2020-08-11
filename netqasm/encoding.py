@@ -22,17 +22,17 @@ METADATA_BYTES = len(bytes(Metadata()))
 # BODY #
 ########
 INTEGER = ctypes.c_int32
-INTEGER_BITS = len(bytes(INTEGER())) * 8
+INTEGER_BITS = len(bytes(INTEGER())) * 8  # type: ignore
 IMMEDIATE = ctypes.c_uint8
-IMMEDIATE_BITS = len(bytes(IMMEDIATE())) * 8
+IMMEDIATE_BITS = len(bytes(IMMEDIATE())) * 8  # type: ignore
 
 ADDRESS = ctypes.c_uint32
-ADDRESS_BITS = len(bytes(ADDRESS())) * 8
+ADDRESS_BITS = len(bytes(ADDRESS())) * 8  # type: ignore
 
 INSTR_ID = ctypes.c_uint8
 
 REG_TYPE = ctypes.c_uint8
-REG_BITS = len(bytes(REG_TYPE())) * 8
+REG_BITS = len(bytes(REG_TYPE())) * 8  # type: ignore
 # Num bits in register name
 REG_NAME_BITS = 2
 # Num bits in register index
