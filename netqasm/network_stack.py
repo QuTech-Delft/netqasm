@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 
-from qlink_interface import LinkLayerCreate, LinkLayerOKTypeK  # type: ignore
+from qlink_interface import LinkLayerCreate, LinkLayerOKTypeK
 
 
 # Number of elements in a create request etc
