@@ -9,7 +9,7 @@ from netqasm.instructions import base
 
 # Explicit core NetQASM instructions.
 
-@dataclass
+@dataclass  # type: ignore
 class SingleQubitInstruction(base.RegInstruction):
     @property
     def qreg(self):
@@ -24,7 +24,7 @@ class SingleQubitInstruction(base.RegInstruction):
         pass
 
 
-@dataclass
+@dataclass  # type: ignore
 class TwoQubitInstruction(base.RegRegInstruction):
     @property
     def qreg0(self):
@@ -51,7 +51,7 @@ class TwoQubitInstruction(base.RegRegInstruction):
         pass
 
 
-@dataclass
+@dataclass  # type: ignore
 class RotationInstruction(base.RegImmImmInstruction):
     @property
     def qreg(self):
@@ -229,7 +229,7 @@ class JmpInstruction(base.ImmInstruction):
         self.imm = new_val
 
 
-@dataclass
+@dataclass  # type: ignore
 class BranchUnaryInstruction(base.RegImmInstruction):
     """
     Represents an instruction to branch to a certain line, depending on a
@@ -253,7 +253,7 @@ class BezInstruction(BranchUnaryInstruction):
     id: int = 10
     mnemonic: str = "bez"
 
-    def check_condition(self, a) -> bool:
+    def check_condition(self, a: int) -> bool:
         return a == 0
 
 
@@ -262,11 +262,11 @@ class BnzInstruction(BranchUnaryInstruction):
     id: int = 11
     mnemonic: str = "bnz"
 
-    def check_condition(self, a) -> bool:
+    def check_condition(self, a: int) -> bool:
         return a != 0
 
 
-@dataclass
+@dataclass  # type: ignore
 class BranchBinaryInstruction(base.RegRegImmInstruction):
     """
     Represents an instruction to branch to a certain line, depending on a
@@ -290,7 +290,7 @@ class BeqInstruction(BranchBinaryInstruction):
     id: int = 12
     mnemonic: str = "beq"
 
-    def check_condition(self, a, b) -> bool:
+    def check_condition(self, a: int, b: int) -> bool:
         return a == b
 
 
@@ -299,7 +299,7 @@ class BneInstruction(BranchBinaryInstruction):
     id: int = 13
     mnemonic: str = "bne"
 
-    def check_condition(self, a, b) -> bool:
+    def check_condition(self, a: int, b: int) -> bool:
         return a != b
 
 
@@ -308,7 +308,7 @@ class BltInstruction(BranchBinaryInstruction):
     id: int = 14
     mnemonic: str = "blt"
 
-    def check_condition(self, a, b) -> bool:
+    def check_condition(self, a: int, b: int) -> bool:
         return a < b
 
 
@@ -317,7 +317,7 @@ class BgeInstruction(BranchBinaryInstruction):
     id: int = 15
     mnemonic: str = "bge"
 
-    def check_condition(self, a, b) -> bool:
+    def check_condition(self, a: int, b: int) -> bool:
         return a >= b
 
 
@@ -380,7 +380,7 @@ class CreateEPRInstruction(base.Reg5Instruction):
         return self.reg0
 
     @remote_node_id.setter
-    def creg(self, new_val: Register):
+    def remote_node_id(self, new_val: Register):
         self.reg0 = new_val
 
     @property
@@ -426,7 +426,7 @@ class RecvEPRInstruction(base.RegRegRegRegInstruction):
         return self.reg0
 
     @remote_node_id.setter
-    def creg(self, new_val: Register):
+    def remote_node_id(self, new_val: Register):
         self.reg0 = new_val
 
     @property

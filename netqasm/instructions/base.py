@@ -18,7 +18,7 @@ from netqasm.instructions.operand import (
 # Abstract base instruction types. Should not be instantiated directly.
 
 
-@dataclass
+@dataclass  # type: ignore
 class NetQASMInstruction(ABC):
     """
     Base NetQASM instruction class.
