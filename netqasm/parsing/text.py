@@ -29,8 +29,8 @@ def parse_text_subroutine(
     This is then converted into a `Subroutine` using `assemble_subroutine`.
     """
     preamble_lines, body_lines_with_macros = _split_preamble_body(subroutine)
-    preamble_data: Dict[str, List[List[str]]] = _parse_preamble(preamble_lines)
-    body_lines: List[str] = _apply_macros(body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE])
+    preamble_data = _parse_preamble(preamble_lines)
+    body_lines = _apply_macros(body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE])
     pre_subroutine = _create_subroutine(preamble_data, body_lines)
     assembled_subroutine = assemble_subroutine(
         pre_subroutine=pre_subroutine,
