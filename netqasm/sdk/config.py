@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
 class LogConfig:
     track_lines: bool = False
-    log_subroutines_dir: str = None
-    comm_log_dir: str = None
-    app_dir: str = None
-    lib_dirs: List[str] = None
+    log_subroutines_dir: Optional[str] = None
+    comm_log_dir: Optional[str] = None
+    app_dir: Optional[str] = None
+    lib_dirs: Optional[List[str]] = None

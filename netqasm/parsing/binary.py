@@ -49,7 +49,7 @@ class Deserializer:
 
         # use the flavour to check which NetQASMInstruction class should be created
         instr_cls = self.flavour.get_instr_by_id(id)
-        instr = instr_cls.deserialize_from(raw)
+        instr: NetQASMInstruction = instr_cls.deserialize_from(raw)
         return instr
 
 

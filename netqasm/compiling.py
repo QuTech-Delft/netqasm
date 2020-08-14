@@ -1,5 +1,5 @@
 import abc
-from typing import List, Set, Dict
+from typing import Set, Dict, List, Optional
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
@@ -44,7 +44,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
     def swap(
         self,
-        lineno: HostLine,
+        lineno: Optional[HostLine],
         electron: Register,
         carbon: Register,
     ) -> List[NetQASMInstruction]:
@@ -55,7 +55,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
             instr=vanilla.GateHInstruction(lineno=lineno, reg=electron)
         )
 
-        gates = []
+        gates: List[NetQASMInstruction] = []
 
         if self._debug:
             gates += [DebugInstruction(text="begin SWAP")]
@@ -184,12 +184,14 @@ class NVSubroutineCompiler(SubroutineCompiler):
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
         instr.reg0 = electron
-        return (
-            [set_electron]
-            + self.swap(instr.lineno, electron, carbon)
+
+        result: List[NetQASMInstruction] = [set_electron]
+        result += (
+            self.swap(instr.lineno, electron, carbon)
             + self._map_cphase_electron_carbon(instr)
             + self.swap(instr.lineno, electron, carbon)
         )
+        return result
 
     def _map_cnot_electron_carbon(
         self,
@@ -238,12 +240,14 @@ class NVSubroutineCompiler(SubroutineCompiler):
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
         instr.reg0 = electron
-        return (
-            [set_electron]
-            + self.swap(instr.lineno, electron, carbon)
+
+        result: List[NetQASMInstruction] = [set_electron]
+        result += (
+            self.swap(instr.lineno, electron, carbon)
             + self._map_cnot_electron_carbon(instr)
             + self.swap(instr.lineno, electron, carbon)
         )
+        return result
 
     def _handle_single_qubit_gate(
         self,
@@ -351,9 +355,11 @@ class NVSubroutineCompiler(SubroutineCompiler):
             carbon = instr.reg
             set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
             instr.reg = electron
-            return (
-                [set_electron]
-                + self.swap(instr.lineno, electron, carbon)
+
+            result: List[NetQASMInstruction] = [set_electron]
+            result += (
+                self.swap(instr.lineno, electron, carbon)
                 + self._map_single_gate_electron(instr)
                 + self.swap(instr.lineno, electron, carbon)
             )
+            return result

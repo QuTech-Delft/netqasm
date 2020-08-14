@@ -6,7 +6,7 @@ from enum import Enum
 from itertools import count
 from collections import namedtuple
 from contextlib import contextmanager
-from typing import List
+from typing import List, Optional, Dict
 
 from qlink_interface import (
     EPRType,
@@ -351,14 +351,13 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
         self._reset()
 
-    def _pop_pending_subroutine(self) -> PreSubroutine:
+    def _pop_pending_subroutine(self) -> Optional[PreSubroutine]:
         # Add commands for initialising and returning arrays
         self._put_array_commands()
+        subroutine = None
         if len(self._pending_commands) > 0:
             commands = self._pop_pending_commands()
             subroutine = self._subroutine_from_commands(commands)
-        else:
-            subroutine = None
         return subroutine
 
     def _put_array_commands(self):
@@ -407,7 +406,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
     def _subroutine_from_commands(self, commands) -> PreSubroutine:
         # Build sub-routine
         metadata = self._get_metadata()
-        return PreSubroutine(**metadata, commands=commands)
+        return PreSubroutine(**metadata, commands=commands)  # type: ignore
 
     def _get_metadata(self):
         return {
@@ -1293,7 +1292,7 @@ class NetQASMConnection(CQCHandler, abc.ABC):
 
 class DebugConnection(NetQASMConnection):
 
-    node_ids = {}
+    node_ids: Dict[str, int] = {}
 
     def __init__(self, *args, **kwargs):
         """A connection that simply stores the subroutine it commits"""
