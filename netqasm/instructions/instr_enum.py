@@ -1,24 +1,24 @@
 from enum import Enum
+from typing import Dict
+import ctypes
 from netqasm.encoding import (
-    SingleQubitCommand,
-    TwoQubitCommand,
+    RegCommand,
+    RegRegCommand,
     MeasCommand,
-    RotationCommand,
-    ClassicalOpCommand,
-    ClassicalOpModCommand,
-    JumpCommand,
-    BranchUnaryCommand,
-    BranchBinaryCommand,
-    SetCommand,
-    LoadStoreCommand,
-    SingleArrayEntryCommand,
-    SingleArraySliceCommand,
-    LeaCommand,
+    RegImmImmCommand,
+    RegRegRegCommand,
+    RegRegRegRegCommand,
+    ImmCommand,
+    RegImmCommand,
+    RegRegImmCommand,
+    RegEntryCommand,
+    ArrayEntryCommand,
+    ArraySliceCommand,
+    RegAddrCommand,
     SingleRegisterCommand,
     ArrayCommand,
-    RetArrCommand,
-    CreateEPRCommand,
-    RecvEPRCommand,
+    AddrCommand,
+    Reg5Command,
 )
 
 
@@ -79,7 +79,7 @@ class Instruction(Enum):
 
 
 _COMMAND_GROUPS = {
-    SingleQubitCommand: [
+    RegCommand: [
         Instruction.QALLOC,
         Instruction.INIT,
         Instruction.X,
@@ -91,54 +91,53 @@ _COMMAND_GROUPS = {
         Instruction.T,
         Instruction.QFREE,
     ],
-    TwoQubitCommand: [
+    RegRegCommand: [
         Instruction.CNOT,
         Instruction.CPHASE,
     ],
     MeasCommand: [
         Instruction.MEAS,
     ],
-    RotationCommand: [
+    RegImmImmCommand: [
         Instruction.ROT_X,
         Instruction.ROT_Y,
         Instruction.ROT_Z,
     ],
-    ClassicalOpCommand: [
+    RegRegRegCommand: [
         Instruction.ADD,
         Instruction.SUB,
     ],
-    ClassicalOpModCommand: [
+    RegRegRegRegCommand: [
         Instruction.ADDM,
         Instruction.SUBM,
+        Instruction.RECV_EPR,
     ],
-    JumpCommand: [
+    ImmCommand: [
         Instruction.JMP,
     ],
-    BranchUnaryCommand: [
-        Instruction.BEZ,
-        Instruction.BNZ,
-    ],
-    BranchBinaryCommand: [
+    RegRegImmCommand: [
         Instruction.BEQ,
         Instruction.BNE,
         Instruction.BLT,
         Instruction.BGE,
     ],
-    SetCommand: [
+    RegImmCommand: [
         Instruction.SET,
+        Instruction.BEZ,
+        Instruction.BNZ,
     ],
-    LoadStoreCommand: [
+    RegEntryCommand: [
         Instruction.STORE,
         Instruction.LOAD,
     ],
-    LeaCommand: [
+    RegAddrCommand: [
         Instruction.LEA,
     ],
-    SingleArrayEntryCommand: [
+    ArrayEntryCommand: [
         Instruction.UNDEF,
         Instruction.WAIT_SINGLE,
     ],
-    SingleArraySliceCommand: [
+    ArraySliceCommand: [
         Instruction.WAIT_ALL,
         Instruction.WAIT_ANY,
     ],
@@ -148,14 +147,11 @@ _COMMAND_GROUPS = {
     ArrayCommand: [
         Instruction.ARRAY,
     ],
-    RetArrCommand: [
+    AddrCommand: [
         Instruction.RET_ARR,
     ],
-    CreateEPRCommand: [
+    Reg5Command: [
         Instruction.CREATE_EPR,
-    ],
-    RecvEPRCommand: [
-        Instruction.RECV_EPR,
     ],
 }
 
@@ -230,7 +226,7 @@ def _create_command_struct(instr, command_group):
     )
 
 
-COMMAND_STRUCTS = {
+COMMAND_STRUCTS: Dict[Instruction, ctypes.Structure] = {
     instr: _create_command_struct(instr, command_group)
     for command_group, instrs in _COMMAND_GROUPS.items()
     for instr in instrs

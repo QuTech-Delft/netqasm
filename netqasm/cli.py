@@ -40,12 +40,22 @@ def version():
 @click.option("-o", "--output-file", type=str, default=None,
               help="File to write output to, if not specified the name of "
                    "the netqasm file will be used with '.out' as extension.")
+@click.option("--flavour", type=click.Choice(["vanilla", "nv"]), default="vanilla",
+              help="Choose the NetQASM flavour that is used. Default is vanilla."
+              )
 @click.option("--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]), default="WARNING",
               help="What log-level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)."
                    "Note, this affects logging to stderr, not logging instructions to file."
               )
-def execute(netqasm_file, backend, num_qubits, output_file, log_level):
+def execute(netqasm_file, backend, num_qubits, output_file, flavour, log_level):
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    execute_subroutine(backend, num_qubits, netqasm_file=netqasm_file, output_file=output_file, log_level=log_level)
+    execute_subroutine(
+        backend,
+        num_qubits,
+        netqasm_file=netqasm_file,
+        output_file=output_file,
+        flavour=flavour,
+        log_level=log_level
+    )

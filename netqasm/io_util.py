@@ -4,6 +4,7 @@ from netqasm.parsing import parse_text_subroutine
 from netqasm.executioner import Executioner
 from netqasm.logging import set_log_level
 from netqasm.messages import Message, MessageType, InitNewAppMessage
+from netqasm.instructions.flavour import NVFlavour
 try:
     from squidasm.qnodeos import SubroutineHandler
     from squidasm.network_setup import get_node
@@ -16,18 +17,20 @@ except ModuleNotFoundError:
 NETQASM_EXT = ".nqasm"
 
 
-def _read_netqasm_file(netqasm_file):
+def _read_netqasm_file(netqasm_file, flavour=None):
     if not netqasm_file.endswith(NETQASM_EXT):
         raise ValueError("{netqasm_file} is not a NetQASM file, should have '{NETQASM_EXT}' extension")
     with open(netqasm_file, 'r') as f:
         subroutine = f.read()
-    subroutine = parse_text_subroutine(subroutine)
+    if flavour == "nv":
+        flavour = NVFlavour()
+    subroutine = parse_text_subroutine(subroutine, flavour)
     return subroutine
 
 
-def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, log_level="WARNING"):
+def execute_subroutine(backend, num_qubits, netqasm_file, output_file=None, flavour=None, log_level="WARNING"):
     set_log_level(log_level)
-    subroutine = _read_netqasm_file(netqasm_file)
+    subroutine = _read_netqasm_file(netqasm_file, flavour)
 
     if backend == "debug":
         shared_memory = _execute_using_debug(

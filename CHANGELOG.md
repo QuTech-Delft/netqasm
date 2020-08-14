@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+2020-08-14 (0.0.7)
+------------------
+- Added static checks with mypy.
+- Large refactoring of how instructions are handled internally.
+- Add concept of NetQASM flavours and a compiler which uses this.
+- Compilation of two-qubit gates for NV.
+
 2020-07-09 (0.0.6)
 ------------------
 - Fixed failing examples and changed default config to only use the dataclass.

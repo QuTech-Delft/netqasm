@@ -1,0 +1,15 @@
+class Symbols:
+    COMMENT_START = '//'
+    BRANCH_END = ':'
+    MACRO_END = '!'
+    ADDRESS_START = '@'
+    ARGS_BRACKETS = '()'
+    ARGS_DELIM = ','
+    INDEX_BRACKETS = '[]'
+    SLICE_DELIM = ':'
+
+    PREAMBLE_START = '#'
+    PREAMBLE_NETQASM = 'NETQASM'
+    PREAMBLE_APPID = 'APPID'
+    PREAMBLE_DEFINE = 'DEFINE'
+    PREAMBLE_DEFINE_BRACKETS = r'{}'

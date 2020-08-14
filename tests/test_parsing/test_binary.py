@@ -1,4 +1,6 @@
-from netqasm.parsing import parse_text_subroutine, parse_binary_subroutine
+from netqasm.parsing import parse_text_subroutine, deserialize
+
+from netqasm.instructions.vanilla import CphaseInstruction
 
 
 def test():
@@ -9,7 +11,7 @@ def test():
 
 // Setup classical registers
 set Q0 0
-array(10) ms!
+array 10 ms!
 set R0 0
 
 // Loop entry
@@ -39,7 +41,7 @@ ret_reg M0
     data = bytes(subroutine)
     print(data)
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
@@ -71,20 +73,34 @@ qfree Q0
     subroutine = parse_text_subroutine(subroutine)
     print(subroutine)
     data = bytes(subroutine)
-    print(data)
+    print(f"binary subroutine: {data}")
 
-    parsed_subroutine = parse_binary_subroutine(data)
+    parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
     for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
-        print()
-        print(repr(command))
-        print(repr(parsed_command))
+        print(f"command: {command}, parsed_command: {parsed_command}")
         assert command == parsed_command
 
     assert subroutine == parsed_subroutine
 
 
-if __name__ == "__main__":
-    # test()
+def test_deserialize_subroutine():
+    metadata = b"\x00\x00\x00\x00"
+    cphase_gate = b"\x1F\x00\x00\x00\x00\x00\x00"
+    raw = bytes(metadata + cphase_gate)
+    print(raw)
+    subroutine = deserialize(raw)
+    print(subroutine)
+    for instr in subroutine.commands:
+        if isinstance(instr, CphaseInstruction):
+            print(f"reg0: {instr.reg0}, reg1: {instr.reg1}")
+
+    subroutine2 = deserialize(raw)
+    print(subroutine2)
+
+
+if __name__ == '__main__':
+    test()
     test_rotations()
+    test_deserialize_subroutine()

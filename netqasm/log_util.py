@@ -36,9 +36,11 @@ class LineTracker:
 
     def get_line(self) -> HostLine:
         if not self._track_lines:
-            return None
+            return None  # type: ignore
 
         frame = inspect.currentframe()
+        assert frame is not None
+
         frame_found = False
         while not frame_found:
             frame_file = self._get_file_from_frame(frame)

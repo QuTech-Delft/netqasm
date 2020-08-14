@@ -1,83 +1,64 @@
+import ctypes
+
 from netqasm import encoding
-from netqasm.instructions import Instruction, COMMAND_STRUCTS
-from netqasm.subroutine import (
-    Command,
-    Register,
-    Address,
-    Subroutine,
-    ArrayEntry,
-    ArraySlice,
-)
+from netqasm.subroutine import Subroutine
+from netqasm.instructions.flavour import Flavour, VanillaFlavour
+from netqasm.instructions.base import NetQASMInstruction
+
+INSTR_ID = ctypes.c_uint8
 
 
-def parse_binary_subroutine(data):
-    metadata, data = parse_metadata(data)
-    if (len(data) % encoding.COMMAND_BYTES) != 0:
-        raise ValueError("Length of data not a multiple of command length")
-    num_commands = int(len(data) / encoding.COMMAND_BYTES)
-    commands = [
-        parse_binary_command(data[i * encoding.COMMAND_BYTES:(i + 1) * encoding.COMMAND_BYTES])
-        for i in range(num_commands)]
-    return Subroutine(
-        netqasm_version=tuple(metadata.netqasm_version),
-        app_id=metadata.app_id,
-        commands=commands,
-    )
+class Deserializer:
+    """
+    Deserializes raw bytes into a Subroutine, given a Flavour.
+    `NetQASMInstructions` are immediately created from the binary encoding.
 
+    (This is in contrast with the parsing.text module, which first converts the input
+    to a `PreSubroutine`, consisting of `Commands`, before transforming it into
+    a `Subroutine` containing `NetQASMInstruction`s.)
+    """
+    def __init__(self, flavour: Flavour):
+        self.flavour = flavour
 
-def parse_metadata(data):
-    metadata = data[:encoding.METADATA_BYTES]
-    metadata = encoding.Metadata.from_buffer_copy(metadata)
-    data = data[encoding.METADATA_BYTES:]
-    return metadata, data
+    def _parse_metadata(self, raw):
+        metadata = raw[:encoding.METADATA_BYTES]
+        metadata = encoding.Metadata.from_buffer_copy(metadata)
+        data = raw[encoding.METADATA_BYTES:]
+        return metadata, data
 
+    def deserialize_subroutine(self, raw: bytes) -> Subroutine:
+        metadata, raw = self._parse_metadata(raw)
+        if (len(raw) % encoding.COMMAND_BYTES) != 0:
+            raise ValueError("Length of data not a multiple of command length")
+        num_commands = int(len(raw) / encoding.COMMAND_BYTES)
 
-def parse_binary_command(data):
-    instruction_id = encoding.INSTR_ID.from_buffer_copy(data[:1]).value
-    instr = Instruction(instruction_id)
-    command_struct = COMMAND_STRUCTS[instr].from_buffer_copy(data)
-    command = _command_struct_to_command(command_struct)
-    return command
+        commands = [
+            self.deserialize_command(raw[i * encoding.COMMAND_BYTES:(i + 1) * encoding.COMMAND_BYTES])
+            for i in range(num_commands)
+        ]
 
-
-def _command_struct_to_command(command):
-    instr = Instruction(command.id)
-    field_values = [
-        getattr(command, field_name)
-        for field_name, _ in command._fields_
-        if not field_name == encoding.PADDING_FIELD
-    ]
-    args = []
-    operands = [_field_struct_to_arg_operand(field_value) for field_value in field_values]
-
-    return Command(
-        instruction=instr,
-        args=args,
-        operands=operands,
-    )
-
-
-def _field_struct_to_arg_operand(field_value):
-    if isinstance(field_value, int):
-        return field_value
-    elif isinstance(field_value, encoding.Register):
-        register_name = encoding.RegisterName(field_value.register_name)
-        return Register(
-            name=register_name,
-            index=field_value.register_index,
+        return Subroutine(
+            netqasm_version=tuple(metadata.netqasm_version),
+            app_id=metadata.app_id,
+            commands=commands,
         )
-    elif isinstance(field_value, encoding.Address):
-        return Address(address=field_value.address)
-    elif isinstance(field_value, encoding.ArrayEntry):
-        return ArrayEntry(
-            address=_field_struct_to_arg_operand(field_value.address),
-            index=_field_struct_to_arg_operand(field_value.index),
-        )
-    elif isinstance(field_value, encoding.ArraySlice):
-        return ArraySlice(
-            address=_field_struct_to_arg_operand(field_value.address),
-            start=_field_struct_to_arg_operand(field_value.start),
-            stop=_field_struct_to_arg_operand(field_value.stop),
-        )
-    else:
-        raise TypeError(f"Unknown field_value {field_value} of type {type(field_value)}")
+
+    def deserialize_command(self, raw: bytes) -> NetQASMInstruction:
+        # peek next byte to check instruction type
+        id = INSTR_ID.from_buffer_copy(raw[:1]).value
+
+        # use the flavour to check which NetQASMInstruction class should be created
+        instr_cls = self.flavour.get_instr_by_id(id)
+        instr: NetQASMInstruction = instr_cls.deserialize_from(raw)
+        return instr
+
+
+def deserialize(data: bytes, flavour=None) -> Subroutine:
+    """
+    Convert a binary encoding into a Subroutine object.
+    The Vanilla flavour is used by default.
+    """
+    if flavour is None:
+        flavour = VanillaFlavour()
+
+    return Deserializer(flavour).deserialize_subroutine(data)
