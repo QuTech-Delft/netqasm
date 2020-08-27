@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+Upcoming
+--------
+
+2020-08-27 (0.0.8)
+------------------
+- Moved syntax highlighting files for vim to separate repo.
+
 2020-08-14 (0.0.7)
 ------------------
 - Added static checks with mypy.
