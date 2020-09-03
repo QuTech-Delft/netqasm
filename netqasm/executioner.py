@@ -4,8 +4,8 @@ from enum import Enum
 from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
-from collections import defaultdict, namedtuple
-from typing import Union, Optional, Dict
+from collections import defaultdict
+from typing import Union, Optional, Dict, List
 
 from qlink_interface import (
     RequestType,
@@ -23,9 +23,6 @@ from netqasm.parsing import parse_address
 
 from netqasm.instructions.base import NetQASMInstruction
 from netqasm import instructions
-
-
-QubitState = namedtuple('QubitState', ['state', 'is_entangled'])
 
 
 @dataclass
@@ -49,9 +46,14 @@ def inc_program_counter(method):
     return new_method
 
 
+class NotAllocatedError(RuntimeError):
+    pass
+
+
 class Executioner:
 
     _INSTR_LOGGERS: Dict[str, Optional[InstrLogger]] = {}
+    instr_logger_class = InstrLogger
 
     def __init__(self, name=None, instr_log_dir=None):
         """Executes a sequence of NetQASM instructions.
@@ -81,7 +83,7 @@ class Executioner:
         self._registers = {}
 
         # Arrays stored in memory for different apps
-        self._app_arrays = {}
+        self._app_arrays: Dict[int, Arrays] = {}
 
         # Shared memory with host for different apps
         self._shared_memories = {}
@@ -137,7 +139,7 @@ class Executioner:
         if instr_logger is None:
             filename = f"{str(node_name).lower()}_instrs.yaml"
             filepath = os.path.join(instr_log_dir, filename)
-            instr_logger = InstrLogger(
+            instr_logger = cls.instr_logger_class(
                 filepath=filepath,
                 executioner=executioner,
             )
@@ -735,11 +737,11 @@ class Executioner:
                              f"of size {len(unit_module)}")
         position = unit_module[address]
         if position is None:
-            raise RuntimeError(f"The qubit with address {address} was not allocated "
-                               f"for app ID {app_id} for node {self._name}")
+            raise NotAllocatedError(f"The qubit with address {address} was not allocated "
+                                    f"for app ID {app_id} for node {self._name}")
         return position
 
-    def _get_array(self, app_id, address):
+    def _get_array(self, app_id, address) -> List[int]:
         return self._app_arrays[app_id]._get_array(address.address)
 
     def _get_array_entry(self, app_id, array_entry):
@@ -975,6 +977,9 @@ class Executioner:
     def _handle_epr_ok_r_response(self, response):
         raise NotImplementedError
         return True
+
+    def _get_qubit(self, app_id, virtual_address):
+        raise NotImplementedError
 
     def _get_qubit_state(self, app_id, virtual_address):
         raise NotImplementedError
