@@ -2,8 +2,9 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, TypedDict, Union
+from typing import List, Dict, Tuple, Optional, Union
 
+from netqasm.typing import TypedDict
 from netqasm.subroutine import Register, ArrayEntry, Address
 from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
