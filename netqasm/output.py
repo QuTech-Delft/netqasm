@@ -7,7 +7,6 @@ from typing import List, Dict, Tuple, Optional, TypedDict, Union
 from netqasm.subroutine import Register, ArrayEntry, Address
 from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
-from netqasm.executioner import Executioner
 
 from netqasm import instructions
 
@@ -129,7 +128,7 @@ class StructuredLogger(abc.ABC):
 
 
 class InstrLogger(StructuredLogger):
-    def __init__(self, filepath: str, executioner: Executioner):
+    def __init__(self, filepath: str, executioner):
         super().__init__(filepath)
         self._executioner = executioner
 
@@ -205,7 +204,7 @@ class InstrLogger(StructuredLogger):
         if any(isinstance(command, cmd_cls) for cmd_cls in qreg_instructions):
             qubit_id = self._get_op_value(
                 subroutine_id=subroutine_id,
-                operand=command.qreg,
+                operand=command.qreg,  # type: ignore
             )
             return [qubit_id]
         elif isinstance(command, instructions.core.TwoQubitInstruction):
@@ -220,10 +219,10 @@ class InstrLogger(StructuredLogger):
         elif any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
             qubit_id_array_address = Address(self._get_op_value(
                 subroutine_id=subroutine_id,
-                operand=command.qubit_addr_array,
+                operand=command.qubit_addr_array,  # type: ignore
             ))
             app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
-            return self._executioner._get_array(app_id=app_id, address=qubit_id_array_address)
+            return self._executioner._get_array(app_id=app_id, address=qubit_id_array_address)  # type: ignore
         else:
             return []
 
