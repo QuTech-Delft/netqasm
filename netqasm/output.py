@@ -245,13 +245,14 @@ class InstrLogger(StructuredLogger):
         return None
 
 
-class GlobalField(Enum):
+class NetworkField(Enum):
     WCT = "WCT"  # Wall clock time
     SIT = "SIT"  # Simulated time
     EGS = "EGS"  # Entanglement generation stage
     NOD = "NOD"  # End nodes
     QID = "QID"  # Qubit ids (node1, node2)
     PTH = "PTH"  # Path in network
+    QGR = "QGR"  # Dictionary specifying groups of qubit across the network
     LOG = "LOG"  # Human-readable message
 
 
@@ -260,7 +261,7 @@ class EntanglementStage(Enum):
     FINISH = "FINISH"
 
 
-class GlobalLogger(StructuredLogger):
+class NetworkLogger(StructuredLogger):
     def __init__(self, filepath):
         super().__init__(filepath)
 
@@ -271,15 +272,17 @@ class GlobalLogger(StructuredLogger):
         nodes = kwargs['nodes']
         qids = kwargs['qids']
         path = kwargs['path']
+        qubit_groups = kwargs['qubit_groups']
         msg = kwargs['msg']
         return {
-            GlobalField.WCT.value: wall_time,
-            GlobalField.SIT.value: sim_time,
-            GlobalField.EGS.value: ent_stage.value,
-            GlobalField.NOD.value: nodes,
-            GlobalField.QID.value: qids,
-            GlobalField.PTH.value: path,
-            GlobalField.LOG.value: msg,
+            NetworkField.WCT.value: wall_time,
+            NetworkField.SIT.value: sim_time,
+            NetworkField.EGS.value: ent_stage.value,
+            NetworkField.NOD.value: nodes,
+            NetworkField.QID.value: qids,
+            NetworkField.PTH.value: path,
+            NetworkField.QGR.value: qubit_groups,
+            NetworkField.LOG.value: msg,
         }
 
 
