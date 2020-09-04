@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, List
 
 from netqasm.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.parsing import parse_address, parse_register
@@ -62,7 +62,7 @@ def setup_registers():
 
 class Arrays:
     def __init__(self):
-        self._arrays = {}
+        self._arrays: Dict[int, List[int]] = {}
 
     # TODO add test for this
     def _get_active_values(self):
@@ -115,7 +115,7 @@ class Arrays:
             raise IndexError(f"index {index} is out of range for array with address {address}")
         return value
 
-    def _get_array(self, address):
+    def _get_array(self, address) -> List[int]:
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         return self._arrays[address]
@@ -157,7 +157,7 @@ class SharedMemory:
 
     def __init__(self):
         self._registers = setup_registers()
-        self._arrays = Arrays()
+        self._arrays: Arrays = Arrays()
 
     def __getitem__(self, key):
         if isinstance(key, Register):
@@ -180,7 +180,7 @@ class SharedMemory:
     def set_array_part(self, address, index, value):
         self._arrays[address, index] = value
 
-    def _get_array(self, address):
+    def _get_array(self, address) -> List[int]:
         return self._arrays._get_array(address)
 
     def init_new_array(self, address, length=1, new_array=None):
