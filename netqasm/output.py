@@ -158,6 +158,44 @@ class InstrLogger(StructuredLogger):
         }
 
 
+class GlobalField(Enum):
+    WCT = "WCT"  # Wall clock time
+    SIT = "SIT"  # Simulated time
+    EGS = "EGS"  # Entanglement generation stage
+    NOD = "NOD"  # End nodes
+    QID = "QID"  # Qubit ids (node1, node2)
+    PTH = "PTH"  # Path in network
+    LOG = "LOG"  # Human-readable message
+
+
+class EntanglementStage(Enum):
+    START = "START"
+    FINISH = "FINISH"
+
+
+class GlobalLogger(StructuredLogger):
+    def __init__(self, filepath):
+        super().__init__(filepath)
+
+    def _construct_entry(self, *args, **kwargs):
+        wall_time = str(datetime.now())
+        sim_time = kwargs['sim_time']
+        ent_stage = kwargs['ent_stage']
+        nodes = kwargs['nodes']
+        qids = kwargs['qids']
+        path = kwargs['path']
+        msg = kwargs['msg']
+        return {
+            GlobalField.WCT.value: wall_time,
+            GlobalField.SIT.value: sim_time,
+            GlobalField.EGS.value: ent_stage.value,
+            GlobalField.NOD.value: nodes,
+            GlobalField.QID.value: qids,
+            GlobalField.PTH.value: path,
+            GlobalField.LOG.value: msg,
+        }
+
+
 class SocketOperation(Enum):
     SEND = "SEND"
     RECV = "RECV"
