@@ -10,6 +10,7 @@ from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
 
 from netqasm import instructions
+from netqasm.encoding import RegisterName
 
 
 def should_log_instr(instr):
@@ -67,6 +68,7 @@ class InstrField(Enum):
     QGR = "QGR"  # Dictionary specifying groups of qubit across the network
     # NOTE Qubits are in a group if they have interacted at some point.
     # This does not necessarily imply entanglement.
+    # There is an additional flag specifying weather the group is entangled or not.
     LOG = "LOG"  # Human-readable message
 
 
@@ -135,8 +137,6 @@ class InstrLogger(StructuredLogger):
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
-        if not should_log_instr(command):
-            return None
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
@@ -156,6 +156,8 @@ class InstrLogger(StructuredLogger):
             instr=command,
             qubit_ids=qubit_ids,
         )
+        if not should_log_instr(command):
+            return None
         if should_check_qubit_state(command):
             qubit_states = self._get_qubit_states(
                 subroutine_id=subroutine_id,
@@ -218,6 +220,9 @@ class InstrLogger(StructuredLogger):
                 qubit_ids.append(qubit_id)
             return qubit_ids
         elif any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
+            # Ignore a constant register since this indicates it's a measure directly request
+            if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
+                return []
             qubit_id_array_address = Address(self._get_op_value(
                 subroutine_id=subroutine_id,
                 operand=command.qubit_addr_array,  # type: ignore
@@ -246,19 +251,19 @@ class InstrLogger(StructuredLogger):
 
 
 class NetworkField(Enum):
-    WCT = "WCT"  # Wall clock time
-    SIT = "SIT"  # Simulated time
-    EGS = "EGS"  # Entanglement generation stage
+    WCT = InstrField.WCT.value  # Wall clock time
+    SIT = InstrField.SIT.value  # Simulated time
+    INS = InstrField.INS.value  # Entanglement generation stage
     NOD = "NOD"  # End nodes
-    QID = "QID"  # Qubit ids (node1, node2)
-    PTH = "PTH"  # Path in network
-    QGR = "QGR"  # Dictionary specifying groups of qubit across the network
-    LOG = "LOG"  # Human-readable message
+    QID = InstrField.QID.value  # Qubit ids (node1, node2)
+    QST = InstrField.QST.value  # Reduced qubit states
+    QGR = InstrField.QGR.value  # Dictionary specifying groups of qubit across the network
+    LOG = InstrField.LOG.value  # Human-readable message
 
 
 class EntanglementStage(Enum):
-    START = "START"
-    FINISH = "FINISH"
+    START = "start"
+    FINISH = "finish"
 
 
 class NetworkLogger(StructuredLogger):
@@ -270,17 +275,17 @@ class NetworkLogger(StructuredLogger):
         sim_time = kwargs['sim_time']
         ent_stage = kwargs['ent_stage']
         nodes = kwargs['nodes']
-        qids = kwargs['qids']
-        path = kwargs['path']
+        qubit_ids = kwargs['qubit_ids']
+        qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
         msg = kwargs['msg']
         return {
             NetworkField.WCT.value: wall_time,
             NetworkField.SIT.value: sim_time,
-            NetworkField.EGS.value: ent_stage.value,
+            NetworkField.INS.value: f"epr_{ent_stage}",
             NetworkField.NOD.value: nodes,
-            NetworkField.QID.value: qids,
-            NetworkField.PTH.value: path,
+            NetworkField.QID.value: qubit_ids,
+            NetworkField.QST.value: qubit_states,
             NetworkField.QGR.value: qubit_groups,
             NetworkField.LOG.value: msg,
         }

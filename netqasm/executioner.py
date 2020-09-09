@@ -731,7 +731,9 @@ class Executioner:
         return unit_module
 
     def _get_position_in_unit_module(self, app_id, address):
-        unit_module = self._qubit_unit_modules[app_id]
+        unit_module = self._qubit_unit_modules.get(app_id)
+        if unit_module is None:
+            raise RuntimeError(f"Application with app ID {app_id} has not allocated qubit unit module")
         if address >= len(unit_module):
             raise IndexError(f"The address {address} is not within the allocated unit module "
                              f"of size {len(unit_module)}")
@@ -938,6 +940,8 @@ class Executioner:
         arr_stop = (pair_index + 1) * OK_FIELDS
         subroutine_id = epr_cmd_data.subroutine_id
         app_id = self._get_app_id(subroutine_id=subroutine_id)
+        if app_id not in self._app_arrays:
+            raise KeyError("App ID {app_id} does not have any arrays")
         self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
 
     def _handle_epr_ok_k_response(self, epr_cmd_data, response, pair_index):
