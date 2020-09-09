@@ -155,11 +155,27 @@ class QAllocInstruction(base.RegInstruction):
     id: int = 1
     mnemonic: str = "qalloc"
 
+    @property
+    def qreg(self):
+        return self.reg
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg = new_val
+
 
 @dataclass
 class InitInstruction(base.RegInstruction):
     id: int = 2
     mnemonic: str = "init"
+
+    @property
+    def qreg(self):
+        return self.reg
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg = new_val
 
 
 @dataclass
@@ -476,6 +492,14 @@ class WaitSingleInstruction(base.ArrayEntryInstruction):
 class QFreeInstruction(base.RegInstruction):
     id: int = 38
     mnemonic: str = "qfree"
+
+    @property
+    def qreg(self):
+        return self.reg
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg = new_val
 
 
 @dataclass
