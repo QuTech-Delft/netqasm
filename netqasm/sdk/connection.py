@@ -287,7 +287,6 @@ class NetQASMConnection(abc.ABC):
         self._arrays_to_return.append(array)
         return array
 
-    # def add_pending_commands(self, commands, **kwargs):
     def add_pending_commands(self, commands):
         calling_lineno = self._line_tracker.get_line()
         for command in commands:
@@ -296,14 +295,10 @@ class NetQASMConnection(abc.ABC):
             self.add_pending_command(command)
 
     def add_pending_command(self, command):
-        if isinstance(command, Command) or isinstance(command, BranchLabel):
-            if command.lineno is None:
-                command.lineno = self._line_tracker.get_line()
-            self._pending_commands.append(command)
-        else:
-            raise RuntimeError()
-            # TODO check if this is used
-            # self._add_netqasm_commands(command, **kwargs)
+        assert isinstance(command, Command) or isinstance(command, BranchLabel)
+        if command.lineno is None:
+            command.lineno = self._line_tracker.get_line()
+        self._pending_commands.append(command)
 
     def flush(self, block=True, callback=None):
         subroutine = self._pop_pending_subroutine()
@@ -442,23 +437,6 @@ class NetQASMConnection(abc.ABC):
         )
         commands = set_commands + [rot_command]
         self.add_pending_commands(commands)
-
-    # TODO stop using qID (not pep8) when not inheriting from CQC anymore
-    # def _add_netqasm_commands(self, command, **kwargs):
-    #     if command == CQC_CMD_MEASURE:
-    #         self._add_netqasm_meas_command(command=command, **kwargs)
-    #     elif command == CQC_CMD_NEW:
-    #         self._add_netqasm_new_command(command=command, **kwargs)
-    #     elif command in _CQC_EPR_INSTRS:
-    #         # NOTE shouldn't happen anymore
-    #         raise RuntimeError("Didn't expect a EPR command from CQC, should directly be a NetQASM command.")
-    #         # self._add_netqasm_epr_command(command=command, **kwargs)
-    #     elif command in _CQC_TWO_Q_INSTRS:
-    #         self._add_netqasm_two_qubit_command(command=command, **kwargs)
-    #     elif command in _CQC_SINGLE_Q_INSTRS:
-    #         self._add_netqasm_single_qubit_command(command=command, **kwargs)
-    #     else:
-    #         raise ValueError(f"Unknown cqc instruction {command}")
 
     def add_single_qubit_commands(self, instr, qubit_id):
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
