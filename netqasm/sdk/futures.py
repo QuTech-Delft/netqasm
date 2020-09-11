@@ -170,7 +170,7 @@ class Future(int):
         if other_tmp_register is not None:
             self._connection._remove_active_register(other_tmp_register)
 
-        self._connection.put_commands(commands)
+        self._connection.add_pending_commands(commands)
 
     def _get_load_commands(self, register):
         return self._get_access_commands(Instruction.LOAD, register)
