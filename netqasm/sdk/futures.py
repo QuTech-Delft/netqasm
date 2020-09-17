@@ -118,7 +118,7 @@ class Future(int):
             return self._value
         if not isinstance(self._index, int):
             raise NonConstantIndexError("index is not constant and cannot be resolved")
-        value = self._connection._shared_memory.get_array_part(address=self._address, index=self._index)
+        value = self._connection.shared_memory.get_array_part(address=self._address, index=self._index)
         if value is not None:
             self._value = value
         return value
@@ -279,7 +279,7 @@ class Array:
         return self._length
 
     def __getitem__(self, index):
-        return self._connection._shared_memory.get_array_part(address=self._address, index=index)
+        return self._connection.shared_memory.get_array_part(address=self._address, index=index)
 
     @property
     def address(self):

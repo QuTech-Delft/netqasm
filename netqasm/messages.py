@@ -1,8 +1,6 @@
 import ctypes
 from enum import Enum
 
-from netqasm.parsing.binary import deserialize as deserialize_subroutine
-
 # This module defines the messages that the host can send to
 # the backend/QNodeOS
 
@@ -31,8 +29,22 @@ class Message(ctypes.Structure):
     ]
 
     @classmethod
-    def deserialize_from(cls, raw: bytes, flavour=None):
+    def deserialize_from(cls, raw: bytes):
         return cls.from_buffer_copy(raw)
+
+    # @classmethod
+    # def len(cls):
+    #     return len(bytes(cls()))
+
+    def __str__(self):
+        to_print = f"{self.__class__.__name__}("
+        for field_name, _ in self._fields_:
+            to_print += f"{field_name}={getattr(self, field_name)}, "
+        to_print = to_print[:-2] + ")"
+        return to_print
+
+    def __len__(self):
+        return len(bytes(self))
 
 
 class InitNewAppMessage(Message):
@@ -41,10 +53,10 @@ class InitNewAppMessage(Message):
         ('max_qubits', NUM_QUBITS),
     ]
 
-    TYPE = MessageType.INIT_NEW_APP.value
+    TYPE = MessageType.INIT_NEW_APP
 
-    def __init__(self, app_id, max_qubits):
-        super().__init__(self.TYPE)
+    def __init__(self, app_id=0, max_qubits=0):
+        super().__init__(self.TYPE.value)
         self.app_id = app_id
         self.max_qubits = max_qubits
 
@@ -56,10 +68,10 @@ class OpenEPRSocketMessage(Message):
         ("remote_epr_socket_id", EPR_SOCKET_ID),  # type: ignore
     ]
 
-    TYPE = MessageType.OPEN_EPR_SOCKET.value
+    TYPE = MessageType.OPEN_EPR_SOCKET
 
-    def __init__(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
-        super().__init__(self.TYPE)
+    def __init__(self, epr_socket_id=0, remote_node_id=0, remote_epr_socket_id=0):
+        super().__init__(self.TYPE.value)
         self.epr_socket_id = epr_socket_id
         self.remote_node_id = remote_node_id
         self.remote_epr_socket_id = remote_epr_socket_id
@@ -67,25 +79,38 @@ class OpenEPRSocketMessage(Message):
 
 class SubroutineMessage:
 
-    TYPE = MessageType.SUBROUTINE.value
+    TYPE = MessageType.SUBROUTINE
 
     def __init__(self, subroutine):
         """
-        NOTE this message does not subclass from Message since it contains
+        NOTE this message does not subclass from `Message` since it contains
         a subroutine which is defined separately and not as a `ctype` for now.
         Still this class defines the methods `__bytes__` and `deserialize_from`
         so that it can be packed and unpacked.
+        
+        The packed form of the message is:
+
+        .. code-block:: text
+
+            | TYP | SUBROUTINE ... |
+
         """
-        self.type = self.TYPE
+        self.type = self.TYPE.value
         self.subroutine = subroutine
 
     def __bytes__(self):
         return bytes(MESSAGE_TYPE(self.type)) + bytes(self.subroutine)
 
+    def __len__(self):
+        return len(bytes(self))
+
     @classmethod
-    def deserialize_from(cls, raw: bytes, flavour=None):
-        subroutine = deserialize_subroutine(data=raw[MESSAGE_TYPE_BYTES:], flavour=flavour)
-        return cls(subroutine=subroutine)
+    def deserialize_from(cls, raw: bytes):
+        # NOTE we don't deserialize the subroutine here, since we need to know which flavour
+        # is being used
+        return cls(subroutine=raw[MESSAGE_TYPE_BYTES:])
+        # subroutine = deserialize_subroutine(data=raw[MESSAGE_TYPE_BYTES:], flavour=flavour)
+        # return cls(subroutine=subroutine)
 
 
 class StopAppMessage(Message):
@@ -93,10 +118,10 @@ class StopAppMessage(Message):
         ('app_id', APP_ID),  # type: ignore
     ]
 
-    TYPE = MessageType.STOP_APP.value
+    TYPE = MessageType.STOP_APP
 
-    def __init__(self, app_id):
-        super().__init__(self.TYPE)
+    def __init__(self, app_id=0):
+        super().__init__(self.TYPE.value)
         self.app_id = app_id
 
 
@@ -109,10 +134,10 @@ class SignalMessage(Message):
         ("signal", SIGNAL),
     ]
 
-    TYPE = MessageType.SIGNAL.value
+    TYPE = MessageType.SIGNAL
 
-    def __init__(self, signal: Signal):
-        super().__init__(self.TYPE)
+    def __init__(self, signal: Signal = Signal.STOP):
+        super().__init__(self.TYPE.value)
         self.signal = signal.value
 
 
@@ -125,7 +150,7 @@ MESSAGE_CLASSES = {
 }
 
 
-def deserialize(raw: bytes, flavour=None) -> Message:
+def deserialize(raw: bytes) -> Message:
     message_type = MessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = MESSAGE_CLASSES[message_type]
-    return message_class.deserialize_from(raw, flavour=flavour)  # type: ignore
+    return message_class.deserialize_from(raw)

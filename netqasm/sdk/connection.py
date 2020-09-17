@@ -77,6 +77,8 @@ class NetQASMConnection(abc.ABC):
         log_config=None,
         epr_sockets=None,
         compiler=None,
+        _init_app=True,
+        _setup_epr_sockets=True,
     ):
         self._name = name
 
@@ -88,10 +90,9 @@ class NetQASMConnection(abc.ABC):
 
         self._used_array_addresses = []
 
-        self._max_qubits = max_qubits
-        self._init_new_app(max_qubits=max_qubits)
-
         self._pending_commands = []
+
+        self._max_qubits = max_qubits
 
         self._shared_memory = get_shared_memory(self.name, key=self._app_id)
 
@@ -125,10 +126,15 @@ class NetQASMConnection(abc.ABC):
         # What compiler (if any) to be used
         self._compiler = compiler
 
-        # Setup epr sockets
-        self._setup_epr_sockets(epr_sockets=epr_sockets)
-
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
+
+        if _init_app:
+            print("init app in base")
+            self._init_new_app(max_qubits=max_qubits)
+
+        if _setup_epr_sockets:
+            # Setup epr sockets
+            self._setup_epr_sockets(epr_sockets=epr_sockets)
 
     @property
     def name(self):
@@ -178,18 +184,28 @@ class NetQASMConnection(abc.ABC):
         except ValueError:
             pass  # Already removed
 
+    def clear(self):
+        self._pop_app_id()
+
     def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
+        print("flushing")
         self.flush()
+        print("pop app ID")
 
         self._pop_app_id()
 
+        print("signal stop")
+
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
+        print("inactivate qubtis")
         self._inactivate_qubits()
+        print("log_subroutines_dir")
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
+        print("done")
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
@@ -240,6 +256,15 @@ class NetQASMConnection(abc.ABC):
 
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
+        # import random
+        # if random.randint(0, 1) == 0:
+        #     raise RuntimeError
+        # if not hasattr(self.__class__, "tmp_cache"):
+        #     self.__class__.tmp_cache = {}
+        # key = (self.name, self._app_id)
+        # if key in self.__class__.tmp_cache:
+        #     raise RuntimeError
+        # self.__class__.tmp_cache[key] = True
         self._commit_message(msg=InitNewAppMessage(
                 app_id=self._app_id,
                 max_qubits=max_qubits,
