@@ -13,7 +13,7 @@ EPR_SOCKET_ID = ctypes.c_uint32
 NODE_ID = ctypes.c_uint32
 SIGNAL = ctypes.c_uint8
 
-MESSAGE_TYPE_BYTES = len(bytes(MESSAGE_TYPE()))
+MESSAGE_TYPE_BYTES = len(bytes(MESSAGE_TYPE()))  # type: ignore
 
 
 class MessageType(Enum):
@@ -37,7 +37,7 @@ class Message(ctypes.Structure):
 
 class InitNewAppMessage(Message):
     _fields_ = [
-        ('app_id', APP_ID),
+        ('app_id', APP_ID),  # type: ignore
         ('max_qubits', NUM_QUBITS),
     ]
 
@@ -51,9 +51,9 @@ class InitNewAppMessage(Message):
 
 class OpenEPRSocketMessage(Message):
     _fields_ = [
-        ("epr_socket_id", EPR_SOCKET_ID),
-        ("remote_node_id", NODE_ID),
-        ("remote_epr_socket_id", EPR_SOCKET_ID),
+        ("epr_socket_id", EPR_SOCKET_ID),  # type: ignore
+        ("remote_node_id", NODE_ID),  # type: ignore
+        ("remote_epr_socket_id", EPR_SOCKET_ID),  # type: ignore
     ]
 
     TYPE = MessageType.OPEN_EPR_SOCKET.value
@@ -90,7 +90,7 @@ class SubroutineMessage:
 
 class StopAppMessage(Message):
     _fields_ = [
-        ('app_id', APP_ID),
+        ('app_id', APP_ID),  # type: ignore
     ]
 
     TYPE = MessageType.STOP_APP.value
@@ -128,4 +128,4 @@ MESSAGE_CLASSES = {
 def deserialize(raw: bytes, flavour=None) -> Message:
     message_type = MessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = MESSAGE_CLASSES[message_type]
-    return message_class.deserialize_from(raw, flavour=flavour)
+    return message_class.deserialize_from(raw, flavour=flavour)  # type: ignore
