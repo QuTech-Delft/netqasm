@@ -294,6 +294,7 @@ class Executioner:
         while self._program_counters[subroutine_id] < len(commands):
             prog_counter = self._program_counters[subroutine_id]
             command = commands[prog_counter]
+            print(f"running command {command} at prgc {prog_counter}")
             try:
                 output = self._execute_command(subroutine_id, command)
                 if isinstance(output, GeneratorType):  # sanity check: should always be the case
@@ -365,7 +366,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, instr.reg)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
-        return self._allocate_physical_qubit(subroutine_id, qubit_address)
+        self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
     def _instr_store(self, subroutine_id, instr: instructions.core.StoreInstruction):

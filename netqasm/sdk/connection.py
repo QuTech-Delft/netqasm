@@ -189,15 +189,22 @@ class NetQASMConnection(abc.ABC):
     def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
+        print("flushing")
         self.flush()
+        print("pop app ID")
 
         self._pop_app_id()
 
+        print("signal stop")
+
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
+        print("inactivate qubtis")
         self._inactivate_qubits()
+        print("log_subroutines_dir")
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
+        print("done")
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
@@ -248,6 +255,15 @@ class NetQASMConnection(abc.ABC):
 
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
+        # import random
+        # if random.randint(0, 1) == 0:
+        #     raise RuntimeError
+        # if not hasattr(self.__class__, "tmp_cache"):
+        #     self.__class__.tmp_cache = {}
+        # key = (self.name, self._app_id)
+        # if key in self.__class__.tmp_cache:
+        #     raise RuntimeError
+        # self.__class__.tmp_cache[key] = True
         self._commit_message(msg=InitNewAppMessage(
                 app_id=self._app_id,
                 max_qubits=max_qubits,
