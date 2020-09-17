@@ -3,7 +3,8 @@ import numpy as np
 from typing import Dict, Set
 
 from netqasm.logging import set_log_level
-from netqasm.parsing import parse_text_subroutine, deserialize
+from netqasm.parsing import parse_text_subroutine
+from netqasm.messages import deserialize as deserialize_message
 from netqasm.quantum_gates import are_matrices_equal
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
@@ -276,8 +277,10 @@ def test_compiling_nv_using_sdk():
         q.rot_Z(n=1, d=2)
 
     assert len(alice.storage) == 4
-    subroutine = deserialize(alice.storage[1].msg, flavour=NVFlavour())
+    subroutine = deserialize_message(raw=alice.storage[1], flavour=NVFlavour()).subroutine
 
+    # NOTE this does not test much anymore since we need to state which flavour we
+    # are using to be able to deserialize
     for instr in subroutine.commands:
         assert (
             instr.__class__ not in VanillaFlavour().instrs
