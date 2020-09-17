@@ -257,8 +257,3 @@ class _FutureQubit(Qubit):
     @property
     def remote_entangled_node(self):
         raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
-
-    # TODO when changing the status of a future qubit, how to treat the status of the actual qubit?
-    # @set_active.setter
-    # def active(self, active):
-    #     pass
