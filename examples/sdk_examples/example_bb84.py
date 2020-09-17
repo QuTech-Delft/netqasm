@@ -30,7 +30,7 @@ def main(no_output=False):
     if no_output:
         # Third message since the first two are for init application
         # and opening the EPR socket
-        print(f'binary:\n{alice.storage[2].msg}')
+        print(f'binary:\n{alice.storage[2]}')
 
 
 if __name__ == "__main__":
