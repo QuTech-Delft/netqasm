@@ -1,4 +1,5 @@
 import os
+import traceback
 import numpy as np
 from enum import Enum
 from itertools import count
@@ -137,6 +138,10 @@ class Executioner:
     @property
     def name(self):
         return self._name
+
+    @property
+    def node_id(self):
+        return self._node.ID
 
     @classmethod
     def get_instr_logger(cls, node_name, instr_log_dir, executioner):
@@ -295,7 +300,12 @@ class Executioner:
                 if isinstance(output, GeneratorType):  # sanity check: should always be the case
                     yield from output
             except Exception as exc:
-                raise exc.__class__(f"At line {prog_counter}: {exc}") from exc
+                traceback_str = ''.join(traceback.format_tb(exc.__traceback__))
+                self._handle_command_exception(exc, prog_counter, traceback_str)
+                break
+
+    def _handle_command_exception(self, exc, prog_counter, traceback_str):
+        raise exc.__class__(f"At line {prog_counter}: {exc}\n{traceback_str}") from exc
 
     def _execute_command(self, subroutine_id, command):
         """Executes a single instruction"""
@@ -576,7 +586,7 @@ class Executioner:
             f"using arguments stored in array with address {arg_array_address}, "
             f"placing the entanglement information in array at address {ent_info_array_address}"
         )
-        self._do_create_epr(
+        output = self._do_create_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
@@ -584,6 +594,8 @@ class Executioner:
             arg_array_address=arg_array_address,
             ent_info_array_address=ent_info_array_address,
         )
+        if isinstance(output, GeneratorType):
+            yield from output
 
     def _do_create_epr(
         self,
@@ -659,13 +671,15 @@ class Executioner:
             f"using qubit addresses stored in array with address {q_array_address}, "
             f"placing the entanglement information in array at address {ent_info_array_address}"
         )
-        self._do_recv_epr(
+        output = self._do_recv_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
             q_array_address=q_array_address,
             ent_info_array_address=ent_info_array_address,
         )
+        if isinstance(output, GeneratorType):
+            yield from output
 
     def _do_recv_epr(
         self,
@@ -980,10 +994,10 @@ class Executioner:
             f"Got the following error from the network stack: {response}")
 
     def _extract_epr_info(self, response):
-        creator_node_id = get_creator_node_id(self._node.ID, response)
+        creator_node_id = get_creator_node_id(self.node_id, response)
 
         # Retreive the data for this request (depending on if we are creator or receiver
-        if creator_node_id == self._node.ID:
+        if creator_node_id == self.node_id:
             is_creator = True
             create_id = response.create_id
             epr_cmd_data = self._epr_create_requests[create_id]

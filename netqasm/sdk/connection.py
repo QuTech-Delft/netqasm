@@ -48,6 +48,7 @@ from netqasm.messages import (
     SignalMessage,
 )
 from netqasm.sdk.config import LogConfig
+from simulaqron.settings import simulaqron_settings
 
 
 # NOTE this is needed to be able to instanciate tuples the same way as namedtuples
@@ -239,7 +240,7 @@ class NetQASMConnection(abc.ABC):
             self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
         if stop_backend:
-            self._commit_message(msg=SignalMessage(signal=Signal.STOP))
+            self._commit_message(msg=SignalMessage(signal=Signal.STOP), block=False)
 
     def _save_log_subroutines(self):
         filename = f'subroutines_{self.name}.pkl'
@@ -432,6 +433,8 @@ class NetQASMConnection(abc.ABC):
         raise NotImplementedError
 
     def add_single_qubit_rotation_commands(self, instruction, virtual_qubit_id, n=0, d=0, angle=None):
+        if simulaqron_settings.backend == "stabilizer":
+            raise RuntimeError("Cannot perform rotations when using stabilizer formalism")
         if angle is not None:
             nds = get_angle_spec_from_float(angle=angle)
             for n, d in nds:
