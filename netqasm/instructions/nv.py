@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 
 import netqasm.instructions.core as core
-from netqasm.quantum_gates import get_rotation_matrix
+from netqasm.quantum_gates import get_rotation_matrix, get_controlled_rotation_matrix
 
 
 # Explicit instruction types in the NV flavour.
@@ -85,38 +85,32 @@ class RotZInstruction(core.RotationInstruction):
 
 
 @dataclass
-class CnotInstruction(core.TwoQubitInstruction):
+class ControlledRotXInstruction(core.ControlledRotationInstruction):
     id: int = 30
-    mnemonic: str = "cnot"
+    mnemonic: str = "crot_x"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0]])
+        axis = [1, 0, 0]
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        return get_controlled_rotation_matrix(axis, angle)
 
     def to_matrix_target_only(self) -> np.array:
-        return np.array([
-            [0, 1],
-            [1, 0]
-        ])
+        axis = [1, 0, 0]
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        return get_rotation_matrix(axis, angle)
 
 
 @dataclass
-class CSqrtXInstruction(core.TwoQubitInstruction):
+class ControlledRotYInstruction(core.ControlledRotationInstruction):
     id: int = 31
-    mnemonic: str = "csqx"
+    mnemonic: str = "crot_y"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1 * np.sqrt(1j/2), -1j * np.sqrt(1j/2)],
-            [0, 0, -1j * np.sqrt(1j/2), 1 * np.sqrt(1j/2)]])
+        axis = [1, 0, 0]
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        return get_controlled_rotation_matrix(axis, angle)
 
     def to_matrix_target_only(self) -> np.array:
-        return np.array([
-            [1, -1j],
-            [-1j, 1]
-        ]) * np.sqrt(1j/2)
+        axis = [1, 0, 0]
+        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        return get_rotation_matrix(axis, angle)
