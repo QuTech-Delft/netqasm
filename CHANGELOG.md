@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2020-09-17 (0.0.10)
+------------------
+- `netqasm` does not depend on `cqc` anymore.
+
 2020-09-09 (0.0.9)
 ------------------
 - Instrs-logging now support qubit IDs and qubit states for all qubits involved in the operation.
