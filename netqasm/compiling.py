@@ -316,7 +316,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         elif isinstance(instr, vanilla.GateHInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1)),
                 nv.RotXInstruction(
                     lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
             ]
