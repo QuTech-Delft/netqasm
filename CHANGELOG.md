@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2020-09-22 (0.0.11)
+------------------
+- Now using binary encoding for messages from host to qnodeos.
+
 2020-09-17 (0.0.10)
 ------------------
 - `netqasm` does not depend on `cqc` anymore.
