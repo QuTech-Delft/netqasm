@@ -49,7 +49,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
         carbon: Register,
     ) -> List[NetQASMInstruction]:
         """
-        Swap the states of the electron and a carbon
+        Swap the states of the electron and a carbon.
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
         """
         gates: List[NetQASMInstruction] = []
 
@@ -178,6 +180,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
 
         return [
             nv.RotYInstruction(
@@ -201,6 +207,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: vanilla.CphaseInstruction
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -220,6 +230,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
 
         return [
             nv.ControlledRotXInstruction(
@@ -237,6 +251,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: vanilla.CnotInstruction,
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = instr.reg1
         carbon = instr.reg0
 
@@ -271,6 +289,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: vanilla.CnotInstruction
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))

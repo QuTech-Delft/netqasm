@@ -304,7 +304,7 @@ class NetQASMConnection(abc.ABC):
         )
 
     def _commit_subroutine(self, presubroutine: PreSubroutine, block=True, callback=None):
-        # self._logger.info(f"Flushing presubroutine:\n{presubroutine}")
+        self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
         subroutine = self._pre_process_subroutine(presubroutine)
