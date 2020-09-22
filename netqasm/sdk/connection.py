@@ -41,11 +41,11 @@ from netqasm.subroutine import (
 )
 from netqasm.messages import (
     Signal,
-    Message,
     InitNewAppMessage,
-    MessageType,
     StopAppMessage,
     OpenEPRSocketMessage,
+    SubroutineMessage,
+    SignalMessage,
 )
 from netqasm.sdk.config import LogConfig
 
@@ -191,8 +191,13 @@ class NetQASMConnection(abc.ABC):
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
 
-    @abc.abstractmethod
     def _commit_message(self, msg, block=True, callback=None):
+        """Commit a message to the backend/qnodeos"""
+        print(f"raw msg: {bytes(msg)}")
+        self._commit_serialized_message(raw_msg=bytes(msg), block=block, callback=callback)
+
+    @abc.abstractmethod
+    def _commit_serialized_message(self, raw_msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
         pass
@@ -216,16 +221,10 @@ class NetQASMConnection(abc.ABC):
 
     def _signal_stop(self, clear_app=True, stop_backend=True):
         if clear_app:
-            self._commit_message(msg=Message(
-                type=MessageType.STOP_APP,
-                msg=StopAppMessage(app_id=self._app_id),
-            ))
+            self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
         if stop_backend:
-            self._commit_message(msg=Message(
-                type=MessageType.SIGNAL,
-                msg=Signal.STOP,
-            ))
+            self._commit_message(msg=SignalMessage(signal=Signal.STOP))
 
     def _save_log_subroutines(self):
         filename = f'subroutines_{self.name}.pkl'
@@ -242,12 +241,9 @@ class NetQASMConnection(abc.ABC):
 
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
-        self._commit_message(msg=Message(
-            type=MessageType.INIT_NEW_APP,
-            msg=InitNewAppMessage(
+        self._commit_message(msg=InitNewAppMessage(
                 app_id=self._app_id,
                 max_qubits=max_qubits,
-            ),
         ))
 
     def _setup_epr_sockets(self, epr_sockets):
@@ -265,13 +261,10 @@ class NetQASMConnection(abc.ABC):
 
     def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
         """Sets up a new epr socket"""
-        self._commit_message(msg=Message(
-            type=MessageType.OPEN_EPR_SOCKET,
-            msg=OpenEPRSocketMessage(
+        self._commit_message(msg=OpenEPRSocketMessage(
                 epr_socket_id=epr_socket_id,
                 remote_node_id=remote_node_id,
                 remote_epr_socket_id=remote_epr_socket_id,
-            ),
         ))
 
     def new_array(self, length=1, init_values=None):
@@ -318,12 +311,9 @@ class NetQASMConnection(abc.ABC):
         subroutine = self._pre_process_subroutine(presubroutine)
         self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
-        bin_subroutine = bytes(subroutine)
-
         # Commit the subroutine to the quantum device
-        self._logger.debug(f"Puts the next subroutine:\n{subroutine}")
         self._commit_message(
-            msg=Message(type=MessageType.SUBROUTINE, msg=bin_subroutine),
+            msg=SubroutineMessage(subroutine=subroutine),
             block=block,
             callback=callback,
         )
@@ -1308,9 +1298,9 @@ class DebugConnection(NetQASMConnection):
         self.storage = []
         super().__init__(*args, **kwargs)
 
-    def _commit_message(self, msg, block=True, callback=None):
+    def _commit_serialized_message(self, raw_msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
-        self.storage.append(msg)
+        self.storage.append(raw_msg)
 
     def _get_node_id(self, node_name):
         """Returns the node id for the node with the given name"""
