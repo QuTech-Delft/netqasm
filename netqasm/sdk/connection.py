@@ -248,15 +248,6 @@ class NetQASMConnection(abc.ABC):
 
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
-        # import random
-        # if random.randint(0, 1) == 0:
-        #     raise RuntimeError
-        # if not hasattr(self.__class__, "tmp_cache"):
-        #     self.__class__.tmp_cache = {}
-        # key = (self.name, self._app_id)
-        # if key in self.__class__.tmp_cache:
-        #     raise RuntimeError
-        # self.__class__.tmp_cache[key] = True
         self._commit_message(msg=InitNewAppMessage(
                 app_id=self._app_id,
                 max_qubits=max_qubits,
