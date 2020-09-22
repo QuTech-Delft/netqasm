@@ -57,7 +57,7 @@ class _Tuple(tuple):
         return tuple.__new__(cls, args[1:])
 
 
-class NetQASMConnection(abc.ABC):
+class BaseNetQASMConnection(abc.ABC):
 
     # Used app IDs
     _app_ids: Dict[str, List[int]] = {}
@@ -1306,7 +1306,7 @@ class NetQASMConnection(abc.ABC):
         return True
 
 
-class DebugConnection(NetQASMConnection):
+class DebugConnection(BaseNetQASMConnection):
 
     node_ids: Dict[str, int] = {}
 

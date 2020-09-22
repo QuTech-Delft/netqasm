@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 
@@ -17,12 +18,20 @@ class Flavour(Enum):
     NV = "nv"
 
 
-_BACKEND = [Backend.NETSQUID]
+BACKEND_ENV = "NETQASM_BACKEND"
 
 
 def set_backend(backend):
-    _BACKEND[0] = Backend(backend)
+    os.environ[BACKEND_ENV] = Backend(backend).value
 
 
 def get_backend():
-    return _BACKEND[0]
+    backend = os.environ.get(BACKEND_ENV)
+    if backend is None:
+        return _default_backend()
+    else:
+        return Backend(backend)
+
+
+def _default_backend():
+    return Backend.NETSQUID
