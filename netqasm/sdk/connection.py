@@ -189,22 +189,15 @@ class NetQASMConnection(abc.ABC):
     def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
-        print("flushing")
         self.flush()
-        print("pop app ID")
 
         self._pop_app_id()
 
-        print("signal stop")
-
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
-        print("inactivate qubtis")
         self._inactivate_qubits()
-        print("log_subroutines_dir")
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
-        print("done")
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""

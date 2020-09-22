@@ -2,12 +2,11 @@ import ctypes
 from enum import Enum
 from typing import Union
 
-<<<<<<< HEAD
 from netqasm.encoding import Address, Register, INTEGER, OptionalInt
 from netqasm.subroutine import Subroutine
 
-=======
->>>>>>> 19391b1... Started WIP for enabling simulaqron
+from netqasm.encoding import Address, Register, INTEGER, OptionalInt
+
 # This module defines the messages that the host can send to
 # the backend/QNodeOS
 
@@ -54,13 +53,6 @@ class Message(ctypes.Structure):
     def deserialize_from(cls, raw: bytes):
         return cls.from_buffer_copy(raw)
 
-<<<<<<< HEAD
-=======
-    # @classmethod
-    # def len(cls):
-    #     return len(bytes(cls()))
-
->>>>>>> 19391b1... Started WIP for enabling simulaqron
     def __str__(self):
         to_print = f"{self.__class__.__name__}("
         for field_name, _ in self._fields_:
@@ -177,7 +169,6 @@ MESSAGE_CLASSES = {
 }
 
 
-<<<<<<< HEAD
 def deserialize_host_msg(raw: bytes) -> Message:
     message_type = MessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = MESSAGE_CLASSES[message_type]
