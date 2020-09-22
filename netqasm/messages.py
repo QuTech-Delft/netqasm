@@ -164,7 +164,7 @@ MESSAGE_CLASSES = {
 def deserialize_host_msg(raw: bytes) -> Message:
     message_type = MessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = MESSAGE_CLASSES[message_type]
-    return message_class.deserialize_from(raw)
+    return message_class.deserialize_from(raw)  # type: ignore
 
 
 class ReturnMessage(Message):
@@ -180,7 +180,7 @@ class ReturnMessageType(Enum):
 
 class MsgDoneMessage(ReturnMessage):
     _fields_ = [
-        ('msg_id', MESSAGE_ID),
+        ('msg_id', MESSAGE_ID),  # type: ignore
     ]
 
     TYPE = ReturnMessageType.DONE
@@ -268,8 +268,8 @@ class ReturnArrayMessage:
 
 class ReturnRegMessage(ReturnMessage):
     _fields_ = [
-        ('register', Register),
-        ('value', INTEGER),
+        ('register', Register),  # type: ignore
+        ('value', INTEGER),  # type: ignore
     ]
 
     TYPE = ReturnMessageType.RET_REG
@@ -291,4 +291,4 @@ RETURN_MESSAGE_CLASSES = {
 def deserialize_return_msg(raw: bytes) -> Message:
     message_type = ReturnMessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = RETURN_MESSAGE_CLASSES[message_type]
-    return message_class.deserialize_from(raw)
+    return message_class.deserialize_from(raw)  # type: ignore
