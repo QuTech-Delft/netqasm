@@ -22,7 +22,7 @@ copyright = '2019, Axel Dahlberg'
 author = 'Axel Dahlberg'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.10'
+release = '0.0.11'
 
 
 # -- General configuration ---------------------------------------------------
