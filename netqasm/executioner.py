@@ -105,7 +105,7 @@ class Executioner:
         self._used_physical_qubit_addresses = []
 
         # Keep track of the create epr requests in progress
-        self._epr_create_requests = {}
+        self._epr_create_requests = defaultdict(list)
 
         # Keep track of the recv epr requests in progress
         self._epr_recv_requests = defaultdict(list)
@@ -294,7 +294,6 @@ class Executioner:
         while self._program_counters[subroutine_id] < len(commands):
             prog_counter = self._program_counters[subroutine_id]
             command = commands[prog_counter]
-            print(f"running command {command} at prgc {prog_counter}")
             try:
                 output = self._execute_command(subroutine_id, command)
                 if isinstance(output, GeneratorType):  # sanity check: should always be the case
@@ -366,7 +365,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, instr.reg)
         self._logger.debug(f"Taking qubit at address {qubit_address}")
-        yield from self._allocate_physical_qubit(subroutine_id, qubit_address)
+        return self._allocate_physical_qubit(subroutine_id, qubit_address)
 
     @inc_program_counter
     def _instr_store(self, subroutine_id, instr: instructions.core.StoreInstruction):
@@ -956,7 +955,7 @@ class Executioner:
             )
             info = self._extract_epr_info(response=response)
             if info is not None:
-                epr_cmd_data, pair_index, is_creator, request_key = info
+                epr_cmd_data, pair_index, is_creator, epr_socket_id = info
                 handled = self._epr_response_handlers[response.type](
                     epr_cmd_data=epr_cmd_data,
                     response=response,
@@ -970,7 +969,7 @@ class Executioner:
                 self._handle_last_epr_pair(
                     epr_cmd_data=epr_cmd_data,
                     is_creator=is_creator,
-                    request_key=request_key,
+                    epr_socket_id=epr_socket_id,
                 )
 
                 self._store_ent_info(
@@ -999,31 +998,30 @@ class Executioner:
         # Retreive the data for this request (depending on if we are creator or receiver
         if creator_node_id == self.node_id:
             is_creator = True
-            create_id = response.create_id
-            epr_cmd_data = self._epr_create_requests[create_id]
-            request_key = create_id
+            requests = self._epr_create_requests
         else:
             is_creator = False
-            purpose_id = response.purpose_id
-            if len(self._epr_recv_requests[purpose_id]) == 0:
-                self._logger.debug(
-                    f"Since there is yet not recv request for purpose ID {purpose_id}, "
-                    "handling of epr will wait and try again.")
-                return None
-            epr_cmd_data = self._epr_recv_requests[purpose_id][0]
-            request_key = purpose_id
+            requests = self._epr_recv_requests
+
+        epr_socket_id = self._get_epr_socket_id(response=response)
+        if len(requests[epr_socket_id]) == 0:
+            self._logger.debug(
+                f"Since there is yet not recv request for EPR socket ID {epr_socket_id}, "
+                "handling of epr will wait and try again.")
+            return None
+        epr_cmd_data = requests[epr_socket_id][0]
 
         pair_index = epr_cmd_data.tot_pairs - epr_cmd_data.pairs_left
 
-        return epr_cmd_data, pair_index, is_creator, request_key
+        return epr_cmd_data, pair_index, is_creator, epr_socket_id
 
-    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, request_key):
+    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, epr_socket_id):
         # Check if this was the last pair
         if epr_cmd_data.pairs_left == 0:
             if is_creator:
-                self._epr_create_requests.pop(request_key)
+                self._epr_create_requests[epr_socket_id].pop(0)
             else:
-                self._epr_recv_requests[request_key].pop(0)
+                self._epr_recv_requests[epr_socket_id].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
         # Store the entanglement information
@@ -1088,6 +1086,9 @@ class Executioner:
         raise NotImplementedError
 
     def _get_qubit_state(self, app_id, virtual_address):
+        raise NotImplementedError
+
+    def _get_epr_socket_id(self, response):
         raise NotImplementedError
 
     def _get_positions(self, subroutine_id, addresses):

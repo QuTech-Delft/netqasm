@@ -130,7 +130,6 @@ class NetQASMConnection(abc.ABC):
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
 
         if _init_app:
-            print("init app in base")
             self._init_new_app(max_qubits=max_qubits)
 
         if _setup_epr_sockets:
@@ -191,22 +190,15 @@ class NetQASMConnection(abc.ABC):
     def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
-        print("flushing")
         self.flush()
-        print("pop app ID")
 
         self._pop_app_id()
 
-        print("signal stop")
-
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
-        print("inactivate qubtis")
         self._inactivate_qubits()
-        print("log_subroutines_dir")
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
-        print("done")
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
