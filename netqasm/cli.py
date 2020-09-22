@@ -1,6 +1,8 @@
 import click
+import importlib
+
 import netqasm
-from netqasm.io_util import execute_subroutine
+from netqasm.settings import Backend, Formalism, Flavour, set_backend
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -24,22 +26,43 @@ def version():
 
 
 ###########
-# execute #
+# simulate #
 ###########
 
 @cli.command()
-@click.argument("netqasm-file", type=str)
-@click.option("-b", "--backend", type=click.Choice(["debug", "netsquid"]), default="debug",
-              help="Which backend to be used.\n"
-                   "debug (default): simple debug executioner which does not perform any quantum operations.\n"
-                   "netsquid: use netsquid to simulate qubit operations "
-                   "(for this the package 'squidasm' needs to be installed.\n"
+@click.option("--app-dir", type=str, default=None,
+              help="Path to app directory. "
+                   "Defaults to CWD."
               )
-@click.option("-n", "--num_qubits", type=int, default=5,
-              help="Number of qubits to be used in the executioner.")
-@click.option("-o", "--output-file", type=str, default=None,
-              help="File to write output to, if not specified the name of "
-                   "the netqasm file will be used with '.out' as extension.")
+@click.option("--lib-dirs", type=str, default=None, multiple=True,
+              help="Path to additional library directory."
+              )
+@click.option("--track-lines/--no-track-lines", default=True)
+@click.option("--network-config-file", type=str, default=None,
+              help="Explicitly choose the network config file, "
+                   "default is `app-folder/network.yaml`."
+              )
+@click.option("--app-config-dir", type=str, default=None,
+              help="Explicitly choose the app config directory, "
+                   "default is `app-folder`."
+              )
+@click.option("--log-dir", type=str, default=None,
+              help="Explicitly choose the log directory, "
+                   "default is `app-folder/log`."
+              )
+@click.option("--post-function-file", type=str, default=None,
+              help="Explicitly choose the file defining the post function."
+              )
+@click.option("--results-file", type=str, default=None,
+              help="Explicitly choose the file where the results of a post function should be stored."
+              )
+@click.option("--backend", type=click.Choice([sim.value for sim in Backend]), default=Backend.NETSQUID.value,
+              help="Choose with simulator to use as a backend, "
+                   "default 'netsquid'"
+              )
+@click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
+              help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
+              )
 @click.option("--flavour", type=click.Choice(["vanilla", "nv"]), default="vanilla",
               help="Choose the NetQASM flavour that is used. Default is vanilla."
               )
@@ -47,15 +70,57 @@ def version():
               help="What log-level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)."
                    "Note, this affects logging to stderr, not logging instructions to file."
               )
-def execute(netqasm_file, backend, num_qubits, output_file, flavour, log_level):
+def simulate(
+    app_dir,
+    lib_dirs,
+    track_lines,
+    network_config_file,
+    app_config_dir,
+    log_dir,
+    log_level,
+    post_function_file,
+    results_file,
+    backend,
+    formalism,
+    flavour
+):
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    execute_subroutine(
-        backend,
-        num_qubits,
-        netqasm_file=netqasm_file,
-        output_file=output_file,
-        flavour=flavour,
-        log_level=log_level
+    backend = Backend(backend)
+    formalism = Formalism(formalism)
+    flavour = Flavour(flavour)
+    set_backend(backend=backend)
+    simulate_apps = _get_simulate_apps_func(backend=backend)
+    simulate_apps(
+        app_dir=app_dir,
+        lib_dirs=lib_dirs,
+        track_lines=track_lines,
+        network_config_file=network_config_file,
+        app_config_dir=app_config_dir,
+        log_dir=log_dir,
+        log_level=log_level,
+        post_function_file=post_function_file,
+        results_file=results_file,
+        formalism=formalism,
+        flavour=flavour
     )
+
+
+def _get_simulate_apps_func(backend):
+    if backend is Backend.NETSQUID:
+        try:
+            return importlib.import_module("squidasm.run.simulate").simulate_apps
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("To use the netsquid backend you need squidasm installed")
+    elif backend is Backend.SIMULAQRON:
+        try:
+            return importlib.import_module("simulaqron.run.simulate").simulate_apps
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("To use the simulaqron backend you need simulaqron installed")
+    else:
+        raise ValueError(f"Unknown backend {backend}")
+
+
+if __name__ == '__main__':
+    cli()
