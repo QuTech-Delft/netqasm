@@ -2,7 +2,7 @@ import click
 import importlib
 
 import netqasm
-from netqasm.settings import Backend, Formalism, Flavour, set_backend
+from netqasm.settings import Simulator, Formalism, Flavour, set_simulator
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -56,8 +56,8 @@ def version():
 @click.option("--results-file", type=str, default=None,
               help="Explicitly choose the file where the results of a post function should be stored."
               )
-@click.option("--backend", type=click.Choice([sim.value for sim in Backend]), default=Backend.NETSQUID.value,
-              help="Choose with simulator to use as a backend, "
+@click.option("--simulator", type=click.Choice([sim.value for sim in Backend]), default=Backend.NETSQUID.value,
+              help="Choose with simulator to use, "
                    "default 'netsquid'"
               )
 @click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
@@ -80,18 +80,18 @@ def simulate(
     log_level,
     post_function_file,
     results_file,
-    backend,
+    simulator,
     formalism,
     flavour
 ):
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    backend = Backend(backend)
+    simulator = Simulator(simulator)
     formalism = Formalism(formalism)
     flavour = Flavour(flavour)
-    set_backend(backend=backend)
-    simulate_apps = _get_simulate_apps_func(backend=backend)
+    set_simulator(simulator=simulator)
+    simulate_apps = _get_simulate_apps_func(simulator=simulator)
     simulate_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
@@ -107,19 +107,19 @@ def simulate(
     )
 
 
-def _get_simulate_apps_func(backend):
-    if backend is Backend.NETSQUID:
+def _get_simulate_apps_func(simulator):
+    if simulator is Simulator.NETSQUID:
         try:
             return importlib.import_module("squidasm.run.simulate").simulate_apps
         except ModuleNotFoundError:
-            raise ModuleNotFoundError("To use the netsquid backend you need squidasm installed")
-    elif backend is Backend.SIMULAQRON:
+            raise ModuleNotFoundError("To use the netsquid simulator you need squidasm installed")
+    elif simulator is Simulator.SIMULAQRON:
         try:
             return importlib.import_module("simulaqron.run.simulate").simulate_apps
         except ModuleNotFoundError:
-            raise ModuleNotFoundError("To use the simulaqron backend you need simulaqron installed")
+            raise ModuleNotFoundError("To use the simulaqron simulator you need simulaqron installed")
     else:
-        raise ValueError(f"Unknown backend {backend}")
+        raise ValueError(f"Unknown simulator {simulator}")
 
 
 if __name__ == '__main__':

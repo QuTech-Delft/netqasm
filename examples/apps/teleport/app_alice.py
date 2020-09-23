@@ -15,7 +15,6 @@ def main(app_config=None, phi=0., theta=0.):
     epr_socket = EPRSocket("bob")
 
     # Initialize the connection to the backend
-    # Initialize the connection to the backend
     node_name = app_config.node_name
     if node_name is None:
         node_name = app_config.app_name
