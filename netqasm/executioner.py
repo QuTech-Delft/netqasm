@@ -617,14 +617,16 @@ class Executioner:
         if create_request.type == RequestType.K:
             num_qubits = len(self._app_arrays[app_id][q_array_address, :])
             assert num_qubits == create_request.number, "Not enough qubit addresses"
-        create_id = self.network_stack.put(request=create_request)
-        self._epr_create_requests[create_id] = EprCmdData(
-            subroutine_id=subroutine_id,
-            ent_info_array_address=ent_info_array_address,
-            q_array_address=q_array_address,
-            request=create_request,
-            tot_pairs=create_request.number,
-            pairs_left=create_request.number,
+        self.network_stack.put(request=create_request)
+        self._epr_create_requests[create_request.purpose_id].append(
+            EprCmdData(
+                subroutine_id=subroutine_id,
+                ent_info_array_address=ent_info_array_address,
+                q_array_address=q_array_address,
+                request=create_request,
+                tot_pairs=create_request.number,
+                pairs_left=create_request.number,
+            )
         )
 
     def _get_create_request(self, subroutine_id, remote_node_id, epr_socket_id, arg_array_address):
@@ -652,7 +654,7 @@ class Executioner:
         # Note this is for now since we communicate directly to link layer
         if self._network_stack is None:
             raise RuntimeError("Exectioner has not network stack")
-        return self._network_stack._get_purpose_id(
+        return self._network_stack.get_purpose_id(
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
         )
@@ -697,7 +699,7 @@ class Executioner:
             app_id=app_id,
             ent_info_array_address=ent_info_array_address,
         )
-        purpose_id = self._network_stack._get_purpose_id(
+        purpose_id = self._get_purpose_id(
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
         )
@@ -955,7 +957,7 @@ class Executioner:
             )
             info = self._extract_epr_info(response=response)
             if info is not None:
-                epr_cmd_data, pair_index, is_creator, epr_socket_id = info
+                epr_cmd_data, pair_index, is_creator, purpose_id = info
                 handled = self._epr_response_handlers[response.type](
                     epr_cmd_data=epr_cmd_data,
                     response=response,
@@ -969,7 +971,7 @@ class Executioner:
                 self._handle_last_epr_pair(
                     epr_cmd_data=epr_cmd_data,
                     is_creator=is_creator,
-                    epr_socket_id=epr_socket_id,
+                    purpose_id=purpose_id,
                 )
 
                 self._store_ent_info(
@@ -1003,25 +1005,25 @@ class Executioner:
             is_creator = False
             requests = self._epr_recv_requests
 
-        epr_socket_id = self._get_epr_socket_id(response=response)
-        if len(requests[epr_socket_id]) == 0:
+        purpose_id = response.purpose_id
+        if len(requests[purpose_id]) == 0:
             self._logger.debug(
-                f"Since there is yet not recv request for EPR socket ID {epr_socket_id}, "
+                f"Since there is yet not recv request for purpose ID {purpose_id}, "
                 "handling of epr will wait and try again.")
             return None
-        epr_cmd_data = requests[epr_socket_id][0]
+        epr_cmd_data = requests[purpose_id][0]
 
         pair_index = epr_cmd_data.tot_pairs - epr_cmd_data.pairs_left
 
-        return epr_cmd_data, pair_index, is_creator, epr_socket_id
+        return epr_cmd_data, pair_index, is_creator, purpose_id
 
-    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, epr_socket_id):
+    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, purpose_id):
         # Check if this was the last pair
         if epr_cmd_data.pairs_left == 0:
             if is_creator:
-                self._epr_create_requests[epr_socket_id].pop(0)
+                self._epr_create_requests[purpose_id].pop(0)
             else:
-                self._epr_recv_requests[epr_socket_id].pop(0)
+                self._epr_recv_requests[purpose_id].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
         # Store the entanglement information
@@ -1086,9 +1088,6 @@ class Executioner:
         raise NotImplementedError
 
     def _get_qubit_state(self, app_id, virtual_address):
-        raise NotImplementedError
-
-    def _get_epr_socket_id(self, response):
         raise NotImplementedError
 
     def _get_positions(self, subroutine_id, addresses):
