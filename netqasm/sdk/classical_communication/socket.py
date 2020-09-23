@@ -2,8 +2,15 @@ import abc
 
 
 class Socket(abc.ABC):
-    def __init__(self, node_name, remote_node_name, socket_id=0, timeout=None,
-                 use_callbacks=False):
+    def __init__(
+        self,
+        node_name,
+        remote_node_name,
+        socket_id=0,
+        timeout=None,
+        use_callbacks=False,
+        log_config=None,
+    ):
         """Socket used to communicate classical data between applications."""
         pass
 

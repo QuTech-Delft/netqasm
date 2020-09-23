@@ -8,7 +8,7 @@ from netqasm.sdk.shared_memory import SharedMemory
 class MockConnnection:
     def __init__(self):
         self._variables = {}
-        self._shared_memory = SharedMemory()
+        self.shared_memory = SharedMemory()
 
 
 def test_non_constant_index():
@@ -21,7 +21,7 @@ def test_non_constant_index():
 
 def test_no_value():
     conn = MockConnnection()
-    conn._shared_memory.init_new_array(address=0, length=1)
+    conn.shared_memory.init_new_array(address=0, length=1)
 
     m = Future(conn, address=0, index=0)
     print(m)
@@ -31,8 +31,8 @@ def test_no_value():
 
 def test_with_value():
     conn = MockConnnection()
-    conn._shared_memory.init_new_array(address=0, length=1)
-    conn._shared_memory.set_array_part(address=0, index=0, value=4)
+    conn.shared_memory.init_new_array(address=0, length=1)
+    conn.shared_memory.set_array_part(address=0, index=0, value=4)
 
     m = Future(conn, address=0, index=0)
     print(m)

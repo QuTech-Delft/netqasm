@@ -18,7 +18,7 @@ def cli():
 @cli.command()
 def version():
     """
-    Prints the version of manven.
+    Prints the version of netqasm.
     """
     print(netqasm.__version__)
 

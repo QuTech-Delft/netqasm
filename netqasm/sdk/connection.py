@@ -77,6 +77,8 @@ class NetQASMConnection(abc.ABC):
         log_config=None,
         epr_sockets=None,
         compiler=None,
+        _init_app=True,
+        _setup_epr_sockets=True,
     ):
         self._name = name
 
@@ -88,10 +90,9 @@ class NetQASMConnection(abc.ABC):
 
         self._used_array_addresses = []
 
-        self._max_qubits = max_qubits
-        self._init_new_app(max_qubits=max_qubits)
-
         self._pending_commands = []
+
+        self._max_qubits = max_qubits
 
         self._shared_memory = get_shared_memory(self.name, key=self._app_id)
 
@@ -125,10 +126,14 @@ class NetQASMConnection(abc.ABC):
         # What compiler (if any) to be used
         self._compiler = compiler
 
-        # Setup epr sockets
-        self._setup_epr_sockets(epr_sockets=epr_sockets)
-
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
+
+        if _init_app:
+            self._init_new_app(max_qubits=max_qubits)
+
+        if _setup_epr_sockets:
+            # Setup epr sockets
+            self._setup_epr_sockets(epr_sockets=epr_sockets)
 
     @property
     def name(self):
@@ -178,6 +183,9 @@ class NetQASMConnection(abc.ABC):
         except ValueError:
             pass  # Already removed
 
+    def clear(self):
+        self._pop_app_id()
+
     def close(self, clear_app=True, stop_backend=True):
         """Handle exiting of context."""
         # Flush all pending commands
@@ -223,7 +231,7 @@ class NetQASMConnection(abc.ABC):
             self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
         if stop_backend:
-            self._commit_message(msg=SignalMessage(signal=Signal.STOP))
+            self._commit_message(msg=SignalMessage(signal=Signal.STOP), block=False)
 
     def _save_log_subroutines(self):
         filename = f'subroutines_{self.name}.pkl'

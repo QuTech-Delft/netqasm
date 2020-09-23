@@ -43,6 +43,32 @@ COMMAND_BYTES = 7
 PADDING_FIELD = 'padding'
 
 
+class OptionalInt(ctypes.Structure):
+    _fields_ = [
+        ('type', ctypes.c_uint8),
+        ('value', INTEGER),
+    ]
+
+    _NULL_TYPE = 0x00
+    _INT_TYPE = 0x01
+
+    def __init__(self, value):
+        if value is None:
+            self.type = self._NULL_TYPE
+            self.value = 0
+        else:
+            self.type = self._INT_TYPE
+            self.value = value
+
+    def value(self):
+        if self.type == self._NULL_TYPE:
+            return None
+        elif self.type == self._INT_TYPE:
+            return self.value
+        else:
+            raise TypeError(f"Unknown type {self.type}")
+
+
 class RegisterName(Enum):
     # Standard register
     R = 0
