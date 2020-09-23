@@ -7,7 +7,7 @@ image: adahlberg/nlblueprintci:19.04
 
 .install: &install
     before_script:
-        - python3 -m pip install .
+        - make install
         ## Add private key to server access
         - eval $(ssh-agent -s)
         - mkdir -p ~/.ssh
@@ -24,9 +24,9 @@ image: adahlberg/nlblueprintci:19.04
         - echo $BRANCH
         - git clone git@gitlab.tudelft.nl:qinc-wehner/netqasm/squidasm.git -b $BRANCH
         - cd squidasm
-        - pip install .
-        - cd ..
         - make install
+        - cd ..
+        - make test-deps
 
 stages:
     - lint
