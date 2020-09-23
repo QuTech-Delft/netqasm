@@ -49,36 +49,52 @@ class NVSubroutineCompiler(SubroutineCompiler):
         carbon: Register,
     ) -> List[NetQASMInstruction]:
         """
-        Swap the states of the electron and a carbon
+        Swap the states of the electron and a carbon.
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
         """
-        electron_hadamard = self._map_single_gate_electron(
-            instr=vanilla.GateHInstruction(lineno=lineno, reg=electron)
-        )
-
         gates: List[NetQASMInstruction] = []
 
         if self._debug:
             gates += [DebugInstruction(text="begin SWAP")]
 
         gates += [
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-        ]
-        gates += electron_hadamard
-        gates += [
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-        ]
-        gates += electron_hadamard
-        gates += [
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=lineno, reg0=electron, reg1=carbon),
+            nv.ControlledRotXInstruction(
+                lineno=lineno, reg0=electron, reg1=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=lineno, reg=electron, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotYInstruction(
+                lineno=lineno, reg=electron, imm0=Immediate(1), imm1=Immediate(0)
+            ),
+            nv.RotZInstruction(
+                lineno=lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=lineno, reg0=electron, reg1=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=lineno, reg=electron, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotYInstruction(
+                lineno=lineno, reg=electron, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotZInstruction(
+                lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=lineno, reg0=electron, reg1=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotYInstruction(
+                lineno=lineno, reg=electron, imm0=Immediate(1), imm1=Immediate(0)
+            ),
+            nv.RotZInstruction(
+                lineno=lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(0)
+            ),
         ]
 
         if self._debug:
@@ -164,22 +180,37 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
 
         return [
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=electron, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotZInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
         ]
 
     def _map_cphase_carbon_carbon(
         self,
         instr: vanilla.CphaseInstruction
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -199,34 +230,56 @@ class NVSubroutineCompiler(SubroutineCompiler):
     ) -> List[NetQASMInstruction]:
         electron = instr.reg0
         carbon = instr.reg1
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
 
         return [
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon)
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotZInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
         ]
 
     def _map_cnot_carbon_electron(
         self,
         instr: vanilla.CnotInstruction,
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = instr.reg1
         carbon = instr.reg0
 
-        electron_hadamard = self._map_single_gate_electron(
+        electron_hadamard = self._map_single_gate(
             instr=vanilla.GateHInstruction(lineno=instr.lineno, reg=electron)
         )
 
         gates = []
         gates += electron_hadamard
         gates += [
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
-            nv.RotZInstruction(lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)),
-            nv.CSqrtXInstruction(lineno=instr.lineno, reg0=electron, reg1=carbon),
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=electron, imm0=Immediate(1), imm1=Immediate(1)
+            ),
+            nv.RotZInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=carbon, imm0=Immediate(3), imm1=Immediate(1)
+            ),
         ]
         gates += electron_hadamard
 
@@ -236,6 +289,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: vanilla.CnotInstruction
     ) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
         electron = self.get_unused_register()
         carbon = instr.reg0
         set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
@@ -253,13 +310,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self,
         instr: core.SingleQubitInstruction
     ) -> List[NetQASMInstruction]:
-        qubit_id = self.get_reg_value(instr.reg).value
-        if qubit_id == 0:  # electron
-            return self._map_single_gate_electron(instr)
-        else:  # carbon
-            return self._map_single_gate_carbon(instr)
+        return self._map_single_gate(instr)
 
-    def _map_single_gate_electron(
+    def _map_single_gate(
         self,
         instr: core.SingleQubitInstruction
     ) -> List[NetQASMInstruction]:
@@ -285,7 +338,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         elif isinstance(instr, vanilla.GateHInstruction):
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1)),
                 nv.RotXInstruction(
                     lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0)),
             ]
@@ -316,12 +369,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
             ]
         elif isinstance(instr, vanilla.RotZInstruction):
             return [
-                nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(3), imm1=Immediate(1)),
-                nv.RotYInstruction(
+                nv.RotZInstruction(
                     lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
-                nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(1))
             ]
         elif isinstance(instr, vanilla.RotXInstruction):
             return [
@@ -335,31 +384,3 @@ class NVSubroutineCompiler(SubroutineCompiler):
             ]
         else:
             raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
-
-    def _map_single_gate_carbon(
-        self,
-        instr: core.SingleQubitInstruction
-    ) -> List[NetQASMInstruction]:
-        if isinstance(instr, vanilla.RotZInstruction):
-            return [
-                nv.RotZInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom)
-            ]
-        elif isinstance(instr, vanilla.GateZInstruction):
-            return [
-                nv.RotZInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(1), imm1=Immediate(0))
-            ]
-        else:
-            electron = self.get_unused_register()
-            carbon = instr.reg
-            set_electron = core.SetInstruction(lineno=instr.lineno, reg=electron, imm=Immediate(0))
-            instr.reg = electron
-
-            result: List[NetQASMInstruction] = [set_electron]
-            result += (
-                self.swap(instr.lineno, electron, carbon)
-                + self._map_single_gate_electron(instr)
-                + self.swap(instr.lineno, electron, carbon)
-            )
-            return result

@@ -200,6 +200,59 @@ class RegImmImmInstruction(NetQASMInstruction):
 
 
 @dataclass
+class RegRegImmImmInstruction(NetQASMInstruction):
+    """
+    An instruction with 2 Register operands followed by 2 Immediate operands.
+    """
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    imm0: Immediate = None  # type: ignore
+    imm1: Immediate = None  # type: ignore
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg0, self.reg1, self.imm0, self.imm1]
+
+    @classmethod
+    def deserialize_from(cls, raw: bytes):
+        c_struct = encoding.RegRegImmImmCommand.from_buffer_copy(raw)
+        assert c_struct.id == cls.id
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
+        imm0 = Immediate(value=c_struct.imm0)
+        imm1 = Immediate(value=c_struct.imm1)
+        return cls(reg0=reg0, reg1=reg1, imm0=imm0, imm1=imm1)
+
+    def serialize(self) -> bytes:
+        c_struct = encoding.RegRegImmImmCommand(
+            id=self.id,
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            imm0=self.imm0.value,
+            imm1=self.imm1.value
+        )
+        return bytes(c_struct)
+
+    @classmethod
+    def from_operands(cls, operands: List[Operand]):
+        assert len(operands) == 4
+        reg0, reg1, imm0, imm1 = operands
+        assert isinstance(reg0, Register)
+        assert isinstance(reg1, Register)
+        assert isinstance(imm0, int)
+        assert isinstance(imm1, int)
+        return cls(
+            reg0=reg0,
+            reg1=reg1,
+            imm0=Immediate(value=imm0),
+            imm1=Immediate(value=imm1)
+        )
+
+    def _pretty_print(self):
+        return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.imm0)} {str(self.imm1)}"
+
+
+@dataclass
 class RegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 3 Register operands.
@@ -340,8 +393,6 @@ class ImmInstruction(NetQASMInstruction):
 class RegRegImmInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands and one Immediate operand.
-    Represents an instruction to branch to a certain line, depending on a
-    binary expression.
     """
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore

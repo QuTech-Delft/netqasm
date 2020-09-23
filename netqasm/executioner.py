@@ -296,6 +296,8 @@ class Executioner:
                 output = self._handle_two_qubit_instr(subroutine_id, command)
             elif isinstance(command, instructions.core.RotationInstruction):
                 output = self._handle_single_qubit_rotation(subroutine_id, command)
+            elif isinstance(command, instructions.core.ControlledRotationInstruction):
+                output = self._handle_controlled_qubit_rotation(subroutine_id, command)
             elif (isinstance(command, instructions.core.JmpInstruction)
                     or isinstance(command, instructions.core.BranchUnaryInstruction)
                     or isinstance(command, instructions.core.BranchBinaryInstruction)):
@@ -472,11 +474,37 @@ class Executioner:
         if isinstance(output, GeneratorType):
             yield from output
 
+    @inc_program_counter
+    def _handle_controlled_qubit_rotation(self, subroutine_id, instr: instructions.core.ControlledRotationInstruction):
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address1 = self._get_register(app_id=app_id, register=instr.reg0)
+        q_address2 = self._get_register(app_id=app_id, register=instr.reg1)
+        angle = self._get_rotation_angle_from_operands(
+            app_id=app_id,
+            n=instr.angle_num.value,
+            d=instr.angle_denom.value
+        )
+        self._logger.debug(f"Performing {instr} with angle {angle} "
+                           f"on the qubits at addresses {q_address1} and {q_address2}")
+        output = self._do_controlled_qubit_rotation(
+            instr,
+            subroutine_id,
+            q_address1,
+            q_address2,
+            angle=angle
+        )
+        if isinstance(output, GeneratorType):
+            yield from output
+
     def _get_rotation_angle_from_operands(self, app_id, n, d):
         return n * np.pi / 2 ** d
 
     def _do_single_qubit_rotation(self, instr, subroutine_id, address, angle):
         """Performs a single qubit rotation with the angle `n * pi / m`"""
+        pass
+
+    def _do_controlled_qubit_rotation(self, instr, subroutine_id, address1, address2, angle):
+        """Performs a controlled qubit rotation with the angle `n * pi / m`"""
         pass
 
     @inc_program_counter

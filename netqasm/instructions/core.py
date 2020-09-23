@@ -82,6 +82,45 @@ class RotationInstruction(base.RegImmImmInstruction):
         pass
 
 
+@dataclass  # type: ignore
+class ControlledRotationInstruction(base.RegRegImmImmInstruction):
+    @property
+    def qreg0(self):
+        return self.reg0
+
+    @qreg0.setter
+    def qreg0(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def qreg1(self):
+        return self.reg1
+
+    @qreg1.setter
+    def qreg1(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def angle_num(self):
+        return self.imm0
+
+    @angle_num.setter
+    def angle_num(self, new_val: Immediate):
+        self.imm0 = new_val
+
+    @property
+    def angle_denom(self):
+        return self.imm1
+
+    @angle_denom.setter
+    def angle_denom(self, new_val: Immediate):
+        self.imm1 = new_val
+
+    @abstractmethod
+    def to_matrix(self):
+        pass
+
+
 @dataclass
 class ClassicalOpInstruction(base.RegRegRegInstruction):
     def writes_to(self) -> List[Register]:

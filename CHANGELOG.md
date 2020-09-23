@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2020-09-23 (0.0.12)
+------------------
+- Use correct NV gates in when compiling.
+
 2020-09-22 (0.0.11)
 ------------------
 - Now using binary encoding for messages from host to qnodeos.
