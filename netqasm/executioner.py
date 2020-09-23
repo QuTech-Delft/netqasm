@@ -618,7 +618,7 @@ class Executioner:
             num_qubits = len(self._app_arrays[app_id][q_array_address, :])
             assert num_qubits == create_request.number, "Not enough qubit addresses"
         self.network_stack.put(request=create_request)
-        self._epr_create_requests[create_request.purpose_id].append(
+        self._epr_create_requests[remote_node_id, create_request.purpose_id].append(
             EprCmdData(
                 subroutine_id=subroutine_id,
                 ent_info_array_address=ent_info_array_address,
@@ -703,7 +703,7 @@ class Executioner:
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
         )
-        self._epr_recv_requests[purpose_id].append(
+        self._epr_recv_requests[remote_node_id, purpose_id].append(
             EprCmdData(
                 subroutine_id=subroutine_id,
                 ent_info_array_address=ent_info_array_address,
@@ -957,7 +957,7 @@ class Executioner:
             )
             info = self._extract_epr_info(response=response)
             if info is not None:
-                epr_cmd_data, pair_index, is_creator, purpose_id = info
+                epr_cmd_data, pair_index, is_creator, request_key = info
                 handled = self._epr_response_handlers[response.type](
                     epr_cmd_data=epr_cmd_data,
                     response=response,
@@ -971,7 +971,7 @@ class Executioner:
                 self._handle_last_epr_pair(
                     epr_cmd_data=epr_cmd_data,
                     is_creator=is_creator,
-                    purpose_id=purpose_id,
+                    request_key=request_key,
                 )
 
                 self._store_ent_info(
@@ -1006,24 +1006,27 @@ class Executioner:
             requests = self._epr_recv_requests
 
         purpose_id = response.purpose_id
-        if len(requests[purpose_id]) == 0:
+        remote_node_id = response.remote_node_id
+        request_key = remote_node_id, purpose_id
+        if len(requests[request_key]) == 0:
             self._logger.debug(
-                f"Since there is yet not recv request for purpose ID {purpose_id}, "
+                f"Since there is yet not recv request for remote node ID {remote_node_id} and "
+                f"purpose ID {purpose_id}, "
                 "handling of epr will wait and try again.")
             return None
-        epr_cmd_data = requests[purpose_id][0]
+        epr_cmd_data = requests[request_key][0]
 
         pair_index = epr_cmd_data.tot_pairs - epr_cmd_data.pairs_left
 
-        return epr_cmd_data, pair_index, is_creator, purpose_id
+        return epr_cmd_data, pair_index, is_creator, request_key
 
-    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, purpose_id):
+    def _handle_last_epr_pair(self, epr_cmd_data, is_creator, request_key):
         # Check if this was the last pair
         if epr_cmd_data.pairs_left == 0:
             if is_creator:
-                self._epr_create_requests[purpose_id].pop(0)
+                self._epr_create_requests[request_key].pop(0)
             else:
-                self._epr_recv_requests[purpose_id].pop(0)
+                self._epr_recv_requests[request_key].pop(0)
 
     def _store_ent_info(self, epr_cmd_data, response, pair_index):
         # Store the entanglement information
