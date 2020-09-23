@@ -102,15 +102,11 @@ class NVFlavour(Flavour):
     @property
     def instrs(self):
         return [
-            nv.GateXInstruction,
-            nv.GateYInstruction,
-            nv.GateZInstruction,
-            nv.GateHInstruction,
             nv.RotXInstruction,
             nv.RotYInstruction,
             nv.RotZInstruction,
-            nv.CnotInstruction,
-            nv.CSqrtXInstruction
+            nv.ControlledRotXInstruction,
+            nv.ControlledRotYInstruction,
         ]
 
     def __init__(self):

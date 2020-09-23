@@ -193,7 +193,6 @@ class NetQASMConnection(abc.ABC):
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
-        print(f"raw msg: {bytes(msg)}")
         self._commit_serialized_message(raw_msg=bytes(msg), block=block, callback=callback)
 
     @abc.abstractmethod
@@ -305,7 +304,7 @@ class NetQASMConnection(abc.ABC):
         )
 
     def _commit_subroutine(self, presubroutine: PreSubroutine, block=True, callback=None):
-        self._logger.info(f"Flushing presubroutine:\n{presubroutine}")
+        self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
         subroutine = self._pre_process_subroutine(presubroutine)
