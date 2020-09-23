@@ -1,7 +1,9 @@
 import ctypes
 from enum import Enum
+from typing import Union
 
 from netqasm.encoding import Address, Register, INTEGER, OptionalInt
+from netqasm.subroutine import Subroutine
 
 # This module defines the messages that the host can send to
 # the backend/QNodeOS
@@ -94,7 +96,7 @@ class SubroutineMessage:
 
     TYPE = MessageType.SUBROUTINE
 
-    def __init__(self, subroutine):
+    def __init__(self, subroutine: Union[bytes, Subroutine]):
         """
         NOTE this message does not subclass from `Message` since it contains
         a subroutine which is defined separately and not as a `ctype` for now.
@@ -109,7 +111,12 @@ class SubroutineMessage:
 
         """
         self.type = self.TYPE.value
-        self.subroutine = subroutine
+        if isinstance(subroutine, Subroutine):
+            self.subroutine = bytes(subroutine)
+        elif isinstance(subroutine, bytes):
+            self.subroutine = subroutine
+        else:
+            raise TypeError(f"subroutine should be Subroutine or bytes, not {type(subroutine)}")
 
     def __bytes__(self):
         return bytes(MESSAGE_TYPE(self.type)) + bytes(self.subroutine)
