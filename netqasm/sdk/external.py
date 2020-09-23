@@ -13,6 +13,8 @@ elif simulator == Simulator.SIMULAQRON:
     try:
         from simulaqron.sdk.connection import SimulaQronConnection as NetQASMConnection
     except ModuleNotFoundError:
-        raise ModuleNotFoundError(f"to use {Simulator.SIMULAQRON.value} as simulator, `simulaqron` needs to be installed")
+        raise ModuleNotFoundError(
+            f"to use {Simulator.SIMULAQRON.value} as simulator, `simulaqron` needs to be installed"
+        )
 else:
     raise ValueError(f"Unknown simulator {simulator}")

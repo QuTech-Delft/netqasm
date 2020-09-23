@@ -56,7 +56,7 @@ def version():
 @click.option("--results-file", type=str, default=None,
               help="Explicitly choose the file where the results of a post function should be stored."
               )
-@click.option("--simulator", type=click.Choice([sim.value for sim in Backend]), default=Backend.NETSQUID.value,
+@click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=Simulator.NETSQUID.value,
               help="Choose with simulator to use, "
                    "default 'netsquid'"
               )
