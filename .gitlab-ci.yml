@@ -7,6 +7,29 @@ image: adahlberg/nlblueprintci:19.04
 
 .install: &install
     before_script:
+        - python3 -m pip install .
+
+.install_squidasm: &install_squidasm
+    before_script:
+        - python3 -m pip install .
+        ## Add private key to server access
+        - eval $(ssh-agent -s)
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+        - echo "$SSH_PRIVATE_KEY" | ssh-add -
+        - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+        - chmod 644 ~/.ssh/known_hosts
+        ## Install squidasm
+        - echo $CI_COMMIT_REF_NAME
+        - echo $CI_COMMIT_BRANCH
+        # Use master if merging to master otherwise develop
+        # if not merging then use master if on master otherwise develop
+        - BRANCH="$(if [ "$CI_COMMIT_BRANCH" == "" ]; then if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; else if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; fi)"
+        - echo $BRANCH
+        - git clone git@gitlab.tudelft.nl:qinc-wehner/squidasm/squidasm.git -b $BRANCH
+        - cd squidasm
+        - pip install .
+        - cd ..
         - make install
 
 stages:
@@ -28,7 +51,7 @@ test:
     <<: *only_mr
 
 examples:
-    <<: *install
+    <<: *install_squidasm
     stage: examples
     script: make examples
     <<: *only_mr
