@@ -1093,6 +1093,9 @@ class Executioner:
     def _get_qubit_state(self, app_id, virtual_address):
         raise NotImplementedError
 
+    def _get_epr_socket_id(self, response):
+        raise NotImplementedError
+
     def _get_positions(self, subroutine_id, addresses):
         return [
             self._get_position(subroutine_id=subroutine_id, address=address)
