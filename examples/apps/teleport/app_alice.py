@@ -1,9 +1,11 @@
-from netqasm.sdk import Qubit, EPRSocket, NetQASMConnection, Socket
+from netqasm.sdk import Qubit, EPRSocket
+from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.output import get_new_app_logger
 
 
-def main(log_config=None, phi=0., theta=0.):
+def main(app_config=None, phi=0., theta=0.):
+    log_config = app_config.log_config
     app_logger = get_new_app_logger(node_name="alice", log_config=log_config)
 
     # Create a socket to send classical information
@@ -13,8 +15,13 @@ def main(log_config=None, phi=0., theta=0.):
     epr_socket = EPRSocket("bob")
 
     # Initialize the connection to the backend
+    # Initialize the connection to the backend
+    node_name = app_config.node_name
+    if node_name is None:
+        node_name = app_config.app_name
+
     alice = NetQASMConnection(
-        name="alice",
+        node_name=node_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )

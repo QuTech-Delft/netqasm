@@ -1,10 +1,12 @@
 from netqasm.logging import get_netqasm_logger
-from netqasm.sdk import EPRSocket, NetQASMConnection, Socket
+from netqasm.sdk import EPRSocket
+from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
 
-def main(log_config=None):
+def main(app_config=None):
+    log_config = app_config.log_config
 
     # Create a socket to recv classical information
     socket = Socket("bob", "alice", log_config=log_config)
@@ -13,8 +15,11 @@ def main(log_config=None):
     epr_socket = EPRSocket("alice")
 
     # Initialize the connection
+    node_name = app_config.node_name
+    if node_name is None:
+        node_name = app_config.app_name
     bob = NetQASMConnection(
-        "bob",
+        node_name=node_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )

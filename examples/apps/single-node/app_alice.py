@@ -1,11 +1,13 @@
-from netqasm.sdk import Qubit, NetQASMConnection
+from netqasm.sdk import Qubit
+from netqasm.sdk.external import NetQASMConnection
 from netqasm.sdk.toolbox import set_qubit_state
 
 
-def main(log_config=None, phi=0., theta=0.):
+def main(app_config=None, phi=0., theta=0.):
+    log_config = app_config.log_config
     # Initialize the connection to the backend
     alice = NetQASMConnection(
-        name="alice",
+        node_name="alice",
         log_config=log_config,
     )
     with alice:
