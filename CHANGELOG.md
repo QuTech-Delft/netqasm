@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2020-09-23 (0.0.13)
+------------------
+- Made a base subroutine handler class.
+- Added definition of return messages from qnodeos.
+
 2020-09-23 (0.0.12)
 ------------------
 - Use correct NV gates in when compiling.
