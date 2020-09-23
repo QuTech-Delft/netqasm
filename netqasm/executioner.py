@@ -44,7 +44,7 @@ def inc_program_counter(method):
         self._program_counters[subroutine_id] += 1
         return output
 
-    # new_method.__name__ == method.__name__
+    new_method.__name__ == method.__name__
     return new_method
 
 
