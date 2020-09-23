@@ -9,7 +9,7 @@ if backend == Backend.NETSQUID:
     except ModuleNotFoundError:
         raise ModuleNotFoundError(f"to use {Backend.NETSQUID.value} as backend, `squidasm` needs to be installed")
 elif backend == Backend.SIMULAQRON:
-    from simulaqron.sdk.socket import Socket
+    from simulaqron.sdk.socket import Socket  # type: ignore
     try:
         from simulaqron.sdk.connection import SimulaQronConnection as NetQASMConnection
     except ModuleNotFoundError:

@@ -5,8 +5,6 @@ from typing import Union
 from netqasm.encoding import Address, Register, INTEGER, OptionalInt
 from netqasm.subroutine import Subroutine
 
-from netqasm.encoding import Address, Register, INTEGER, OptionalInt
-
 # This module defines the messages that the host can send to
 # the backend/QNodeOS
 
