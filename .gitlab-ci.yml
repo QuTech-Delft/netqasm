@@ -19,19 +19,25 @@ image: adahlberg/nlblueprintci:19.04
         - echo "$SSH_PRIVATE_KEY" | ssh-add -
         - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
         - chmod 644 ~/.ssh/known_hosts
-        ## Install squidasm
         - echo $CI_COMMIT_REF_NAME
         - echo $CI_COMMIT_BRANCH
         # Use master if merging to master otherwise develop
         # if not merging then use master if on master otherwise develop
         - BRANCH="$(if [ "$CI_COMMIT_BRANCH" == "" ]; then if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; else if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; fi)"
         - echo $BRANCH
+        ## Install squidasm
         - git clone git@gitlab.tudelft.nl:qinc-wehner/netqasm/squidasm.git -b $BRANCH
         - cd squidasm
         - make install
         - cd ..
+        ## Install simulaqron
+        - git clone git@gitlab.tudelft.nl:qinc-wehner/netqasm/simulaqron.git -b $BRANCH
+        - cd simulaqron
+        - make install
+        - make install-optional
+        - cd ..
+        ## Make sure external test deps are installed
         - make external-test-deps
-
 stages:
     - lint
     - tests
