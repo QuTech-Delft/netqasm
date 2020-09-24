@@ -5,7 +5,6 @@ import inspect
 import subprocess
 import logging
 from netqasm.logging import set_log_level
-from netqasm.settings import Simulator
 
 
 def _has_first_argument(function, argument):
@@ -25,7 +24,7 @@ def main(external):
             app_path = os.path.join(apps_path, app)
             print(f"Running example app {app_path}")
             result = subprocess.run(
-                ["netqasm", "simulate", "--app-dir", app_path, "--simulator", Simulator.NETSQUID.value],
+                ["netqasm", "simulate", "--app-dir", app_path],
                 stdout=subprocess.DEVNULL,
             )
             if result.returncode != 0:
