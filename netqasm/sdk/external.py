@@ -15,7 +15,7 @@ elif simulator == Simulator.SIMULAQRON:
         from simulaqron.sdk.socket import Socket  # type: ignore
         from simulaqron.sdk.connection import SimulaQronConnection as NetQASMConnection  # type: ignore
         from simulaqron.sim_util import get_qubit_state  # type: ignore
-        from simulaqron.run import run_applications # type: ignore
+        from simulaqron.run import run_applications  # type: ignore
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             f"to use {Simulator.SIMULAQRON.value} as simulator, `simulaqron` needs to be installed"
