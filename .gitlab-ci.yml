@@ -8,6 +8,10 @@ image: adahlberg/nlblueprintci:19.04
 .install: &install
     before_script:
         - make install
+
+.external-install: &external-install
+    before_script:
+        - make install
         ## Add private key to server access
         - eval $(ssh-agent -s)
         - mkdir -p ~/.ssh
@@ -26,13 +30,14 @@ image: adahlberg/nlblueprintci:19.04
         - cd squidasm
         - make install
         - cd ..
-        - make test-deps
+        - make external-test-deps
 
 stages:
     - lint
     - tests
     - examples
     - deploy
+    - external
 
 lint:
     <<: *install
@@ -40,7 +45,7 @@ lint:
     script: make lint
     <<: *only_mr
 
-test:
+tests:
     <<: *install
     stage: tests
     script: make tests
@@ -50,4 +55,18 @@ examples:
     <<: *install
     stage: examples
     script: make examples
+    <<: *only_mr
+
+external-test:
+    <<: *external-install
+    stage: external
+    script: make external-tests
+    allow_failure: true
+    <<: *only_mr
+
+external-examples:
+    <<: *external-install
+    stage: external
+    script: make external-examples
+    allow_failure: true
     <<: *only_mr

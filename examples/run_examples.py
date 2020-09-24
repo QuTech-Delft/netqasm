@@ -1,4 +1,5 @@
 import os
+import sys
 import runpy
 import inspect
 import subprocess
@@ -13,21 +14,22 @@ def _has_first_argument(function, argument):
     return argnames[0] == "no_output"
 
 
-def main():
+def main(external):
     set_log_level(logging.WARNING)
     path_to_here = os.path.dirname(os.path.abspath(__file__))
-    apps_path = os.path.join(path_to_here, "apps")
-    apps = os.listdir(apps_path)
 
-    for app in apps:
-        app_path = os.path.join(apps_path, app)
-        print(f"Running example app {app_path}")
-        result = subprocess.run(
-            ["netqasm", "simulate", "--app-dir", app_path, "--simulator", Simulator.NETSQUID.value],
-            stdout=subprocess.DEVNULL,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Example {app} failed!")
+    if external:
+        apps_path = os.path.join(path_to_here, "apps")
+        apps = os.listdir(apps_path)
+        for app in apps:
+            app_path = os.path.join(apps_path, app)
+            print(f"Running example app {app_path}")
+            result = subprocess.run(
+                ["netqasm", "simulate", "--app-dir", app_path, "--simulator", Simulator.NETSQUID.value],
+                stdout=subprocess.DEVNULL,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"Example {app} failed!")
 
     for root, _folders, files in os.walk(path_to_here):
         for filename in files:
@@ -49,4 +51,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    external = "--external" in sys.argv
+    main(external=external)
