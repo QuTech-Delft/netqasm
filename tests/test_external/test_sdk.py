@@ -6,7 +6,7 @@ from collections import defaultdict
 from qlink_interface import EPRType
 
 from netqasm.sdk import Qubit, EPRSocket
-from netqasm.sdk.app_config import default_app_config
+from netqasm.run.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, Socket, run_applications
 from netqasm.logging import set_log_level, get_netqasm_logger
 

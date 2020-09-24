@@ -46,7 +46,6 @@ def main(external):
                             raise RuntimeError(f"Example {filepath} failed!")
                     else:
                         print(f"The example {filepath} does not have a main function")
-
     print("All examples work!")
 
 

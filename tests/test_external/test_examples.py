@@ -3,7 +3,7 @@ import numpy as np
 import netsquid as ns
 
 from netqasm.logging import get_netqasm_logger
-from netqasm.sdk.app_config import AppConfig
+from netqasm.run.app_config import AppConfig
 from netqasm.sdk.external import run_applications
 
 from examples.apps.blind_rotation.app_alice import main as blind_rotation_alice
