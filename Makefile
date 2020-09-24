@@ -39,7 +39,7 @@ open-cov-report:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-report html tests && open htmlcov/index.html
 
 examples:
-	@${PYTHON3} ${RUNEXAMPLES} > /dev/null && echo "Examples OK!"
+	@${PYTHON3} ${RUNEXAMPLES}
 
 docs html:
 	@${MAKE} -C docs html
