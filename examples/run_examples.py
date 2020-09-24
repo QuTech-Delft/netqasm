@@ -30,22 +30,22 @@ def main(external):
             )
             if result.returncode != 0:
                 raise RuntimeError(f"Example {app} failed!")
-
-    for root, _folders, files in os.walk(path_to_here):
-        for filename in files:
-            if filename.startswith("example") and filename.endswith(".py"):
-                filepath = os.path.join(root, filename)
-                members = runpy.run_path(filepath)
-                if "main" in members:
-                    print(f"Running example {filepath}")
-                    result = subprocess.run(
-                        ["python3", filepath],
-                        stdout=subprocess.DEVNULL,
-                    )
-                    if result.returncode != 0:
-                        raise RuntimeError(f"Example {filepath} failed!")
-                else:
-                    print(f"The example {filepath} does not have a main function")
+    else:
+        for root, _folders, files in os.walk(path_to_here):
+            for filename in files:
+                if filename.startswith("example") and filename.endswith(".py"):
+                    filepath = os.path.join(root, filename)
+                    members = runpy.run_path(filepath)
+                    if "main" in members:
+                        print(f"Running example {filepath}")
+                        result = subprocess.run(
+                            ["python3", filepath],
+                            stdout=subprocess.DEVNULL,
+                        )
+                        if result.returncode != 0:
+                            raise RuntimeError(f"Example {filepath} failed!")
+                    else:
+                        print(f"The example {filepath} does not have a main function")
 
     print("All examples work!")
 
