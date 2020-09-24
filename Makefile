@@ -2,6 +2,7 @@ PYTHON3        = python3
 SOURCEDIR      = netqasm
 TESTDIR        = tests
 EXAMPLEDIR     = examples
+PIP_FLAGS      = --extra-index-url=https://${NETSQUIDPYPI_USER}:${NETSQUIDPYPI_PWD}@pypi.netsquid.org
 RUNEXAMPLES    = ${EXAMPLEDIR}/run_examples.py
 MINCOV         = 0
 
@@ -38,7 +39,7 @@ open-cov-report:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-report html tests && open htmlcov/index.html
 
 examples:
-	@${PYTHON3} ${RUNEXAMPLES} > /dev/null && echo "Examples OK!"
+	@${PYTHON3} ${RUNEXAMPLES}
 
 docs html:
 	@${MAKE} -C docs html
@@ -46,7 +47,7 @@ docs html:
 build bdist: _clean_dist
 	@$(PYTHON3) setup.py bdist_wheel
 
-install: test-deps
+install:
 	@$(PYTHON3) -m pip install -e . ${PIP_FLAGS}
 
 _clean_dist:
