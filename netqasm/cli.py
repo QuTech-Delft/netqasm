@@ -91,7 +91,8 @@ def simulate(
     formalism = Formalism(formalism)
     flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
-    simulate_apps = _get_simulate_apps_func(simulator=simulator)
+    # Import correct function after setting the simulator
+    simulate_apps = importlib.import_module("netqasm.sdk.external").simulate_apps
     simulate_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
@@ -105,21 +106,6 @@ def simulate(
         formalism=formalism,
         flavour=flavour
     )
-
-
-def _get_simulate_apps_func(simulator):
-    if simulator is Simulator.NETSQUID:
-        try:
-            return importlib.import_module("squidasm.run.simulate").simulate_apps
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError("To use the netsquid simulator you need squidasm installed")
-    elif simulator is Simulator.SIMULAQRON:
-        try:
-            return importlib.import_module("simulaqron.run.simulate").simulate_apps
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError("To use the simulaqron simulator you need simulaqron installed")
-    else:
-        raise ValueError(f"Unknown simulator {simulator}")
 
 
 if __name__ == '__main__':
