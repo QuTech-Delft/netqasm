@@ -18,15 +18,15 @@ class Flavour(Enum):
     NV = "nv"
 
 
-BACKEND_ENV = "NETQASM_BACKEND"
+SIMULATOR_ENV = "NETQASM_SIMULATOR"
 
 
 def set_simulator(simulator):
-    os.environ[BACKEND_ENV] = Simulator(simulator).value
+    os.environ[SIMULATOR_ENV] = Simulator(simulator).value
 
 
 def get_simulator():
-    simulator = os.environ.get(BACKEND_ENV)
+    simulator = os.environ.get(SIMULATOR_ENV)
     if simulator is None:
         return _default_simulator()
     else:

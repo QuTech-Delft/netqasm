@@ -4,6 +4,17 @@ CHANGELOG
 Upcoming
 --------
 
+2020-09-25 (0.1.0)
+------------------
+- The CLI from `squidasm` is now moved to here and can be called as `netqasm`.
+  It works the same as before with the options to the arguments `simulate`.
+  Only difference is that it now takes an option `--simulator` which can either be `netsquid` (producing the same behaviour as the previous `squidasm` CLI) or `simulaqron`.
+  Note that `squidasm` or `simulaqron` needs to be installed in the respective case.
+  The choice of simulator can also be done by setting the environment variable `NETQASM_SIMULATOR`.
+- Tests and examples for the SDK have now moved from `squidasm` to here.
+  In particular the implemented apps that previously was in `squidasm/examples/apps` can now be found in `netqasm/examples/apps`.
+- Code not specific to a simulator, for example a base class for the `SubroutineHandler` and function `simulate_apps` have moved to here to be reused by all simulators.
+
 2020-09-23 (0.0.13)
 ------------------
 - Made a base subroutine handler class.

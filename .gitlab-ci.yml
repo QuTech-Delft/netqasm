@@ -78,7 +78,7 @@ examples:
 tests-squidasm:
     <<: *squidasm-install
     variables:
-        NETQASM_BACKEND: netsquid
+        NETQASM_SIMULATOR: netsquid
     stage: external
     script: make external-tests
     allow_failure: true
@@ -87,7 +87,7 @@ tests-squidasm:
 examples-squidasm:
     <<: *squidasm-install
     variables:
-        NETQASM_BACKEND: netsquid
+        NETQASM_SIMULATOR: netsquid
     stage: external
     script: make external-examples
     allow_failure: true
@@ -96,7 +96,7 @@ examples-squidasm:
 tests-simulaqron:
     <<: *simulaqron-install
     variables:
-        NETQASM_BACKEND: simulaqron
+        NETQASM_SIMULATOR: simulaqron
     stage: external
     script: make external-tests
     allow_failure: true
@@ -105,7 +105,7 @@ tests-simulaqron:
 examples-simulaqron:
     <<: *simulaqron-install
     variables:
-        NETQASM_BACKEND: simulaqron
+        NETQASM_SIMULATOR: simulaqron
     stage: external
     script: make external-examples
     allow_failure: true

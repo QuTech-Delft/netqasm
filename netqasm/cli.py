@@ -59,7 +59,7 @@ def version():
               )
 @click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=None,
               help="Choose with simulator to use, "
-                   "default uses what environment variable 'NETQASM_BACKEND' is set to, otherwise 'netsquid'"
+                   "default uses what environment variable 'NETQASM_SIMULATOR' is set to, otherwise 'netsquid'"
               )
 @click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
               help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
@@ -89,7 +89,7 @@ def simulate(
     Executes a given NetQASM file using a specified executioner.
     """
     if simulator is None:
-        simulator = os.environ.get("NETQASM_BACKEND", Simulator.NETSQUID.value)
+        simulator = os.environ.get("NETQASM_SIMULATOR", Simulator.NETSQUID.value)
     else:
         simulator = Simulator(simulator)
     formalism = Formalism(formalism)
