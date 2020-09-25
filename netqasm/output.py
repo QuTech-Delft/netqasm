@@ -61,7 +61,6 @@ class InstrField(Enum):
     HFL = "HFL"  # Host file
     INS = "INS"  # Instruction
     OPR = "OPR"  # Operands (register, array-entries..)
-    OPV = "OPV"  # Values of operands as stored in memory
     QID = "QID"  # Qubit IDs of qubits part of operation
     QST = "QST"  # Qubit states if the qubits part of the operations after execution
     OUT = "OUT"  # Measurement outcome
@@ -179,7 +178,6 @@ class InstrLogger(StructuredLogger):
             InstrField.HLN.value: None,
             InstrField.INS.value: instr_name,
             InstrField.OPR.value: ops_str,
-            InstrField.OPV.value: op_values,
             InstrField.QID.value: qubit_ids,
             InstrField.QST.value: qubit_states,
             InstrField.OUT.value: outcome,
