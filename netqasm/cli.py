@@ -96,7 +96,7 @@ def simulate(
     flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
     # Import correct function after setting the simulator
-    simulate_apps = importlib.import_module("netqasm.sdk.external").simulate_apps
+    simulate_apps = importlib.import_module("netqasm.run.simulate").simulate_apps
     simulate_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
