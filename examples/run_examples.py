@@ -1,6 +1,10 @@
 import os
+import sys
 import runpy
 import inspect
+import subprocess
+import logging
+from netqasm.logging import set_log_level
 
 
 def _has_first_argument(function, argument):
@@ -9,23 +13,41 @@ def _has_first_argument(function, argument):
     return argnames[0] == "no_output"
 
 
-def main():
+def main(external):
+    set_log_level(logging.WARNING)
     path_to_here = os.path.dirname(os.path.abspath(__file__))
 
-    for root, folders, files in os.walk(path_to_here):
-        for filename in files:
-            if filename.startswith("example_") and filename.endswith(".py"):
-                filepath = os.path.join(root, filename)
-                members = runpy.run_path(filepath)
-                if "main" in members:
-                    main = members["main"]
-                    if _has_first_argument(main, "no_output"):
-                        main(no_output=True)
+    if external:
+        apps_path = os.path.join(path_to_here, "apps")
+        apps = os.listdir(apps_path)
+        for app in apps:
+            app_path = os.path.join(apps_path, app)
+            print(f"Running example app {app_path}")
+            result = subprocess.run(
+                ["netqasm", "simulate", "--app-dir", app_path],
+                stdout=subprocess.DEVNULL,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"Example {app} failed!")
+    else:
+        for root, _folders, files in os.walk(path_to_here):
+            for filename in files:
+                if filename.startswith("example") and filename.endswith(".py"):
+                    filepath = os.path.join(root, filename)
+                    members = runpy.run_path(filepath)
+                    if "main" in members:
+                        print(f"Running example {filepath}")
+                        result = subprocess.run(
+                            ["python3", filepath],
+                            stdout=subprocess.DEVNULL,
+                        )
+                        if result.returncode != 0:
+                            raise RuntimeError(f"Example {filepath} failed!")
                     else:
-                        print(f"The main function in {filename} does not take the argument 'no_output'")
-                else:
-                    print(f"The example {filename} does not have a main function")
+                        print(f"The example {filepath} does not have a main function")
+    print("All examples work!")
 
 
 if __name__ == "__main__":
-    main()
+    external = "--external" in sys.argv
+    main(external=external)

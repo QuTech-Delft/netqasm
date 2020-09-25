@@ -1,0 +1,6 @@
+# bob config
+col: 0
+strategy:
+    - ['XI', '-XZ', 'IZ']  # col 0
+    - ['XX', 'YY', 'ZZ']  # col 1
+    - ['IX', '-ZX', 'ZI']  # col 2

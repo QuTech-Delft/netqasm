@@ -57,7 +57,7 @@ class _Tuple(tuple):
         return tuple.__new__(cls, args[1:])
 
 
-class NetQASMConnection(abc.ABC):
+class BaseNetQASMConnection(abc.ABC):
 
     # Used app IDs
     _app_ids: Dict[str, List[int]] = {}
@@ -201,6 +201,7 @@ class NetQASMConnection(abc.ABC):
 
     def _commit_message(self, msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
+        self._logger.debug(f"Committing message {msg}")
         self._commit_serialized_message(raw_msg=bytes(msg), block=block, callback=callback)
 
     @abc.abstractmethod
@@ -1296,7 +1297,7 @@ class NetQASMConnection(abc.ABC):
         return True
 
 
-class DebugConnection(NetQASMConnection):
+class DebugConnection(BaseNetQASMConnection):
 
     node_ids: Dict[str, int] = {}
 

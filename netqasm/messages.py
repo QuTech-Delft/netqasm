@@ -102,7 +102,6 @@ class SubroutineMessage:
         a subroutine which is defined separately and not as a `ctype` for now.
         Still this class defines the methods `__bytes__` and `deserialize_from`
         so that it can be packed and unpacked.
-
         The packed form of the message is:
 
         .. code-block:: text

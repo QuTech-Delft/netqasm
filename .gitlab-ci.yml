@@ -9,11 +9,53 @@ image: adahlberg/nlblueprintci:19.04
     before_script:
         - make install
 
+.squidasm-install: &squidasm-install
+    before_script:
+        - make install
+        ## Add private key to server access
+        - eval $(ssh-agent -s)
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+        - echo "$SSH_PRIVATE_KEY" | ssh-add -
+        - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+        - chmod 644 ~/.ssh/known_hosts
+        - echo $CI_COMMIT_REF_NAME
+        - echo $CI_COMMIT_BRANCH
+        # Use master if merging to master otherwise develop
+        # if not merging then use master if on master otherwise develop
+        - BRANCH="$(if [ "$CI_COMMIT_BRANCH" == "" ]; then if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; else if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; fi)"
+        - echo $BRANCH
+        ## Install squidasm
+        - git clone git@gitlab.tudelft.nl:qinc-wehner/netqasm/squidasm.git -b $BRANCH
+        - make -C squidasm install
+
+.simulaqron-install: &simulaqron-install
+    before_script:
+        - make install
+        ## Add private key to server access
+        - eval $(ssh-agent -s)
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+        - echo "$SSH_PRIVATE_KEY" | ssh-add -
+        - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+        - chmod 644 ~/.ssh/known_hosts
+        - echo $CI_COMMIT_REF_NAME
+        - echo $CI_COMMIT_BRANCH
+        # Use master if merging to master otherwise develop
+        # if not merging then use master if on master otherwise develop
+        - BRANCH="$(if [ "$CI_COMMIT_BRANCH" == "" ]; then if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; else if [ "$CI_COMMIT_REF_NAME" == "develop" ]; then echo "master"; else echo "develop"; fi; fi)"
+        - echo $BRANCH
+        ## Install simulaqron
+        - git clone git@gitlab.tudelft.nl:qinc-wehner/netqasm/simulaqron.git -b $BRANCH
+        - make -C simulaqron install
+        - make -C simulaqron install-optional
+
 stages:
     - lint
     - tests
     - examples
     - deploy
+    - external
 
 lint:
     <<: *install
@@ -21,7 +63,7 @@ lint:
     script: make lint
     <<: *only_mr
 
-test:
+tests:
     <<: *install
     stage: tests
     script: make tests
@@ -31,4 +73,40 @@ examples:
     <<: *install
     stage: examples
     script: make examples
+    <<: *only_mr
+
+tests-squidasm:
+    <<: *squidasm-install
+    variables:
+        NETQASM_SIMULATOR: netsquid
+    stage: external
+    script: make external-tests
+    allow_failure: true
+    <<: *only_mr
+
+examples-squidasm:
+    <<: *squidasm-install
+    variables:
+        NETQASM_SIMULATOR: netsquid
+    stage: external
+    script: make external-examples
+    allow_failure: true
+    <<: *only_mr
+
+tests-simulaqron:
+    <<: *simulaqron-install
+    variables:
+        NETQASM_SIMULATOR: simulaqron
+    stage: external
+    script: make external-tests
+    allow_failure: true
+    <<: *only_mr
+
+examples-simulaqron:
+    <<: *simulaqron-install
+    variables:
+        NETQASM_SIMULATOR: simulaqron
+    stage: external
+    script: make external-examples
+    allow_failure: true
     <<: *only_mr
