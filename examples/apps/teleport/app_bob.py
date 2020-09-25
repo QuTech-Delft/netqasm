@@ -1,6 +1,6 @@
 from netqasm.logging import get_netqasm_logger
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import NetQASMConnection, Socket
+from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 
 logger = get_netqasm_logger()
 
@@ -35,6 +35,12 @@ def main(app_config=None):
             epr.X()
         if m1 == 1:
             epr.Z()
+
+        bob.flush()
+        # Get the qubit state
+        # NOTE only possible in simulation, not part of actual application
+        dm = get_qubit_state(epr)
+        return {"qubit_state": dm if dm is None else dm.tolist()}
 
 
 if __name__ == "__main__":
