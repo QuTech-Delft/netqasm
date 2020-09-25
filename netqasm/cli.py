@@ -1,3 +1,4 @@
+import os
 import click
 import importlib
 
@@ -56,9 +57,9 @@ def version():
 @click.option("--results-file", type=str, default=None,
               help="Explicitly choose the file where the results of a post function should be stored."
               )
-@click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=Simulator.NETSQUID.value,
+@click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=None,
               help="Choose with simulator to use, "
-                   "default 'netsquid'"
+                   "default uses what environment variable 'NETQASM_BACKEND' is set to, otherwise 'netsquid'"
               )
 @click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
               help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
@@ -87,12 +88,15 @@ def simulate(
     """
     Executes a given NetQASM file using a specified executioner.
     """
-    simulator = Simulator(simulator)
+    if simulator is None:
+        simulator = os.environ.get("NETQASM_BACKEND", Simulator.NETSQUID.value)
+    else:
+        simulator = Simulator(simulator)
     formalism = Formalism(formalism)
     flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
     # Import correct function after setting the simulator
-    simulate_apps = importlib.import_module("netqasm.sdk.external").simulate_apps
+    simulate_apps = importlib.import_module("netqasm.run.simulate").simulate_apps
     simulate_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
