@@ -1228,11 +1228,11 @@ class BaseNetQASMConnection(abc.ABC):
             :iterations:     Number of measurements in each basis.
             :progress_bar:     Displays a progress bar
         """
-        accum_outcomes = [0, 0, 0]
+        outcomes = {"X": [], "Y": [], "Z": []}
         if progress:
             bar = ProgressBar(3 * iterations)
 
-            # Measure in X
+        # Measure in X
         for _ in range(iterations):
             # Progress bar
             if progress:
@@ -1242,9 +1242,9 @@ class BaseNetQASMConnection(abc.ABC):
             q = preparation(self)
             q.H()
             m = q.measure()
-            accum_outcomes[0] += m
+            outcomes["X"].append(m)
 
-            # Measure in Y
+        # Measure in Y
         for _ in range(iterations):
             # Progress bar
             if progress:
@@ -1254,9 +1254,9 @@ class BaseNetQASMConnection(abc.ABC):
             q = preparation(self)
             q.K()
             m = q.measure()
-            accum_outcomes[1] += m
+            outcomes["Y"].append(m)
 
-            # Measure in Z
+        # Measure in Z
         for _ in range(iterations):
             # Progress bar
             if progress:
@@ -1265,14 +1265,16 @@ class BaseNetQASMConnection(abc.ABC):
             # prepare and measure
             q = preparation(self)
             m = q.measure()
-            accum_outcomes[2] += m
+            outcomes["Z"].append(m)
 
         if progress:
             bar.close()
             del bar
 
-        freqs = map(lambda x: x / iterations, accum_outcomes)
-        return list(freqs)
+        self.flush()
+
+        freqs = {key: sum(value) / iterations for key, value in outcomes.items()}
+        return freqs
 
     def test_preparation(self, preparation, exp_values, conf=2, iterations=100, progress=True):
         """Test the preparation of a qubit.
@@ -1290,8 +1292,9 @@ class BaseNetQASMConnection(abc.ABC):
         epsilon = conf / math.sqrt(iterations)
 
         freqs = self.tomography(preparation, iterations, progress=progress)
-        for i in range(3):
-            if abs(freqs[i] - exp_values[i]) > epsilon:
+        for basis, exp_value in zip(["X", "Y", "Z"], exp_values):
+            f = freqs[basis]
+            if abs(f - exp_value) > epsilon:
                 print(freqs, exp_values, epsilon)
                 return False
         return True

@@ -201,7 +201,7 @@ class Executioner:
 
     def stop_application(self, app_id):
         """Stops an application and clears all qubits and classical memories"""
-        self._clear_qubits(app_id=app_id)
+        yield from self._clear_qubits(app_id=app_id)
         self._clear_registers(app_id=app_id)
         self._clear_arrays(app_id=app_id)
         self._clear_shared_memory(app_id=app_id)
@@ -212,7 +212,9 @@ class Executioner:
             if physical_address is None:
                 continue
             self._used_physical_qubit_addresses.remove(physical_address)
-            self._clear_phys_qubit_in_memory(physical_address)
+            output = self._clear_phys_qubit_in_memory(physical_address)
+            if isinstance(output, GeneratorType):
+                yield from output
 
     def _clear_registers(self, app_id):
         self._registers.pop(app_id)
@@ -775,7 +777,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.reg)
         self._logger.debug(f"Freeing qubit at virtual address {q_address}")
-        self._free_physical_qubit(subroutine_id, q_address)
+        yield from self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
     def _instr_ret_reg(self, subroutine_id, instr: instructions.core.RetRegInstruction):
@@ -795,11 +797,14 @@ class Executioner:
     def _update_shared_memory(self, app_id, entry, value):
         shared_memory = self._shared_memories[app_id]
         if isinstance(entry, Register):
+            self._logger.debug(f"Updating host about register {entry} with value {value}")
             shared_memory.set_register(entry, value)
         elif isinstance(entry, ArrayEntry) or isinstance(entry, ArraySlice):
+            self._logger.debug(f"Updating host about array entry {entry} with value {value}")
             address, index = self._expand_array_part(app_id=app_id, array_part=entry)
             shared_memory.set_array_part(address=address, index=index, value=value)
         elif isinstance(entry, Address):
+            self._logger.debug(f"Updating host about array {entry} with value {value}")
             address = entry.address
             shared_memory.init_new_array(address=address, new_array=value)
         else:
@@ -907,9 +912,12 @@ class Executioner:
                 "and cannot be freed")
         else:
             physical_address = unit_module[address]
+            self._logger.debug(f"Freeing qubit at physical address {physical_address}")
             unit_module[address] = None
             self._used_physical_qubit_addresses.remove(physical_address)
-            self._clear_phys_qubit_in_memory(physical_address)
+            output = self._clear_phys_qubit_in_memory(physical_address)
+            if isinstance(output, GeneratorType):
+                yield from output
 
     def _reserve_physical_qubit(self, physical_address):
         """To be subclassed for different quantum processors (e.g. netsquid)"""
