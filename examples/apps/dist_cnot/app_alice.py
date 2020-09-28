@@ -11,12 +11,8 @@ def main(app_config=None, phi=0.0, theta=0.0):
     class_socket = Socket("alice", "bob", log_config=app_config.log_config)
 
     # connect to the back-end
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     alice = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[bob_epr]
     )
@@ -55,5 +51,5 @@ def main(app_config=None, phi=0.0, theta=0.0):
 
         return {
             'epr_meas': int(epr_meas),
-            'final_state': dm.tolist(),
+            'final_state': dm if dm is None else dm.tolist(),
         }

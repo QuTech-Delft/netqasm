@@ -83,7 +83,7 @@ def main(app_config=None, num_bits=100):
         node_name = app_config.app_name
 
     bob = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )

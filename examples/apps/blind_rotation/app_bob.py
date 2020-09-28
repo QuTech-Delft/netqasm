@@ -12,12 +12,8 @@ def main(app_config=None, num_iter=3):
 
     num_qubits = num_iter + 1
 
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     bob = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
         max_qubits=num_qubits
@@ -43,5 +39,5 @@ def main(app_config=None, num_iter=3):
         # The output of the computation is in the last qubit.
         dm = get_qubit_state(q[num_qubits - 1])
         return {
-            "output_state": dm.tolist()
+            "output_state": dm if dm is None else dm.tolist()
         }

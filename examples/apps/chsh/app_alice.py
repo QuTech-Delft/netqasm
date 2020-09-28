@@ -17,19 +17,15 @@ def main(app_config=None, x=0):
         raise ValueError(f"x should be 0 or 1, not {x}")
 
     app_logger = get_new_app_logger(
-        node_name=app_config.app_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config
     )
     app_logger.log(f"Alice received input bit x = {x}")
 
     epr_socket = EPRSocket("repeater")
 
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     alice = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket]
     )
