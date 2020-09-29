@@ -1,10 +1,12 @@
+import pytest
 import random
+import importlib
 import numpy as np
-import netsquid as ns
 
 from netqasm.logging import get_netqasm_logger
 from netqasm.run.app_config import AppConfig
 from netqasm.sdk.external import run_applications
+from netqasm.settings import get_simulator, Simulator
 
 from examples.apps.blind_rotation.app_alice import main as blind_rotation_alice
 from examples.apps.blind_rotation.app_bob import main as blind_rotation_bob
@@ -21,6 +23,7 @@ def fidelity_ok(qstate1, dm2, threshold=0.999):
 
 
 def run_blind_rotation():
+    ns = importlib.import_module("netsquid")
     num_iter = 4
     num_qubits = num_iter + 1
     phi = [random.uniform(0, 2 * np.pi) for _ in range(num_iter)]
@@ -85,6 +88,10 @@ def run_blind_rotation():
     assert fidelity_ok(ref.qstate, np.array(output_state))
 
 
+@pytest.mark.skipif(
+    get_simulator() != Simulator.NETSQUID,
+    reason="Can only run blind rotation tests using netsquid for now",
+)
 def test_blind_rotation():
     num = 3
     for _ in range(num):
