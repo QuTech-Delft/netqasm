@@ -694,7 +694,6 @@ class Executioner:
     ):
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
-        # Check number of qubit addresses
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         # Get number of pairs based on length of ent info array
         num_pairs = self._get_num_pairs_from_array(
@@ -949,7 +948,7 @@ class Executioner:
     def _handle_epr_response(self, response):
         self._pending_epr_responses.append(response)
         self._handle_pending_epr_responses()
-
+    
     def _handle_pending_epr_responses(self):
         # NOTE this will probably be handled differently in an actual implementation
         # but is done in a simple way for now to allow for simulation

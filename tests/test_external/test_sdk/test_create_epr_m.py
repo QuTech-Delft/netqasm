@@ -1,5 +1,4 @@
 import pytest
-from collections import defaultdict
 
 from qlink_interface import EPRType
 
@@ -11,25 +10,27 @@ from netqasm.settings import get_simulator, Simulator
 
 logger = get_netqasm_logger()
 
-outcomes = defaultdict(list)
-
 num = 10
 
 
 def run_alice():
-    epr_socket = EPRSocket("Bob")
-    with NetQASMConnection("Alice", epr_sockets=[epr_socket]):
+    epr_socket = EPRSocket("bob")
+    outcomes = []
+    with NetQASMConnection("alice", epr_sockets=[epr_socket]):
         ent_infos = epr_socket.create(number=num, tp=EPRType.M)
         for ent_info in ent_infos:
-            outcomes['Alice'].append(ent_info.measurement_outcome)
+            outcomes.append(ent_info.measurement_outcome)
+    return outcomes
 
 
 def run_bob():
-    epr_socket = EPRSocket("Alice")
-    with NetQASMConnection("Bob", epr_sockets=[epr_socket]):
+    epr_socket = EPRSocket("alice")
+    outcomes = []
+    with NetQASMConnection("bob", epr_sockets=[epr_socket]):
         ent_infos = epr_socket.recv(number=num, tp=EPRType.M)
         for ent_info in ent_infos:
-            outcomes['Bob'].append(ent_info.measurement_outcome)
+            outcomes.append(ent_info.measurement_outcome)
+    return outcomes
 
 
 @pytest.mark.skipif(
@@ -37,11 +38,11 @@ def run_bob():
     reason="Type M create requests are not yet supported in simulaqron",
 )
 def test_create_epr_m():
-    run_applications([
-        default_app_config("Alice", run_alice),
-        default_app_config("Bob", run_bob),
+    outcomes = run_applications([
+        default_app_config("alice", run_alice),
+        default_app_config("bob", run_bob),
     ], use_app_config=False)
 
     print(outcomes)
     for i in range(num):
-        assert int(outcomes['Alice'][i]) == int(outcomes['Bob'][i])
+        assert int(outcomes['app_alice'][i]) == int(outcomes['app_bob'][i])
