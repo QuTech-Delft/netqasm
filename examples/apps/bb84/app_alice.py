@@ -110,7 +110,7 @@ def main(app_config=None, num_bits=100):
     epr_socket = EPRSocket("bob")
 
     alice = NetQASMConnection(
-        node_name=app_config.app_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )

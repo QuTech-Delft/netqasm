@@ -98,12 +98,8 @@ def main(app_config=None, num_bits=100):
     # Socket for EPR generation
     epr_socket = EPRSocket("alice")
 
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     bob = NetQASMConnection(
-        node_name=app_config.app_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )
