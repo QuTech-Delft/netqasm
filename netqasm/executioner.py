@@ -948,7 +948,7 @@ class Executioner:
     def _handle_epr_response(self, response):
         self._pending_epr_responses.append(response)
         self._handle_pending_epr_responses()
-    
+
     def _handle_pending_epr_responses(self):
         # NOTE this will probably be handled differently in an actual implementation
         # but is done in a simple way for now to allow for simulation
