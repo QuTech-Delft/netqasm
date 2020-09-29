@@ -1,12 +1,9 @@
-import pytest
-
 from qlink_interface import EPRType
 
 from netqasm.sdk import EPRSocket
 from netqasm.run.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, run_applications
 from netqasm.logging import get_netqasm_logger
-from netqasm.settings import get_simulator, Simulator
 
 logger = get_netqasm_logger()
 
@@ -33,10 +30,6 @@ def run_bob():
     return outcomes
 
 
-@pytest.mark.skipif(
-    get_simulator() == Simulator.SIMULAQRON,
-    reason="Type M create requests are not yet supported in simulaqron",
-)
 def test_create_epr_m():
     outcomes = run_applications([
         default_app_config("alice", run_alice),
