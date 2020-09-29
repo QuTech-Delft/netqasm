@@ -4,7 +4,25 @@ import runpy
 import inspect
 import subprocess
 import logging
+from collections import namedtuple
+
 from netqasm.logging import set_log_level
+from netqasm.settings import get_simulator, Simulator
+
+# Used to specify to skip some apps in some cases
+SkipIf = namedtuple("SkipIf", ["skip", "reason"])
+
+
+skip_ifs = {
+    "bb84": SkipIf(
+        get_simulator() == Simulator.SIMULAQRON,
+        reason="Type M create requests are not yet supported in simulaqron",
+    ),
+    "anonymous_transmission": SkipIf(
+        get_simulator() == Simulator.SIMULAQRON,
+        reason="Current broadcast channel in simulaqron cannot handle socket IDs",
+    ),
+}
 
 
 def _has_first_argument(function, argument):
@@ -22,7 +40,11 @@ def main(external):
         apps = os.listdir(apps_path)
         for app in apps:
             app_path = os.path.join(apps_path, app)
-            print(f"Running example app {app_path}")
+            skip_if = skip_ifs.get(app)
+            if skip_if is not None and skip_if.skip:
+                print(f"Skipping example app {app_path} since {skip_if.reason}")
+                continue
+            print(f"Running example app {app_path} using simulator {get_simulator()}")
             result = subprocess.run(
                 ["netqasm", "simulate", "--app-dir", app_path],
                 stdout=subprocess.DEVNULL,

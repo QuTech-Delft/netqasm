@@ -20,18 +20,14 @@ def anonymous_transmission(
 
     # Setup sockets, epr_sockets and a broadcast_channel needed for the protocol
     sockets = setup_sockets(
-        node_name=node_name,
+        app_name=app_config.app_name,
         nodes=nodes,
         log_config=app_config.log_config,
     )
 
     # Initialize the connection to the backend
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     conn = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=sockets.epr_sockets,
     )

@@ -9,6 +9,10 @@ from netqasm.settings import get_simulator, Simulator
 
 logger = get_netqasm_logger()
 
+# TODO depending on how post functions are implemented in simulaqron
+# this should not be a variable outside `run_alice` since it won't be
+# affected when running that function in a seperate process.
+# We should instead use the results returned from `run_applications`.
 outcomes = []
 
 

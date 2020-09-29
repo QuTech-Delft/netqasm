@@ -50,4 +50,4 @@ def recv_meas_outcome(socket):
     """Receive the measurement outcome (0 or 1) of the server's
     last measurement.
     """
-    return int(socket.recv())
+    return int(socket.recv(maxsize=1))

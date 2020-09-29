@@ -104,7 +104,7 @@ def simulate(
         network_config_file=network_config_file,
         app_config_dir=app_config_dir,
         log_dir=log_dir,
-        log_level=log_level,
+        log_level=log_level.upper(),
         post_function_file=post_function_file,
         results_file=results_file,
         formalism=formalism,

@@ -102,7 +102,7 @@ class Executioner:
         self._next_subroutine_id = 0
 
         # Keep track of what physical qubit addresses are in use
-        self._used_physical_qubit_addresses = []
+        self._used_physical_qubit_addresses = set()
 
         # Keep track of the create epr requests in progress
         self._epr_create_requests = defaultdict(list)
@@ -694,7 +694,6 @@ class Executioner:
     ):
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
-        # Check number of qubit addresses
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         # Get number of pairs based on length of ent info array
         num_pairs = self._get_num_pairs_from_array(
@@ -893,7 +892,7 @@ class Executioner:
         if unit_module[virtual_address] is None:
             if physical_address is None:
                 physical_address = self._get_unused_physical_qubit()
-            self._used_physical_qubit_addresses.append(physical_address)
+                self._used_physical_qubit_addresses.add(physical_address)
             unit_module[virtual_address] = physical_address
             self._reserve_physical_qubit(physical_address)
             return physical_address
@@ -932,6 +931,7 @@ class Executioner:
         # is does not matter which unused physical qubit we choose for now
         for physical_address in count(0):
             if physical_address not in self._used_physical_qubit_addresses:
+                self._used_physical_qubit_addresses.add(physical_address)
                 return physical_address
 
     def _assert_number_args(self, args, num):
@@ -955,44 +955,43 @@ class Executioner:
         if len(self._pending_epr_responses) == 0:
             return
 
-        response = self._pending_epr_responses[0]
+        # Try to handle one of the pending EPR responses
+        handled = False
+        for i, response in enumerate(self._pending_epr_responses):
 
-        if response.type == ReturnType.ERR:
-            self._handle_epr_err_response(response)
+            if response.type == ReturnType.ERR:
+                self._handle_epr_err_response(response)
+            else:
+                self._logger.debug(
+                    f"Try to handle EPR OK ({response.type}) response from network stack"
+                )
+                info = self._extract_epr_info(response=response)
+                if info is not None:
+                    epr_cmd_data, pair_index, is_creator, request_key = info
+                    handled = self._epr_response_handlers[response.type](
+                        epr_cmd_data=epr_cmd_data,
+                        response=response,
+                        pair_index=pair_index,
+                    )
+                if handled:
+                    epr_cmd_data.pairs_left -= 1
+
+                    self._handle_last_epr_pair(
+                        epr_cmd_data=epr_cmd_data,
+                        is_creator=is_creator,
+                        request_key=request_key,
+                    )
+
+                    self._store_ent_info(
+                        epr_cmd_data=epr_cmd_data,
+                        response=response,
+                        pair_index=pair_index,
+                    )
+                    self._pending_epr_responses.pop(i)
+        if not handled:
+            self._wait_to_handle_epr_responses()
         else:
-            self._logger.debug(
-                f"Handling EPR OK ({response.type}) response from network stack"
-            )
-            info = self._extract_epr_info(response=response)
-            if info is not None:
-                epr_cmd_data, pair_index, is_creator, request_key = info
-                handled = self._epr_response_handlers[response.type](
-                    epr_cmd_data=epr_cmd_data,
-                    response=response,
-                    pair_index=pair_index,
-                )
-            else:
-                handled = False
-            if handled:
-                epr_cmd_data.pairs_left -= 1
-
-                self._handle_last_epr_pair(
-                    epr_cmd_data=epr_cmd_data,
-                    is_creator=is_creator,
-                    request_key=request_key,
-                )
-
-                self._store_ent_info(
-                    epr_cmd_data=epr_cmd_data,
-                    response=response,
-                    pair_index=pair_index,
-                )
-                self._pending_epr_responses.pop(0)
-            else:
-                self._wait_to_handle_epr_responses()
-                return
-
-        self._handle_pending_epr_responses()
+            self._handle_pending_epr_responses()
 
     def _wait_to_handle_epr_responses(self):
         # This can be subclassed to sleep a little before handling again
@@ -1073,6 +1072,7 @@ class Executioner:
         self._logger.debug(
             f"Virtual qubit address {virtual_address} will now be mapped to "
             f"physical address {physical_address}")
+        self._used_physical_qubit_addresses.add(physical_address)
         self._allocate_physical_qubit(
             subroutine_id=subroutine_id,
             virtual_address=virtual_address,

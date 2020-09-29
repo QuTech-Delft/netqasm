@@ -25,19 +25,12 @@ def main(app_config=None, row=0, strategy=None):
     epr_socket = EPRSocket("bob")
 
     # Initialize the connection
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     alice = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )
     with alice:
-        # Don't clear app on exit (for logging)
-        alice._clear_app_on_exit = False
-
         # Create EPR pairs
         q1 = epr_socket.create()[0]
         q2 = epr_socket.create()[0]

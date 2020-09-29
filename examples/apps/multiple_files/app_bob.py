@@ -11,12 +11,8 @@ def main(app_config=None):
     socket = Socket("bob", "alice", log_config=app_config.log_config)
 
     # Initialize the connection to the backend
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     bob = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config
     )
     with bob:

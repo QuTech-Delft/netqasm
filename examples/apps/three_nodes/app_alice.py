@@ -18,12 +18,8 @@ def main(app_config=None):
         remote_epr_socket_id=0
     )
 
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
-
     alice = NetQASMConnection(
-        node_name=node_name,
+        app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket_bob, epr_socket_charlie]
     )

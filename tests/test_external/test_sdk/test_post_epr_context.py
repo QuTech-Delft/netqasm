@@ -1,20 +1,15 @@
-import pytest
-
 from netqasm.sdk import EPRSocket
 from netqasm.run.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, run_applications
 from netqasm.logging import get_netqasm_logger
-from netqasm.settings import get_simulator, Simulator
 
 logger = get_netqasm_logger()
 num = 10
 
-node_outcomes = {}
-
 
 def run_alice():
-    epr_socket = EPRSocket("Bob")
-    with NetQASMConnection("Alice", epr_sockets=[epr_socket]) as alice:
+    epr_socket = EPRSocket("bob")
+    with NetQASMConnection("alice", epr_sockets=[epr_socket]) as alice:
 
         outcomes = alice.new_array(num)
 
@@ -23,12 +18,12 @@ def run_alice():
             outcome = outcomes.get_future_index(pair)
             q.measure(outcome)
 
-    node_outcomes["Alice"] = list(outcomes)
+    return list(outcomes)
 
 
 def run_bob():
-    epr_socket = EPRSocket("Alice")
-    with NetQASMConnection("Bob", epr_sockets=[epr_socket]) as bob:
+    epr_socket = EPRSocket("alice")
+    with NetQASMConnection("bob", epr_sockets=[epr_socket]) as bob:
 
         outcomes = bob.new_array(num)
 
@@ -37,18 +32,14 @@ def run_bob():
             outcome = outcomes.get_future_index(pair)
             q.measure(outcome)
 
-    node_outcomes["Bob"] = list(outcomes)
+    return list(outcomes)
 
 
-@pytest.mark.skipif(
-    get_simulator() == Simulator.SIMULAQRON,
-    reason="Create requests with multiple pairs are not yet supported in simulaqron",
-)
 def test_post_epr_context():
-    run_applications([
-        default_app_config("Alice", run_alice),
-        default_app_config("Bob", run_bob),
+    node_outcomes = run_applications([
+        default_app_config("alice", run_alice),
+        default_app_config("bob", run_bob),
     ], use_app_config=False)
 
     logger.info(node_outcomes)
-    assert node_outcomes["Alice"] == node_outcomes["Bob"]
+    assert node_outcomes["app_alice"] == node_outcomes["app_bob"]
