@@ -5,7 +5,7 @@ class Socket(abc.ABC):
     def __init__(
         self,
         app_name,
-        remote_node_name,
+        remote_app_name,
         socket_id=0,
         timeout=None,
         use_callbacks=False,

@@ -3,7 +3,7 @@ from timeit import default_timer as timer
 
 
 class BroadcastChannel(abc.ABC):
-    def __init__(self, node_name, remote_node_names, timeout=None,
+    def __init__(self, app_name, remote_app_names, timeout=None,
                  use_callbacks=False):
         """Socket used to broadcast classical data between applications."""
         pass
@@ -18,7 +18,7 @@ class BroadcastChannel(abc.ABC):
         """Receive a message that was broadcast and from whom."""
         pass
 
-    def recv_callback(self, remote_node_name, msg):
+    def recv_callback(self, remote_app_name, msg):
         """This method gets called when a message is received.
 
         Subclass to define behaviour.
@@ -38,7 +38,7 @@ class BroadcastChannel(abc.ABC):
 
 
 class BroadcastChannelBySockets(BroadcastChannel):
-    def __init__(self, node_name, remote_node_names, **kwargs):
+    def __init__(self, app_name, remote_app_names, **kwargs):
         """Socket used to broadcast classical data between applications.
 
         Simple uses one-to-one sockets to acheive a broadcast.
@@ -47,8 +47,8 @@ class BroadcastChannelBySockets(BroadcastChannel):
 
         Parameters
         ----------
-        node_name : int
-            Node ID of the local node.
+        app_name : int
+            app name of the local node.
         remote_node_name : str
             Node ID of the remote node.
         socket_id : int, optional
@@ -60,11 +60,11 @@ class BroadcastChannelBySockets(BroadcastChannel):
         comm_log_dir : str, optional
             Path to log classical communication to. File name will be "{node_name}_class_comm.log"
         """
-        self._sockets = {remote_node_name: self._socket_class(
-            node_name=node_name,
-            remote_node_name=remote_node_name,
+        self._sockets = {remote_app_name: self._socket_class(
+            app_name=app_name,
+            remote_app_name=remote_app_name,
             **kwargs)
-            for remote_node_name in remote_node_names
+            for remote_app_name in remote_app_names
         }
 
     @property

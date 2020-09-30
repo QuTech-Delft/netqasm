@@ -240,4 +240,4 @@ class EPRSocket(abc.ABC):
 
     @_assert_has_conn
     def _get_node_id(self, app_name):
-        return self._conn.get_node_id_for_app(app_name=app_name)
+        return self._conn.network_info.get_node_id_for_app(app_name=app_name)

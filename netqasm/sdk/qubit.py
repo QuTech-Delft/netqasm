@@ -70,17 +70,17 @@ class Qubit:
     def entanglement_info(self):
         return self._ent_info
 
-    # @property
-    # def remote_entangled_node(self):
-    #     if self._remote_entNode is not None:
-    #         return self._remote_ent_node
-    #     if self.entanglement_info is None:
-    #         return None
-    #     # Lookup remote entangled node
-    #     remote_node_id = self.entanglement_info.remote_node_id
-    #     remote_node_name = self._conn._get_node_name(node_id=remote_node_id)
-    #     self._remote_ent_node = remote_node_name
-    #     return remote_node_name
+    @property
+    def remote_entangled_node(self):
+        if self._remote_ent_node is not None:
+            return self._remote_ent_node
+        if self.entanglement_info is None:
+            return None
+        # Lookup remote entangled node
+        remote_node_id = self.entanglement_info.remote_node_id
+        remote_node_name = self._conn._get_node_name(node_id=remote_node_id)
+        self._remote_ent_node = remote_node_name
+        return remote_node_name
 
     def assert_active(self):
         """

@@ -193,7 +193,7 @@ def _setup_broadcast_channel(node_name, node_names, log_config):
     remote_node_names = [nn for nn in node_names if nn != node_name]
     broadcast_channel = BroadcastChannel(
         node_name,
-        remote_node_names=remote_node_names,
+        remote_app_names=remote_node_names,
         log_config=log_config,
         # Use socket ID to not mixup with the other sockets
         socket_id=1,

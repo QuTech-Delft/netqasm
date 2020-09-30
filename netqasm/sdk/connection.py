@@ -5,7 +5,7 @@ import pickle
 from enum import Enum
 from itertools import count
 from contextlib import contextmanager
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Type
 
 from qlink_interface import (
     EPRType,
@@ -48,6 +48,7 @@ from netqasm.messages import (
     SignalMessage,
 )
 from netqasm.sdk.config import LogConfig
+from netqasm.sdk.network import NetworkInfo
 
 
 # NOTE this is needed to be able to instanciate tuples the same way as namedtuples
@@ -62,6 +63,9 @@ class BaseNetQASMConnection(abc.ABC):
     # Used app IDs
     _app_ids: Dict[str, List[int]] = {}
 
+    # Dict[node_name, Dict[app_id, app_name]]
+    _app_names: Dict[str, Dict[int, str]] = {}
+
     # Class to use to pack entanglement information
     ENT_INFO = {
         EPRType.K: LinkLayerOKTypeK,
@@ -71,24 +75,31 @@ class BaseNetQASMConnection(abc.ABC):
 
     def __init__(
         self,
-        name,  # app name
+        app_name,
         node_name=None,
         app_id=None,
         max_qubits=5,
         log_config=None,
         epr_sockets=None,
         compiler=None,
+        network_info=None,
         _init_app=True,
         _setup_epr_sockets=True,
     ):
-        self._name = name
+        self._app_name = app_name
 
         if node_name is None:
-            node_name = name
+            node_name = app_name
         self._node_name = node_name
 
         # Set an app ID
         self._app_id = self._get_new_app_id(app_id)
+
+        if node_name not in self._app_names:
+            self._app_names[node_name] = {}
+        self._app_names[node_name][self._app_id] = app_name
+
+        self._network_info: Type[NetworkInfo] = network_info
 
         # All qubits active for this connection
         self.active_qubits = []
@@ -131,7 +142,7 @@ class BaseNetQASMConnection(abc.ABC):
         # What compiler (if any) to be used
         self._compiler = compiler
 
-        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.name})")
+        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self.app_name})")
 
         if _init_app:
             self._init_new_app(max_qubits=max_qubits)
@@ -141,8 +152,8 @@ class BaseNetQASMConnection(abc.ABC):
             self._setup_epr_sockets(epr_sockets=epr_sockets)
 
     @property
-    def name(self):
-        return self._name
+    def app_name(self):
+        return self._app_name
 
     @property
     def node_name(self):
@@ -152,8 +163,20 @@ class BaseNetQASMConnection(abc.ABC):
     def app_id(self):
         return self._app_id
 
+    @property
+    def network_info(self) -> Type[NetworkInfo]:
+        return self._network_info
+
+    @classmethod
+    def get_app_ids(cls):
+        return cls._app_ids
+
+    @classmethod
+    def get_app_names(cls):
+        return cls._app_names
+
     def __str__(self):
-        return "NetQASM connection for node '{}'".format(self.name)
+        return f"NetQASM connection for app '{self.app_name}' with node '{self.node_name}'"
 
     def __enter__(self):
         return self
@@ -167,7 +190,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _get_new_app_id(self, app_id):
         """Finds a new app ID if not specific"""
-        name = self.name
+        name = self.app_name
         if name not in self._app_ids:
             self._app_ids[name] = []
 
@@ -188,11 +211,12 @@ class BaseNetQASMConnection(abc.ABC):
         Removes the used app ID from the list.
         """
         try:
-            self._app_ids[self.name].remove(self.app_id)
+            self._app_ids[self.app_name].remove(self.app_id)
         except ValueError:
             pass  # Already removed
 
     def clear(self):
+        pass
         self._pop_app_id()
 
     def close(self, clear_app=True, stop_backend=True):
@@ -219,30 +243,6 @@ class BaseNetQASMConnection(abc.ABC):
         # Should be subclassed
         pass
 
-    @abc.abstractmethod
-    def _get_node_id(self, node_name):
-        """Returns the node id for the node with the given name"""
-        # Should be subclassed
-        pass
-
-    @abc.abstractmethod
-    def _get_node_name(self, node_id):
-        """Returns the node name for the node with the given ID"""
-        # Should be subclassed
-        pass
-
-    @abc.abstractmethod
-    def get_node_id_for_app(self, app_name):
-        """Returns the node id for the app with the given name"""
-        # Should be subclassed
-        pass
-
-    @abc.abstractmethod
-    def get_node_name_for_app(self, app_name):
-        """Returns the node name for the app with the given name"""
-        # Should be subclassed
-        pass
-
     def _inactivate_qubits(self):
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
@@ -256,7 +256,7 @@ class BaseNetQASMConnection(abc.ABC):
             self._commit_message(msg=SignalMessage(signal=Signal.STOP), block=False)
 
     def _save_log_subroutines(self):
-        filename = f'subroutines_{self.name}.pkl'
+        filename = f'subroutines_{self.app_name}.pkl'
         filepath = os.path.join(self._log_subroutines_dir, filename)
         with open(filepath, 'wb') as f:
             pickle.dump(self._commited_subroutines, f)
@@ -279,7 +279,7 @@ class BaseNetQASMConnection(abc.ABC):
         if epr_sockets is None:
             return
         for epr_socket in epr_sockets:
-            if epr_socket._remote_app_name == self.name:
+            if epr_socket._remote_app_name == self.app_name:
                 raise ValueError("A node cannot setup an EPR socket with itself")
             epr_socket.conn = self
             self._setup_epr_socket(
@@ -830,9 +830,9 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _handle_arguments(self, instruction, remote_node_id, number, tp, sequential):
         if instruction == Instruction.CREATE_EPR:
-            self._logger.debug(f"App {self.name} puts command to create EPR with {remote_node_id}")
+            self._logger.debug(f"App {self.app_name} puts command to create EPR with {remote_node_id}")
         elif instruction == Instruction.RECV_EPR:
-            self._logger.debug(f"App {self.name} puts command to recv EPR from {remote_node_id}")
+            self._logger.debug(f"App {self.app_name} puts command to recv EPR from {remote_node_id}")
         else:
             raise ValueError(f"Not an epr instruction {instruction}")
 
@@ -1328,30 +1328,36 @@ class DebugConnection(BaseNetQASMConnection):
     def __init__(self, *args, **kwargs):
         """A connection that simply stores the subroutine it commits"""
         self.storage = []
-        super().__init__(*args, **kwargs)
+        super().__init__(network_info=DebugNetworkInfo, *args, **kwargs)
 
     def _commit_serialized_message(self, raw_msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         self.storage.append(raw_msg)
 
-    def _get_node_id(self, node_name):
+
+class DebugNetworkInfo(NetworkInfo):
+    @classmethod
+    def _get_node_id(cls, node_name):
         """Returns the node id for the node with the given name"""
-        node_id = self.__class__.node_ids.get(node_name)
+        node_id = DebugConnection.node_ids.get(node_name)
         if node_id is None:
             raise ValueError(f"{node_name} is not a known node name")
         return node_id
 
-    def _get_node_name(self, node_id):
+    @classmethod
+    def _get_node_name(cls, node_id):
         """Returns the node name for the node with the given ID"""
-        for n_name, n_id in self.__class__.node_ids.items():
+        for n_name, n_id in DebugConnection.node_ids.items():
             if n_id == node_id:
                 return n_name
         raise ValueError(f"{node_id} is not a known node ID")
 
-    def get_node_id_for_app(self, app_name):
+    @classmethod
+    def get_node_id_for_app(cls, app_name):
         """Returns the node id for the app with the given name"""
-        return self._get_node_id(node_name=app_name)
+        return cls._get_node_id(node_name=app_name)
 
-    def get_node_name_for_app(self, app_name):
+    @classmethod
+    def get_node_name_for_app(cls, app_name):
         """Returns the node name for the app with the given name"""
-        return self._get_node_name(node_name=app_name)
+        return cls._get_node_name(node_name=app_name)
