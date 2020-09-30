@@ -71,7 +71,8 @@ class BaseNetQASMConnection(abc.ABC):
 
     def __init__(
         self,
-        name,
+        name,  # app name
+        node_name=None,
         app_id=None,
         max_qubits=5,
         log_config=None,
@@ -81,6 +82,10 @@ class BaseNetQASMConnection(abc.ABC):
         _setup_epr_sockets=True,
     ):
         self._name = name
+
+        if node_name is None:
+            node_name = name
+        self._node_name = node_name
 
         # Set an app ID
         self._app_id = self._get_new_app_id(app_id)
@@ -94,7 +99,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         self._max_qubits = max_qubits
 
-        self._shared_memory = get_shared_memory(self.name, key=self._app_id)
+        self._shared_memory = get_shared_memory(self.node_name, key=self._app_id)
 
         # Registers for looping etc.
         # These are registers that are for example currently hold data and should
@@ -138,6 +143,10 @@ class BaseNetQASMConnection(abc.ABC):
     @property
     def name(self):
         return self._name
+    
+    @property
+    def node_name(self):
+        return self._node_name
 
     @property
     def app_id(self):
@@ -222,6 +231,18 @@ class BaseNetQASMConnection(abc.ABC):
         # Should be subclassed
         pass
 
+    @abc.abstractmethod
+    def get_node_id_for_app(self, app_name):
+        """Returns the node id for the app with the given name"""
+        # Should be subclassed
+        pass
+
+    @abc.abstractmethod
+    def get_node_name_for_app(self, app_name):
+        """Returns the node name for the app with the given name"""
+        # Should be subclassed
+        pass
+
     def _inactivate_qubits(self):
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
@@ -258,7 +279,7 @@ class BaseNetQASMConnection(abc.ABC):
         if epr_sockets is None:
             return
         for epr_socket in epr_sockets:
-            if epr_socket._remote_node_name == self.name:
+            if epr_socket._remote_app_name == self.name:
                 raise ValueError("A node cannot setup an EPR socket with itself")
             epr_socket.conn = self
             self._setup_epr_socket(
@@ -1326,3 +1347,11 @@ class DebugConnection(BaseNetQASMConnection):
             if n_id == node_id:
                 return n_name
         raise ValueError(f"{node_id} is not a known node ID")
+
+    def get_node_id_for_app(self, app_name):
+        """Returns the node id for the app with the given name"""
+        return self._get_node_id(node_name=app_name)
+
+    def get_node_name_for_app(self, app_name):
+        """Returns the node name for the app with the given name"""
+        return self._get_node_name(node_name=app_name)

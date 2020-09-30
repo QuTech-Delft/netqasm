@@ -172,10 +172,10 @@ Sockets = namedtuple("Sockets", [
 ])
 
 
-def setup_sockets(node_name, nodes, log_config):
-    broadcast_channel = _setup_broadcast_channel(node_name, nodes, log_config)
-    down_epr_socket, down_socket = _setup_down_sockets(node_name, nodes, log_config)
-    up_epr_socket, up_socket = _setup_up_sockets(node_name, nodes, log_config)
+def setup_sockets(app_name, nodes, log_config):
+    broadcast_channel = _setup_broadcast_channel(app_name, nodes, log_config)
+    down_epr_socket, down_socket = _setup_down_sockets(app_name, nodes, log_config)
+    up_epr_socket, up_socket = _setup_up_sockets(app_name, nodes, log_config)
     epr_sockets = [epr_socket for epr_socket in [down_epr_socket, up_epr_socket] if epr_socket is not None]
 
     return Sockets(

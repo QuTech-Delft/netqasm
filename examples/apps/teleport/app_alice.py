@@ -6,7 +6,7 @@ from netqasm.output import get_new_app_logger
 
 def main(app_config=None, phi=0., theta=0.):
     log_config = app_config.log_config
-    app_logger = get_new_app_logger(node_name="alice", log_config=log_config)
+    app_logger = get_new_app_logger(app_name="alice", log_config=log_config)
 
     # Create a socket to send classical information
     socket = Socket("alice", "bob", log_config=log_config)

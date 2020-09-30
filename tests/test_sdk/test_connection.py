@@ -160,7 +160,7 @@ def test_epr():
 
     set_log_level(logging.DEBUG)
 
-    epr_socket = EPRSocket(remote_node_name="Bob")
+    epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         q1 = epr_socket.create()[0]
         q1.H()
@@ -324,7 +324,7 @@ def test_two_epr():
 
     set_log_level(logging.DEBUG)
 
-    epr_socket = EPRSocket(remote_node_name="Bob")
+    epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         qubits = epr_socket.create(number=2)
         qubits[0].H()
@@ -498,7 +498,7 @@ def test_epr_m():
 
     set_log_level(logging.DEBUG)
 
-    epr_socket = EPRSocket(remote_node_name="Bob")
+    epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         outcomes = epr_socket.create(tp=EPRType.M)
         m = outcomes[0][2]
