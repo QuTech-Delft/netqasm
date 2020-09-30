@@ -16,7 +16,7 @@ def main(app_config=None, phi=0., theta=0.):
 
     # Initialize the connection to the backend
     alice = NetQASMConnection(
-        app_name=app_config.app_name,
+        node_name=app_config.node_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )

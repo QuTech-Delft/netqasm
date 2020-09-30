@@ -13,30 +13,18 @@ from netqasm import instructions
 from netqasm.encoding import RegisterName
 
 
-def should_log_instr(instr):
+def should_ignore_instr(instr):
     return (
-        isinstance(instr, instructions.core.SingleQubitInstruction)
-        or isinstance(instr, instructions.core.RotationInstruction)
-        or isinstance(instr, instructions.core.TwoQubitInstruction)
-        or isinstance(instr, instructions.core.CreateEPRInstruction)
-        or isinstance(instr, instructions.core.RecvEPRInstruction)
-        or isinstance(instr, instructions.core.MeasInstruction)
-        or isinstance(instr, instructions.core.InitInstruction)
-    ) and not (
-        isinstance(instr, instructions.core.QAllocInstruction)
+        isinstance(instr, instructions.core.SetInstruction)
+        or isinstance(instr, instructions.core.QAllocInstruction)
         or isinstance(instr, instructions.core.QFreeInstruction)
     )
 
 
-def should_check_qubit_state(instr):
+def should_update_qubits_but_not_log(instr):
     return (
-        isinstance(instr, instructions.core.SingleQubitInstruction)
-        or isinstance(instr, instructions.core.TwoQubitInstruction)
-        or isinstance(instr, instructions.core.MeasInstruction)
-        or isinstance(instr, instructions.core.InitInstruction)
-    ) and not (
-        isinstance(instr, instructions.core.QAllocInstruction)
-        or isinstance(instr, instructions.core.QFreeInstruction)
+        isinstance(instr, instructions.core.CreateEPRInstruction)
+        or isinstance(instr, instructions.core.RecvEPRInstruction)
     )
 
 
@@ -136,6 +124,8 @@ class InstrLogger(StructuredLogger):
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
+        if should_ignore_instr(command):
+            return None
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
@@ -155,17 +145,17 @@ class InstrLogger(StructuredLogger):
             instr=command,
             qubit_ids=qubit_ids,
         )
-        if not should_log_instr(command):
+        if should_update_qubits_but_not_log(command):
             return None
-        if should_check_qubit_state(command):
+        if len(qubit_ids) > 0:
             qubit_states = self._get_qubit_states(
                 subroutine_id=subroutine_id,
                 qubit_ids=qubit_ids,
             )
             qubit_groups = self._get_qubit_groups()
         else:
-            qubit_states = None
-            qubit_groups = None
+            # Note a qubit instruction
+            return None
         if isinstance(command, instructions.core.MeasInstruction):
             outcome = output
         else:
@@ -191,33 +181,12 @@ class InstrLogger(StructuredLogger):
         command: instructions.base.NetQASMInstruction,
     ) -> List[int]:
         """Gets the qubit IDs involved in a command"""
-        qreg_instructions = [
-            instructions.core.SingleQubitInstruction,
-            instructions.core.InitInstruction,
-            instructions.core.QAllocInstruction,
-            instructions.core.QFreeInstruction,
-            instructions.core.MeasInstruction,
-        ]
+        # If EPR then get the qubit IDs from the array
         epr_instructions = [
             instructions.core.CreateEPRInstruction,
             instructions.core.RecvEPRInstruction,
         ]
-        if any(isinstance(command, cmd_cls) for cmd_cls in qreg_instructions):
-            qubit_id = self._get_op_value(
-                subroutine_id=subroutine_id,
-                operand=command.qreg,  # type: ignore
-            )
-            return [qubit_id]
-        elif isinstance(command, instructions.core.TwoQubitInstruction):
-            qubit_ids = []
-            for qreg in [command.qreg0, command.qreg1]:
-                qubit_id = self._get_op_value(
-                    subroutine_id=subroutine_id,
-                    operand=qreg,
-                )
-                qubit_ids.append(qubit_id)
-            return qubit_ids
-        elif any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
+        if any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
             # Ignore a constant register since this indicates it's a measure directly request
             if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
                 return []
@@ -227,8 +196,17 @@ class InstrLogger(StructuredLogger):
             ))
             app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
             return self._executioner._get_array(app_id=app_id, address=qubit_id_array_address)  # type: ignore
-        else:
-            return []
+
+        # Otherwise just get the qubits from the operands which have name Q
+        qubit_ids = []
+        for operand in command.operands:
+            if isinstance(operand, Register) and operand.name == RegisterName.Q:
+                qubit_id = self._get_op_value(
+                    subroutine_id=subroutine_id,
+                    operand=operand,
+                )
+                qubit_ids.append(qubit_id)
+        return qubit_ids
 
     @classmethod
     def _get_qubit_states(

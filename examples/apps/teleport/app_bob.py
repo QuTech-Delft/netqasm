@@ -16,7 +16,7 @@ def main(app_config=None):
 
     # Initialize the connection
     bob = NetQASMConnection(
-        app_name=app_config.app_name,
+        node_name=app_config.node_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )
