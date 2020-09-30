@@ -1,7 +1,6 @@
 import os
 import shutil
 import pickle
-from runpy import run_path
 
 from netqasm.yaml_util import load_yaml, dump_yaml
 from netqasm.output import InstrField
@@ -75,7 +74,7 @@ def _create_app_instr_logs(log_dir):
             if node_name not in app_names.keys():
                 raise ValueError(
                     f"Node {node_name} has logged instructions, but no app ID is known to have run on this node.")
-            
+
             if len(app_names[node_name]) > 1:
                 raise ValueError("Logging does not currently support multiple apps per node.")
 
@@ -83,7 +82,7 @@ def _create_app_instr_logs(log_dir):
 
             node_instr_log_file = os.path.join(log_dir, entry)
             app_instr_log_file = os.path.join(log_dir, f"{app_name}_instrs.yaml")
-            
+
             # TODO
             # Create an {app_name}_instrs.yaml file for each app_id found in {node_name}_instrs.yaml
             # Currently, it expects all app IDs to be the same, so we can just rename the file

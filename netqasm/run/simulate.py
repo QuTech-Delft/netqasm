@@ -1,7 +1,5 @@
 import os
 import sys
-import shutil
-import pickle
 import importlib
 from runpy import run_path
 from datetime import datetime
@@ -11,8 +9,7 @@ from netqasm.logging import (
     set_log_level,
     get_netqasm_logger,
 )
-from netqasm.yaml_util import load_yaml, dump_yaml
-from netqasm.output import InstrField
+from netqasm.yaml_util import load_yaml
 from netqasm.sdk.config import LogConfig
 from netqasm.instructions.flavour import NVFlavour, VanillaFlavour
 from netqasm.settings import Formalism, Flavour
@@ -90,6 +87,7 @@ def get_timed_log_dir(log_dir):
         os.mkdir(timed_log_dir)
     return timed_log_dir
 
+
 def get_post_function_path(app_dir):
     return os.path.join(app_dir, 'post_function.py')
 
@@ -98,6 +96,7 @@ def load_post_function(post_function_file):
     if not os.path.exists(post_function_file):
         return None
     return run_path(post_function_file)['main']
+
 
 def get_results_path(timed_log_dir):
     return os.path.join(timed_log_dir, 'results.yaml')
