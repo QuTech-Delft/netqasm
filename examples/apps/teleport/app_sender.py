@@ -6,23 +6,23 @@ from netqasm.output import get_new_app_logger
 
 def main(app_config=None, phi=0., theta=0.):
     log_config = app_config.log_config
-    app_logger = get_new_app_logger(app_name="alice", log_config=log_config)
+    app_logger = get_new_app_logger(app_name="sender", log_config=log_config)
 
     # Create a socket to send classical information
-    socket = Socket("alice", "bob", log_config=log_config)
+    socket = Socket("sender", "receiver", log_config=log_config)
 
     # Create a EPR socket for entanglement generation
-    epr_socket = EPRSocket("bob")
+    epr_socket = EPRSocket("receiver")
 
     # Initialize the connection to the backend
-    alice = NetQASMConnection(
+    sender = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )
-    with alice:
+    with sender:
         # Create a qubit to teleport
-        q = Qubit(alice)
+        q = Qubit(sender)
         set_qubit_state(q, phi, theta)
 
         # Create EPR pairs

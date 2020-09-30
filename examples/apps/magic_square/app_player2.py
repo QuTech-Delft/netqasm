@@ -23,22 +23,22 @@ def main(app_config=None, col=0, strategy=None):
         raise ValueError(f"Not a col in the square {col}")
 
     # Create a EPR socket for entanglement generation
-    epr_socket = EPRSocket("alice")
+    epr_socket = EPRSocket("player1")
 
     # Initialize the connection
-    bob = NetQASMConnection(
+    player2 = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )
-    with bob:
+    with player2:
         # Create EPR pairs
         q1 = epr_socket.recv()[0]
         q2 = epr_socket.recv()[0]
 
-        bob.flush()
+        player2.flush()
 
-        # Make sure we order the qubits consistently with Alice
+        # Make sure we order the qubits consistently with Player1
         # Get entanglement IDs
         q1_ID = q1.entanglement_info.sequence_number
         q2_ID = q2.entanglement_info.sequence_number
@@ -55,7 +55,7 @@ def main(app_config=None, col=0, strategy=None):
 
     to_print = "\n\n"
     to_print += "==========================\n"
-    to_print += "App bob: column is:\n"
+    to_print += "App player2: column is:\n"
     to_print += "(" + "_"*col + str(m0) + "_"*(2-col) + ")\n"
     to_print += "(" + "_"*col + str(m1) + "_"*(2-col) + ")\n"
     to_print += "(" + "_"*col + str(m2) + "_"*(2-col) + ")\n"

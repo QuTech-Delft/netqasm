@@ -4,48 +4,48 @@ from netqasm.sdk.external import NetQASMConnection, Socket
 
 
 def main(app_config=None, phi=0.0, theta=0.0):
-    # socket for creating an EPR pair with Alice
-    alice_epr = EPRSocket("alice")
+    # socket for creating an EPR pair with Controller
+    controller_epr = EPRSocket("controller")
 
-    # socket for communicating classical messages with Alice
-    class_socket = Socket("bob", "alice", log_config=app_config.log_config)
+    # socket for communicating classical messages with Controller
+    class_socket = Socket("target", "controller", log_config=app_config.log_config)
 
     # connect to the back-end
-    bob = NetQASMConnection(
+    target = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[alice_epr]
+        epr_sockets=[controller_epr]
     )
 
-    with bob:
-        # create one EPR pair with Alice
-        epr = alice_epr.recv(1)[0]
+    with target:
+        # create one EPR pair with Controller
+        epr = controller_epr.recv(1)[0]
 
         # initialize target qubit of the distributed CNOT
-        target_qubit = Qubit(bob)
+        target_qubit = Qubit(target)
         set_qubit_state(target_qubit, phi, theta)
 
         # let back-end execute the quantum operations above
-        bob.flush()
+        target.flush()
 
-        # wait for Alice's measurement outcome
+        # wait for Controller's measurement outcome
         m = class_socket.recv()
 
         # if outcome = 1, apply an X gate on the local EPR half
         if m == "1":
             epr.X()
 
-        # At this point, `epr` is correlated with the control qubit on Alice's side.
-        # (If Alice's control was in a superposition, `epr` is now entangled with it.)
+        # At this point, `epr` is correlated with the control qubit on Controller's side.
+        # (If Controller's control was in a superposition, `epr` is now entangled with it.)
         # Use `epr` as the control of a local CNOT on the target qubit.
         epr.cnot(target_qubit)
 
-        # undo any potential entanglement between `epr` and Alice's control qubit
+        # undo any potential entanglement between `epr` and Controller's control qubit
         epr.H()
         epr_meas = epr.measure()
-        bob.flush()
+        target.flush()
 
-        # Alice will do a controlled-Z based on the outcome to undo the entanglement
+        # Controller will do a controlled-Z based on the outcome to undo the entanglement
         class_socket.send(str(epr_meas))
 
         # Wait for an ack before exiting
