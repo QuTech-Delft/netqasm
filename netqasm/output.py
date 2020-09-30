@@ -2,7 +2,7 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List, Dict, Tuple, Optional, Union, Set
 
 from netqasm.typing import TypedDict
 from netqasm.subroutine import Register, ArrayEntry, Address
@@ -115,6 +115,11 @@ class StructuredLogger(abc.ABC):
 
 
 class InstrLogger(StructuredLogger):
+
+    # Absulute IDs of all qubits in the simulation
+    # List of (node_name, subroutine_id, qubit_id)
+    _qubits: Set[Tuple[str, int, int]] = set()
+
     def __init__(self, filepath: str, executioner):
         super().__init__(filepath)
         self._executioner = executioner
@@ -175,7 +180,7 @@ class InstrLogger(StructuredLogger):
         self,
         subroutine_id: int,
         command: instructions.base.NetQASMInstruction,
-    ) -> List[int]:
+    ) -> Tuple[List[int], List[int]]:
         """Gets the qubit IDs involved in a command"""
         # If EPR then get the qubit IDs from the array
         epr_instructions = [
@@ -186,7 +191,7 @@ class InstrLogger(StructuredLogger):
         if any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
             # Ignore a constant register since this indicates it's a measure directly request
             if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
-                return []
+                return [], []
             qubit_id_array_address = Address(self._get_op_value(
                 subroutine_id=subroutine_id,
                 operand=command.qubit_addr_array,  # type: ignore
@@ -255,7 +260,7 @@ class InstrLogger(StructuredLogger):
 
     def _get_app_id(self, subroutine_id: int) -> int:
         """Returns the app ID for a given subroutine ID"""
-        return self._executioner._get_app_id(subroutine_id=subroutine_id)
+        return self._executioner._get_app_id(subroutine_id=subroutine_id)  # type: ignore
 
     @classmethod
     def _get_qubit_states(
@@ -265,14 +270,18 @@ class InstrLogger(StructuredLogger):
     ) -> Optional[List[QubitState]]:
         """Returns the reduced qubit states of the qubits involved in a command"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
 
     @classmethod
     def _get_qubit_groups(cls) -> Optional[QubitGroups]:
         """Returns the current qubit groups in the simulation (qubits which have interacted
         and therefore may or may not be entangled)"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
+
+    def _get_node_name(self) -> str:
+        # NOTE should be subclassed
+        raise NotImplementedError
 
 
 class NetworkField(Enum):
