@@ -143,7 +143,7 @@ class BaseNetQASMConnection(abc.ABC):
     @property
     def name(self):
         return self._name
-    
+
     @property
     def node_name(self):
         return self._node_name
