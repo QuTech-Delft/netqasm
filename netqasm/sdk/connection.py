@@ -82,7 +82,6 @@ class BaseNetQASMConnection(abc.ABC):
         log_config=None,
         epr_sockets=None,
         compiler=None,
-        network_info=None,
         _init_app=True,
         _setup_epr_sockets=True,
     ):
@@ -91,10 +90,8 @@ class BaseNetQASMConnection(abc.ABC):
         # Set an app ID
         self._app_id = self._get_new_app_id(app_id)
 
-        self._network_info: Type[NetworkInfo] = network_info
-
         if node_name is None:
-            node_name = network_info.get_node_name_for_app(app_name)
+            node_name = self.network_info.get_node_name_for_app(app_name)
         self._node_name = node_name
 
         if node_name not in self._app_names:
@@ -163,9 +160,13 @@ class BaseNetQASMConnection(abc.ABC):
     def app_id(self):
         return self._app_id
 
+    @abc.abstractmethod
+    def _get_network_info(self) -> Type[NetworkInfo]:
+        raise NotImplementedError
+
     @property
     def network_info(self) -> Type[NetworkInfo]:
-        return self._network_info
+        return self._get_network_info()
 
     @classmethod
     def get_app_ids(cls):
@@ -1327,11 +1328,14 @@ class DebugConnection(BaseNetQASMConnection):
     def __init__(self, *args, **kwargs):
         """A connection that simply stores the subroutine it commits"""
         self.storage = []
-        super().__init__(network_info=DebugNetworkInfo, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _commit_serialized_message(self, raw_msg, block=True, callback=None):
         """Commit a message to the backend/qnodeos"""
         self.storage.append(raw_msg)
+
+    def _get_network_info(self) -> Type[NetworkInfo]:
+        return DebugNetworkInfo
 
 
 class DebugNetworkInfo(NetworkInfo):
