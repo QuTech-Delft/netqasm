@@ -21,6 +21,7 @@ from netqasm.instructions.operand import Register, ArrayEntry, ArraySlice, Addre
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
+from netqasm.errors import NotAllocatedError
 
 from netqasm.instructions.base import NetQASMInstruction
 from netqasm import instructions
@@ -46,10 +47,6 @@ def inc_program_counter(method):
 
     new_method.__name__ == method.__name__
     return new_method
-
-
-class NotAllocatedError(RuntimeError):
-    pass
 
 
 class Executioner:
