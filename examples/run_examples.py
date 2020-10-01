@@ -14,10 +14,6 @@ SkipIf = namedtuple("SkipIf", ["skip", "reason"])
 
 
 skip_ifs = {
-    "bb84": SkipIf(
-        get_simulator() == Simulator.SIMULAQRON,
-        reason="Type M create requests are not yet supported in simulaqron",
-    ),
     "anonymous_transmission": SkipIf(
         get_simulator() == Simulator.SIMULAQRON,
         reason="Current broadcast channel in simulaqron cannot handle socket IDs",
