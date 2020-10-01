@@ -89,6 +89,8 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
 
     # Run the applications
     outcomes = run_applications(applications, use_app_config=False)
+    outcomes = {node: outcome for node, outcome in outcomes.items() if node != "backend"}
+    print(outcomes)
 
     if do_corrections:
         corrected_outcomes = [m for (m, _) in outcomes.values()]
@@ -114,5 +116,6 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
 @pytest.mark.parametrize('num_nodes', range(2, 6))
 def test_create_ghz(do_corrections, num_nodes):
     num = 10
-    for _ in range(num):
+    for i in range(num):
+        print(f"{i}/{num}: do_corrections={do_corrections}")
         _gen_create_ghz(num_nodes, do_corrections)

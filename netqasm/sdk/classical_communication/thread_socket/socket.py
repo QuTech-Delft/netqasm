@@ -38,7 +38,7 @@ def log_send(method):
 
 
 def log_recv(method):
-    def new_method(self, block=True, timeout=None):
+    def new_method(self, *args, **kwargs):
         hln = None
         hfl = None
         if self._line_tracker is not None:
@@ -60,7 +60,7 @@ def log_recv(method):
                 log=log,
             )
 
-        msg = method(self, block, timeout)
+        msg = method(self, *args, **kwargs)
 
         if self._comm_logger is not None:
             log = f"Message received from {self.remote_app_name}: {msg}"
@@ -213,7 +213,7 @@ class ThreadSocket(Socket):
         self._socket_hub.send(self, msg)
 
     @log_recv
-    def recv(self, block=True, timeout=None):
+    def recv(self, block=True, timeout=None, maxsize=None):
         """Receive a message form the remote node.
 
         If block is True the method will block until there is a message or a timeout is reached.
@@ -225,6 +225,8 @@ class ThreadSocket(Socket):
             Whether to block for an available message
         timeout : float, optional
             Optionally use a timeout for trying to recv a message. Only used if `block=True`.
+        maxsize : int
+            How many bytes to maximally receive (not used here)
 
         Returns
         -------
@@ -236,6 +238,7 @@ class ThreadSocket(Socket):
         RuntimeError
             If `block=False` and there is no available message
         """
+        # TODO use maxsize?
         return self._socket_hub.recv(self, block=block, timeout=timeout)
 
     def wait(self):
