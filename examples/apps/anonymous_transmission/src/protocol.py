@@ -4,13 +4,13 @@ from netqasm.sdk import Qubit
 from netqasm.sdk.external import NetQASMConnection, get_qubit_state
 
 from .sub_protocols import quantum_anonymous_tranmission, setup_sockets
-from .conf import nodes
+from .conf import apps
 
 logger = get_netqasm_logger()
 
 
 def anonymous_transmission(
-    node_name,
+    app_name,
     app_config=None,
     sender=False,
     receiver=False,
@@ -21,7 +21,7 @@ def anonymous_transmission(
     # Setup sockets, epr_sockets and a broadcast_channel needed for the protocol
     sockets = setup_sockets(
         app_name=app_config.app_name,
-        nodes=nodes,
+        apps=apps,
         log_config=app_config.log_config,
     )
 
@@ -41,7 +41,7 @@ def anonymous_transmission(
         q = quantum_anonymous_tranmission(
             conn=conn,
             sockets=sockets,
-            num_nodes=len(nodes),
+            num_nodes=len(apps),
             sender=sender,
             receiver=receiver,
             qubit=qubit,

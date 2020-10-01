@@ -1,1 +1,1 @@
-nodes = ['alice', 'bob', 'charlie', 'david']
+apps = ['alice', 'bob', 'charlie', 'david']

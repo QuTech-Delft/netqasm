@@ -10,7 +10,7 @@ def main(
 ):
 
     return anonymous_transmission(
-        node_name='alice',
+        app_name='alice',
         app_config=app_config,
         sender=sender,
         receiver=receiver,
