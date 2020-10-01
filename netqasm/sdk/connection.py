@@ -216,7 +216,6 @@ class BaseNetQASMConnection(abc.ABC):
             pass  # Already removed
 
     def clear(self):
-        pass
         self._pop_app_id()
 
     def close(self, clear_app=True, stop_backend=True):
