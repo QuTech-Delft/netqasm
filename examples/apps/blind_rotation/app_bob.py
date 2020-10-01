@@ -29,8 +29,6 @@ def main(app_config=None, num_iter=3):
         for i in range(num_qubits - 1):
             q[i].cphase(q[i+1])
 
-        bob.flush()
-
         # Main loop. Receive from Alice the angle to measure q[i] in.
         for i in range(num_iter):
             angle = recv_meas_cmd(socket)

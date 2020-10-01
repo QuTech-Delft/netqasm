@@ -33,8 +33,6 @@ def main(app_config=None):
             q[i].cphase(q[i + 1])
         q[0].cphase(q[2])
 
-        bob.flush()
-
         # Receive from Alice the angle to measure q1 in.
         delta1 = recv_meas_cmd(socket)
         s1 = measXY(q[1], delta1)
