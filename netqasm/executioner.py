@@ -342,6 +342,7 @@ class Executioner:
         if self._instr_logger is not None:
             self._instr_logger.log(
                 subroutine_id=subroutine_id,
+                app_id=self._get_app_id(subroutine_id),
                 command=command,
                 output=output,
                 program_counter=prog_counter,

@@ -72,7 +72,7 @@ class Qubit:
 
     @property
     def remote_entangled_node(self):
-        if self._remote_entNode is not None:
+        if self._remote_ent_node is not None:
             return self._remote_ent_node
         if self.entanglement_info is None:
             return None

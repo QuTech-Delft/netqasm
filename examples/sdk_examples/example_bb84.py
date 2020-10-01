@@ -13,7 +13,7 @@ DebugConnection.node_ids = {
 def main(no_output=False):
     n = 10
 
-    epr_socket = EPRSocket(remote_node_name="Bob")
+    epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         bit_flips = alice.new_array(init_values=[random.randint(0, 1) for _ in range(n)])
         basis_flips = alice.new_array(init_values=[random.randint(0, 1) for _ in range(n)])

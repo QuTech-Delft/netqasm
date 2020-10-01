@@ -4,8 +4,8 @@ import abc
 class Socket(abc.ABC):
     def __init__(
         self,
-        node_name,
-        remote_node_name,
+        app_name,
+        remote_app_name,
         socket_id=0,
         timeout=None,
         use_callbacks=False,

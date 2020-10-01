@@ -22,7 +22,7 @@ def _assert_has_conn(method):
 class EPRSocket(abc.ABC):
     def __init__(
         self,
-        remote_node_name,
+        remote_app_name,
         epr_socket_id=0,
         remote_epr_socket_id=0,
     ):
@@ -39,12 +39,12 @@ class EPRSocket(abc.ABC):
             The identifier used by the remote node.
         """
         self._conn = None
-        self._remote_node_name = remote_node_name
+        self._remote_app_name = remote_app_name
         self._remote_node_id = None  # Gets set when the connection is set
         self._epr_socket_id = epr_socket_id
         self._remote_epr_socket_id = remote_epr_socket_id
 
-        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_node_name}, {self._epr_socket_id})")
+        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
 
     @property
     def conn(self):
@@ -53,7 +53,7 @@ class EPRSocket(abc.ABC):
     @conn.setter
     def conn(self, conn):
         self._conn = conn
-        self._remote_node_id = self._get_node_id(node_name=self._remote_node_name)
+        self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
 
     @_assert_has_conn
     def create(
@@ -239,5 +239,5 @@ class EPRSocket(abc.ABC):
             )
 
     @_assert_has_conn
-    def _get_node_id(self, node_name):
-        return self._conn._get_node_id(node_name=node_name)
+    def _get_node_id(self, app_name):
+        return self._conn.network_info.get_node_id_for_app(app_name=app_name)

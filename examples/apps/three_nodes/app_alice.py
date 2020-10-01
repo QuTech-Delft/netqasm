@@ -8,12 +8,12 @@ logger = get_netqasm_logger()
 
 def main(app_config=None):
     epr_socket_bob = EPRSocket(
-        remote_node_name="bob",
+        remote_app_name="bob",
         epr_socket_id=0,
         remote_epr_socket_id=0
     )
     epr_socket_charlie = EPRSocket(
-        remote_node_name="charlie",
+        remote_app_name="charlie",
         epr_socket_id=1,
         remote_epr_socket_id=0
     )

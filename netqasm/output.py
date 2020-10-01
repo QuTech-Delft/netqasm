@@ -39,6 +39,7 @@ QubitGroups = Dict[int, QubitGroup]  # group_id -> qubit_group
 class InstrField(Enum):
     WCT = "WCT"  # Wall clock time
     SIT = "SIT"  # Simulated time
+    AID = "AID"  # App ID
     SID = "SID"  # Subroutine ID
     PRC = "PRC"  # Program counter
     HLN = "HLN"  # Host line number
@@ -126,6 +127,7 @@ class InstrLogger(StructuredLogger):
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
+        app_id = kwargs['app_id']
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
@@ -163,6 +165,7 @@ class InstrLogger(StructuredLogger):
         return {
             InstrField.WCT.value: wall_time,
             InstrField.SIT.value: sim_time,
+            InstrField.AID.value: app_id,
             InstrField.SID.value: subroutine_id,
             InstrField.PRC.value: program_counter,
             InstrField.HLN.value: None,
@@ -400,8 +403,8 @@ class AppLogger(StructuredLogger):
         }
 
 
-def get_new_app_logger(node_name, log_config):
-    filename = f"{str(node_name).lower()}_app_log.yaml"
+def get_new_app_logger(app_name, log_config):
+    filename = f"{str(app_name).lower()}_app_log.yaml"
     log_dir = log_config.log_subroutines_dir
     filepath = os.path.join(log_dir, filename)
     app_logger = AppLogger(filepath=filepath, log_config=log_config)
