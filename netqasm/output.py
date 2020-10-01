@@ -289,6 +289,7 @@ class NetworkField(Enum):
     SIT = InstrField.SIT.value  # Simulated time
     INS = InstrField.INS.value  # Entanglement generation stage
     NOD = "NOD"  # End nodes
+    PTH = "PTH"  # Path of links used
     QID = InstrField.QID.value  # Qubit ids (node1, node2)
     QST = InstrField.QST.value  # Reduced qubit states
     QGR = InstrField.QGR.value  # Dictionary specifying groups of qubit across the network
@@ -309,6 +310,7 @@ class NetworkLogger(StructuredLogger):
         sim_time = kwargs['sim_time']
         ent_stage = kwargs['ent_stage']
         nodes = kwargs['nodes']
+        path = kwargs['path']
         qubit_ids = kwargs['qubit_ids']
         qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
@@ -318,6 +320,7 @@ class NetworkLogger(StructuredLogger):
             NetworkField.SIT.value: sim_time,
             NetworkField.INS.value: f"epr_{ent_stage}",
             NetworkField.NOD.value: nodes,
+            NetworkField.PTH.value: path,
             NetworkField.QID.value: qubit_ids,
             NetworkField.QST.value: qubit_states,
             NetworkField.QGR.value: qubit_groups,
