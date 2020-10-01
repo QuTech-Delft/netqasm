@@ -88,18 +88,18 @@ class BaseNetQASMConnection(abc.ABC):
     ):
         self._app_name = app_name
 
-        if node_name is None:
-            node_name = app_name
-        self._node_name = node_name
-
         # Set an app ID
         self._app_id = self._get_new_app_id(app_id)
+
+        self._network_info: Type[NetworkInfo] = network_info
+
+        if node_name is None:
+            node_name = network_info.get_node_name_for_app(app_name)
+        self._node_name = node_name
 
         if node_name not in self._app_names:
             self._app_names[node_name] = {}
         self._app_names[node_name][self._app_id] = app_name
-
-        self._network_info: Type[NetworkInfo] = network_info
 
         # All qubits active for this connection
         self.active_qubits = []
@@ -1360,4 +1360,4 @@ class DebugNetworkInfo(NetworkInfo):
     @classmethod
     def get_node_name_for_app(cls, app_name):
         """Returns the node name for the app with the given name"""
-        return cls._get_node_name(node_name=app_name)
+        return app_name
