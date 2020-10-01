@@ -33,6 +33,7 @@ def main(app_config=None):
             q[i].cphase(q[i + 1])
         q[0].cphase(q[2])
 
+        # TODO check why this is needed
         server.flush()
 
         # Receive from the Client the angle to measure q1 in.

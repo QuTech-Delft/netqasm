@@ -20,7 +20,7 @@ class Socket(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def recv(self, block=True):
+    def recv(self, block=True, maxsize=None):
         """Receive a message from the remote node."""
         pass
 

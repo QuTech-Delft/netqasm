@@ -75,6 +75,7 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
             q.cnot(q_up)
             m = q_up.measure()
 
+    # Flush the subroutine
     conn.flush()
 
     if do_corrections:
@@ -87,7 +88,6 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
             if corr == 1:
                 q.X()
             if role == _Role.middle:
-                # Flush the subroutine
                 _assert_socket(up_socket)
                 corr = (corr + m) % 2
                 up_socket.send(str(corr))

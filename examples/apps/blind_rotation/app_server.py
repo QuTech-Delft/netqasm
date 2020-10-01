@@ -29,6 +29,7 @@ def main(app_config=None, num_iter=3):
         for i in range(num_qubits - 1):
             q[i].cphase(q[i+1])
 
+        # TODO check why this is needed
         server.flush()
 
         # Main loop. Receive from the Client the angle to measure q[i] in.

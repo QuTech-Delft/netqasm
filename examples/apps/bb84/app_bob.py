@@ -8,18 +8,38 @@ from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
+buf_msgs = []
+EOF = "EOF"
+
+
+def recv_single_msg(socket):
+    """Used to not get multiple messages at a time"""
+    if len(buf_msgs) > 0:
+        msg = buf_msgs.pop(0)
+    else:
+        msgs = socket.recv().split(EOF)[:-1]
+        buf_msgs.extend(msgs[1:])
+        msg = msgs[0]
+    logger.debug(f"Bob received msg {msg}")
+    return msg
+
+
+def send_single_msg(socket, msg):
+    """Used to not get multiple messages at a time"""
+    socket.send(msg + EOF)
+
 
 def sendClassicalAssured(socket, data):
     data = json.dumps(data)
-    socket.send(data)
-    while socket.recv() != 'ACK':
+    send_single_msg(socket, data)
+    while recv_single_msg(socket) != 'ACK':
         pass
 
 
 def recvClassicalAssured(socket):
-    data = socket.recv()
+    data = recv_single_msg(socket)
     data = json.loads(data)
-    socket.send('ACK')
+    send_single_msg(socket, 'ACK')
     return data
 
 
@@ -77,10 +97,6 @@ def main(app_config=None, num_bits=100):
     socket = Socket("bob", "alice", log_config=app_config.log_config)
     # Socket for EPR generation
     epr_socket = EPRSocket("alice")
-
-    node_name = app_config.node_name
-    if node_name is None:
-        node_name = app_config.app_name
 
     bob = NetQASMConnection(
         app_name=app_config.app_name,

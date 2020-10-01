@@ -2,7 +2,7 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List, Dict, Tuple, Optional, Union, Set
 
 from netqasm.typing import TypedDict
 from netqasm.subroutine import Register, ArrayEntry, Address
@@ -116,6 +116,11 @@ class StructuredLogger(abc.ABC):
 
 
 class InstrLogger(StructuredLogger):
+
+    # Absulute IDs of all qubits in the simulation
+    # List of (node_name, subroutine_id, qubit_id)
+    _qubits: Set[Tuple[str, int, int]] = set()
+
     def __init__(self, filepath: str, executioner):
         super().__init__(filepath)
         self._executioner = executioner
@@ -268,14 +273,18 @@ class InstrLogger(StructuredLogger):
     ) -> Optional[List[QubitState]]:
         """Returns the reduced qubit states of the qubits involved in a command"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
 
     @classmethod
     def _get_qubit_groups(cls) -> Optional[QubitGroups]:
         """Returns the current qubit groups in the simulation (qubits which have interacted
         and therefore may or may not be entangled)"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
+
+    def _get_node_name(self) -> str:
+        # NOTE should be subclassed
+        raise NotImplementedError
 
 
 class NetworkField(Enum):
@@ -283,6 +292,7 @@ class NetworkField(Enum):
     SIT = InstrField.SIT.value  # Simulated time
     INS = InstrField.INS.value  # Entanglement generation stage
     NOD = "NOD"  # End nodes
+    PTH = "PTH"  # Path of links used
     QID = InstrField.QID.value  # Qubit ids (node1, node2)
     QST = InstrField.QST.value  # Reduced qubit states
     QGR = InstrField.QGR.value  # Dictionary specifying groups of qubit across the network
@@ -303,6 +313,7 @@ class NetworkLogger(StructuredLogger):
         sim_time = kwargs['sim_time']
         ent_stage = kwargs['ent_stage']
         nodes = kwargs['nodes']
+        path = kwargs['path']
         qubit_ids = kwargs['qubit_ids']
         qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
@@ -312,6 +323,7 @@ class NetworkLogger(StructuredLogger):
             NetworkField.SIT.value: sim_time,
             NetworkField.INS.value: f"epr_{ent_stage}",
             NetworkField.NOD.value: nodes,
+            NetworkField.PTH.value: path,
             NetworkField.QID.value: qubit_ids,
             NetworkField.QST.value: qubit_states,
             NetworkField.QGR.value: qubit_groups,
