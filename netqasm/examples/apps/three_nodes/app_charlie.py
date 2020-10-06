@@ -34,7 +34,3 @@ def main(app_config):
 
     logger.info(f"charlie:  m_alice:  {m_alice}")
     logger.info(f"charlie:  m_bob:    {m_bob}")
-
-
-if __name__ == "__main__":
-    main()
