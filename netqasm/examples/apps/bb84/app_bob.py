@@ -8,7 +8,7 @@ from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
-buf_msgs = []
+buf_msgs = []  # type: ignore
 EOF = "EOF"
 
 

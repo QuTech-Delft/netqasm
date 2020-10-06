@@ -3,7 +3,7 @@ import random
 import importlib
 import numpy as np
 
-from netqasm.logging import get_netqasm_logger, set_log_level
+from netqasm.logging import get_netqasm_logger
 from netqasm.run.app_config import AppConfig
 from netqasm.sdk.external import run_applications
 from netqasm.settings import get_simulator, Simulator

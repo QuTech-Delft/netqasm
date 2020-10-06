@@ -35,8 +35,8 @@ clean:
 	@/usr/bin/find . -name '*.pyc' -delete
 
 lint:
-	@$(PYTHON3) -m flake8 ${SOURCEDIR} ${TESTDIR} ${EXAMPLEDIR}
-	@$(PYTHON3) -m mypy ${SOURCEDIR} ${TESTDIR} ${EXAMPLEDIR}
+	@$(PYTHON3) -m flake8 ${SOURCEDIR} ${TESTDIR}
+	@$(PYTHON3) -m mypy ${SOURCEDIR} ${TESTDIR}
 
 tests:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-fail-under=${MINCOV} --ignore=${TESTDIR}/${EXT_TEST} ${TESTDIR}
