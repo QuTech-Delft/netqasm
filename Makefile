@@ -1,7 +1,7 @@
 PYTHON3        = python3
 SOURCEDIR      = netqasm
 TESTDIR        = tests
-EXAMPLEDIR     = examples
+EXAMPLEDIR     = netqasm/examples
 PIP_FLAGS      = --extra-index-url=https://${NETSQUIDPYPI_USER}:${NETSQUIDPYPI_PWD}@pypi.netsquid.org
 RUNEXAMPLES    = ${EXAMPLEDIR}/run_examples.py
 MINCOV         = 0

@@ -3,7 +3,7 @@ import numpy as np
 from netqasm.logging import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
-from examples.lib.bqc import teleport_state, send_meas_cmd, recv_meas_outcome
+from netqasm.examples.lib.bqc import teleport_state, send_meas_cmd, recv_meas_outcome
 
 logger = get_netqasm_logger()
 

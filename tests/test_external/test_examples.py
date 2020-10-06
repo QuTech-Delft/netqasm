@@ -3,16 +3,16 @@ import random
 import importlib
 import numpy as np
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging import get_netqasm_logger, set_log_level
 from netqasm.run.app_config import AppConfig
 from netqasm.sdk.external import run_applications
 from netqasm.settings import get_simulator, Simulator
 
-from examples.apps.blind_rotation.app_client import main as blind_rotation_client
-from examples.apps.blind_rotation.app_server import main as blind_rotation_server
+from netqasm.examples.apps.blind_rotation.app_client import main as blind_rotation_client
+from netqasm.examples.apps.blind_rotation.app_server import main as blind_rotation_server
 
-from examples.apps.blind_grover.app_client import main as blind_grover_client
-from examples.apps.blind_grover.app_server import main as blind_grover_server
+from netqasm.examples.apps.blind_grover.app_client import main as blind_grover_client
+from netqasm.examples.apps.blind_grover.app_server import main as blind_grover_server
 
 logger = get_netqasm_logger()
 
