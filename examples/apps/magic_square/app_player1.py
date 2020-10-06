@@ -22,23 +22,23 @@ def main(app_config=None, row=0, strategy=None):
         raise ValueError(f"Not a row in the square {row}")
 
     # Create a EPR socket for entanglement generation
-    epr_socket = EPRSocket("bob")
+    epr_socket = EPRSocket("player2")
 
     # Initialize the connection
-    alice = NetQASMConnection(
+    player1 = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
     )
-    with alice:
+    with player1:
         # Create EPR pairs
         q1 = epr_socket.create()[0]
         q2 = epr_socket.create()[0]
 
         # TODO put in single subroutine?
-        alice.flush()
+        player1.flush()
 
-        # Make sure we order the qubits consistently with bob
+        # Make sure we order the qubits consistently with player2
         # Get entanglement IDs
         q1_ID = q1.entanglement_info.sequence_number
         q2_ID = q2.entanglement_info.sequence_number
@@ -55,7 +55,7 @@ def main(app_config=None, row=0, strategy=None):
 
     to_print = "\n\n"
     to_print += "==========================\n"
-    to_print += "App alice: row is:\n"
+    to_print += "App player1: row is:\n"
     for _ in range(row):
         to_print += "(___)\n"
     to_print += f"({m0}{m1}{m2})\n"

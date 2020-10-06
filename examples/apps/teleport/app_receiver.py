@@ -9,31 +9,31 @@ def main(app_config=None):
     log_config = app_config.log_config
 
     # Create a socket to recv classical information
-    socket = Socket("bob", "alice", log_config=log_config)
+    socket = Socket("receiver", "sender", log_config=log_config)
 
     # Create a EPR socket for entanglement generation
-    epr_socket = EPRSocket("alice")
+    epr_socket = EPRSocket("sender")
 
     # Initialize the connection
-    bob = NetQASMConnection(
+    receiver = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=log_config,
         epr_sockets=[epr_socket]
     )
-    with bob:
+    with receiver:
         epr = epr_socket.recv()[0]
-        bob.flush()
+        receiver.flush()
 
         # Get the corrections
         msg = socket.recv()
-        logger.info(f"bob got corrections: {msg}")
+        logger.info(f"receiver got corrections: {msg}")
         m1, m2 = eval(msg)
         if m2 == 1:
             epr.X()
         if m1 == 1:
             epr.Z()
 
-        bob.flush()
+        receiver.flush()
         # Get the qubit state
         # NOTE only possible in simulation, not part of actual application
         dm = get_qubit_state(epr)

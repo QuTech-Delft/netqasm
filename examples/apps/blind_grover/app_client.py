@@ -26,10 +26,10 @@ def main(
         theta1=0.0,
         theta2=0.0):
 
-    socket = Socket("alice", "bob", log_config=app_config.log_config)
-    epr_socket = EPRSocket("bob")
+    socket = Socket("client", "server", log_config=app_config.log_config)
+    epr_socket = EPRSocket("server")
 
-    alice = NetQASMConnection(
+    client = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
@@ -43,36 +43,36 @@ def main(
     theta[1] = theta1
     theta[2] = theta2
 
-    with alice:
-        # Teleport states q0 to q3 to Bob.
+    with client:
+        # Teleport states q0 to q3 to the Server.
         # The resulting state q[i] might have a phase `pi`,
         # depending on outcome m[i].
         m = [None] * num_qubits
         for i in range(num_qubits):
             m[i] = teleport_state(epr_socket, theta[i])
-        alice.flush()
+        client.flush()
 
         # Convert outcomes to integers to use them in calculations below.
         m = [int(m[i]) for i in range(num_qubits)]
 
-        # Let Bob measure q1. We want to measure with angle phi1,
+        # Let the Server measure q1. We want to measure with angle phi1,
         # but send delta1 instead, which compensates for m1, r1 and theta1.
         delta1 = phi1 - theta[1] + r1 * np.pi - m[1] * np.pi
         send_meas_cmd(socket, delta1)
         s1 = recv_meas_outcome(socket)
 
-        # Let Bob measure q2. We want to measure with angle phi2,
+        # Let the Server measure q2. We want to measure with angle phi2,
         # but send delta2 instead, which compensates for m1, s1, r1, and theta2.
         delta2 = phi2 - theta[2] + (s1 ^ r1) * np.pi + r2 * np.pi - m[2] * np.pi
         send_meas_cmd(socket, delta2)
         s2 = recv_meas_outcome(socket)
 
-        # At this point, and before Bob measures both output qubits (q0 and q3)
+        # At this point, and before the Server measures both output qubits (q0 and q3)
         # in the Y basis, there are still some Pauli byproducts.
         # For q0, these byproducts are Z^m0 X^s1 X^r1.
         # For q3, these byproducts are Z^m3 X^s2 X^r2.
         # However, since these all commute with Y, we will simply let
-        # Bob measure Y anyway, and apply bit-flips afterwards.
+        # the Server measure Y anyway, and apply bit-flips afterwards.
         result0 = recv_meas_outcome(socket)
         result1 = recv_meas_outcome(socket)
 

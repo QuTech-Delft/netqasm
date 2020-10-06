@@ -7,20 +7,20 @@ logger = get_netqasm_logger()
 
 
 def main(app_config=None, num_iter=3):
-    socket = Socket("bob", "alice", log_config=app_config.log_config)
-    epr_socket = EPRSocket("alice")
+    socket = Socket("server", "client", log_config=app_config.log_config)
+    epr_socket = EPRSocket("client")
 
     num_qubits = num_iter + 1
 
-    bob = NetQASMConnection(
+    server = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
         max_qubits=num_qubits
     )
 
-    with bob:
-        # Receive qubits q[0] to q[num_qubits - 1] from Alice by teleportation.
+    with server:
+        # Receive qubits q[0] to q[num_qubits - 1] from the Client by teleportation.
         q = [None] * num_qubits
         for i in range(num_qubits):
             q[i] = recv_teleported_state(epr_socket)
@@ -30,13 +30,13 @@ def main(app_config=None, num_iter=3):
             q[i].cphase(q[i+1])
 
         # TODO check why this is needed
-        bob.flush()
+        server.flush()
 
-        # Main loop. Receive from Alice the angle to measure q[i] in.
+        # Main loop. Receive from the Client the angle to measure q[i] in.
         for i in range(num_iter):
             angle = recv_meas_cmd(socket)
             s = measXY(q[i], angle)
-            bob.flush()
+            server.flush()
             send_meas_outcome(socket, s)
 
         # The output of the computation is in the last qubit.
