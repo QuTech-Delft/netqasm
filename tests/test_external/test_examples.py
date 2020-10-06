@@ -8,11 +8,11 @@ from netqasm.run.app_config import AppConfig
 from netqasm.sdk.external import run_applications
 from netqasm.settings import get_simulator, Simulator
 
-from examples.apps.blind_rotation.app_alice import main as blind_rotation_alice
-from examples.apps.blind_rotation.app_bob import main as blind_rotation_bob
+from examples.apps.blind_rotation.app_client import main as blind_rotation_client
+from examples.apps.blind_rotation.app_server import main as blind_rotation_server
 
-from examples.apps.blind_grover.app_alice import main as blind_grover_alice
-from examples.apps.blind_grover.app_bob import main as blind_grover_bob
+from examples.apps.blind_grover.app_client import main as blind_grover_client
+from examples.apps.blind_grover.app_server import main as blind_grover_server
 
 logger = get_netqasm_logger()
 
@@ -43,16 +43,16 @@ def run_blind_rotation():
 
     applications = [
         AppConfig(
-            app_name="alice",
-            node_name="alice",
-            main_func=blind_rotation_alice,
+            app_name="client",
+            node_name="client",
+            main_func=blind_rotation_client,
             log_config=None,
             inputs=alice_app_inputs
         ),
         AppConfig(
-            app_name="bob",
-            node_name="bob",
-            main_func=blind_rotation_bob,
+            app_name="server",
+            node_name="server",
+            main_func=blind_rotation_server,
             log_config=None,
             inputs=bob_app_inputs
         ),
@@ -60,11 +60,11 @@ def run_blind_rotation():
 
     results = run_applications(applications)
 
-    output_state = results['app_bob']['output_state']
-    s = results['app_alice']['s']
-    m = results['app_alice']['m']
-    r = results['app_alice']['r']
-    theta = results['app_alice']['theta']
+    output_state = results['app_server']['output_state']
+    s = results['app_client']['s']
+    m = results['app_client']['m']
+    r = results['app_client']['r']
+    theta = results['app_client']['theta']
 
     s.extend([0, 0])
     m.extend([0, 0])
@@ -121,16 +121,16 @@ def run_blind_grover():
 
     applications = [
         AppConfig(
-            app_name="alice",
-            node_name="alice",
-            main_func=blind_grover_alice,
+            app_name="client",
+            node_name="client",
+            main_func=blind_grover_client,
             log_config=None,
             inputs=alice_app_inputs
         ),
         AppConfig(
-            app_name="bob",
-            node_name="bob",
-            main_func=blind_grover_bob,
+            app_name="server",
+            node_name="server",
+            main_func=blind_grover_server,
             log_config=None,
             inputs=bob_app_inputs
         ),
@@ -138,8 +138,8 @@ def run_blind_grover():
 
     results = run_applications(applications)
 
-    m0 = results['app_alice']['result0']
-    m1 = results['app_alice']['result1']
+    m0 = results['app_client']['result0']
+    m1 = results['app_client']['result1']
 
     assert b0 == m0
     assert b1 == m1
