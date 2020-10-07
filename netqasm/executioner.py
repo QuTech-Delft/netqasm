@@ -986,6 +986,7 @@ class Executioner:
                         pair_index=pair_index,
                     )
                     self._pending_epr_responses.pop(i)
+                    break
         if not handled:
             self._wait_to_handle_epr_responses()
         else:
