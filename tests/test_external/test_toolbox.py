@@ -55,25 +55,6 @@ def run_node(node, down_node=None, up_node=None, do_corrections=False):
             up_socket=up_socket,
             do_corrections=do_corrections,
         )
-        # conn.flush()
-        # if down_socket is None:
-        #     role = "start"
-        # else:
-        #     if up_socket is None:
-        #         role = "end"
-        #     else:
-        #         role = "middle"
-        # if role == "start":
-        #     up_socket.send("READY_UPSTREAM")
-        #     print(f"{node}: {up_socket.recv()}")
-        # elif role == "middle":
-        #     print(f"{node}: {down_socket.recv()}")
-        #     up_socket.send("READY_UPSTREAM")
-        #     print(f"{node}: {up_socket.recv()}")
-        #     down_socket.send("READY_DOWNSTREAM")
-        # else:
-        #     print(f"{node}: {down_socket.recv()}")
-        #     down_socket.send("READY_DOWNSTREAM")
         m = q.measure()
 
     return (int(m), int(corr))
@@ -131,10 +112,8 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
     assert len(set(corrected_outcomes)) == 1
 
 
-# @pytest.mark.parametrize('do_corrections', [True, False])
-# @pytest.mark.parametrize('num_nodes', range(2, 6))
-@pytest.mark.parametrize('do_corrections', [True])
-@pytest.mark.parametrize('num_nodes', range(5, 6))
+@pytest.mark.parametrize('do_corrections', [True, False])
+@pytest.mark.parametrize('num_nodes', range(2, 6))
 def test_create_ghz(do_corrections, num_nodes):
     num = 10
     for i in range(num):
