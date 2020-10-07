@@ -84,7 +84,7 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
             up_socket.send(str(0))
         else:
             _assert_socket(down_socket)
-            corr = int(down_socket.recv())
+            corr = int(down_socket.recv(maxsize=1))
             if corr == 1:
                 q.X()
             if role == _Role.middle:
