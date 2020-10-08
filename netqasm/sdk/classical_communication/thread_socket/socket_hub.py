@@ -80,11 +80,11 @@ class _SocketHub:
             t_elapsed = t_now - t_start
             if timeout is not None:
                 if t_elapsed > timeout:
-                    node_name = socket.node_name
-                    remote_node_name = socket.remote_node_name
+                    app_name = socket.app_name
+                    remote_app_name = socket.remote_app_name
                     socket_id = socket.id
-                    raise TimeoutError(f"Timeout while connection node ID {node_name} to "
-                                       f"{remote_node_name} using socket {socket_id}")
+                    raise TimeoutError(f"Timeout while connection node ID {app_name} to "
+                                       f"{remote_app_name} using socket {socket_id}")
             self._logger.debug(f"Connection for socket {socket.key} failed, "
                                f"trying again in {self._CONNECT_SLEEP_TIME} s...")
             sleep(self.__class__._CONNECT_SLEEP_TIME)

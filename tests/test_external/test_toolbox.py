@@ -28,40 +28,39 @@ def test(angle, tol, expected_nds):
     assert np.abs(approx - angle) < tol
 
 
+def run_node(node, down_node=None, up_node=None, do_corrections=False):
+    # Setup EPR sockets, depending on the role of the node
+    epr_sockets = []
+    down_epr_socket = None
+    down_socket = None
+    up_epr_socket = None
+    up_socket = None
+    if down_node is not None:
+        down_epr_socket = EPRSocket(down_node)
+        epr_sockets.append(down_epr_socket)
+        if do_corrections:
+            down_socket = Socket(node, down_node)
+    if up_node is not None:
+        up_epr_socket = EPRSocket(up_node)
+        epr_sockets.append(up_epr_socket)
+        if do_corrections:
+            up_socket = Socket(node, up_node)
+
+    with NetQASMConnection(node, epr_sockets=epr_sockets):
+        # Create a GHZ state with the other nodes
+        q, corr = create_ghz(
+            down_epr_socket=down_epr_socket,
+            up_epr_socket=up_epr_socket,
+            down_socket=down_socket,
+            up_socket=up_socket,
+            do_corrections=do_corrections,
+        )
+        m = q.measure()
+
+    return (int(m), int(corr))
+
+
 def _gen_create_ghz(num_nodes, do_corrections=False):
-
-    outcomes = {}
-
-    def run_node(node, down_node=None, up_node=None):
-        # Setup EPR sockets, depending on the role of the node
-        epr_sockets = []
-        down_epr_socket = None
-        down_socket = None
-        up_epr_socket = None
-        up_socket = None
-        if down_node is not None:
-            down_epr_socket = EPRSocket(down_node)
-            epr_sockets.append(down_epr_socket)
-            if do_corrections:
-                down_socket = Socket(node, down_node)
-        if up_node is not None:
-            up_epr_socket = EPRSocket(up_node)
-            epr_sockets.append(up_epr_socket)
-            if do_corrections:
-                up_socket = Socket(node, up_node)
-
-        with NetQASMConnection(node, epr_sockets=epr_sockets):
-            # Create a GHZ state with the other nodes
-            q, corr = create_ghz(
-                down_epr_socket=down_epr_socket,
-                up_epr_socket=up_epr_socket,
-                down_socket=down_socket,
-                up_socket=up_socket,
-                do_corrections=do_corrections,
-            )
-            m = q.measure()
-
-        outcomes[node] = (int(m), int(corr))
 
     # Setup the applications
     applications = []
@@ -84,11 +83,14 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
                 'node': node,
                 'down_node': down_node,
                 'up_node': up_node,
+                'do_corrections': do_corrections,
             }
         )]
 
     # Run the applications
-    run_applications(applications, use_app_config=False)
+    outcomes = run_applications(applications, use_app_config=False)
+    outcomes = {node: outcome for node, outcome in outcomes.items() if node != "backend"}
+    print(outcomes)
 
     if do_corrections:
         corrected_outcomes = [m for (m, _) in outcomes.values()]
@@ -97,7 +99,7 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
         # Check the outcomes
         correction = 0
         for i in range(num_nodes):
-            node = f'node{i}'
+            node = f'app_node{i}'
             m, corr = outcomes[node]
             corrected_outcome = (m + correction) % 2
             corrected_outcomes.append(corrected_outcome)
@@ -112,7 +114,6 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
 
 @pytest.mark.parametrize('do_corrections', [True, False])
 @pytest.mark.parametrize('num_nodes', range(2, 6))
-def test_create_ghz(do_corrections, num_nodes):
-    num = 10
-    for _ in range(num):
-        _gen_create_ghz(num_nodes, do_corrections)
+@pytest.mark.parametrize('i', range(10))  # Run 10 times
+def test_create_ghz(do_corrections, num_nodes, i):
+    _gen_create_ghz(num_nodes, do_corrections)

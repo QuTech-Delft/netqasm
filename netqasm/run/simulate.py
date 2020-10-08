@@ -1,7 +1,5 @@
 import os
 import sys
-import shutil
-import pickle
 import importlib
 from runpy import run_path
 from datetime import datetime
@@ -11,14 +9,14 @@ from netqasm.logging import (
     set_log_level,
     get_netqasm_logger,
 )
-from netqasm.yaml_util import load_yaml, dump_yaml
-from netqasm.output import InstrField
+from netqasm.yaml_util import load_yaml
 from netqasm.sdk.config import LogConfig
 from netqasm.instructions.flavour import NVFlavour, VanillaFlavour
 from netqasm.settings import Formalism, Flavour
 from netqasm.sdk.external import run_applications
 
 from .app_config import AppConfig
+from .process_logs import process_log
 
 logger = get_netqasm_logger()
 
@@ -88,60 +86,6 @@ def get_timed_log_dir(log_dir):
     if not os.path.exists(timed_log_dir):
         os.mkdir(timed_log_dir)
     return timed_log_dir
-
-
-_LAST_LOG = 'LAST'
-
-
-def process_log(log_dir):
-    # Add host line numbers to logs
-    _add_hln_to_logs(log_dir)
-
-    # Make this the last log
-    base_log_dir, log_dir_name = os.path.split(log_dir)
-    last_log_dir = os.path.join(base_log_dir, _LAST_LOG)
-    if os.path.exists(last_log_dir):
-        shutil.rmtree(last_log_dir)
-    shutil.copytree(log_dir, last_log_dir)
-
-
-def _add_hln_to_logs(log_dir):
-    file_end = '_instrs.yaml'
-    for entry in os.listdir(log_dir):
-        if entry.endswith(file_end):
-            node_name = entry[:-len(file_end)]
-            output_file_path = os.path.join(log_dir, entry)
-            subroutines_file_path = os.path.join(log_dir, f"subroutines_{node_name}.pkl")
-            _add_hln_to_log(
-                output_file_path=output_file_path,
-                subroutines_file_path=subroutines_file_path,
-            )
-
-
-def _add_hln_to_log(output_file_path, subroutines_file_path):
-    if not os.path.exists(subroutines_file_path):
-        return
-
-    # Read subroutines and log file
-    with open(subroutines_file_path, 'rb') as f:
-        subroutines = pickle.load(f)
-    data = load_yaml(output_file_path)
-
-    # Update entries
-    for entry in data:
-        _add_hln_to_log_entry(subroutines, entry)
-
-    # Write updated log file
-    dump_yaml(data, output_file_path)
-
-
-def _add_hln_to_log_entry(subroutines, entry):
-    prc = entry[InstrField.PRC.value]
-    sid = entry[InstrField.SID.value]
-    subroutine = subroutines[sid]
-    hostline = subroutine.commands[prc].lineno
-    entry[InstrField.HLN.value] = hostline.lineno
-    entry[InstrField.HFL.value] = hostline.filename
 
 
 def get_post_function_path(app_dir):

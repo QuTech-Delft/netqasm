@@ -20,6 +20,13 @@ def set_log_level(level):
     logger.setLevel(level)
 
 
+def get_log_level(effective=True):
+    if effective:
+        return get_netqasm_logger().getEffectiveLevel()
+    else:
+        return get_netqasm_logger().level
+
+
 def _setup_netqasm_logger():
     logger = get_netqasm_logger()
     formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')

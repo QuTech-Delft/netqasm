@@ -2,41 +2,25 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, Union
+from typing import List, Dict, Tuple, Optional, Union, Set
 
 from netqasm.typing import TypedDict
 from netqasm.subroutine import Register, ArrayEntry, Address
 from netqasm.yaml_util import dump_yaml
 from netqasm.log_util import LineTracker
+from netqasm.errors import NotAllocatedError
 
 from netqasm import instructions
 from netqasm.encoding import RegisterName
 
 
-def should_log_instr(instr):
+def should_ignore_instr(instr):
     return (
-        isinstance(instr, instructions.core.SingleQubitInstruction)
-        or isinstance(instr, instructions.core.RotationInstruction)
-        or isinstance(instr, instructions.core.TwoQubitInstruction)
+        isinstance(instr, instructions.core.SetInstruction)
+        or isinstance(instr, instructions.core.QAllocInstruction)
+        or isinstance(instr, instructions.core.QFreeInstruction)
         or isinstance(instr, instructions.core.CreateEPRInstruction)
         or isinstance(instr, instructions.core.RecvEPRInstruction)
-        or isinstance(instr, instructions.core.MeasInstruction)
-        or isinstance(instr, instructions.core.InitInstruction)
-    ) and not (
-        isinstance(instr, instructions.core.QAllocInstruction)
-        or isinstance(instr, instructions.core.QFreeInstruction)
-    )
-
-
-def should_check_qubit_state(instr):
-    return (
-        isinstance(instr, instructions.core.SingleQubitInstruction)
-        or isinstance(instr, instructions.core.TwoQubitInstruction)
-        or isinstance(instr, instructions.core.MeasInstruction)
-        or isinstance(instr, instructions.core.InitInstruction)
-    ) and not (
-        isinstance(instr, instructions.core.QAllocInstruction)
-        or isinstance(instr, instructions.core.QFreeInstruction)
     )
 
 
@@ -55,14 +39,15 @@ QubitGroups = Dict[int, QubitGroup]  # group_id -> qubit_group
 class InstrField(Enum):
     WCT = "WCT"  # Wall clock time
     SIT = "SIT"  # Simulated time
+    AID = "AID"  # App ID
     SID = "SID"  # Subroutine ID
     PRC = "PRC"  # Program counter
     HLN = "HLN"  # Host line number
     HFL = "HFL"  # Host file
     INS = "INS"  # Instruction
     OPR = "OPR"  # Operands (register, array-entries..)
-    OPV = "OPV"  # Values of operands as stored in memory
-    QID = "QID"  # Qubit IDs of qubits part of operation
+    QID = "QID"  # Physical qubit IDs of qubits part of operation
+    VID = "VID"  # Virtual qubit IDs of qubits part of operation
     QST = "QST"  # Qubit states if the qubits part of the operations after execution
     OUT = "OUT"  # Measurement outcome
     QGR = "QGR"  # Dictionary specifying groups of qubit across the network
@@ -131,12 +116,18 @@ class StructuredLogger(abc.ABC):
 
 
 class InstrLogger(StructuredLogger):
+
+    # Absulute IDs of all qubits in the simulation
+    # List of (node_name, subroutine_id, qubit_id)
+    _qubits: Set[Tuple[str, int, int]] = set()
+
     def __init__(self, filepath: str, executioner):
         super().__init__(filepath)
         self._executioner = executioner
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
+        app_id = kwargs['app_id']
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
@@ -147,26 +138,26 @@ class InstrLogger(StructuredLogger):
         op_values = self._get_op_values(subroutine_id=subroutine_id, operands=operands)
         ops_str = [f"{op}={opv}" for op, opv in zip(operands, op_values)]
         log = f"Doing instruction {instr_name} with operands {ops_str}"
-        qubit_ids = self._get_qubit_ids(
+        virtual_qubit_ids, physical_qubit_ids = self._get_qubit_ids(
             subroutine_id=subroutine_id,
             command=command,
         )
         self._update_qubits(
             subroutine_id=subroutine_id,
             instr=command,
-            qubit_ids=qubit_ids,
+            qubit_ids=virtual_qubit_ids,
         )
-        if not should_log_instr(command):
+        if should_ignore_instr(command):
             return None
-        if should_check_qubit_state(command):
+        if len(virtual_qubit_ids) > 0:
             qubit_states = self._get_qubit_states(
                 subroutine_id=subroutine_id,
-                qubit_ids=qubit_ids,
+                qubit_ids=virtual_qubit_ids,
             )
             qubit_groups = self._get_qubit_groups()
         else:
-            qubit_states = None
-            qubit_groups = None
+            # Note a qubit instruction
+            return None
         if isinstance(command, instructions.core.MeasInstruction):
             outcome = output
         else:
@@ -174,13 +165,14 @@ class InstrLogger(StructuredLogger):
         return {
             InstrField.WCT.value: wall_time,
             InstrField.SIT.value: sim_time,
+            InstrField.AID.value: app_id,
             InstrField.SID.value: subroutine_id,
             InstrField.PRC.value: program_counter,
             InstrField.HLN.value: None,
             InstrField.INS.value: instr_name,
             InstrField.OPR.value: ops_str,
-            InstrField.OPV.value: op_values,
-            InstrField.QID.value: qubit_ids,
+            InstrField.QID.value: virtual_qubit_ids,
+            InstrField.VID.value: physical_qubit_ids,
             InstrField.QST.value: qubit_states,
             InstrField.OUT.value: outcome,
             InstrField.QGR.value: qubit_groups,
@@ -191,46 +183,87 @@ class InstrLogger(StructuredLogger):
         self,
         subroutine_id: int,
         command: instructions.base.NetQASMInstruction,
-    ) -> List[int]:
+    ) -> Tuple[List[int], List[int]]:
         """Gets the qubit IDs involved in a command"""
-        qreg_instructions = [
-            instructions.core.SingleQubitInstruction,
-            instructions.core.InitInstruction,
-            instructions.core.QAllocInstruction,
-            instructions.core.QFreeInstruction,
-            instructions.core.MeasInstruction,
-        ]
+        # If EPR then get the qubit IDs from the array
         epr_instructions = [
             instructions.core.CreateEPRInstruction,
             instructions.core.RecvEPRInstruction,
         ]
-        if any(isinstance(command, cmd_cls) for cmd_cls in qreg_instructions):
-            qubit_id = self._get_op_value(
-                subroutine_id=subroutine_id,
-                operand=command.qreg,  # type: ignore
-            )
-            return [qubit_id]
-        elif isinstance(command, instructions.core.TwoQubitInstruction):
-            qubit_ids = []
-            for qreg in [command.qreg0, command.qreg1]:
-                qubit_id = self._get_op_value(
-                    subroutine_id=subroutine_id,
-                    operand=qreg,
-                )
-                qubit_ids.append(qubit_id)
-            return qubit_ids
-        elif any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
+        app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
+        if any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
             # Ignore a constant register since this indicates it's a measure directly request
             if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
-                return []
+                return [], []
             qubit_id_array_address = Address(self._get_op_value(
                 subroutine_id=subroutine_id,
                 operand=command.qubit_addr_array,  # type: ignore
             ))
-            app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
-            return self._executioner._get_array(app_id=app_id, address=qubit_id_array_address)  # type: ignore
-        else:
-            return []
+            virtual_qubit_ids = self._executioner._get_array(
+                app_id=app_id,
+                address=qubit_id_array_address,
+            )  # type: ignore
+
+        # Otherwise just get the qubits from the operands which have name Q
+        virtual_qubit_ids = []
+        for operand in command.operands:
+            if isinstance(operand, Register) and operand.name == RegisterName.Q:
+                virtual_qubit_id = self._get_op_value(
+                    subroutine_id=subroutine_id,
+                    operand=operand,
+                )
+                virtual_qubit_ids.append(virtual_qubit_id)
+
+        # Lookup physical qubit IDs
+        physical_qubit_ids = self._get_physical_qubit_ids(
+            app_id=app_id,
+            virtual_qubit_ids=virtual_qubit_ids,
+        )
+        return virtual_qubit_ids, physical_qubit_ids
+
+    def _get_physical_qubit_ids(self, app_id, virtual_qubit_ids):
+        physical_qubit_ids = []
+        for virtual_qubit_id in virtual_qubit_ids:
+            try:
+                physical_qubit_id = self._executioner._get_position_in_unit_module(
+                    app_id=app_id,
+                    address=virtual_qubit_id,
+                )
+            except NotAllocatedError:
+                physical_qubit_id = None
+            physical_qubit_ids.append(physical_qubit_id)
+
+        return physical_qubit_ids
+
+    def _update_qubits(
+        self,
+        subroutine_id: int,
+        instr: instructions.base.NetQASMInstruction,
+        qubit_ids: List[int],
+    ) -> None:
+        add_qubit_instrs = [
+            instructions.core.InitInstruction,
+            instructions.core.CreateEPRInstruction,
+            instructions.core.RecvEPRInstruction,
+        ]
+        remove_qubit_instrs = [
+            instructions.core.QFreeInstruction,
+        ]
+        node_name = self._get_node_name()
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        if any(isinstance(instr, cmd_cls) for cmd_cls in add_qubit_instrs):
+            for qubit_id in qubit_ids:
+                abs_id = node_name, app_id, qubit_id
+                self.__class__._qubits.add(abs_id)
+        elif any(isinstance(instr, cmd_cls) for cmd_cls in remove_qubit_instrs):
+            for qubit_id in qubit_ids:
+                abs_id = node_name, app_id, qubit_id
+                if abs_id in self.__class__._qubits:
+                    self.__class__._qubits.remove(abs_id)
+
+    def _get_app_id(self, subroutine_id: int) -> int:
+        """Returns the app ID for a given subroutine ID"""
+        return self._executioner._get_app_id(subroutine_id=subroutine_id)  # type: ignore
 
     @classmethod
     def _get_qubit_states(
@@ -240,14 +273,18 @@ class InstrLogger(StructuredLogger):
     ) -> Optional[List[QubitState]]:
         """Returns the reduced qubit states of the qubits involved in a command"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
 
     @classmethod
     def _get_qubit_groups(cls) -> Optional[QubitGroups]:
         """Returns the current qubit groups in the simulation (qubits which have interacted
         and therefore may or may not be entangled)"""
         # NOTE should be subclassed
-        return None
+        raise NotImplementedError
+
+    def _get_node_name(self) -> str:
+        # NOTE should be subclassed
+        raise NotImplementedError
 
 
 class NetworkField(Enum):
@@ -255,6 +292,7 @@ class NetworkField(Enum):
     SIT = InstrField.SIT.value  # Simulated time
     INS = InstrField.INS.value  # Entanglement generation stage
     NOD = "NOD"  # End nodes
+    PTH = "PTH"  # Path of links used
     QID = InstrField.QID.value  # Qubit ids (node1, node2)
     QST = InstrField.QST.value  # Reduced qubit states
     QGR = InstrField.QGR.value  # Dictionary specifying groups of qubit across the network
@@ -275,6 +313,7 @@ class NetworkLogger(StructuredLogger):
         sim_time = kwargs['sim_time']
         ent_stage = kwargs['ent_stage']
         nodes = kwargs['nodes']
+        path = kwargs['path']
         qubit_ids = kwargs['qubit_ids']
         qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
@@ -284,6 +323,7 @@ class NetworkLogger(StructuredLogger):
             NetworkField.SIT.value: sim_time,
             NetworkField.INS.value: f"epr_{ent_stage}",
             NetworkField.NOD.value: nodes,
+            NetworkField.PTH.value: path,
             NetworkField.QID.value: qubit_ids,
             NetworkField.QST.value: qubit_states,
             NetworkField.QGR.value: qubit_groups,
@@ -363,8 +403,8 @@ class AppLogger(StructuredLogger):
         }
 
 
-def get_new_app_logger(node_name, log_config):
-    filename = f"{str(node_name).lower()}_app_log.yaml"
+def get_new_app_logger(app_name, log_config):
+    filename = f"{str(app_name).lower()}_app_log.yaml"
     log_dir = log_config.log_subroutines_dir
     filepath = os.path.join(log_dir, filename)
     app_logger = AppLogger(filepath=filepath, log_config=log_config)

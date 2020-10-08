@@ -114,7 +114,7 @@ class BaseSubroutineHandler:
         app_id = msg.app_id
         self._remove_app(app_id=app_id)
         self._logger.debug(f"Stopping application with app ID {app_id}")
-        self._executioner.stop_application(app_id=app_id)
+        yield from self._executioner.stop_application(app_id=app_id)
 
     def _handle_signal(self, msg):
         signal = Signal(msg.signal)

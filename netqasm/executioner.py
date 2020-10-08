@@ -21,6 +21,7 @@ from netqasm.instructions.operand import Register, ArrayEntry, ArraySlice, Addre
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.parsing import parse_address
+from netqasm.errors import NotAllocatedError
 
 from netqasm.instructions.base import NetQASMInstruction
 from netqasm import instructions
@@ -46,10 +47,6 @@ def inc_program_counter(method):
 
     new_method.__name__ == method.__name__
     return new_method
-
-
-class NotAllocatedError(RuntimeError):
-    pass
 
 
 class Executioner:
@@ -102,7 +99,7 @@ class Executioner:
         self._next_subroutine_id = 0
 
         # Keep track of what physical qubit addresses are in use
-        self._used_physical_qubit_addresses = []
+        self._used_physical_qubit_addresses = set()
 
         # Keep track of the create epr requests in progress
         self._epr_create_requests = defaultdict(list)
@@ -201,7 +198,7 @@ class Executioner:
 
     def stop_application(self, app_id):
         """Stops an application and clears all qubits and classical memories"""
-        self._clear_qubits(app_id=app_id)
+        yield from self._clear_qubits(app_id=app_id)
         self._clear_registers(app_id=app_id)
         self._clear_arrays(app_id=app_id)
         self._clear_shared_memory(app_id=app_id)
@@ -212,7 +209,9 @@ class Executioner:
             if physical_address is None:
                 continue
             self._used_physical_qubit_addresses.remove(physical_address)
-            self._clear_phys_qubit_in_memory(physical_address)
+            output = self._clear_phys_qubit_in_memory(physical_address)
+            if isinstance(output, GeneratorType):
+                yield from output
 
     def _clear_registers(self, app_id):
         self._registers.pop(app_id)
@@ -343,6 +342,7 @@ class Executioner:
         if self._instr_logger is not None:
             self._instr_logger.log(
                 subroutine_id=subroutine_id,
+                app_id=self._get_app_id(subroutine_id),
                 command=command,
                 output=output,
                 program_counter=prog_counter,
@@ -692,7 +692,6 @@ class Executioner:
     ):
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
-        # Check number of qubit addresses
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         # Get number of pairs based on length of ent info array
         num_pairs = self._get_num_pairs_from_array(
@@ -775,7 +774,7 @@ class Executioner:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.reg)
         self._logger.debug(f"Freeing qubit at virtual address {q_address}")
-        self._free_physical_qubit(subroutine_id, q_address)
+        yield from self._free_physical_qubit(subroutine_id, q_address)
 
     @inc_program_counter
     def _instr_ret_reg(self, subroutine_id, instr: instructions.core.RetRegInstruction):
@@ -795,11 +794,14 @@ class Executioner:
     def _update_shared_memory(self, app_id, entry, value):
         shared_memory = self._shared_memories[app_id]
         if isinstance(entry, Register):
+            self._logger.debug(f"Updating host about register {entry} with value {value}")
             shared_memory.set_register(entry, value)
         elif isinstance(entry, ArrayEntry) or isinstance(entry, ArraySlice):
+            self._logger.debug(f"Updating host about array entry {entry} with value {value}")
             address, index = self._expand_array_part(app_id=app_id, array_part=entry)
             shared_memory.set_array_part(address=address, index=index, value=value)
         elif isinstance(entry, Address):
+            self._logger.debug(f"Updating host about array {entry} with value {value}")
             address = entry.address
             shared_memory.init_new_array(address=address, new_array=value)
         else:
@@ -888,7 +890,7 @@ class Executioner:
         if unit_module[virtual_address] is None:
             if physical_address is None:
                 physical_address = self._get_unused_physical_qubit()
-            self._used_physical_qubit_addresses.append(physical_address)
+                self._used_physical_qubit_addresses.add(physical_address)
             unit_module[virtual_address] = physical_address
             self._reserve_physical_qubit(physical_address)
             return physical_address
@@ -907,9 +909,12 @@ class Executioner:
                 "and cannot be freed")
         else:
             physical_address = unit_module[address]
+            self._logger.debug(f"Freeing qubit at physical address {physical_address}")
             unit_module[address] = None
             self._used_physical_qubit_addresses.remove(physical_address)
-            self._clear_phys_qubit_in_memory(physical_address)
+            output = self._clear_phys_qubit_in_memory(physical_address)
+            if isinstance(output, GeneratorType):
+                yield from output
 
     def _reserve_physical_qubit(self, physical_address):
         """To be subclassed for different quantum processors (e.g. netsquid)"""
@@ -924,6 +929,7 @@ class Executioner:
         # is does not matter which unused physical qubit we choose for now
         for physical_address in count(0):
             if physical_address not in self._used_physical_qubit_addresses:
+                self._used_physical_qubit_addresses.add(physical_address)
                 return physical_address
 
     def _assert_number_args(self, args, num):
@@ -947,44 +953,44 @@ class Executioner:
         if len(self._pending_epr_responses) == 0:
             return
 
-        response = self._pending_epr_responses[0]
+        # Try to handle one of the pending EPR responses
+        handled = False
+        for i, response in enumerate(self._pending_epr_responses):
 
-        if response.type == ReturnType.ERR:
-            self._handle_epr_err_response(response)
+            if response.type == ReturnType.ERR:
+                self._handle_epr_err_response(response)
+            else:
+                self._logger.debug(
+                    f"Try to handle EPR OK ({response.type}) response from network stack"
+                )
+                info = self._extract_epr_info(response=response)
+                if info is not None:
+                    epr_cmd_data, pair_index, is_creator, request_key = info
+                    handled = self._epr_response_handlers[response.type](
+                        epr_cmd_data=epr_cmd_data,
+                        response=response,
+                        pair_index=pair_index,
+                    )
+                if handled:
+                    epr_cmd_data.pairs_left -= 1
+
+                    self._handle_last_epr_pair(
+                        epr_cmd_data=epr_cmd_data,
+                        is_creator=is_creator,
+                        request_key=request_key,
+                    )
+
+                    self._store_ent_info(
+                        epr_cmd_data=epr_cmd_data,
+                        response=response,
+                        pair_index=pair_index,
+                    )
+                    self._pending_epr_responses.pop(i)
+                    break
+        if not handled:
+            self._wait_to_handle_epr_responses()
         else:
-            self._logger.debug(
-                f"Handling EPR OK ({response.type}) response from network stack"
-            )
-            info = self._extract_epr_info(response=response)
-            if info is not None:
-                epr_cmd_data, pair_index, is_creator, request_key = info
-                handled = self._epr_response_handlers[response.type](
-                    epr_cmd_data=epr_cmd_data,
-                    response=response,
-                    pair_index=pair_index,
-                )
-            else:
-                handled = False
-            if handled:
-                epr_cmd_data.pairs_left -= 1
-
-                self._handle_last_epr_pair(
-                    epr_cmd_data=epr_cmd_data,
-                    is_creator=is_creator,
-                    request_key=request_key,
-                )
-
-                self._store_ent_info(
-                    epr_cmd_data=epr_cmd_data,
-                    response=response,
-                    pair_index=pair_index,
-                )
-                self._pending_epr_responses.pop(0)
-            else:
-                self._wait_to_handle_epr_responses()
-                return
-
-        self._handle_pending_epr_responses()
+            self._handle_pending_epr_responses()
 
     def _wait_to_handle_epr_responses(self):
         # This can be subclassed to sleep a little before handling again
@@ -1065,6 +1071,7 @@ class Executioner:
         self._logger.debug(
             f"Virtual qubit address {virtual_address} will now be mapped to "
             f"physical address {physical_address}")
+        self._used_physical_qubit_addresses.add(physical_address)
         self._allocate_physical_qubit(
             subroutine_id=subroutine_id,
             virtual_address=virtual_address,
