@@ -4,6 +4,17 @@ CHANGELOG
 Upcoming
 --------
 
+2020-10-08 (0.2.0)
+------------------
+- Example apps have moved into the netqasm module `netqasm/examples/apps`
+- Now logging all quantum gates in the instructions log files.
+- Remove CREATE_EPR and RECV_EPR from instructions log files.
+- Add channels to network log (PTH).
+- Log the start of each EPR pair generation in network log file.
+- Log qubit IDs in the network log.
+- Log both physical and virtual qubit IDs in the instructions log files.
+- The names of roles in the examples have been updated.
+
 2020-09-25 (0.1.0)
 ------------------
 - The CLI from `squidasm` is now moved to here and can be called as `netqasm`.

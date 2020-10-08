@@ -21,11 +21,11 @@ Check the folder `examples` for how to program and run netqasm programs.
 There is a CLI for easily run applications written in Python which produces NetQASM and communicates these to a simulator, e.g. NetSquid.
 To do this, do for example:
 ```sh
-cd examples/apps/teleport
+cd netqasm/examples/apps/teleport
 netqasm simulate
 ```
-which will simulate a teleport application between Alice and Bob, defined by the scrips `app_alice.py` and `app_bob.py`, in the folder [`examples/apps/teleport`](https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm/tree/master/examples/apps/teleport).
-You can a log-record of what quantum operations occured during this simulation in `examples/app/teleport/log`.
+which will simulate a teleport application between Alice and Bob, defined by the scrips `app_alice.py` and `app_bob.py`, in the folder [`netqasm/examples/apps/teleport`](https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm/tree/master/netqasm/examples/apps/teleport).
+You can a log-record of what quantum operations occured during this simulation in `netqasm/examples/apps/teleport/log`.
 
 Through the CLI you can specify custom paths to application and network configuration as well as logging directory and logging level. To see all options and their description do
 ```sh
