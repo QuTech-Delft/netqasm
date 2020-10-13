@@ -109,7 +109,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
         """
         new_commands = []
 
-        for instr in self._subroutine.commands:
+        index_changes = {}  # map index in commands to index in new_commands
+
+        for i, instr in enumerate(self._subroutine.commands):
             # check which registers are being written to
             affected_regs = instr.writes_to()
 
@@ -132,6 +134,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 if isinstance(op, Register):
                     self._used_registers.update([op])
 
+            index_changes[i] = len(new_commands)
+
             if (isinstance(instr, core.SingleQubitInstruction)
                     or isinstance(instr, core.RotationInstruction)):
                 new_commands += self._handle_single_qubit_gate(instr)
@@ -139,6 +143,11 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 new_commands += self._handle_two_qubit_gate(instr)
             else:
                 new_commands += [instr]
+
+        for instr in new_commands:
+            if (isinstance(instr, core.BranchUnaryInstruction)
+                    or isinstance(instr, core.BranchBinaryInstruction)):
+                instr.line = Immediate(index_changes[instr.line.value])
 
         self._subroutine.commands = new_commands
         return self._subroutine
@@ -190,7 +199,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 lineno=instr.lineno, reg=carbon, imm0=Immediate(1), imm1=Immediate(1)
             ),
             nv.ControlledRotXInstruction(
-                lineno=instr.lineno, reg0=electron, reg1=electron, imm0=Immediate(1), imm1=Immediate(1)
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(1), imm1=Immediate(1)
             ),
             nv.RotZInstruction(
                 lineno=instr.lineno, reg=electron, imm0=Immediate(3), imm1=Immediate(1)
