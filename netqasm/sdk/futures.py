@@ -89,14 +89,71 @@ def as_int_when_value(cls):
 
 
 @as_int_when_value
-class Future(int):
+class BaseFuture(int):
+    @classmethod
+    def __new__(cls, *args, **kwargs):
+        return int.__new__(cls, 0)
+
+    def __init__(self, connection):
+        self._value = None
+        self._connection = connection
+
+    def if_eq(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BEQ,
+            a=self,
+            b=other,
+        )
+
+    def if_ne(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNE,
+            a=self,
+            b=other,
+        )
+
+    def if_lt(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BLT,
+            a=self,
+            b=other,
+        )
+
+    def if_ge(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BGE,
+            a=self,
+            b=other,
+        )
+
+    def if_ez(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BEZ,
+            a=self,
+            b=other,
+        )
+
+    def if_nz(self, other):
+        return _IfContext(
+            connection=self._connection,
+            condition=Instruction.BNZ,
+            a=self,
+            b=other,
+        )
+
+
+class Future(BaseFuture):
     @classmethod
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
     def __init__(self, connection, address, index):
-        self._value = None
-        self._connection = connection
+        super().__init__(connection=connection)
         self._address = address
         self._index = index
 
@@ -208,53 +265,42 @@ class Future(int):
         commands.append(access_cmd)
         return commands
 
-    def if_eq(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BEQ,
-            a=self,
-            b=other,
-        )
 
-    def if_ne(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BNE,
-            a=self,
-            b=other,
-        )
+class RegFuture(BaseFuture):
+    def __init__(self, connection, reg=None):
+        super().__init__(connection=connection)
+        self._reg = reg
 
-    def if_lt(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BLT,
-            a=self,
-            b=other,
-        )
+    @property
+    def reg(self):
+        return self._reg
 
-    def if_ge(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BGE,
-            a=self,
-            b=other,
-        )
+    @reg.setter
+    def reg(self, new_val):
+        self._reg = new_val
 
-    def if_ez(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BEZ,
-            a=self,
-            b=other,
-        )
+    def __str__(self):
+        value = self.value
+        if value is None:
+            return (f"{self.__class__.__name__} to be stored in reg {self.reg} "
+                    "To access the value, the subroutine must first be executed which can be done by flushing.")
+        else:
+            return str(value)
 
-    def if_nz(self, other):
-        return _IfContext(
-            connection=self._connection,
-            condition=Instruction.BNZ,
-            a=self,
-            b=other,
-        )
+    def __repr__(self):
+        return f"{self.__class__} with value={self.value}"
+
+    @property
+    def value(self):
+        if self._value is not None:
+            return self._value
+        try:
+            value = self._connection.shared_memory.get_register(self.reg)
+        except KeyError:
+            return None
+        if value is not None:
+            self._value = value
+        return value
 
 
 class Array:
