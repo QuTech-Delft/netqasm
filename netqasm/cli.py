@@ -3,7 +3,8 @@ import click
 import importlib
 
 import netqasm
-from netqasm.settings import Simulator, Formalism, Flavour, set_simulator
+from netqasm.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
+from netqasm.run.hardware import run_apps
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -109,6 +110,56 @@ def simulate(
         results_file=results_file,
         formalism=formalism,
         flavour=flavour
+    )
+
+
+##################
+# Run on QNodeOS #
+##################
+
+@cli.command()
+@click.option("--app-dir", type=str, default=None,
+              help="Path to app directory. "
+                   "Defaults to CWD."
+              )
+@click.option("--lib-dirs", type=str, default=None, multiple=True,
+              help="Path to additional library directory."
+              )
+@click.option("--track-lines/--no-track-lines", default=True)
+@click.option("--app-config-dir", type=str, default=None,
+              help="Explicitly choose the app config directory, "
+                   "default is `app-folder`."
+              )
+@click.option("--log-dir", type=str, default=None,
+              help="Explicitly choose the log directory, "
+                   "default is `app-folder/log`."
+              )
+@click.option("--results-file", type=str, default=None,
+              help="Explicitly choose the file where the results of a post function should be stored."
+              )
+@click.option("--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]), default="WARNING",
+              help="What log-level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)."
+                   "Note, this affects logging to stderr, not logging instructions to file."
+              )
+def run(
+    app_dir,
+    lib_dirs,
+    track_lines,
+    app_config_dir,
+    log_dir,
+    log_level,
+    results_file,
+):
+    set_is_using_hardware(True)
+
+    run_apps(
+        app_dir=app_dir,
+        lib_dirs=lib_dirs,
+        track_lines=track_lines,
+        app_config_dir=app_config_dir,
+        log_dir=log_dir,
+        log_level=log_level.upper(),
+        results_file=results_file,
     )
 
 

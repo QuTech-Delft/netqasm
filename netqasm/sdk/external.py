@@ -1,8 +1,17 @@
-from netqasm.settings import get_simulator, Simulator
+from netqasm.settings import get_simulator, Simulator, get_is_using_hardware
 
 simulator = get_simulator()
+is_using_hardware = get_is_using_hardware()
 
-if simulator == Simulator.NETSQUID:
+if is_using_hardware:
+    try:
+        from qnodeos.sdk.socket import Socket  # type: ignore
+        from qnodeos.sdk.connection import QNodeOSConnection as NetQASMConnection  # type: ignore
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            "to use QNodeOS , `qnodeos` needs to be installed"
+        )
+elif simulator == Simulator.NETSQUID:
     try:
         from netqasm.sdk.classical_communication import ThreadSocket as Socket
         from netqasm.sdk.classical_communication import ThreadBroadcastChannel as BroadcastChannel
