@@ -1,8 +1,6 @@
 import os
 import sys
 import importlib
-from runpy import run_path
-from datetime import datetime
 from typing import List
 
 from netqasm.logging import (
@@ -17,21 +15,9 @@ from netqasm.sdk.external import run_applications
 
 from .app_config import AppConfig
 from .process_logs import process_log
+from netqasm.run import env
 
 logger = get_netqasm_logger()
-
-
-def load_app_config_file(app_dir, app_name):
-    ext = '.yaml'
-    file_path = os.path.join(app_dir, f"{app_name}{ext}")
-    if os.path.exists(file_path):
-        config = load_yaml(file_path=file_path)
-    else:
-        config = None
-    if config is None:
-        return {}
-    else:
-        return config
 
 
 def get_network_config_path(app_dir):
@@ -45,61 +31,6 @@ def load_network_config(network_config_file):
         return load_yaml(network_config_file)
     else:
         return None
-
-
-def get_roles_config_path(app_dir):
-    ext = '.yaml'
-    file_path = os.path.join(app_dir, f'roles{ext}')
-    return file_path
-
-
-def load_roles_config(roles_config_file):
-    if os.path.exists(roles_config_file):
-        return load_yaml(roles_config_file)
-    else:
-        return None
-
-
-def load_app_files(app_dir):
-    app_tag = 'app_'
-    ext = '.py'
-    app_files = {}
-    for entry in os.listdir(app_dir):
-        if entry.startswith(app_tag) and entry.endswith('.py'):
-            app_name = entry[len(app_tag):-len(ext)]
-            app_files[app_name] = entry
-    if len(app_files) == 0:
-        raise ValueError(f"directory {app_dir} does not seem to be a application directory (no app_xxx.py files)")
-    return app_files
-
-
-def get_log_dir(app_dir):
-    log_dir = os.path.join(app_dir, "log")
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
-    return log_dir
-
-
-def get_timed_log_dir(log_dir):
-    now = datetime.now().strftime('%Y%m%d-%H%M%S')
-    timed_log_dir = os.path.join(log_dir, now)
-    if not os.path.exists(timed_log_dir):
-        os.mkdir(timed_log_dir)
-    return timed_log_dir
-
-
-def get_post_function_path(app_dir):
-    return os.path.join(app_dir, 'post_function.py')
-
-
-def load_post_function(post_function_file):
-    if not os.path.exists(post_function_file):
-        return None
-    return run_path(post_function_file)['main']
-
-
-def get_results_path(timed_log_dir):
-    return os.path.join(timed_log_dir, 'results.yaml')
 
 
 def simulate_apps(
@@ -133,7 +64,7 @@ def simulate_apps(
 
     sys.path.append(app_dir)
 
-    app_files = load_app_files(app_dir)
+    app_files = env.load_app_files(app_dir)
     if app_config_dir is None:
         app_config_dir = app_dir
     else:
@@ -145,21 +76,21 @@ def simulate_apps(
         network_config_file = os.path.expanduser(network_config_file)
 
     if roles_config_file is None:
-        roles_config_file = get_roles_config_path(app_dir)
+        roles_config_file = env.get_roles_config_path(app_dir)
     else:
         roles_config_file = os.path.expanduser(roles_config_file)
 
     if log_dir is None:
-        log_dir = get_log_dir(app_dir=app_dir)
+        log_dir = env.get_log_dir(app_dir=app_dir)
     else:
         log_dir = os.path.expanduser(log_dir)
 
-    timed_log_dir = get_timed_log_dir(log_dir=log_dir)
+    timed_log_dir = env.get_timed_log_dir(log_dir=log_dir)
 
     if post_function_file is None:
-        post_function_file = get_post_function_path(app_dir)
+        post_function_file = env.get_post_function_path(app_dir)
     if results_file is None:
-        results_file = get_results_path(timed_log_dir)
+        results_file = env.get_results_path(timed_log_dir)
 
     log_config = LogConfig()
     log_config.track_lines = track_lines
@@ -168,7 +99,7 @@ def simulate_apps(
     log_config.app_dir = app_dir
     log_config.lib_dirs = lib_dirs
 
-    roles_cfg = load_roles_config(roles_config_file)
+    roles_cfg = env.load_roles_config(roles_config_file)
 
     # Load app functions and configs to run
     sys.path.append(app_dir)
@@ -177,7 +108,7 @@ def simulate_apps(
         app_module = importlib.import_module(app_file[:-len('.py')])
         main_func = getattr(app_module, "main")
 
-        inputs = load_app_config_file(app_config_dir, app_name)
+        inputs = env.load_app_config_file(app_config_dir, app_name)
 
         if roles_cfg is not None:
             node_name = roles_cfg.get(app_name)
@@ -197,7 +128,7 @@ def simulate_apps(
     network_config = load_network_config(network_config_file)
 
     # Load post function if exists
-    post_function = load_post_function(post_function_file)
+    post_function = env.load_post_function(post_function_file)
 
     if flavour is None:
         flavour = Flavour.VANILLA
