@@ -4,7 +4,6 @@ import importlib
 
 import netqasm
 from netqasm.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
-from netqasm.run.hardware import run_apps
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -97,8 +96,8 @@ def simulate(
     flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
     # Import correct function after setting the simulator
-    simulate_apps = importlib.import_module("netqasm.run.simulate").simulate_apps
-    simulate_apps(
+    setup_apps = importlib.import_module("netqasm.run.run").setup_apps
+    setup_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
         track_lines=track_lines,
@@ -152,8 +151,10 @@ def run(
 ):
     set_is_using_hardware(True)
 
-    run_apps(
+    setup_apps = importlib.import_module("netqasm.run.run").setup_apps
+    setup_apps(
         app_dir=app_dir,
+        start_backend=False,
         lib_dirs=lib_dirs,
         track_lines=track_lines,
         app_config_dir=app_config_dir,
