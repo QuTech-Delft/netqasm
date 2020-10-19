@@ -35,3 +35,15 @@ def get_simulator():
 
 def _default_simulator():
     return Simulator.NETSQUID
+
+
+_is_using_hardware = False
+
+
+def set_is_using_hardware(b):
+    global _is_using_hardware
+    _is_using_hardware = b
+
+
+def get_is_using_hardware():
+    return _is_using_hardware

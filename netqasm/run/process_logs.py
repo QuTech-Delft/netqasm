@@ -13,8 +13,11 @@ _LAST_LOG = 'LAST'
 def process_log(log_dir):
     # Add host line numbers to logs
     _add_hln_to_logs(log_dir)
-    _create_app_instr_logs(log_dir)
+    # _create_app_instr_logs(log_dir)
+    make_last_log(log_dir)
 
+
+def make_last_log(log_dir):
     # Make this the last log
     base_log_dir, _log_dir_name = os.path.split(log_dir)
     last_log_dir = os.path.join(base_log_dir, _LAST_LOG)
