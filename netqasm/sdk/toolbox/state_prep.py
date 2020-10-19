@@ -47,10 +47,10 @@ def get_angle_spec_from_float(angle, tol=1e-6):
         nds.append((n, d))
         rest -= n / 2 ** d
 
-    # Check if some of the (n, d)'s can be simplified, i.e. if `n = 2 ^ m` for some `m`
+    # Check if some of the (n, d)'s can be simplified, i.e. if `n = b * 2 ^ m` for some `m` and `b`
     for i, (n, d) in enumerate(nds):
-        power = int(np.log2(n) + 0.5)
-        if 2 ** power == n:
-            common = min(d, power)
-            nds[i] = (2 ** (power - common), d - common)
+        n_new, d_new = n, d
+        while (n_new % 2) == 0:
+            n_new, d_new = (int(n_new / 2), d_new - 1)
+        nds[i] = (n_new, d_new)
     return nds

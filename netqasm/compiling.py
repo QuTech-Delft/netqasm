@@ -1,5 +1,5 @@
 import abc
-from typing import Set, Dict, List, Optional
+from typing import Set, Dict, List, Optional, Tuple
 
 from netqasm.subroutine import Subroutine
 from netqasm.instructions import core, vanilla, nv
@@ -379,48 +379,39 @@ class NVSubroutineCompiler(SubroutineCompiler):
             ]
         elif isinstance(instr, vanilla.RotZInstruction):
             if get_is_using_hardware():
-                if instr.angle_denom.value not in [0, 1, 2, 3, 4]:
-                    raise ValueError(f"Instruction {instr} not supported: angle_denom is {instr.angle_denom}.")
-                denom_diff = 4 - instr.angle_denom.value
-                angle_num = instr.angle_num.value * (2 ** denom_diff)
-                return [
-                    nv.RotZInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=Immediate(angle_num), imm1=Immediate(4)),
-                ]
+                imm0, imm1 = get_hardware_num_denom(instr)
             else:
-                return [
-                    nv.RotZInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
-                ]
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                nv.RotZInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1),
+            ]
         elif isinstance(instr, vanilla.RotXInstruction):
             if get_is_using_hardware():
-                if instr.angle_denom.value not in [0, 1, 2, 3, 4]:
-                    raise ValueError(f"Instruction {instr} not supported: angle_denom is {instr.angle_denom}.")
-                denom_diff = 4 - instr.angle_denom.value
-                angle_num = instr.angle_num.value * (2 ** denom_diff)
-                return [
-                    nv.RotXInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=Immediate(angle_num), imm1=Immediate(4))
-                ]
+                imm0, imm1 = get_hardware_num_denom(instr)
             else:
-                return [
-                    nv.RotXInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
-                ]
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1),
+            ]
         elif isinstance(instr, vanilla.RotYInstruction):
             if get_is_using_hardware():
-                if instr.angle_denom.value not in [0, 1, 2, 3, 4]:
-                    raise ValueError(f"Instruction {instr} not supported: angle_denom is {instr.angle_denom}.")
-                denom_diff = 4 - instr.angle_denom.value
-                angle_num = instr.angle_num.value * (2 ** denom_diff)
-                return [
-                    nv.RotYInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=Immediate(angle_num), imm1=Immediate(4))
-                ]
+                imm0, imm1 = get_hardware_num_denom(instr)
             else:
-                return [
-                    nv.RotYInstruction(
-                        lineno=instr.lineno, reg=instr.reg, imm0=instr.angle_num, imm1=instr.angle_denom),
-                ]
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                nv.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1),
+            ]
         else:
             raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
+
+
+def get_hardware_num_denom(instr: core.RotationInstruction) -> Tuple[Immediate, Immediate]:
+    if instr.angle_denom.value not in [0, 1, 2, 3, 4]:
+        raise ValueError(f"Instruction {instr} not supported: angle_denom is {instr.angle_denom}.")
+
+    denom_diff = 4 - instr.angle_denom.value
+    angle_num = instr.angle_num.value * (2 ** denom_diff)
+    return (Immediate(angle_num), Immediate(4))

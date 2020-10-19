@@ -23,7 +23,6 @@ from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.toolbox import get_angle_spec_from_float
-from netqasm.sdk.toolbox.nv import get_nv_numerator_from_float
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.log_util import LineTracker
 from netqasm.network_stack import OK_FIELDS
@@ -50,7 +49,6 @@ from netqasm.messages import (
 )
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.network import NetworkInfo
-from netqasm.settings import get_is_using_hardware
 
 
 # NOTE this is needed to be able to instanciate tuples the same way as namedtuples
@@ -455,29 +453,17 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_single_qubit_rotation_commands(self, instruction, virtual_qubit_id, n=0, d=0, angle=None):
         if angle is not None:
-            if get_is_using_hardware():
-                numerator = get_nv_numerator_from_float(angle=angle)
+            nds = get_angle_spec_from_float(angle=angle)
+            for n, d in nds:
                 self.add_single_qubit_rotation_commands(
                     instruction=instruction,
                     virtual_qubit_id=virtual_qubit_id,
-                    n=numerator,
-                    d=4,
+                    n=n,
+                    d=d,
                 )
-            else:
-                nds = get_angle_spec_from_float(angle=angle)
-                for n, d in nds:
-                    self.add_single_qubit_rotation_commands(
-                        instruction=instruction,
-                        virtual_qubit_id=virtual_qubit_id,
-                        n=n,
-                        d=d,
-                    )
             return
         if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
             raise ValueError(f'{n} * pi / 2 ^ {d} is not a valid angle specification')
-        if get_is_using_hardware():
-            if d != 4:
-                raise ValueError(f"Denominator value {d} is not supported for NV.")
         register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
         rot_command = Command(
             instruction=instruction,
