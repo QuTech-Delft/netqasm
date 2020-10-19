@@ -7,6 +7,5 @@ def get_nv_numerator_from_float(angle, tol=1e-3):
     k = int(round(angle * 16 / np.pi))
     if abs((k * np.pi / 16) - angle) > tol:
         raise ValueError(f"Cannot find `k` such that angle {angle} = k * pi / 16.")
-    if k < 0:
-        k += 32
+    k %= 32
     return k
