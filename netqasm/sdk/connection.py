@@ -22,7 +22,8 @@ from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, RegFuture, Array
-from netqasm.sdk.toolbox import get_angle_spec_from_float, get_nv_numerator_from_float
+from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.sdk.toolbox.nv import get_nv_numerator_from_float
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.log_util import LineTracker
 from netqasm.network_stack import OK_FIELDS
