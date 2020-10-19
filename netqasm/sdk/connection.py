@@ -21,7 +21,7 @@ from netqasm.parsing.text import assemble_subroutine, parse_register, get_curren
 from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
-from netqasm.sdk.futures import Future, Array
+from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.log_util import LineTracker
@@ -103,6 +103,8 @@ class BaseNetQASMConnection(abc.ABC):
 
         self._used_array_addresses = []
 
+        self._used_meas_registers = []
+
         self._pending_commands = []
 
         self._max_qubits = max_qubits
@@ -117,6 +119,9 @@ class BaseNetQASMConnection(abc.ABC):
 
         # Arrays to return
         self._arrays_to_return = []
+
+        # Registers to return
+        self._registers_to_return = []
 
         # Storing commands before an conditional statement
         self._pre_context_commands = {}
@@ -352,11 +357,21 @@ class BaseNetQASMConnection(abc.ABC):
     def _pop_pending_subroutine(self) -> Optional[PreSubroutine]:
         # Add commands for initialising and returning arrays
         self._add_array_commands()
+        self._add_ret_reg_commands()
         subroutine = None
         if len(self._pending_commands) > 0:
             commands = self._pop_pending_commands()
             subroutine = self._subroutine_from_commands(commands)
         return subroutine
+
+    def _add_ret_reg_commands(self):
+        ret_reg_instrs = []
+        for reg in self._registers_to_return:
+            ret_reg_instrs.append(Command(
+                instruction=Instruction.RET_REG,
+                operands=[reg]
+            ))
+        self.add_pending_commands(commands=ret_reg_instrs)
 
     def _add_array_commands(self):
         current_commands = self._pop_pending_commands()
@@ -509,15 +524,23 @@ class BaseNetQASMConnection(abc.ABC):
         else:
             free_commands = []
         if future is not None:
-            outcome_commands = future._get_store_commands(outcome_reg)
-        else:
-            outcome_commands = []
+            if isinstance(future, Future):
+                outcome_commands = future._get_store_commands(outcome_reg)
+            elif isinstance(future, RegFuture):
+                future.reg = outcome_reg
+                self._registers_to_return.append(outcome_reg)
+                outcome_commands = []
+            else:
+                outcome_commands = []
         commands = set_commands + [meas_command] + free_commands + outcome_commands
         self.add_pending_commands(commands)
 
     def _get_new_meas_outcome_reg(self):
-        # NOTE We can simply use the same every time (M0) since it will anyway be stored to memory if returned
-        return Register(RegisterName.M, 0)
+        # Find the next unused M-register.
+        for i in range(16):
+            if i not in self._used_meas_registers:
+                self._used_meas_registers.append(i)
+                return Register(RegisterName.M, i)
 
     def add_new_qubit_commands(self, qubit_id):
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
@@ -933,6 +956,8 @@ class BaseNetQASMConnection(abc.ABC):
         if len(self._active_registers) > 0:
             raise RuntimeError("Should not have active registers left when flushing")
         self._arrays_to_return = []
+        self._registers_to_return = []
+        self._used_meas_registers = []
         self._pre_context_commands = {}
 
     def if_eq(self, a, b, body):
@@ -1010,6 +1035,8 @@ class BaseNetQASMConnection(abc.ABC):
                 )
                 cond_values.append(reg)
                 if_start.append(load)
+            elif isinstance(x, RegFuture):
+                cond_values.append(x.reg)
             elif isinstance(x, int):
                 cond_values.append(x)
             else:
@@ -1027,7 +1054,8 @@ class BaseNetQASMConnection(abc.ABC):
         # Inactivate the temporary registers
         for val in cond_values:
             if isinstance(val, Register):
-                self._remove_active_register(register=val)
+                if not val.name == RegisterName.M:  # M-registers are never temporary
+                    self._remove_active_register(register=val)
 
         exit = BranchLabel(exit_label)
         if_end = [exit]

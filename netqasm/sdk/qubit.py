@@ -1,4 +1,5 @@
 from netqasm.instructions.instr_enum import Instruction
+from netqasm.sdk.futures import RegFuture
 
 
 class QubitNotActiveError(MemoryError):
@@ -89,7 +90,7 @@ class Qubit:
         if not self.active:
             raise QubitNotActiveError(f"Qubit {self.qubit_id} is not active")
 
-    def measure(self, future=None, inplace=False):
+    def measure(self, future=None, inplace=False, store_array=True):
         """
         Measures the qubit in the standard basis and returns the measurement outcome.
 
@@ -104,8 +105,11 @@ class Qubit:
         self.assert_active()
 
         if future is None:
-            array = self._conn.new_array(1)
-            future = array.get_future_index(0)
+            if store_array:
+                array = self._conn.new_array(1)
+                future = array.get_future_index(0)
+            else:
+                future = RegFuture(self._conn)
 
         self._conn.add_measure_commands(
             qubit_id=self.qubit_id,
