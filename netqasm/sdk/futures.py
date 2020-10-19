@@ -108,8 +108,8 @@ class BaseFuture(int):
         else:
             return self._try_get_value()
 
+    @abc.abstractmethod
     def _try_get_value(self):
-        """Should be implemented by derived class"""
         raise NotImplementedError
 
     def if_eq(self, other):
