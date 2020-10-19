@@ -4,6 +4,15 @@ CHANGELOG
 Upcoming
 --------
 
+2020-10-19 (0.3.0)
+------------------
+- Added `netqasm run` command to launch applications without also starting a simulation backend.
+  It allows the same additional arguments as `netqasm simulate`, except simulation-specifc ones like `--simulator`.
+- Added the `RegFuture` class representing values that become available in a register rather than an array.
+- Added the `store_array` optional argument to `qubit.measure()`. If False, the result is a `RegFuture`.
+- Improved simplification of `(n, d)` values for angles. Both `n` and `d` are now as small as possible.
+- When *not* using a simulator backend, the NV compiler now always outputs angle values such that `d = 4`.
+
 2020-10-08 (0.2.0)
 ------------------
 - Example apps have moved into the netqasm module `netqasm/examples/apps`
