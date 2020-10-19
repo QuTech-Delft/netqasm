@@ -98,6 +98,20 @@ class BaseFuture(int):
         self._value = None
         self._connection = connection
 
+    def __repr__(self):
+        return f"{self.__class__} with value={self.value}"
+
+    @property
+    def value(self):
+        if self._value is not None:
+            return self._value
+        else:
+            return self._try_get_value()
+
+    def _try_get_value(self):
+        """Should be implemented by derived class"""
+        raise NotImplementedError
+
     def if_eq(self, other):
         return _IfContext(
             connection=self._connection,
@@ -166,13 +180,7 @@ class Future(BaseFuture):
         else:
             return str(value)
 
-    def __repr__(self):
-        return f"{self.__class__} with value={self.value}"
-
-    @property
-    def value(self):
-        if self._value is not None:
-            return self._value
+    def _try_get_value(self):
         if not isinstance(self._index, int):
             raise NonConstantIndexError("index is not constant and cannot be resolved")
         value = self._connection.shared_memory.get_array_part(address=self._address, index=self._index)
@@ -287,13 +295,7 @@ class RegFuture(BaseFuture):
         else:
             return str(value)
 
-    def __repr__(self):
-        return f"{self.__class__} with value={self.value}"
-
-    @property
-    def value(self):
-        if self._value is not None:
-            return self._value
+    def _try_get_value(self):
         try:
             value = self._connection.shared_memory.get_register(self.reg)
         except KeyError:
