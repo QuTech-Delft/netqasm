@@ -454,7 +454,6 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_single_qubit_rotation_commands(self, instruction, virtual_qubit_id, n=0, d=0, angle=None):
         if angle is not None:
-            # if self._compiler == NVSubroutineCompiler:
             if get_is_using_hardware():
                 numerator = get_nv_numerator_from_float(angle=angle)
                 self.add_single_qubit_rotation_commands(
