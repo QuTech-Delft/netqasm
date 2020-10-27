@@ -12,8 +12,8 @@ MESSAGE_TYPE = ctypes.c_uint8
 MESSAGE_ID = ctypes.c_uint32
 APP_ID = ctypes.c_uint32
 NUM_QUBITS = ctypes.c_uint8
-EPR_SOCKET_ID = ctypes.c_uint32
-NODE_ID = ctypes.c_uint32
+EPR_SOCKET_ID = INTEGER
+NODE_ID = INTEGER
 SIGNAL = ctypes.c_uint8
 
 MESSAGE_TYPE_BYTES = len(bytes(MESSAGE_TYPE()))  # type: ignore
