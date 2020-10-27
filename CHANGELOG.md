@@ -3,6 +3,7 @@ CHANGELOG
 
 Upcoming
 --------
+- Made array IDs, EPR socket IDs and node IDs `int32` instead of `uint32` such that they can be stored in registers.
 
 2020-10-19 (0.3.0)
 ------------------
