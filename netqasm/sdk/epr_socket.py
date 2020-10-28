@@ -40,6 +40,7 @@ class EPRSocket(abc.ABC):
             The identifier used by the remote node.
         min_fidelity : int
             The minimum desired fidelity of EPR pairs generated using this socket.
+            Values are integers in the range 0-100.
         """
         self._conn = None
         self._remote_app_name = remote_app_name
