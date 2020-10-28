@@ -276,8 +276,8 @@ class BaseNetQASMConnection(abc.ABC):
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         self._commit_message(msg=InitNewAppMessage(
-                app_id=self._app_id,
-                max_qubits=max_qubits,
+            app_id=self._app_id,
+            max_qubits=max_qubits,
         ))
 
     def _setup_epr_sockets(self, epr_sockets):
@@ -288,17 +288,20 @@ class BaseNetQASMConnection(abc.ABC):
                 raise ValueError("A node cannot setup an EPR socket with itself")
             epr_socket.conn = self
             self._setup_epr_socket(
-                epr_socket_id=epr_socket._epr_socket_id,
-                remote_node_id=epr_socket._remote_node_id,
-                remote_epr_socket_id=epr_socket._remote_epr_socket_id,
+                epr_socket_id=epr_socket.epr_socket_id,
+                remote_node_id=epr_socket.remote_node_id,
+                remote_epr_socket_id=epr_socket.remote_epr_socket_id,
+                min_fidelity=epr_socket.min_fidelity,
             )
 
-    def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
+    def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id, min_fidelity):
         """Sets up a new epr socket"""
         self._commit_message(msg=OpenEPRSocketMessage(
-                epr_socket_id=epr_socket_id,
-                remote_node_id=remote_node_id,
-                remote_epr_socket_id=remote_epr_socket_id,
+            app_id=self._app_id,
+            epr_socket_id=epr_socket_id,
+            remote_node_id=remote_node_id,
+            remote_epr_socket_id=remote_epr_socket_id,
+            min_fidelity=min_fidelity,
         ))
 
     def new_array(self, length=1, init_values=None):
@@ -610,18 +613,18 @@ class BaseNetQASMConnection(abc.ABC):
                 # a uniform distribution for three bases. This needs to be changed
                 # in the underlying link layer/network stack
                 assert random_basis_local in [RandomBasis.XZ, RandomBasis.CHSH], (
-                       "Can only random measure in one of two bases for now")
+                    "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_local'] = random_basis_local
                 create_kwargs['probability_dist_local1'] = 128
             if random_basis_remote is not None:
                 assert random_basis_remote in [RandomBasis.XZ, RandomBasis.CHSH], (
-                       "Can only random measure in one of two bases for now")
+                    "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
 
             create_args = []
-            # NOTE we don't include the two first args since this is remote_node_id
-            # and epr_socket_id which comes as immediates
+            # NOTE we don't include the two first args since these are remote_node_id
+            # and epr_socket_id which come as registers
             for field in LinkLayerCreate._fields[2:]:
                 arg = create_kwargs.get(field)
                 # If Enum, use its value
@@ -1003,7 +1006,7 @@ class BaseNetQASMConnection(abc.ABC):
             return
         branch_instruction = flip_branch_instr(condition)
         current_branch_variables = [
-                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
         ]
         if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,
@@ -1104,7 +1107,7 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_commands(commands=pre_commands)
             return
         current_branch_variables = [
-                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
         ]
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(

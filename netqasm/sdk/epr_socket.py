@@ -25,6 +25,7 @@ class EPRSocket(abc.ABC):
         remote_app_name,
         epr_socket_id=0,
         remote_epr_socket_id=0,
+        min_fidelity=100
     ):
         """Encapsulates the notion of an EPR socket which sets up a virtual circuit in the network
         when instantiated and can then be used for entanglement generation.
@@ -37,12 +38,19 @@ class EPRSocket(abc.ABC):
             The identifier used for this socket.
         remote_epr_socket_id : int
             The identifier used by the remote node.
+        min_fidelity : int
+            The minimum desired fidelity of EPR pairs generated using this socket.
+            Values are integers in the range 0-100.
         """
         self._conn = None
         self._remote_app_name = remote_app_name
         self._remote_node_id = None  # Gets set when the connection is set
         self._epr_socket_id = epr_socket_id
         self._remote_epr_socket_id = remote_epr_socket_id
+
+        if not isinstance(min_fidelity, int) or (min_fidelity < 0) or min_fidelity > 100:
+            raise ValueError(f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}")
+        self._min_fidelity: int = min_fidelity
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
 
@@ -54,6 +62,26 @@ class EPRSocket(abc.ABC):
     def conn(self, conn):
         self._conn = conn
         self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
+
+    @property
+    def remote_app_name(self):
+        return self._remote_app_name
+
+    @property
+    def remote_node_id(self):
+        return self._remote_node_id
+
+    @property
+    def epr_socket_id(self):
+        return self._epr_socket_id
+
+    @property
+    def remote_epr_socket_id(self):
+        return self._remote_epr_socket_id
+
+    @property
+    def min_fidelity(self):
+        return self._min_fidelity
 
     @_assert_has_conn
     def create(
