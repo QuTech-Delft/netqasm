@@ -47,6 +47,9 @@ class EPRSocket(abc.ABC):
         self._remote_node_id = None  # Gets set when the connection is set
         self._epr_socket_id = epr_socket_id
         self._remote_epr_socket_id = remote_epr_socket_id
+
+        if not isinstance(min_fidelity, int) or (min_fidelity < 0) or min_fidelity > 100:
+            raise ValueError(f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}")
         self._min_fidelity: int = min_fidelity
 
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
