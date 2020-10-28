@@ -13,6 +13,7 @@ MESSAGE_ID = ctypes.c_uint32
 APP_ID = ctypes.c_uint32
 NUM_QUBITS = ctypes.c_uint8
 EPR_SOCKET_ID = INTEGER
+EPR_FIDELITY = ctypes.c_uint8
 NODE_ID = INTEGER
 SIGNAL = ctypes.c_uint8
 
@@ -78,18 +79,22 @@ class InitNewAppMessage(Message):
 
 class OpenEPRSocketMessage(Message):
     _fields_ = [
+        ("app_id", APP_ID),  # type: ignore
         ("epr_socket_id", EPR_SOCKET_ID),  # type: ignore
         ("remote_node_id", NODE_ID),  # type: ignore
         ("remote_epr_socket_id", EPR_SOCKET_ID),  # type: ignore
+        ("min_fidelity", EPR_FIDELITY),  # type: ignore
     ]
 
     TYPE = MessageType.OPEN_EPR_SOCKET
 
-    def __init__(self, epr_socket_id=0, remote_node_id=0, remote_epr_socket_id=0):
+    def __init__(self, app_id=0, epr_socket_id=0, remote_node_id=0, remote_epr_socket_id=0, min_fidelity=100):
         super().__init__(self.TYPE.value)
+        self.app_id = app_id
         self.epr_socket_id = epr_socket_id
         self.remote_node_id = remote_node_id
         self.remote_epr_socket_id = remote_epr_socket_id
+        self.min_fidelity = min_fidelity
 
 
 class SubroutineMessage:
