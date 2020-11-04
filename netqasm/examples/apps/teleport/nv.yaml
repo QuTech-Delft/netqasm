@@ -1,0 +1,27 @@
+# number of qubits per NV
+tot_num_qubits: 2
+
+# initialization error of the electron spin
+electron_init_depolar_prob: 0.0
+
+# error of the single-qubit gate
+electron_single_qubit_depolar_prob: 0.0
+
+# measurement errors (prob_error_X is the probability that outcome X is flipped to 1 - X)
+prob_error_0: 0.0
+prob_error_1: 0.0
+
+# initialization error of the carbon nuclear spin
+carbon_init_depolar_prob: 0.0
+
+# error of the Z-rotation gate on the carbon nuclear spin
+carbon_z_rot_depolar_prob: 0.0
+
+# error of the native NV two-qubit gate
+ec_gate_depolar_prob: 0.0
+
+# coherence times
+electron_T1: 0
+electron_T2: 0
+carbon_T1: 0
+carbon_T2: 0

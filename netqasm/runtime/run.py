@@ -26,9 +26,22 @@ def get_network_config_path(app_dir):
     return file_path
 
 
+def get_nv_config_path(app_dir):
+    ext = '.yaml'
+    file_path = os.path.join(app_dir, f'nv{ext}')
+    return file_path
+
+
 def load_network_config(network_config_file):
     if os.path.exists(network_config_file):
         return load_yaml(network_config_file)
+    else:
+        return None
+
+
+def load_nv_config(nv_config_file):
+    if os.path.exists(nv_config_file):
+        return load_yaml(nv_config_file)
     else:
         return None
 
@@ -40,6 +53,7 @@ def setup_apps(
     track_lines=True,
     app_config_dir=None,
     network_config_file=None,
+    nv_config_file=None,
     roles_config_file=None,
     log_dir=None,
     log_level="WARNING",
@@ -70,6 +84,11 @@ def setup_apps(
         app_config_dir = app_dir
     else:
         app_config_dir = os.path.expanduser(app_config_dir)
+
+    if nv_config_file is None:
+        nv_config_file = get_nv_config_path(app_dir)
+    else:
+        nv_config_file = os.path.expanduser(nv_config_file)
 
     if roles_config_file is None:
         roles_config_file = env.get_roles_config_path(app_dir)
@@ -132,6 +151,7 @@ def setup_apps(
             network_config_file = os.path.expanduser(network_config_file)
 
         network_config = load_network_config(network_config_file)
+        nv_config = load_nv_config(nv_config_file)
 
         if flavour is None:
             flavour = Flavour.VANILLA
@@ -150,6 +170,7 @@ def setup_apps(
     run_applications(
         app_cfgs=app_cfgs,
         network_config=network_config,
+        nv_config=nv_config,
         instr_log_dir=timed_log_dir,
         post_function=post_function,
         results_file=results_file,
