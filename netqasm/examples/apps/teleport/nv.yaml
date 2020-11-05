@@ -25,3 +25,23 @@ electron_T1: 0
 electron_T2: 0
 carbon_T1: 0
 carbon_T2: 0
+
+# gate execution times
+carbon_init: 310000
+carbon_rot_x: 500000
+carbon_rot_y: 500000
+carbon_rot_z: 500000
+electron_init: 2000
+electron_rot_x: 5
+electron_rot_y: 5
+electron_rot_z: 5
+ec_controlled_dir_x: 500000
+ec_controlled_dir_y: 500000
+measure: 3700
+
+# QNodeOS instruction processing time
+instr_proc_time: 10000
+
+# latency that mocks the time QNodeOS needs to wait for the host
+# before the Host sends the next subroutine (e.g. because it does communication)
+host_latency: 50000000
