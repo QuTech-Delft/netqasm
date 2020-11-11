@@ -1,6 +1,7 @@
-API
-===
+NetQASM SDK
+===========
 
+SDK description
 API documentation for netqasm.
 
 The package contains the following modules
@@ -10,9 +11,6 @@ The package contains the following modules
    :maxdepth: 2
    :caption: Contents:
 
-   modules/encoder
-   modules/io_util
-   modules/parser
-   modules/processor
-   modules/string_util
-   modules/util
+   sdk/cli
+   sdk/file_structure
+   sdk/modules

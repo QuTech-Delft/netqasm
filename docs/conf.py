@@ -38,9 +38,12 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
+    'sphinx_autodoc_typehints',
 ]
 napoleon_include_init_with_doc = True
 autodoc_member_order = 'bysource'
+autoclass_content = 'both'
+always_document_param_types = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

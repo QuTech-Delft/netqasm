@@ -1,3 +1,5 @@
+"""TODO write about connections"""
+
 import os
 import abc
 import math
@@ -155,14 +157,17 @@ class BaseNetQASMConnection(abc.ABC):
 
     @property
     def app_name(self):
+        """Get the application name"""
         return self._app_name
 
     @property
     def node_name(self):
+        """Get the node name"""
         return self._node_name
 
     @property
     def app_id(self):
+        """Get the application ID"""
         return self._app_id
 
     @abc.abstractmethod
@@ -185,9 +190,33 @@ class BaseNetQASMConnection(abc.ABC):
         return f"NetQASM connection for app '{self.app_name}' with node '{self.node_name}'"
 
     def __enter__(self):
+        """Used to open the connection in a context.
+
+        This is the intended behaviour of the connection.
+        Operations specified using the connection or a qubit created with it gets combined into a
+        subroutine, until either :meth:`~.flush` is called or the connection goes out of context
+        which calls :meth:`~.__exit__`.
+
+        .. code-block::
+
+            # Open the connection
+            with NetQASMConnection(app_name="alice") as alice:
+                # Create a qubit
+                q = Qubit(alice)
+                # Perform a Hadamard
+                q.H()
+                # Measure the qubit
+                m = q.measure()
+                # Flush the subroutine to populate the variable `m` with the outcome
+                # Alternetively, this can be done by letting the connection
+                # go out of context and move the print to after.
+                alice.flush()
+                print(m)
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """TODO describe"""
         # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
         self.close(
             clear_app=self._clear_app_on_exit,

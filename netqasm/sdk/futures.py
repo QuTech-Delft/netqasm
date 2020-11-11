@@ -1,4 +1,7 @@
+"""TODO write about futures"""
+
 import abc
+from typing import Union, Optional
 
 from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.subroutine import Symbols, Command, Register
@@ -103,6 +106,8 @@ class BaseFuture(int):
 
     @property
     def value(self):
+        """Get the value of the future.
+        If it's not set yet, `None` is returned."""
         if self._value is not None:
             return self._value
         else:
@@ -111,6 +116,13 @@ class BaseFuture(int):
     @abc.abstractmethod
     def _try_get_value(self):
         raise NotImplementedError
+
+    def add(self, other: Union[int, str, Register, 'BaseFuture'], mod: Optional[int] = None):
+        """Adds another integer to this by appending to appropriate instruction to 
+        the current subroutine.
+        Note that `self` does not need to have a value yet.
+        """
+        raise NotImplementedError(f"add is not implement for {self.__class__.__name__}")
 
     def if_eq(self, other):
         return _IfContext(
@@ -167,6 +179,10 @@ class Future(BaseFuture):
         return int.__new__(cls, 0)
 
     def __init__(self, connection, address, index):
+        """
+        Future(connection, address, index)
+        TODO write doc-string
+        """
         super().__init__(connection=connection)
         self._address = address
         self._index = index
@@ -188,7 +204,7 @@ class Future(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other, mod=None):
+    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -276,6 +292,8 @@ class Future(BaseFuture):
 
 class RegFuture(BaseFuture):
     def __init__(self, connection, reg=None):
+        """RegFuture(connection, reg=None)
+        TODO doc-string"""
         super().__init__(connection=connection)
         self._reg = reg
 
@@ -307,6 +325,9 @@ class RegFuture(BaseFuture):
 
 class Array:
     def __init__(self, connection, length, address, init_values=None, lineno=None):
+        """Array(connection, length, address, init_values=None, lineno=None)
+        TODO write doc-string
+        """
         if init_values is not None:
             if not all((isinstance(x, int) or x is None) for x in init_values):
                 raise TypeError("Array needs to consist of int's or None's")
@@ -334,6 +355,7 @@ class Array:
         return self._address
 
     def get_future_index(self, index):
+        """TODO doc-string"""
         if isinstance(index, str):
             index = parse_register(index)
         return Future(
@@ -343,6 +365,7 @@ class Array:
         )
 
     def get_future_slice(self, s):
+        """TODO doc-string"""
         range_args = []
         for attr in ["start", "stop", "step"]:
             x = getattr(s, attr)
@@ -354,6 +377,7 @@ class Array:
         return [self.get_future_index(index) for index in range(*range_args)]
 
     def foreach(self):
+        """TODO doc-string"""
         return _ForEachContext(
             connection=self._connection,
             array=self,
@@ -361,6 +385,7 @@ class Array:
         )
 
     def enumerate(self):
+        """TODO doc-string"""
         return _ForEachContext(
             connection=self._connection,
             array=self,
