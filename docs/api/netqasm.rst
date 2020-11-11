@@ -1,5 +1,5 @@
-netqasm package
-===============
+API
+===
 
 Subpackages
 -----------
@@ -7,9 +7,11 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   netqasm.examples
+   netqasm.backend
+   netqasm.lang
+   netqasm.logging
    netqasm.runtime
-   netqasm.sdk
+   netqasm.util
 
 Submodules
 ----------

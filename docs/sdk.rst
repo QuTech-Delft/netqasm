@@ -1,11 +1,7 @@
-NetQASM SDK
-===========
+Usage
+=====
 
-SDK description
-API documentation for netqasm.
-
-The package contains the following modules
-
+TODO SDK description
 
 .. toctree::
    :maxdepth: 2

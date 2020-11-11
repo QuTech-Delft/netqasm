@@ -44,26 +44,10 @@ netqasm.runtime.process\_logs module
    :undoc-members:
    :show-inheritance:
 
-netqasm.runtime.run module
---------------------------
-
-.. automodule:: netqasm.runtime.run
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 netqasm.runtime.settings module
 -------------------------------
 
 .. automodule:: netqasm.runtime.settings
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-netqasm.runtime.simulate module
--------------------------------
-
-.. automodule:: netqasm.runtime.simulate
    :members:
    :undoc-members:
    :show-inheritance:
