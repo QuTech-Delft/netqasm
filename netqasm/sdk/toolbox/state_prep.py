@@ -1,5 +1,5 @@
 import numpy as np
-from netqasm.encoding import IMMEDIATE_BITS
+from netqasm.lang.encoding import IMMEDIATE_BITS
 
 
 def set_qubit_state(qubit, phi=0., theta=0.):

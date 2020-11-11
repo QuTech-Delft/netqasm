@@ -1,2 +1,0 @@
-class NotAllocatedError(RuntimeError):
-    pass

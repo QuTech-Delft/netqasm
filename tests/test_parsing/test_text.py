@@ -1,12 +1,12 @@
 import pytest
 
-from netqasm.subroutine import Subroutine
-from netqasm.encoding import RegisterName
-from netqasm.parsing import parse_text_subroutine
-from netqasm.util import NetQASMInstrError, NetQASMSyntaxError
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 
-from netqasm import instructions
-from netqasm.instructions.operand import (
+from netqasm.lang import instr as instructions
+from netqasm.lang.instr.operand import (
     Register,
     Immediate,
     Address,

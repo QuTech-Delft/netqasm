@@ -3,7 +3,7 @@ import numpy as np
 
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import Socket, NetQASMConnection, run_applications
-from netqasm.run.app_config import AppConfig
+from netqasm.runtime.app_config import AppConfig
 from netqasm.sdk.toolbox import create_ghz
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 

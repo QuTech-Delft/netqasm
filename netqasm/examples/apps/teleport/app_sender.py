@@ -1,7 +1,7 @@
 from netqasm.sdk import Qubit, EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.toolbox import set_qubit_state
-from netqasm.output import get_new_app_logger
+from netqasm.logging.output import get_new_app_logger
 
 
 def main(app_config=None, phi=0., theta=0.):

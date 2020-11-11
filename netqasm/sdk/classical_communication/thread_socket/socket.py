@@ -1,11 +1,11 @@
 import os
 from typing import Dict, Optional
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging.glob import get_netqasm_logger
 from ..socket import Socket
 from .socket_hub import _socket_hub
-from netqasm.log_util import LineTracker
-from netqasm.output import SocketOperation, ClassCommLogger
+from netqasm.util.log import LineTracker
+from netqasm.logging.output import SocketOperation, ClassCommLogger
 from netqasm.sdk.config import LogConfig
 
 

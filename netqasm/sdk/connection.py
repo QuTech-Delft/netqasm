@@ -16,18 +16,18 @@ from qlink_interface import (
     LinkLayerOKTypeR,
 )
 from netqasm import NETQASM_VERSION
-from netqasm.logging import get_netqasm_logger
-from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
-from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
+from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.log_util import LineTracker
-from netqasm.network_stack import OK_FIELDS
-from netqasm.encoding import RegisterName, REG_INDEX_BITS
-from netqasm.subroutine import (
+from netqasm.util.log import LineTracker
+from netqasm.backend.network_stack import OK_FIELDS
+from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
+from netqasm.lang.subroutine import (
     PreSubroutine,
     Subroutine,
     Command,
@@ -39,7 +39,7 @@ from netqasm.subroutine import (
     BranchLabel,
     Symbols,
 )
-from netqasm.messages import (
+from netqasm.backend.messages import (
     Signal,
     InitNewAppMessage,
     StopAppMessage,

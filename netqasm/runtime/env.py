@@ -2,8 +2,8 @@ import os
 from runpy import run_path
 from datetime import datetime
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.yaml_util import load_yaml
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.util.yaml import load_yaml
 
 logger = get_netqasm_logger()
 

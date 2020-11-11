@@ -5,13 +5,13 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Optional, Union, Set
 
 from netqasm.typing import TypedDict
-from netqasm.subroutine import Register, ArrayEntry, Address
-from netqasm.yaml_util import dump_yaml
-from netqasm.log_util import LineTracker
-from netqasm.errors import NotAllocatedError
+from netqasm.lang.subroutine import Register, ArrayEntry, Address
+from netqasm.util.yaml import dump_yaml
+from netqasm.util.log import LineTracker
+from netqasm.util.error import NotAllocatedError
 
-from netqasm import instructions
-from netqasm.encoding import RegisterName
+from netqasm.lang import instr as instructions
+from netqasm.lang.encoding import RegisterName
 
 
 def should_ignore_instr(instr):

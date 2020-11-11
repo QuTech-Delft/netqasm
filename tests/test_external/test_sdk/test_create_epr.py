@@ -2,10 +2,10 @@ import pytest
 import numpy as np
 
 from netqasm.sdk import EPRSocket
-from netqasm.run.app_config import default_app_config
+from netqasm.runtime.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, run_applications
-from netqasm.logging import get_netqasm_logger
-from netqasm.settings import get_simulator, Simulator
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.runtime.settings import get_simulator, Simulator
 
 logger = get_netqasm_logger()
 

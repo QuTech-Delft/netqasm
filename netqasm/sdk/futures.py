@@ -1,8 +1,8 @@
 import abc
 
-from netqasm.parsing import parse_register, parse_address
-from netqasm.subroutine import Symbols, Command, Register
-from netqasm.instructions.instr_enum import Instruction
+from netqasm.lang.parsing import parse_register, parse_address
+from netqasm.lang.subroutine import Symbols, Command, Register
+from netqasm.lang.instr.instr_enum import Instruction
 
 
 class NoValueError(RuntimeError):

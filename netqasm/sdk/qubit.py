@@ -1,4 +1,4 @@
-from netqasm.instructions.instr_enum import Instruction
+from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.sdk.futures import RegFuture
 
 

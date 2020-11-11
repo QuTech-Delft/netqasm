@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Type, Optional
 from abc import ABC, abstractmethod
 
-from netqasm.instructions import vanilla, core, nv
-from netqasm.instructions.base import NetQASMInstruction
+from netqasm.lang.instr import vanilla, core, nv
+from netqasm.lang.instr.base import NetQASMInstruction
 
 
 @dataclass
@@ -55,6 +55,7 @@ class Flavour(ABC):
     Examples of flavours are the Vanilla flavour (with instructions defined in vanilla.py)
     and the Nitrogen-Vacancy (NV) flavour (instructions in nv.py).
     """
+
     def __init__(self, flavour_specific: List[Type[NetQASMInstruction]]):
         self.id_map = {instr.id: instr for instr in CORE_INSTRUCTIONS}
         self.id_map.update({instr.id: instr for instr in flavour_specific})

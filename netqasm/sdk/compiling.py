@@ -1,12 +1,12 @@
 import abc
 from typing import Set, Dict, List, Optional, Tuple
 
-from netqasm.subroutine import Subroutine
-from netqasm.instructions import core, vanilla, nv
-from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
-from netqasm.instructions.operand import Register, RegisterName, Immediate
-from netqasm.log_util import HostLine
-from netqasm.settings import get_is_using_hardware
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.instr import core, vanilla, nv
+from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
+from netqasm.lang.instr.operand import Register, RegisterName, Immediate
+from netqasm.util.log import HostLine
+from netqasm.runtime.settings import get_is_using_hardware
 
 
 class SubroutineCompiler(abc.ABC):
@@ -16,7 +16,7 @@ class SubroutineCompiler(abc.ABC):
 
         Parameters
         ----------
-        subroutine : :class:`netqasm.subroutine.Subroutine`
+        subroutine : :class:`netqasm.lang.subroutine.Subroutine`
             The subroutine to compile
         """
         pass

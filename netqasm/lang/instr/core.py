@@ -3,8 +3,8 @@ from typing import List
 from abc import abstractmethod
 import numpy as np
 
-from netqasm.instructions.operand import Register, Immediate
-from netqasm.instructions import base
+from netqasm.lang.instr.operand import Register, Immediate
+from netqasm.lang.instr import base
 
 
 # Explicit core NetQASM instructions.

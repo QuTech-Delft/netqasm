@@ -1,13 +1,13 @@
 from typing import List, Union, Optional
 from dataclasses import dataclass
 
-from netqasm import encoding
-from netqasm.string_util import rspaces
-from netqasm.instructions.instr_enum import Instruction, instruction_to_string
-from netqasm.symbols import Symbols
+from netqasm.lang import encoding
+from netqasm.util.string import rspaces
+from netqasm.lang.instr.instr_enum import Instruction, instruction_to_string
+from netqasm.lang.symbols import Symbols
 
-from netqasm.instructions.base import NetQASMInstruction, DebugInstruction
-from netqasm.instructions.operand import (
+from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
+from netqasm.lang.instr.operand import (
     Register,
     Address,
     ArrayEntry,

@@ -15,6 +15,6 @@ setuptools.setup(
     python_requires='>=3.7',
     entry_points='''
         [console_scripts]
-        netqasm=netqasm.cli:cli
+        netqasm=netqasm.runtime.cli:cli
     '''
 )

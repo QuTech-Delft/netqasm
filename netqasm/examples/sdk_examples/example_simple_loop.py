@@ -1,6 +1,6 @@
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
-from netqasm.logging import set_log_level
+from netqasm.logging.glob import set_log_level
 
 
 def main(no_output=False):

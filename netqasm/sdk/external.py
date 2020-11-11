@@ -1,4 +1,4 @@
-from netqasm.settings import get_simulator, Simulator, get_is_using_hardware
+from netqasm.runtime.settings import get_simulator, Simulator, get_is_using_hardware
 
 simulator = get_simulator()
 is_using_hardware = get_is_using_hardware()
@@ -7,7 +7,7 @@ if is_using_hardware:
     try:
         from qnodeos.sdk.socket import Socket  # type: ignore
         from qnodeos.sdk.connection import QNodeOSConnection as NetQASMConnection  # type: ignore
-        from netqasm.run.hardware import run_applications  # type: ignore
+        from netqasm.runtime.hardware import run_applications  # type: ignore
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             "to use QNodeOS , `qnodeos` needs to be installed"

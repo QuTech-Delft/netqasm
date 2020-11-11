@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import List, Optional
 from abc import ABC, abstractmethod
 
-from netqasm.string_util import rspaces
-from netqasm import encoding
-from netqasm.log_util import HostLine
+from netqasm.util.string import rspaces
+from netqasm.lang import encoding
+from netqasm.util.log import HostLine
 
-from netqasm.instructions.operand import (
+from netqasm.lang.instr.operand import (
     Operand,
     Register,
     Immediate,
