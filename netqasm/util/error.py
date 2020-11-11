@@ -8,3 +8,7 @@ class NetQASMInstrError(ValueError):
 
 class NoCircuitRuleError(RuntimeError):
     pass
+
+
+class NotAllocatedError(RuntimeError):
+    pass

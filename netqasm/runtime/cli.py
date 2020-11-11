@@ -3,7 +3,7 @@ import click
 import importlib
 
 import netqasm
-from netqasm.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
+from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -120,7 +120,7 @@ def simulate(
     flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
     # Import correct function after setting the simulator
-    setup_apps = importlib.import_module("netqasm.run.run").setup_apps
+    setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
     setup_apps(
         app_dir=app_dir,
         lib_dirs=lib_dirs,
@@ -159,7 +159,7 @@ def run(
 ):
     set_is_using_hardware(True)
 
-    setup_apps = importlib.import_module("netqasm.run.run").setup_apps
+    setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
     setup_apps(
         app_dir=app_dir,
         start_backend=False,

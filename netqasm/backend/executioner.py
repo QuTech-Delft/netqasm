@@ -15,16 +15,16 @@ from qlink_interface import (
     get_creator_node_id,
 )
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.output import InstrLogger
-from netqasm.instructions.operand import Register, ArrayEntry, ArraySlice, Address
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.logging.output import InstrLogger
+from netqasm.lang.instr.operand import Register, ArrayEntry, ArraySlice, Address
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
-from netqasm.network_stack import BaseNetworkStack, OK_FIELDS
-from netqasm.parsing import parse_address
-from netqasm.errors import NotAllocatedError
+from netqasm.backend.network_stack import BaseNetworkStack, OK_FIELDS
+from netqasm.lang.parsing import parse_address
+from netqasm.util.error import NotAllocatedError
 
-from netqasm.instructions.base import NetQASMInstruction
-from netqasm import instructions
+from netqasm.lang.instr.base import NetQASMInstruction
+from netqasm.lang import instr as instructions
 
 
 @dataclass

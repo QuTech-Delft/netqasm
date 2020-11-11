@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Dict
 import ctypes
-from netqasm.encoding import (
+from netqasm.lang.encoding import (
     RegCommand,
     RegRegCommand,
     MeasCommand,

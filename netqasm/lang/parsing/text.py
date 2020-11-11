@@ -2,17 +2,17 @@ from itertools import count
 from collections import defaultdict
 from typing import List, Dict, Union, Tuple
 
-from netqasm.string_util import group_by_word, is_variable_name, is_number
-from netqasm.util import NetQASMSyntaxError, NetQASMInstrError
-from netqasm.encoding import RegisterName, REG_INDEX_BITS
+from netqasm.util.string import group_by_word, is_variable_name, is_number
+from netqasm.util.error import NetQASMSyntaxError, NetQASMInstrError
+from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
 
-from netqasm.symbols import Symbols
+from netqasm.lang.symbols import Symbols
 
-from netqasm.instructions.operand import Label
-from netqasm.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
-from netqasm.instructions.instr_enum import Instruction, string_to_instruction
-from netqasm.instructions.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.instructions.flavour import Flavour, VanillaFlavour
+from netqasm.lang.instr.operand import Label
+from netqasm.lang.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
+from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
+from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 
 
 def parse_text_subroutine(

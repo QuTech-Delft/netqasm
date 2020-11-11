@@ -2,8 +2,8 @@ import os
 import shutil
 import pickle
 
-from netqasm.yaml_util import load_yaml, dump_yaml
-from netqasm.output import InstrField
+from netqasm.util.yaml import load_yaml, dump_yaml
+from netqasm.logging.output import InstrField
 
 from netqasm.sdk.connection import BaseNetQASMConnection
 

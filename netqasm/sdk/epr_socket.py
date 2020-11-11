@@ -3,8 +3,8 @@ from contextlib import contextmanager
 
 from qlink_interface import EPRType
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.instructions.instr_enum import Instruction
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.lang.instr.instr_enum import Instruction
 
 
 class NoCircuitError(RuntimeError):

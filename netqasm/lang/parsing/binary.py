@@ -1,9 +1,9 @@
 import ctypes
 
-from netqasm import encoding
-from netqasm.subroutine import Subroutine
-from netqasm.instructions.flavour import Flavour, VanillaFlavour
-from netqasm.instructions.base import NetQASMInstruction
+from netqasm.lang import encoding
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
+from netqasm.lang.instr.base import NetQASMInstruction
 
 INSTR_ID = ctypes.c_uint8
 
@@ -17,6 +17,7 @@ class Deserializer:
     to a `PreSubroutine`, consisting of `Commands`, before transforming it into
     a `Subroutine` containing `NetQASMInstruction`s.)
     """
+
     def __init__(self, flavour: Flavour):
         self.flavour = flavour
 

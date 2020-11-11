@@ -5,15 +5,15 @@ from qlink_interface import EPRType
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.epr_socket import EPRSocket
-from netqasm.logging import set_log_level
-from netqasm.subroutine import Subroutine
-from netqasm.encoding import RegisterName
-from netqasm.messages import deserialize_host_msg as deserialize_message
-from netqasm.parsing import deserialize as deserialize_subroutine
-from netqasm.network_stack import CREATE_FIELDS, OK_FIELDS
+from netqasm.logging.glob import set_log_level
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.encoding import RegisterName
+from netqasm.backend.messages import deserialize_host_msg as deserialize_message
+from netqasm.lang.parsing import deserialize as deserialize_subroutine
+from netqasm.backend.network_stack import CREATE_FIELDS, OK_FIELDS
 
-from netqasm import instructions
-from netqasm.instructions.operand import (
+from netqasm.lang import instr as instructions
+from netqasm.lang.instr.operand import (
     Register,
     Immediate,
     Address,

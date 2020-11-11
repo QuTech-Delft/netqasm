@@ -3,7 +3,7 @@ import random
 
 from qlink_interface import EPRType, RandomBasis
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 

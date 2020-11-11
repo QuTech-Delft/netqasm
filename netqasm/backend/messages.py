@@ -2,8 +2,8 @@ import ctypes
 from enum import Enum
 from typing import Union
 
-from netqasm.encoding import Address, Register, INTEGER, OptionalInt
-from netqasm.subroutine import Subroutine
+from netqasm.lang.encoding import Address, Register, INTEGER, OptionalInt
+from netqasm.lang.subroutine import Subroutine
 
 # This module defines the messages that the host can send to
 # the backend/QNodeOS

@@ -2,7 +2,7 @@ import random
 
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
-from netqasm.logging import set_log_level
+from netqasm.logging.glob import set_log_level
 
 DebugConnection.node_ids = {
     "Alice": 0,

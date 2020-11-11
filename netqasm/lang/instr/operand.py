@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from netqasm import encoding
-from netqasm.encoding import RegisterName
-from netqasm.symbols import Symbols
+from netqasm.lang import encoding
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.symbols import Symbols
 
 
 class Operand:

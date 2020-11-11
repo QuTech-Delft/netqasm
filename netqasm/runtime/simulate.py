@@ -3,19 +3,19 @@ import sys
 import importlib
 from typing import List
 
-from netqasm.logging import (
+from netqasm.logging.glob import (
     set_log_level,
     get_netqasm_logger,
 )
-from netqasm.yaml_util import load_yaml
+from netqasm.util.yaml import load_yaml
 from netqasm.sdk.config import LogConfig
-from netqasm.instructions.flavour import NVFlavour, VanillaFlavour
-from netqasm.settings import Formalism, Flavour
+from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
+from netqasm.runtime.settings import Formalism, Flavour
 from netqasm.sdk.external import run_applications
 
 from .app_config import AppConfig
-from .process_logs import process_log, make_last_log
-from netqasm.run import env
+from .process_logs import process_log
+from netqasm.runtime import env
 
 logger = get_netqasm_logger()
 
@@ -33,9 +33,8 @@ def load_network_config(network_config_file):
         return None
 
 
-def setup_apps(
+def simulate_apps(
     app_dir=None,
-    start_backend=True,
     lib_dirs=None,
     track_lines=True,
     app_config_dir=None,
@@ -70,6 +69,11 @@ def setup_apps(
         app_config_dir = app_dir
     else:
         app_config_dir = os.path.expanduser(app_config_dir)
+
+    if network_config_file is None:
+        network_config_file = get_network_config_path(app_dir)
+    else:
+        network_config_file = os.path.expanduser(network_config_file)
 
     if roles_config_file is None:
         roles_config_file = env.get_roles_config_path(app_dir)
@@ -121,31 +125,20 @@ def setup_apps(
 
         app_cfgs += [app_config]
 
+    network_config = load_network_config(network_config_file)
+
     # Load post function if exists
     post_function = env.load_post_function(post_function_file)
 
-    if start_backend:
-        # simulation-specific configuration:
-        if network_config_file is None:
-            network_config_file = get_network_config_path(app_dir)
-        else:
-            network_config_file = os.path.expanduser(network_config_file)
+    if flavour is None:
+        flavour = Flavour.VANILLA
 
-        network_config = load_network_config(network_config_file)
-
-        if flavour is None:
-            flavour = Flavour.VANILLA
-
-        if flavour == Flavour.NV:
-            flavour = NVFlavour()
-        elif flavour == Flavour.VANILLA:
-            flavour = VanillaFlavour()
-        else:
-            raise TypeError(f"Unsupported flavour: {flavour}")
+    if flavour == Flavour.NV:
+        flavour = NVFlavour()
+    elif flavour == Flavour.VANILLA:
+        flavour = VanillaFlavour()
     else:
-        network_config = None
-        formalism = None
-        flavour = None
+        raise TypeError(f"Unsupported flavour: {flavour}")
 
     run_applications(
         app_cfgs=app_cfgs,
@@ -157,8 +150,4 @@ def setup_apps(
         flavour=flavour
     )
 
-    if start_backend:
-        # full processing including instr logs from simulator
-        process_log(log_dir=timed_log_dir)
-    else:
-        make_last_log(log_dir=timed_log_dir)
+    process_log(log_dir=timed_log_dir)

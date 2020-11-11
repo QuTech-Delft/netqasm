@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from timeit import default_timer as timer
 
 from netqasm.sdk import ThreadSocket
-from netqasm.logging import set_log_level
+from netqasm.logging.glob import set_log_level
 
 
 def execute_functions(functions):

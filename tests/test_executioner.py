@@ -1,11 +1,11 @@
 import pytest
 import logging
 
-from netqasm.encoding import RegisterName
-from netqasm.subroutine import Register
-from netqasm.executioner import Executioner
-from netqasm.parsing import parse_text_subroutine
-from netqasm.logging import set_log_level
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.subroutine import Register
+from netqasm.backend.executioner import Executioner
+from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.logging.glob import set_log_level
 
 
 @pytest.mark.parametrize("subroutine_str, expected_register, expected_output", [

@@ -4,7 +4,7 @@ from collections import defaultdict
 from timeit import default_timer as timer
 from weakref import WeakMethod
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging.glob import get_netqasm_logger
 
 
 class _SocketHub:

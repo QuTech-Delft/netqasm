@@ -1,10 +1,10 @@
 from typing import List
 from concurrent.futures import ProcessPoolExecutor as Pool
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.yaml_util import dump_yaml
-from netqasm.output import save_all_struct_loggers
-from netqasm.thread_util import as_completed
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.util.yaml import dump_yaml
+from netqasm.logging.output import save_all_struct_loggers
+from netqasm.util.thread import as_completed
 
 from .app_config import AppConfig
 
