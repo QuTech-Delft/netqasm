@@ -4,6 +4,7 @@ from click.testing import CliRunner
 import netqasm
 from netqasm.runtime.cli import cli
 from netqasm.runtime.env import TEMPLATE_EXAMPLE_DIR, TEMPLATE_EXAMPLE_NAME
+from netqasm.util.yaml import load_yaml
 
 
 def test_version():
@@ -73,6 +74,25 @@ def test_init():
         assert results.exit_code == 0
         # Check that it's the same number of files again
         assert sorted(os.listdir(path)) == sorted(files_start)
+
+        # Check content based on teleport example
+        expected_nodes = ["sender", "receiver"]
+        # network
+        network = load_yaml(os.path.join(path, "network.yaml"))
+        assert "nodes" in network
+        nodes = [node["name"] for node in network["nodes"]]
+        assert sorted(expected_nodes) == sorted(nodes)
+        assert "links" in network
+        assert len(network["links"]) == 1
+        # roles
+        roles = load_yaml(os.path.join(path, "roles.yaml"))
+        assert sorted(expected_nodes) == sorted(roles.keys())
+        # input
+        sender_input = load_yaml(os.path.join(path, "sender.yaml"))
+        assert "phi" in sender_input
+        assert "theta" in sender_input
+        receiver_input = load_yaml(os.path.join(path, "receiver.yaml"))
+        assert len(receiver_input) == 0
 
 
 def test_init_not_app_dir():

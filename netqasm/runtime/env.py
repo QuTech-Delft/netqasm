@@ -3,7 +3,7 @@ import shutil
 import inspect
 from runpy import run_path
 from datetime import datetime
-from itertools import product
+from itertools import combinations
 from functools import wraps
 
 from netqasm.logging.glob import get_netqasm_logger
@@ -203,7 +203,7 @@ def _create_new_network_file(file_path, app_files, quiet=False):
 
     # Create links
     links = []
-    for i, (app_name1, app_name2) in enumerate(product(app_files.keys(), repeat=2)):
+    for i, (app_name1, app_name2) in enumerate(combinations(app_files.keys(), 2)):
         if app_name1 == app_name2:
             continue
         link = {
