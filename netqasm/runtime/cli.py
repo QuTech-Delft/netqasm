@@ -4,8 +4,9 @@ import importlib
 
 import netqasm
 from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
-from netqasm.runtime.env import new_folder, init_folder
+from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 
+EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
@@ -190,8 +191,14 @@ def run(
     'path',
     type=click.Path(exists=False),
 )
+@click.option(
+    "--app",
+    type=click.Choice(EXAMPLE_APPS),
+    default="teleport",
+    help="Which pre-defined app to use when creating the template (default teleport)",
+)
 @option_quiet
-def new(path, quiet):
+def new(path, app, quiet):
     """
     Creates a new application at PATH
     """
@@ -200,7 +207,7 @@ def new(path, quiet):
             f"destination `{path}` already exists\n\n"
             "Use `netqasm init` to initialize the directory"
         )
-    new_folder(path, quiet=quiet)
+    new_folder(path, app=app, quiet=quiet)
 
 
 ########

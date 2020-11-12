@@ -8,11 +8,11 @@ from functools import wraps
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.util.yaml import load_yaml, dump_yaml
+from netqasm.examples import apps
 from netqasm.examples.apps import teleport as template_example
 from netqasm.runtime.settings import set_simulator, Simulator
 
-TEMPLATE_EXAMPLE_DIR = os.path.dirname(os.path.abspath(template_example.__file__))
-TEMPLATE_EXAMPLE_NAME = template_example.__name__.split('.')[-1]
+EXAMPLE_APPS_DIR = os.path.dirname(os.path.abspath(apps.__file__))
 
 logger = get_netqasm_logger()
 
@@ -85,26 +85,29 @@ def get_results_path(timed_log_dir):
     return os.path.join(timed_log_dir, 'results.yaml')
 
 
-def new_folder(path, quiet=False):
+def new_folder(path, app="teleport", quiet=False):
     """Used by the CLI to create an app folder template
 
     Parameters
     ----------
     path : str
         Path to the directory
+    app : str
+        Which pre-defined app to use as template
     quiet : bool
         Whether to print info to stdout or not (default `False`)
     """
     assert not os.path.exists(path), "Destination already exists"
     os.mkdir(path)
-    for entry in os.listdir(TEMPLATE_EXAMPLE_DIR):
-        entry_path = os.path.join(TEMPLATE_EXAMPLE_DIR, entry)
+    template_example_dir = os.path.join(EXAMPLE_APPS_DIR, app)
+    for entry in os.listdir(template_example_dir):
+        entry_path = os.path.join(template_example_dir, entry)
         if os.path.isfile(entry_path):
             if not entry == '__init__.py':
                 target_path = os.path.join(path, entry)
                 shutil.copyfile(entry_path, target_path)
     if not quiet:
-        print(f"Creating application template ({TEMPLATE_EXAMPLE_NAME} example) in `{path}`")
+        print(f"Creating application template ({app} example) in `{path}`")
 
 
 def init_folder(path, quiet=False):
@@ -269,3 +272,11 @@ def _create_new_readme_file(file_path, quiet=False):
             "## Outputs\n"
             "Description of outputs.\n"
         )
+
+
+def get_example_apps():
+    ignore = [
+        "__init__.py",
+        "__pycache__",
+    ]
+    return [app_name for app_name in os.listdir(EXAMPLE_APPS_DIR) if app_name not in ignore]
