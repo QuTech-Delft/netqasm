@@ -1,7 +1,9 @@
 Usage
 =====
 
-TODO SDK description
+.. warning::
+
+   TODO SDK description
 
 .. toctree::
    :maxdepth: 2

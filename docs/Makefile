@@ -25,9 +25,9 @@ build: python-deps html
 
 open:
 ifeq (, $(shell which open))
-	open ${BUILDDIR}/html/index.html
-else
 	xdg-open ${BUILDDIR}/html/index.html
+else
+	open ${BUILDDIR}/html/index.html
 endif
 
 see: html open

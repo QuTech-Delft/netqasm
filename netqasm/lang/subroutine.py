@@ -95,13 +95,13 @@ class BranchLabel:
 @dataclass
 class PreSubroutine:
     """
-    A `PreSubroutine` object represents a preliminary subroutine that consists of
+    A :class:`~.PreSubroutine` object represents a preliminary subroutine that consists of
     general 'commands' that might not yet be valid NetQASM instructions.
     These commands can include labels, or instructions with immediates that still need
     to be converted to registers.
 
-    `PreSubroutine`s are currently only used by the sdk and the text parser (netqasm.parser.text).
-    In both cases they are converted into `Subroutine` objects before given to other package components.
+    :class:`~.PreSubroutine`s are currently only used by the sdk and the text parser (netqasm.parser.text).
+    In both cases they are converted into :class:`~.Subroutine` objects before given to other package components.
     """
     netqasm_version: tuple
     app_id: int
@@ -118,10 +118,10 @@ class PreSubroutine:
 @dataclass
 class Subroutine:
     """
-    A `Subroutine` object represents a subroutine consisting of valid
-    instructions, i.e. objects deriving from `NetQASMInstruction`.
+    A :class:`~.Subroutine` object represents a subroutine consisting of valid
+    instructions, i.e. objects deriving from :class:`~.NetQASMInstruction`.
 
-    `Subroutine`s are executed by `Executioner`s.
+    :class:`~.Subroutine` s are executed by :class:`~.Executioner` s.
     """
     netqasm_version: tuple
     app_id: int

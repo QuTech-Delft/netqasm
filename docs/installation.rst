@@ -1,3 +1,5 @@
+.. _installation:
+
 Installation
 ============
 
@@ -16,7 +18,7 @@ Currently supported simulators are:
 
 * `NetSquid`_: Requires `netsquid` and `squidasm` installed.
   For how to install `netsquid`, see https://netsquid.org/#registration.
-  `squidasm` can be installed using pip by
+  `squidasm` can be installed using pip by (requires `netsquid` to already be installed)
 
    .. code-block:: bash
 

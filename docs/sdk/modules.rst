@@ -40,8 +40,10 @@ NetQASM connection
 ------------------
 
 .. automodule:: netqasm.sdk.connection
+   :noindex:
 
    .. autoclass:: BaseNetQASMConnection
+      :noindex:
       :special-members: __enter__, __exit__
       :members: app_name, node_name, app_id, flush, block
 
@@ -49,8 +51,10 @@ Qubit
 -----
 
 .. automodule:: netqasm.sdk.qubit
+   :noindex:
 
    .. autoclass:: Qubit
+      :noindex:
       :members: qubit_id, entanglement_info, remote_entangled_node, measure,
                 X, Y, Z, H, S, K, T,
                 rot_X, rot_Y, rot_Z,
@@ -60,28 +64,36 @@ EPR socket
 ----------
 
 .. automodule:: netqasm.sdk.epr_socket
+   :noindex:
 
    .. autoclass:: EPRSocket
       :members: conn, remote_app_name, remote_node_id, epr_socket_id, remote_epr_socket_id, min_fidelity,
                 create, recv,
+      :noindex:
 
       .. automethod:: create_context(number=1, sequential=False)
+         :noindex:
 
       .. automethod:: recv_context(number=1, sequential=False)
+         :noindex:
 
 Futures
 -------
 
 .. automodule:: netqasm.sdk.futures
+   :noindex:
 
    .. autoclass:: Future
       :members: add, value
+      :noindex:
 
    .. autoclass:: Array
       :members: get_future_index, get_future_slice, foreach, enumerate
+      :noindex:
 
    .. autoclass:: RegFuture
       :members: add, value
+      :noindex:
 
 
 Classical communication
@@ -89,3 +101,4 @@ Classical communication
 
 .. automodule:: netqasm.sdk.classical_communication.socket
    :members: Socket
+   :noindex:

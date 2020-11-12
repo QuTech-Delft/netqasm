@@ -1,5 +1,5 @@
-API
-===
+netqasm package
+===============
 
 Subpackages
 -----------
@@ -11,6 +11,7 @@ Subpackages
    netqasm.lang
    netqasm.logging
    netqasm.runtime
+   netqasm.sdk
    netqasm.util
 
 Submodules
