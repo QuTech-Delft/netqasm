@@ -31,6 +31,8 @@ For example one might write an application as follows
 
 The classes :class:`~.NetQASMConnection` and :class:`~.Socket` will be different subclasses of the abstract classes, depending on which runtime is used.
 If for example the application is simulated using `SquidASM`_ and `NetSquid`_, then the :class:`NetQASMConnection` will in fact be the class `squidasm.sdk.NetSquidConnection`.
+These different classes expose the same set of functionalities.
+They only differ in the way they communicate with the underlying simulator.
 For more details see :ref:`cli`.
 
 .. TODO Add link to SquidASM.

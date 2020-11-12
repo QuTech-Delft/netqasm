@@ -1,3 +1,5 @@
+.. _using-sdk:
+
 Using the SDK
 =============
 

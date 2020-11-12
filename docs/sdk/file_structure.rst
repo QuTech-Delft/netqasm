@@ -1,3 +1,5 @@
+.. _file-structure:
+
 Application file structure
 ==========================
 

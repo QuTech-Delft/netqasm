@@ -10,8 +10,7 @@ To make sure that you're ready to go run
    
    python3 -c "import squidasm; print(squidasm.__version__)"
 
-To use netqasm do for example
-
+In the next part, :ref:`first-app`, we will run our first app.
 
 .. toctree::
    :maxdepth: 2

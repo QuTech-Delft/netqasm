@@ -14,7 +14,7 @@ class Deserializer:
     :class:`~.NetQASMInstructions` are immediately created from the binary encoding.
 
     (This is in contrast with the parsing.text module, which first converts the input
-    to a :class:`~.PreSubroutine`, consisting of :class:`~.Command` s, before transforming it into
+    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.Command` s, before transforming it into
     a :class:`~.Subroutine` containing :class:`~.NetQASMInstruction` s.)
     """
 
