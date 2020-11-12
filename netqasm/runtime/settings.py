@@ -5,6 +5,7 @@ from enum import Enum
 class Simulator(Enum):
     NETSQUID = "netsquid"
     SIMULAQRON = "simulaqron"
+    DEBUG = "debug"
 
 
 class Formalism(Enum):

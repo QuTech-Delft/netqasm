@@ -1,9 +1,18 @@
 import os
+import shutil
+import inspect
 from runpy import run_path
 from datetime import datetime
+from itertools import product
+from functools import wraps
 
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.util.yaml import load_yaml
+from netqasm.util.yaml import load_yaml, dump_yaml
+from netqasm.examples.apps import teleport as template_example
+from netqasm.runtime.settings import set_simulator, Simulator
+
+TEMPLATE_EXAMPLE_DIR = os.path.dirname(os.path.abspath(template_example.__file__))
+TEMPLATE_EXAMPLE_NAME = template_example.__name__.split('.')[-1]
 
 logger = get_netqasm_logger()
 
@@ -74,3 +83,189 @@ def load_post_function(post_function_file):
 
 def get_results_path(timed_log_dir):
     return os.path.join(timed_log_dir, 'results.yaml')
+
+
+def new_folder(path, quiet=False):
+    """Used by the CLI to create an app folder template
+
+    Parameters
+    ----------
+    path : str
+        Path to the directory
+    quiet : bool
+        Whether to print info to stdout or not (default `False`)
+    """
+    assert not os.path.exists(path), "Destination already exists"
+    os.mkdir(path)
+    for entry in os.listdir(TEMPLATE_EXAMPLE_DIR):
+        entry_path = os.path.join(TEMPLATE_EXAMPLE_DIR, entry)
+        if os.path.isfile(entry_path):
+            if not entry == '__init__.py':
+                target_path = os.path.join(path, entry)
+                shutil.copyfile(entry_path, target_path)
+    if not quiet:
+        print(f"Creating application template ({TEMPLATE_EXAMPLE_NAME} example) in `{path}`")
+
+
+def init_folder(path, quiet=False):
+    """Used by the CLI to initialize a directory by adding missing config files.
+
+    Parameters
+    ----------
+    path : str
+        Path to the directory
+    quiet : bool
+        Whether to print info to stdout or not (default `False`)
+    """
+    app_files = load_app_files(path)
+    file_added = False
+
+    # Create network file if non-existant
+    network_file_path = os.path.join(path, "network.yaml")
+    if not os.path.exists(network_file_path):
+        _create_new_network_file(
+            app_files=app_files,
+            file_path=network_file_path,
+            quiet=quiet,
+        )
+        file_added = True
+
+    # Create roles file if non-existant
+    roles_file_path = os.path.join(path, "roles.yaml")
+    if not os.path.exists(roles_file_path):
+        _create_new_roles_file(
+            app_files=app_files,
+            file_path=roles_file_path,
+            quiet=quiet,
+        )
+        file_added = True
+
+    # Create input files if non-existant
+    for app_name, app_file in app_files.items():
+        input_file_path = os.path.join(path, f"{app_name}.yaml")
+        if not os.path.exists(input_file_path):
+            app_file_path = os.path.join(path, app_file)
+            _create_new_input_file(
+                app_name=app_name,
+                app_file_path=app_file_path,
+                file_path=input_file_path,
+                quiet=quiet,
+            )
+            file_added = True
+
+    # Create README.md if non-existant
+    readme_file_path = os.path.join(path, "README.md")
+    if not os.path.exists(readme_file_path):
+        _create_new_readme_file(
+            file_path=readme_file_path,
+        )
+        file_added = True
+
+    if file_added:
+        if not quiet:
+            if path == '.':
+                path_str = 'current path'
+            else:
+                path_str = '`{path}`'
+            print(f"Initialized {path_str} with missing config files")
+    else:
+        if not quiet:
+            print("No files needed to be added")
+
+
+def file_creation_notify(func):
+    """Decorator for notification about file creation"""
+    @wraps(func)
+    def new_func(file_path, *args, quiet=False, **kwargs):
+        func(file_path, *args, quiet=quiet, **kwargs)
+
+        if not quiet:
+            print(f"Created file `{file_path}`")
+    return new_func
+
+
+@file_creation_notify
+def _create_new_network_file(file_path, app_files, quiet=False):
+    # Create nodes
+    nodes = []
+    for app_name in app_files.keys():
+        qubit = {
+            "id": 0,
+            "t1": 0,
+            "t2": 0,
+        }
+        node = {
+            "name": app_name,
+            "gate_fidelity": 1.0,
+            "qubits": [qubit],
+        }
+        nodes.append(node)
+
+    # Create links
+    links = []
+    for i, (app_name1, app_name2) in enumerate(product(app_files.keys(), repeat=2)):
+        if app_name1 == app_name2:
+            continue
+        link = {
+            "name": f"ch{i}",
+            "node_name1": app_name1,
+            "node_name2": app_name2,
+            "noise_type": "Depolarise",
+            "fidelity": 1.0,
+        }
+        links.append(link)
+
+    # Create network
+    network = {
+        "nodes": nodes,
+        "links": links,
+    }
+
+    dump_yaml(data=network, file_path=file_path)
+
+
+@file_creation_notify
+def _create_new_roles_file(file_path, app_files, quiet=False):
+    # Create roles
+    roles = {}
+    for app_name in app_files.keys():
+        roles[app_name] = app_name
+
+    dump_yaml(data=roles, file_path=file_path)
+
+
+@file_creation_notify
+def _create_new_input_file(file_path, app_name, app_file_path, quiet=False):
+    arguments = _find_argument_for_app_file(app_file_path)
+
+    dump_yaml(data=arguments, file_path=file_path)
+
+
+def _find_argument_for_app_file(app_file_path):
+    set_simulator(Simulator.DEBUG)
+    members = run_path(app_file_path)
+    main = members.get("main")
+    if main is None:
+        raise RuntimeError(f"File `{app_file_path}` does not have a `main`-function")
+
+    signature = inspect.signature(main)
+    return {
+        param.name: param.default
+        for param in signature.parameters.values()
+        if param.name != 'app_config'
+    }
+
+
+@file_creation_notify
+def _create_new_readme_file(file_path, quiet=False):
+    with open(file_path, 'w') as f:
+        f.write(
+            "# Application name\n"
+            "Some description of the application.\n"
+            "\n"
+            "## Inputs\n"
+            "Description of inputs.\n"
+            "\n"
+            "## Outputs\n"
+            "Description of outputs.\n"
+        )
