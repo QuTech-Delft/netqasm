@@ -3,8 +3,11 @@ from click.testing import CliRunner
 
 import netqasm
 from netqasm.runtime.cli import cli
-from netqasm.runtime.env import TEMPLATE_EXAMPLE_DIR, TEMPLATE_EXAMPLE_NAME
+from netqasm.runtime.env import EXAMPLE_APPS_DIR
 from netqasm.util.yaml import load_yaml
+
+TEMPLATE_EXAMPLE_NAME = "teleport"
+TEMPLATE_EXAMPLE_DIR = os.path.join(EXAMPLE_APPS_DIR, TEMPLATE_EXAMPLE_NAME)
 
 
 def test_version():
@@ -52,6 +55,25 @@ def test_new_existing():
         print(results.output)
         assert results.exit_code != 0
         assert "already exists" in results.output
+
+
+def test_new_template():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        path = "test"
+        template = "anonymous_transmission"
+        template_example_dir = os.path.join(EXAMPLE_APPS_DIR, template)
+        results = runner.invoke(cli, ["new", path, f"--template={template}"])
+        print(results.output)
+        assert results.exit_code == 0
+        assert results.output.startswith("Creating application")
+        assert template in results.output
+        ignored_files = [
+            "__init__.py",
+            "__pycache__",
+        ]
+        expected_files = [f for f in os.listdir(template_example_dir) if f not in ignored_files]
+        assert sorted(os.listdir(path)) == sorted(expected_files)
 
 
 def test_init():

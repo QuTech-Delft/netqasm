@@ -99,12 +99,18 @@ def new_folder(path, template="teleport", quiet=False):
     assert not os.path.exists(path), "Destination already exists"
     os.mkdir(path)
     template_example_dir = os.path.join(EXAMPLE_APPS_DIR, template)
+    ignore = [
+        "__init__.py",
+        "__pycache__",
+    ]
     for entry in os.listdir(template_example_dir):
         entry_path = os.path.join(template_example_dir, entry)
-        if os.path.isfile(entry_path):
-            if not entry == '__init__.py':
-                target_path = os.path.join(path, entry)
+        if entry not in ignore:
+            target_path = os.path.join(path, entry)
+            if os.path.isfile(entry_path):
                 shutil.copyfile(entry_path, target_path)
+            elif os.path.isdir(entry_path):
+                shutil.copytree(entry_path, target_path)
     if not quiet:
         print(f"Creating application template ({template} example) in `{path}`")
 
