@@ -63,7 +63,7 @@ As described below you can also use a different simulator.
 Inspecting the results
 ----------------------
 You may have seen that after running the application a new directory has appeared: ``log``.
-This is were all the results of the simulation gets stored.
+This is were all the results of the simulation get stored.
 Each execution of the application creates a new directory in ``log`` using a timestamp.
 For convenience, a copy of this folder is also created with the name ``LAST``.
 The files in the log-folder contains information what happened during the simulation: what quantum operations was applied, what classical messages were sent, what entangled pair were created and what the outcomes of the application was.
