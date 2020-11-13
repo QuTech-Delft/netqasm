@@ -42,7 +42,7 @@ def main(app_config=None, phi=0., theta=0.):
     app_logger.log(f"m1 = {m1}")
     app_logger.log(f"m2 = {m2}")
     print(f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}")
-    print(f"`sender` will send the corrections to `receiver`")
+    print("`sender` will send the corrections to `receiver`")
 
     msg = str((m1, m2))
     socket.send(msg)

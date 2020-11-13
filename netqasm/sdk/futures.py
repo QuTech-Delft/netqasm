@@ -118,7 +118,7 @@ class BaseFuture(int):
         raise NotImplementedError
 
     def add(self, other: Union[int, str, Register, 'BaseFuture'], mod: Optional[int] = None):
-        """Adds another integer to this by appending to appropriate instruction to 
+        """Adds another integer to this by appending to appropriate instruction to
         the current subroutine.
         Note that `self` does not need to have a value yet.
         """
@@ -204,7 +204,7 @@ class Future(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):
+    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
         if isinstance(other, str):
             other = parse_register(other)
 
