@@ -4,7 +4,9 @@ import importlib
 
 import netqasm
 from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
+from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 
+EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
@@ -25,6 +27,12 @@ def version():
     """
     print(netqasm.__version__)
 
+
+option_quiet = click.option(
+    "-q", "--quiet",
+    is_flag=True,
+    help="No output printed to stdout",
+)
 
 option_app_dir = click.option(
     "--app-dir", type=str, default=None,
@@ -67,10 +75,10 @@ option_log_level = click.option(
          "Note, this affects logging to stderr, not logging instructions to file."
 )
 
-###########
-# simulate #
-###########
 
+############
+# simulate #
+############
 
 @cli.command()
 @option_app_dir
@@ -110,7 +118,7 @@ def simulate(
     flavour
 ):
     """
-    Executes a given NetQASM file using a specified executioner.
+    Simulate an application on a simulated QNodeOS.
     """
     if simulator is None:
         simulator = os.environ.get("NETQASM_SIMULATOR", Simulator.NETSQUID.value)
@@ -157,6 +165,9 @@ def run(
     log_level,
     results_file,
 ):
+    """
+    Execute an application on QNodeOS.
+    """
     set_is_using_hardware(True)
 
     setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
@@ -170,6 +181,57 @@ def run(
         log_level=log_level.upper(),
         results_file=results_file,
     )
+
+
+#######
+# new #
+#######
+@cli.command()
+@click.argument(
+    'path',
+    type=click.Path(exists=False),
+)
+@click.option(
+    "--template",
+    type=click.Choice(EXAMPLE_APPS),
+    default="teleport",
+    help="Which pre-defined app to use when creating the template (default teleport)",
+)
+@option_quiet
+def new(path, template, quiet):
+    """
+    Creates a new application at PATH
+    """
+    if os.path.exists(path):
+        raise click.BadArgumentUsage(
+            f"destination `{path}` already exists\n\n"
+            "Use `netqasm init` to initialize the directory"
+        )
+    new_folder(path, template=template, quiet=quiet)
+
+
+########
+# init #
+########
+@cli.command()
+@click.option(
+    '-p', '--path',
+    type=click.Path(exists=True),
+    default='.',
+    help='Destination to initialize, defaults to current working directory'
+)
+@option_quiet
+def init(path, quiet):
+    """
+    Initializes an existing directory with missing config files.
+    Does not overwrite any existing files.
+    Looks for any files `app_*.py` and creates a simple network config file
+    (network.yaml) containing nodes corresponding to the application files.
+
+    By default the current directory is used.
+    Another directory can be specified with the -p/--path flag.
+    """
+    init_folder(path, quiet=quiet)
 
 
 if __name__ == '__main__':
