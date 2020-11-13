@@ -7,6 +7,8 @@ SPHINXBUILD   = sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = build
 PYTHON3       = python3
+# TODO handle like this?
+export NETQASM_SIMULATOR = debug
 
 # Put it first so that "make" without argument is like "make help".
 help:
