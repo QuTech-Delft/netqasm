@@ -13,7 +13,7 @@ To install netqasm do
    pip install netqasm
 
 
-To simulate an set of application files using simulator additional packages are required.
+To simulate a set of application files using a simulator, additional packages are required.
 Currently supported simulators are:
 
 * `NetSquid`_: Requires ``netsquid`` and `SquidASM`_ installed.
