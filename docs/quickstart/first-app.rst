@@ -17,7 +17,7 @@ Do this by running:
 
 You can replace ``my-app`` with another name.
 What's important is that this directiory cannot exist in your current working directory, since it will be created.
-Go into the directory and see what files was created
+Go into the directory and see what files were created.
 
 .. code-block:: bash
    
