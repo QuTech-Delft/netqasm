@@ -32,6 +32,11 @@ class Qubit:
             return "Not active qubit"
 
     @property
+    def connection(self):
+        """Get the NetQASM connection of this qubit"""
+        return self._conn
+
+    @property
     def qubit_id(self):
         """Get the qubit ID"""
         return self._qubit_id

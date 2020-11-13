@@ -1,3 +1,5 @@
+.. _sdk-objects:
+
 SDK objects
 ===========
 

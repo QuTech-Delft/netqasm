@@ -13,7 +13,6 @@ Welcome to netqasm's and its SDK's documentation!
 
    installation
    quickstart
-   sdk
    api/netqasm
 
 

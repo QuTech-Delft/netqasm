@@ -1014,7 +1014,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def if_nz(self, a, body):
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+        self._handle_if(Instruction.BNZ, a, b=None, body=body)
 
     def _handle_if(self, condition, a, b, body):
         """Used to build effective if-statements"""
@@ -1034,8 +1034,13 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_commands(commands=pre_commands)
             return
         branch_instruction = flip_branch_instr(condition)
+        # Construct a list of all commands to see what branch labels are already used
+        all_commands = pre_commands + body_commands
+        # We also need to check any existing other pre context commands if they are nested
+        for pre_context_cmds in self._pre_context_commands.values():
+            all_commands += pre_context_cmds
         current_branch_variables = [
-            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in all_commands if isinstance(cmd, BranchLabel)
         ]
         if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,

@@ -18,3 +18,5 @@ In the next part, :ref:`first-app`, we will run our first app.
 
    quickstart/first-app
    quickstart/using-sdk
+   quickstart/file_structure
+   quickstart/modules

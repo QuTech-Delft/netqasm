@@ -156,20 +156,20 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ez(self, other):
+    def if_ez(self):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEZ,
             a=self,
-            b=other,
+            b=None,
         )
 
-    def if_nz(self, other):
+    def if_nz(self):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNZ,
             a=self,
-            b=other,
+            b=None,
         )
 
 

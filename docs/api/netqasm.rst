@@ -1,3 +1,5 @@
+.. _api:
+
 netqasm package
 ===============
 

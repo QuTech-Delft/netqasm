@@ -364,7 +364,7 @@ def _assign_branch_labels(subroutine):
             continue
         branch_label = command.name
         if branch_label in branch_labels:
-            raise NetQASMSyntaxError("branch labels need to be unique, name {branch_label} already used")
+            raise NetQASMSyntaxError(f"branch labels need to be unique, name {branch_label} already used")
         # Assign the label to the line/command number
         branch_labels[branch_label] = command_number
         # Remove the line
