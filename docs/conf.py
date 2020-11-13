@@ -38,12 +38,19 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
+    'sphinx.ext.extlinks',
     'sphinx_autodoc_typehints',
 ]
 napoleon_include_init_with_doc = True
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'
 always_document_param_types = True
+
+extlinks = {
+    "netsquid": ("https://netsquid.org/%s", ""),
+    "simulaqron": ("http://www.simulaqron.org/%s", ""),
+    "squidasm": ("https://gitlab.com/softwarequtech/netqasm/squidasm/%s", ""),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

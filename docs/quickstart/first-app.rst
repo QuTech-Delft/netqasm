@@ -3,7 +3,7 @@
 Running your first app
 ======================
 
-Before writing our own application we will see how we can execute a pre-defined one on the simulator `NetSquid`_.
+Before writing our own application we will see how we can execute a pre-defined one on the simulator :netsquid:`NetSquid <>`.
 Make sure you first followed the previous parts and have the relevant packages installed.
 
 Creating an application folder
@@ -84,9 +84,9 @@ To for example try out an application which performs anonymous transmission of a
 
 Using other simulators
 ----------------------
-Above we have simulated an application which teleports a qubit over a quantum network using the simulator `NetSquid`_.
+Above we have simulated an application which teleports a qubit over a quantum network using the simulator :netsquid:`NetSquid <>`.
 You can easily run the same application using another supported simulator.
-For example to use `SimulaQron`_ instead, simply do:
+For example to use :simulaqron:`SimulaQron <>` instead, simply do:
 
 .. code-block:: bash
 
@@ -100,6 +100,3 @@ For example to use `SimulaQron`_ instead, simply do:
    .. code-block:: bash
 
       pip install simulaqron
-
-.. _NetSquid: https://netsquid.org/
-.. _SimulaQron: http://www.simulaqron.org/
