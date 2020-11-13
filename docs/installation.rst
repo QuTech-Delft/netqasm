@@ -16,15 +16,15 @@ To install netqasm do
 To simulate an set of application files using simulator additional packages are required.
 Currently supported simulators are:
 
-* `NetSquid`_: Requires `netsquid` and `squidasm` installed.
-  For how to install `netsquid`, see https://netsquid.org/#registration.
-  `squidasm` can be installed using pip by (requires `netsquid` to already be installed)
+* `NetSquid`_: Requires ``netsquid`` and `SquidASM`_ installed.
+  For how to install ``netsquid``, see https://netsquid.org/#registration.
+  `SquidASM`_ can be installed using pip by (requires ``netsquid`` to already be installed)
 
    .. code-block:: bash
 
       pip install squidasm
 
-* `SimulaQron`_: Requires only `simulaqron` which can be installed using pip by
+* `SimulaQron`_: Requires only ``simulaqron`` which can be installed using pip by
 
    .. code-block:: bash
 
@@ -33,6 +33,7 @@ Currently supported simulators are:
 
 .. _NetSquid: https://netsquid.org/
 .. _SimulaQron: http://www.simulaqron.org/
+.. _SquidASM: https://gitlab.com/softwarequtech/netqasm/squidasm
 
 From source
 -----------
