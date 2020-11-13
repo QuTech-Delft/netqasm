@@ -9,7 +9,6 @@ from functools import wraps
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.util.yaml import load_yaml, dump_yaml
 from netqasm.examples import apps
-from netqasm.examples.apps import teleport as template_example
 from netqasm.runtime.settings import set_simulator, Simulator
 
 EXAMPLE_APPS_DIR = os.path.dirname(os.path.abspath(apps.__file__))
@@ -85,21 +84,21 @@ def get_results_path(timed_log_dir):
     return os.path.join(timed_log_dir, 'results.yaml')
 
 
-def new_folder(path, app="teleport", quiet=False):
+def new_folder(path, template="teleport", quiet=False):
     """Used by the CLI to create an app folder template
 
     Parameters
     ----------
     path : str
         Path to the directory
-    app : str
+    template : str
         Which pre-defined app to use as template
     quiet : bool
         Whether to print info to stdout or not (default `False`)
     """
     assert not os.path.exists(path), "Destination already exists"
     os.mkdir(path)
-    template_example_dir = os.path.join(EXAMPLE_APPS_DIR, app)
+    template_example_dir = os.path.join(EXAMPLE_APPS_DIR, template)
     for entry in os.listdir(template_example_dir):
         entry_path = os.path.join(template_example_dir, entry)
         if os.path.isfile(entry_path):
@@ -107,7 +106,7 @@ def new_folder(path, app="teleport", quiet=False):
                 target_path = os.path.join(path, entry)
                 shutil.copyfile(entry_path, target_path)
     if not quiet:
-        print(f"Creating application template ({app} example) in `{path}`")
+        print(f"Creating application template ({template} example) in `{path}`")
 
 
 def init_folder(path, quiet=False):

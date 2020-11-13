@@ -192,13 +192,13 @@ def run(
     type=click.Path(exists=False),
 )
 @click.option(
-    "--app",
+    "--template",
     type=click.Choice(EXAMPLE_APPS),
     default="teleport",
     help="Which pre-defined app to use when creating the template (default teleport)",
 )
 @option_quiet
-def new(path, app, quiet):
+def new(path, template, quiet):
     """
     Creates a new application at PATH
     """
@@ -207,7 +207,7 @@ def new(path, app, quiet):
             f"destination `{path}` already exists\n\n"
             "Use `netqasm init` to initialize the directory"
         )
-    new_folder(path, app=app, quiet=quiet)
+    new_folder(path, template=template, quiet=quiet)
 
 
 ########
