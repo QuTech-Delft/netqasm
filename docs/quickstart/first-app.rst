@@ -8,7 +8,7 @@ Make sure you first followed the previous parts and have the relevant packages i
 
 Creating an application folder
 ------------------------------
-Well first create an applicaton folder using a template.
+We'll first create an applicaton folder using a template.
 Do this by running:
 
 .. code-block:: bash
