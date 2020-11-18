@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, TypedDict, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict
+from netqasm.typing import TypedDict
 from enum import Enum
 
 
