@@ -13,7 +13,7 @@ from netqasm.util.error import NotAllocatedError
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
 
-from netqasm.logging.interface import (
+from netqasm.interface.logging import (
     ClassCommLogEntry,
     NetworkLogEntry,
     InstrLogEntry,
