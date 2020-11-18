@@ -6,12 +6,11 @@ Application file structure
 Applications are organized into directories:
 all source code entry points and configuration files relating to an application must be in the same directory.
 
+Quantum network applications typically involve multiple parties, each on a separate node in the network.
+We refer to these parties as `roles`.
+For example, a teleportation application might have two roles: a `sender` and a `receiver`.
+
 An application directory consists of the following files:
-
-.. warning::
-
-  TODO: explain roles
-
 
 * **Application source code**. These are Python source code files with names starting with ``app_``, e.g. ``app_alice.py``.
   There should be one file for each 'role' involved in the networked application.
