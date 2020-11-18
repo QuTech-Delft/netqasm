@@ -2,10 +2,9 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional, Union, Set
-from dataclasses import dataclass, asdict
+from typing import List, Tuple, Optional, Set
+from dataclasses import asdict
 
-from netqasm.typing import TypedDict
 from netqasm.lang.subroutine import Register, ArrayEntry, Address
 from netqasm.util.yaml import dump_yaml
 from netqasm.util.log import LineTracker
@@ -20,11 +19,8 @@ from netqasm.logging.interface import (
     InstrLogEntry,
     AppLogEntry,
     QubitState,
-    AbsoluteQubitID,
-    QubitGroup,
     QubitGroups,
     EntanglementType,
-    EntanglementStage
 )
 
 
@@ -38,25 +34,25 @@ def should_ignore_instr(instr):
     )
 
 
-class InstrField(Enum):
-    WCT = "WCT"  # Wall clock time
-    SIT = "SIT"  # Simulated time
-    AID = "AID"  # App ID
-    SID = "SID"  # Subroutine ID
-    PRC = "PRC"  # Program counter
-    HLN = "HLN"  # Host line number
-    HFL = "HFL"  # Host file
-    INS = "INS"  # Instruction
-    OPR = "OPR"  # Operands (register, array-entries..)
-    QID = "QID"  # Physical qubit IDs of qubits part of operation
-    VID = "VID"  # Virtual qubit IDs of qubits part of operation
-    QST = "QST"  # Qubit states if the qubits part of the operations after execution
-    OUT = "OUT"  # Measurement outcome
-    QGR = "QGR"  # Dictionary specifying groups of qubit across the network
-    # NOTE Qubits are in a group if they have interacted at some point.
-    # This does not necessarily imply entanglement.
-    # There is an additional flag specifying weather the group is entangled or not.
-    LOG = "LOG"  # Human-readable message
+# class InstrField(Enum):
+#     WCT = "WCT"  # Wall clock time
+#     SIT = "SIT"  # Simulated time
+#     AID = "AID"  # App ID
+#     SID = "SID"  # Subroutine ID
+#     PRC = "PRC"  # Program counter
+#     HLN = "HLN"  # Host line number
+#     HFL = "HFL"  # Host file
+#     INS = "INS"  # Instruction
+#     OPR = "OPR"  # Operands (register, array-entries..)
+#     QID = "QID"  # Physical qubit IDs of qubits part of operation
+#     VID = "VID"  # Virtual qubit IDs of qubits part of operation
+#     QST = "QST"  # Qubit states if the qubits part of the operations after execution
+#     OUT = "OUT"  # Measurement outcome
+#     QGR = "QGR"  # Dictionary specifying groups of qubit across the network
+#     # NOTE Qubits are in a group if they have interacted at some point.
+#     # This does not necessarily imply entanglement.
+#     # There is an additional flag specifying weather the group is entangled or not.
+#     LOG = "LOG"  # Human-readable message
 
 
 # Keep track of all structured loggers
@@ -251,6 +247,7 @@ class InstrLogger(StructuredLogger):
         ]
         remove_qubit_instrs = [
             instructions.core.QFreeInstruction,
+            instructions.core.MeasInstruction,
         ]
         node_name = self._get_node_name()
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -288,21 +285,6 @@ class InstrLogger(StructuredLogger):
     def _get_node_name(self) -> str:
         # NOTE should be subclassed
         raise NotImplementedError
-
-
-class NetworkField(Enum):
-    WCT = InstrField.WCT.value  # Wall clock time
-    SIT = InstrField.SIT.value  # Simulated time
-    TYP = "TYP"                 # Entanglement generation type
-    INS = InstrField.INS.value  # Entanglement generation stage
-    BAS = "BAS"                 # Bases used for measurement (for MD type)
-    MSR = "MSR"                 # Measurement outcomes (for MD type)
-    NOD = "NOD"                 # End nodes
-    PTH = "PTH"                 # Path of links used
-    QID = InstrField.QID.value  # Qubit ids (node1, node2)
-    QST = InstrField.QST.value  # Reduced qubit states
-    QGR = InstrField.QGR.value  # Dictionary specifying groups of qubit across the network
-    LOG = InstrField.LOG.value  # Human-readable message
 
 
 class NetworkLogger(StructuredLogger):
@@ -349,18 +331,6 @@ class SocketOperation(Enum):
     WAIT_RECV = "WAIT_RECV"
 
 
-class ClassCommField(Enum):
-    WCT = InstrField.WCT.value  # Wall clock time
-    HLN = InstrField.HLN.value  # Host line number
-    HFL = InstrField.HFL.value  # Host file
-    INS = InstrField.INS.value  # Instruction (SEND, WAIT_RECV or RECV)
-    MSG = "MSG"  # Message sent or received
-    SEN = "SEN"  # Sender
-    REC = "REC"  # Receiver
-    SOD = "SOD"  # Socket ID
-    LOG = InstrField.LOG.value  # Human-readable message
-
-
 class ClassCommLogger(StructuredLogger):
     def _construct_entry(self, *args, **kwargs):
         socket_op = kwargs['socket_op']
@@ -383,13 +353,6 @@ class ClassCommLogger(StructuredLogger):
             SOD=socket_id,
             LOG=log
         ))
-
-
-class AppLogField(Enum):
-    WCT = InstrField.WCT.value  # Wall clock time
-    HLN = InstrField.HLN.value  # Host line number
-    HFL = InstrField.HFL.value  # Host file
-    LOG = InstrField.LOG.value  # Human-readable message
 
 
 class AppLogger(StructuredLogger):
