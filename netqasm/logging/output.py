@@ -34,27 +34,6 @@ def should_ignore_instr(instr):
     )
 
 
-# class InstrField(Enum):
-#     WCT = "WCT"  # Wall clock time
-#     SIT = "SIT"  # Simulated time
-#     AID = "AID"  # App ID
-#     SID = "SID"  # Subroutine ID
-#     PRC = "PRC"  # Program counter
-#     HLN = "HLN"  # Host line number
-#     HFL = "HFL"  # Host file
-#     INS = "INS"  # Instruction
-#     OPR = "OPR"  # Operands (register, array-entries..)
-#     QID = "QID"  # Physical qubit IDs of qubits part of operation
-#     VID = "VID"  # Virtual qubit IDs of qubits part of operation
-#     QST = "QST"  # Qubit states if the qubits part of the operations after execution
-#     OUT = "OUT"  # Measurement outcome
-#     QGR = "QGR"  # Dictionary specifying groups of qubit across the network
-#     # NOTE Qubits are in a group if they have interacted at some point.
-#     # This does not necessarily imply entanglement.
-#     # There is an additional flag specifying weather the group is entangled or not.
-#     LOG = "LOG"  # Human-readable message
-
-
 # Keep track of all structured loggers
 # to be able to save them while finished applications
 _STRUCT_LOGGERS: List['StructuredLogger'] = []
