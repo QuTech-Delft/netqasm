@@ -1,6 +1,14 @@
 netqasm.runtime package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   netqasm.runtime.interface
+
 Submodules
 ----------
 
