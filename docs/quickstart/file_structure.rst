@@ -97,8 +97,6 @@ Application results
 The ``results.yaml`` file contains the Python directory that is ``return`` ed at the end of the ``main`` function in the source code.
 It lists these results for each of the roles in the application.
 
-It also lists the returns values of the backend, if any. TODO: how and when?
-
 
 ++++++++++++++++
 Instruction logs
