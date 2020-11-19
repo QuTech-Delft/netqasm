@@ -55,10 +55,7 @@ For example:
 Network configuration
 +++++++++++++++++++++
 
-
-.. warning::
-
-   TODO: maybe describe it using a `dataclass` class in the API?
+See :class:`netqasm.runtime.interface.config.NetworkConfig`.
 
 ++++++++++++++++++++
 Role-network mapping
@@ -109,11 +106,7 @@ Instruction logs
 
 A ``<role>_instr.yaml`` contains a list of all NetQASM instructions that were executed by ``<role>``, in chronological order.
 
-Each instruction log item has the following format:
-
-.. warning::
-
-   TODO: maybe describe it using a `dataclass` class in the API?
+See :class:`netqasm.runtime.interface.logging.InstrLogEntry` for the format of each log entry.
 
 
 +++++++++++
@@ -122,11 +115,7 @@ Network log
 
 The ``network_log.yaml`` contains a list of all entanglement events that happened in the simulated network, in chronological order.
 
-Each log item has the following format:
-
-.. warning::
-
-   TODO: maybe describe it using a `dataclass` class in the API?
+See :class:`netqasm.runtime.interface.logging.NetworkLogEntry` for the format of each log entry.
 
 
 ++++++++++++++++++++++++++++
@@ -135,11 +124,7 @@ Classical communciation logs
 
 Each ``<role>_class_comm.yaml`` contains a list of all messages that were sent or received by ``<role>``, in chronological order.
 
-Each log item has the following format:
-
-.. warning::
-
-   TODO: maybe describe it using a `dataclass` class in the API?
+See :class:`netqasm.runtime.interface.logging.ClassCommLogEntry` for the format of each log entry.
 
 
 ++++++++++++++++
