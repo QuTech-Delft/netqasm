@@ -55,7 +55,7 @@ For example:
 Network configuration
 +++++++++++++++++++++
 
-See :class:`netqasm.runtime.interface.config.NetworkConfig`.
+See the :class:`~.config.NetworkConfig` dataclass.
 
 ++++++++++++++++++++
 Role-network mapping
@@ -86,16 +86,16 @@ The output files are the following:
   An 'application log' from a ``<role>`` ends up in ``<role>_app_log.yaml``.
 
 
-==========================
-Output file content format
-==========================
+====================
+Output file contents
+====================
 
 +++++++++++++++++++
 Application results
 +++++++++++++++++++
 
-The ``results.yaml`` file contains the Python directory that is ``return`` ed at the end of the ``main`` function in the source code.
-It lists these results for each of the roles in the application.
+The ``results.yaml`` file contains the Python directories that are ``return`` ed at the end of the ``main``
+function in each role's source code.
 
 
 ++++++++++++++++
@@ -104,7 +104,13 @@ Instruction logs
 
 A ``<role>_instr.yaml`` contains a list of all NetQASM instructions that were executed by ``<role>``, in chronological order.
 
-See :class:`netqasm.runtime.interface.logging.InstrLogEntry` for the format of each log entry.
+Each log statement includes the instruction type, and the time at which it was executed.
+It also includes the states of the qubits in the network (across all nodes) and which of these are entangled or not.
+Entangled qubits appear in the same `qubit group`.
+
+This information is about the states directly `after` the instruction is executed.
+
+See the :class:`~.logging.InstrLogEntry` dataclass for the format of each log entry.
 
 
 +++++++++++
@@ -112,8 +118,23 @@ Network log
 +++++++++++
 
 The ``network_log.yaml`` contains a list of all entanglement events that happened in the simulated network, in chronological order.
+As in the instruction log, the qubit states and groups are given as they are immediately `after` the event.
 
-See :class:`netqasm.runtime.interface.logging.NetworkLogEntry` for the format of each log entry.
+Two events (called `stages`) exist: ``START`` (entanglement generation has started) and ``FINISH`` (entanglement has successfully been generated).
+
+Furtermore, there are two `types` of entanglement generation: 
+
+  * ``MD`` (Measure Directly): upon successful generation, immediately measure the two (one in each node) qubits.
+    So, directly after a ``FINISH`` event of type ``MD``, the corresponding qubits do not appear in the qubit information.
+  * ``CK`` (Create and Keep): upon successful generation, keep the qubits alive.
+    The corresponding qubits appear in the qubit group information, and are (obviously) entangled.
+
+``START`` events do `not` give information about the `type`. This is only given at ``FINISH`` events.
+
+``MD`` events (at the ``FINISH`` stage) have additional information ``BAS`` and ``MSR``.
+These are the bases (one for each node) used for the (immediate) mesaurement, and the mesaurement outcomes themselves.
+
+See the :class:`~.logging.NetworkLogEntry` dataclass for the format of each log entry.
 
 
 ++++++++++++++++++++++++++++
@@ -122,7 +143,7 @@ Classical communciation logs
 
 Each ``<role>_class_comm.yaml`` contains a list of all messages that were sent or received by ``<role>``, in chronological order.
 
-See :class:`netqasm.runtime.interface.logging.ClassCommLogEntry` for the format of each log entry.
+See :class:`~.logging.ClassCommLogEntry` dataclass for the format of each log entry.
 
 
 ++++++++++++++++
