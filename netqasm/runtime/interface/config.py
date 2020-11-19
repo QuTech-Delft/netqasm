@@ -96,10 +96,7 @@ def parse_network_config(cfg) -> NetworkConfig:
                     t2=qubit_cfg['t2'],
                 )
                 qubits += [qubit]
-            if 'hardware' in node_cfg:
-                hardware = node_cfg['hardware']
-            else:
-                hardware = QuantumHardware.Generic
+            hardware = node_cfg.get('hardware', QuantumHardware.Generic)
 
             node = Node(
                 name=node_cfg['name'],
