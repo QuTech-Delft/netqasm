@@ -3,7 +3,6 @@ import shutil
 import pickle
 
 from netqasm.util.yaml import load_yaml, dump_yaml
-from netqasm.logging.output import InstrField
 
 from netqasm.sdk.connection import BaseNetQASMConnection
 
@@ -13,7 +12,7 @@ _LAST_LOG = 'LAST'
 def process_log(log_dir):
     # Add host line numbers to logs
     _add_hln_to_logs(log_dir)
-    # _create_app_instr_logs(log_dir)
+    _create_app_instr_logs(log_dir)
     make_last_log(log_dir)
 
 
@@ -57,12 +56,12 @@ def _add_hln_to_log(output_file_path, subroutines_file_path):
 
 
 def _add_hln_to_log_entry(subroutines, entry):
-    prc = entry[InstrField.PRC.value]
-    sid = entry[InstrField.SID.value]
+    prc = entry.PRC
+    sid = entry.SID
     subroutine = subroutines[sid]
     hostline = subroutine.commands[prc].lineno
-    entry[InstrField.HLN.value] = hostline.lineno
-    entry[InstrField.HFL.value] = hostline.filename
+    entry.HLN = hostline.lineno
+    entry.HFL = hostline.filename
 
 
 def _create_app_instr_logs(log_dir):
