@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import List, Tuple, Optional, Set
 from dataclasses import asdict
 
+from qlink_interface import RequestType
+
 from netqasm.lang.subroutine import Register, ArrayEntry, Address
 from netqasm.util.yaml import dump_yaml
 from netqasm.util.log import LineTracker
@@ -274,10 +276,10 @@ class NetworkLogger(StructuredLogger):
         wall_time = str(datetime.now())
         sim_time = kwargs['sim_time']
         ent_type = kwargs['ent_type']
-        if ent_type == 0:
-            ent_type = f"epr_{EntanglementType.CK}"
-        elif ent_type == 1:
+        if ent_type == RequestType.M:
             ent_type = f"epr_{EntanglementType.MD}"
+        elif ent_type == RequestType.K:
+            ent_type = f"epr_{EntanglementType.CK}"
         meas_bases = kwargs['meas_bases']
         meas_outcomes = kwargs['meas_outcomes']
 
