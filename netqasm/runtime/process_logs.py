@@ -56,12 +56,12 @@ def _add_hln_to_log(output_file_path, subroutines_file_path):
 
 
 def _add_hln_to_log_entry(subroutines, entry):
-    prc = entry.PRC
-    sid = entry.SID
+    prc = entry['PRC']
+    sid = entry['SID']
     subroutine = subroutines[sid]
     hostline = subroutine.commands[prc].lineno
-    entry.HLN = hostline.lineno
-    entry.HFL = hostline.filename
+    entry['HLN'] = hostline.lineno
+    entry['HFL'] = hostline.filename
 
 
 def _create_app_instr_logs(log_dir):
