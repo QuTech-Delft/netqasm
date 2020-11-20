@@ -217,10 +217,16 @@ def main(app_config=None, num_bits=100):
         # Estimated Quantum Bit Error Rate (QBER).
         'qber': qber,
 
+        'qber_explanation': "QBER is the Quantum Bit Error Rate."
+                            "It is the fraction of compared measurement outcomes that are not equal, "
+                            "even though the result from measurements in the same basis.",
+
         # Rate of secure key that can in theory be extracted from the raw key.
-        # (After more classical post-processing.)
-        # Rate is 'length of secure key' divided by 'length of raw key'.
         'key_rate_potential': key_rate_potential,
+
+        'key_rate_explanation': "Rate of secure key that can in theory be extracted from the raw key, "
+                                "(After more classical post-processing.)"
+                                " The rate is 'length of secure key' divided by 'length of raw key'.",
 
         # Raw key.
         # ('Result' of this application. In practice, there'll be post-processing to produce secure shared key.)
