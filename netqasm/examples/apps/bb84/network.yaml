@@ -1,0 +1,19 @@
+links:
+- fidelity: 0.8
+  name: ch0
+  node_name1: bob
+  node_name2: alice
+  noise_type: Depolarise
+nodes:
+- gate_fidelity: 1.0
+  name: bob
+  qubits:
+  - id: 0
+    t1: 0
+    t2: 0
+- gate_fidelity: 1.0
+  name: alice
+  qubits:
+  - id: 0
+    t1: 0
+    t2: 0

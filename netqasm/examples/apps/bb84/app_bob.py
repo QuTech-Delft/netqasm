@@ -1,4 +1,7 @@
 import json
+import math
+from dataclasses import dataclass
+from typing import Optional
 
 from qlink_interface import EPRType
 
@@ -54,40 +57,78 @@ def receive_bb84_states(epr_socket, socket, target, n):
     return bit_flips, basis_flips
 
 
-def filter_theta(socket, x, theta):
-    x_remain = []
-    theta_hat = recvClassicalAssured(socket)
-    sendClassicalAssured(socket, theta)
-    for bit, basis, basis_hat in zip(x, theta, theta_hat):
-        if basis == basis_hat:
-            x_remain.append(bit)
+def filter_bases(socket, pairs_info):
+    bases = [(i, pairs_info[i].basis) for (i, pair) in enumerate(pairs_info)]
 
-    return x_remain
+    remote_bases = recvClassicalAssured(socket)
+    sendClassicalAssured(socket, bases)
+
+    for (i, basis), (remote_i, remote_basis) in zip(bases, remote_bases):
+        assert i == remote_i
+        pairs_info[i].same_basis = (basis == remote_basis)
+
+    return pairs_info
 
 
-def estimate_error_rate(socket, x, num_test_bits):
-    test_bits = []
+def estimate_error_rate(socket, pairs_info, num_test_bits):
     test_indices = recvClassicalAssured(socket)
-    for index in test_indices:
-        test_bits.append(x.pop(index))
+    for pair in pairs_info:
+        pair.test_outcome = (pair.index in test_indices)
+
+    test_outcomes = [(i, pairs_info[i].outcome) for i in test_indices]
 
     logger.info(f"bob test indices: {test_indices}")
-    logger.info(f"bob test bits: {test_bits}")
+    logger.info(f"bob test outcomes: {test_outcomes}")
 
-    sendClassicalAssured(socket, test_bits)
-    target_test_bits = recvClassicalAssured(socket)
+    sendClassicalAssured(socket, test_outcomes)
+    target_test_outcomes = recvClassicalAssured(socket)
+    logger.info(f"bob target_test_outcomes: {target_test_outcomes}")
 
-    logger.info(f"bob target_test_bits: {target_test_bits}")
     num_error = 0
-    for t1, t2 in zip(test_bits, target_test_bits):
+    for (i1, t1), (i2, t2) in zip(test_outcomes, target_test_outcomes):
+        assert i1 == i2
         if t1 != t2:
             num_error += 1
+            pairs_info[i1].same_outcome = False
+        else:
+            pairs_info[i1].same_outcome = True
 
-    return (num_error / num_test_bits)
+    return pairs_info, (num_error / num_test_bits)
 
 
 def extract_key(x, r):
     return (sum([xj*rj for xj, rj in zip(x, r)]) % 2)
+
+
+@dataclass
+class PairInfo:
+    """Information that Bob has about one generated pair.
+    The information is filled progressively during the protocol."""
+
+    # Index in list of all generated pairs.
+    index: int
+
+    # Basis Alice measured in. 0 = Z, 1 = X.
+    basis: int
+
+    # Measurement outcome (0 or 1).
+    outcome: int
+
+    # Whether Bob measured his qubit in the same basis or not.
+    same_basis: Optional[bool] = None
+
+    # Whether to use this pair to estimate errors by comparing the outcomes.
+    test_outcome: Optional[bool] = None
+
+    # Whether measurement outcome is the same as Bob's. (Only for pairs used for error estimation.)
+    same_outcome: Optional[bool] = None
+
+
+def h(p):
+    if p == 0 or p == 1:
+        return 0
+    else:
+        return -p * math.log2(p) - (1 - p) * math.log2(1 - p)
 
 
 def main(app_config=None, num_bits=100):
@@ -106,28 +147,90 @@ def main(app_config=None, num_bits=100):
     with bob:
         bit_flips, basis_flips = receive_bb84_states(epr_socket, socket, "alice", num_bits)
 
-    x = [int(b) for b in bit_flips]
-    theta = [int(b) for b in basis_flips]
+    outcomes = [int(b) for b in bit_flips]
+    bases = [int(b) for b in basis_flips]
 
-    logger.info(f"bob x: {x}")
-    logger.info(f"bob theta: {theta}")
+    logger.info(f"bob outcomes: {outcomes}")
+    logger.info(f"bob bases: {bases}")
+
+    pairs_info = []
+    for i in range(num_bits):
+        pairs_info.append(PairInfo(
+            index=i,
+            basis=int(basis_flips[i]),
+            outcome=int(bit_flips[i]),
+        ))
 
     sendClassicalAssured(socket, 'BB84DISTACK')
-    x_remain = filter_theta(socket, x, theta)
+    pairs_info = filter_bases(socket, pairs_info)
 
-    error_rate = estimate_error_rate(socket, x_remain, num_test_bits)
+    pairs_info, error_rate = estimate_error_rate(socket, pairs_info, num_test_bits)
     logger.info(f"bob error_rate: {error_rate}")
 
-    r = recvClassicalAssured(socket)
-    logger.info(f"bob R: {r}")
-    logger.info(f"bob raw key: {x_remain}")
+    raw_key = [pair.outcome for pair in pairs_info if not pair.test_outcome]
+    logger.info(f"alice raw key: {raw_key}")
 
-    k = extract_key(x_remain, r)
-    logger.info(f"bob key: {k}")
+    # Return data.
+
+    table = []
+    for pair in pairs_info:
+        basis = "X" if pair.basis == 1 else "Z"
+        check = pair.same_outcome if pair.test_outcome else "-"
+        table.append(
+            [pair.index, basis, pair.same_basis, pair.outcome, check]
+        )
+
+    x_basis_count = sum(pair.basis for pair in pairs_info)
+    z_basis_count = num_bits - x_basis_count
+    same_basis_count = sum(pair.same_basis for pair in pairs_info)
+    outcome_comparison_count = sum(pair.test_outcome for pair in pairs_info if pair.same_basis)
+    same_outcome_count = sum(pair.same_outcome for pair in pairs_info if pair.test_outcome)
+    qber = (outcome_comparison_count - same_outcome_count) / outcome_comparison_count
+    key_rate_potential = 1 - 2 * h(qber)
 
     return {
-        'raw_key': x_remain,
-        'key': k,
+        # Table with one row per generated pair.
+        # Columns:
+        #   - Pair number
+        #   - Measurement basis ("X" or "Z")
+        #   - Same basis as Alice ("True" or "False")
+        #   - Measurement outcome ("0" or "1")
+        #   - Outcome same as Alice ("True", "False" or "-")
+        #       ("-" is when outcomes are not compared)
+        'table': table,
+
+        # Number of times measured in the X basis.
+        'x_basis_count': x_basis_count,
+
+        # Number of times measured in the Z basis.
+        'z_basis_count': z_basis_count,
+
+        # Number of times measured in the same basis as Alice.
+        'same_basis_count': same_basis_count,
+
+        # Number of pairs chosen to compare measurement outcomes for.
+        'outcome_comparison_count': outcome_comparison_count,
+
+        # Number of compared outcomes with equal values.
+        'same_outcome_count': same_outcome_count,
+
+        # Estimated Quantum Bit Error Rate (QBER).
+        'qber': qber,
+
+        'qber_explanation': "QBER is the Quantum Bit Error Rate."
+                            "It is the fraction of compared measurement outcomes that are not equal, "
+                            "even though the result from measurements in the same basis.",
+
+        # Rate of secure key that can in theory be extracted from the raw key.
+        'key_rate_potential': key_rate_potential,
+
+        'key_rate_explanation': "Rate of secure key that can in theory be extracted from the raw key, "
+                                "(After more classical post-processing.)"
+                                " The rate is 'length of secure key' divided by 'length of raw key'.",
+
+        # Raw key.
+        # ('Result' of this application. In practice, there'll be post-processing to produce secure shared key.)
+        'raw_key': raw_key
     }
 
 
