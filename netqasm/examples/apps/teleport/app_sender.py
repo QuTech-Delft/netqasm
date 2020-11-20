@@ -1,7 +1,7 @@
 from netqasm.sdk import Qubit, EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.toolbox import set_qubit_state
-from netqasm.output import get_new_app_logger
+from netqasm.logging.output import get_new_app_logger
 
 
 def main(app_config=None, phi=0., theta=0.):
@@ -13,6 +13,8 @@ def main(app_config=None, phi=0., theta=0.):
 
     # Create a EPR socket for entanglement generation
     epr_socket = EPRSocket("receiver")
+
+    print("`sender` will start to teleport a qubit to `receiver`")
 
     # Initialize the connection to the backend
     sender = NetQASMConnection(
@@ -39,7 +41,8 @@ def main(app_config=None, phi=0., theta=0.):
 
     app_logger.log(f"m1 = {m1}")
     app_logger.log(f"m2 = {m2}")
-    print(f"m1 = {m1}, m2 = {m2}")
+    print(f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}")
+    print("`sender` will send the corrections to `receiver`")
 
     msg = str((m1, m2))
     socket.send(msg)

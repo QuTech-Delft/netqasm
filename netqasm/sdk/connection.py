@@ -1,3 +1,5 @@
+"""TODO write about connections"""
+
 import os
 import abc
 import math
@@ -16,18 +18,18 @@ from qlink_interface import (
     LinkLayerOKTypeR,
 )
 from netqasm import NETQASM_VERSION
-from netqasm.logging import get_netqasm_logger
-from netqasm.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
-from netqasm.instructions.instr_enum import Instruction, flip_branch_instr
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
+from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
 from netqasm.sdk.shared_memory import get_shared_memory
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.log_util import LineTracker
-from netqasm.network_stack import OK_FIELDS
-from netqasm.encoding import RegisterName, REG_INDEX_BITS
-from netqasm.subroutine import (
+from netqasm.util.log import LineTracker
+from netqasm.backend.network_stack import OK_FIELDS
+from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
+from netqasm.lang.subroutine import (
     PreSubroutine,
     Subroutine,
     Command,
@@ -39,7 +41,7 @@ from netqasm.subroutine import (
     BranchLabel,
     Symbols,
 )
-from netqasm.messages import (
+from netqasm.backend.messages import (
     Signal,
     InitNewAppMessage,
     StopAppMessage,
@@ -155,14 +157,17 @@ class BaseNetQASMConnection(abc.ABC):
 
     @property
     def app_name(self):
+        """Get the application name"""
         return self._app_name
 
     @property
     def node_name(self):
+        """Get the node name"""
         return self._node_name
 
     @property
     def app_id(self):
+        """Get the application ID"""
         return self._app_id
 
     @abc.abstractmethod
@@ -185,9 +190,33 @@ class BaseNetQASMConnection(abc.ABC):
         return f"NetQASM connection for app '{self.app_name}' with node '{self.node_name}'"
 
     def __enter__(self):
+        """Used to open the connection in a context.
+
+        This is the intended behaviour of the connection.
+        Operations specified using the connection or a qubit created with it gets combined into a
+        subroutine, until either :meth:`~.flush` is called or the connection goes out of context
+        which calls :meth:`~.__exit__`.
+
+        .. code-block::
+
+            # Open the connection
+            with NetQASMConnection(app_name="alice") as alice:
+                # Create a qubit
+                q = Qubit(alice)
+                # Perform a Hadamard
+                q.H()
+                # Measure the qubit
+                m = q.measure()
+                # Flush the subroutine to populate the variable `m` with the outcome
+                # Alternetively, this can be done by letting the connection
+                # go out of context and move the print to after.
+                alice.flush()
+                print(m)
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """TODO describe"""
         # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
         self.close(
             clear_app=self._clear_app_on_exit,
@@ -276,8 +305,8 @@ class BaseNetQASMConnection(abc.ABC):
     def _init_new_app(self, max_qubits):
         """Informs the backend of the new application and how many qubits it will maximally use"""
         self._commit_message(msg=InitNewAppMessage(
-                app_id=self._app_id,
-                max_qubits=max_qubits,
+            app_id=self._app_id,
+            max_qubits=max_qubits,
         ))
 
     def _setup_epr_sockets(self, epr_sockets):
@@ -288,17 +317,20 @@ class BaseNetQASMConnection(abc.ABC):
                 raise ValueError("A node cannot setup an EPR socket with itself")
             epr_socket.conn = self
             self._setup_epr_socket(
-                epr_socket_id=epr_socket._epr_socket_id,
-                remote_node_id=epr_socket._remote_node_id,
-                remote_epr_socket_id=epr_socket._remote_epr_socket_id,
+                epr_socket_id=epr_socket.epr_socket_id,
+                remote_node_id=epr_socket.remote_node_id,
+                remote_epr_socket_id=epr_socket.remote_epr_socket_id,
+                min_fidelity=epr_socket.min_fidelity,
             )
 
-    def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
+    def _setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id, min_fidelity):
         """Sets up a new epr socket"""
         self._commit_message(msg=OpenEPRSocketMessage(
-                epr_socket_id=epr_socket_id,
-                remote_node_id=remote_node_id,
-                remote_epr_socket_id=remote_epr_socket_id,
+            app_id=self._app_id,
+            epr_socket_id=epr_socket_id,
+            remote_node_id=remote_node_id,
+            remote_epr_socket_id=remote_epr_socket_id,
+            min_fidelity=min_fidelity,
         ))
 
     def new_array(self, length=1, init_values=None):
@@ -610,18 +642,18 @@ class BaseNetQASMConnection(abc.ABC):
                 # a uniform distribution for three bases. This needs to be changed
                 # in the underlying link layer/network stack
                 assert random_basis_local in [RandomBasis.XZ, RandomBasis.CHSH], (
-                       "Can only random measure in one of two bases for now")
+                    "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_local'] = random_basis_local
                 create_kwargs['probability_dist_local1'] = 128
             if random_basis_remote is not None:
                 assert random_basis_remote in [RandomBasis.XZ, RandomBasis.CHSH], (
-                       "Can only random measure in one of two bases for now")
+                    "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
 
             create_args = []
-            # NOTE we don't include the two first args since this is remote_node_id
-            # and epr_socket_id which comes as immediates
+            # NOTE we don't include the two first args since these are remote_node_id
+            # and epr_socket_id which come as registers
             for field in LinkLayerCreate._fields[2:]:
                 arg = create_kwargs.get(field)
                 # If Enum, use its value
@@ -982,7 +1014,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def if_nz(self, a, body):
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+        self._handle_if(Instruction.BNZ, a, b=None, body=body)
 
     def _handle_if(self, condition, a, b, body):
         """Used to build effective if-statements"""
@@ -1002,8 +1034,13 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_commands(commands=pre_commands)
             return
         branch_instruction = flip_branch_instr(condition)
+        # Construct a list of all commands to see what branch labels are already used
+        all_commands = pre_commands + body_commands
+        # We also need to check any existing other pre context commands if they are nested
+        for pre_context_cmds in self._pre_context_commands.values():
+            all_commands += pre_context_cmds
         current_branch_variables = [
-                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in all_commands if isinstance(cmd, BranchLabel)
         ]
         if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,
@@ -1104,7 +1141,7 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_commands(commands=pre_commands)
             return
         current_branch_variables = [
-                cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
         ]
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(

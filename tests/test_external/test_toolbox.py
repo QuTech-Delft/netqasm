@@ -3,7 +3,7 @@ import numpy as np
 
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import Socket, NetQASMConnection, run_applications
-from netqasm.run.app_config import AppConfig
+from netqasm.runtime.app_config import AppConfig
 from netqasm.sdk.toolbox import create_ghz
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 
@@ -12,8 +12,8 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
     (np.pi, 1e-6, [(1, 0)]),
     (np.pi / 2, 1e-6, [(1, 1)]),
     (np.pi / 1024, 1e-6, [(1, 10)]),
-    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16), 1e-6, [(128 + 64 + 32 + 8, 7)]),
-    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16 + 1 / 1024), 1e-6, [(232, 7), (1, 10)]),
+    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16), 1e-6, [(16 + 8 + 4 + 1, 4)]),
+    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16 + 1 / 1024), 1e-6, [(29, 4), (1, 10)]),
     (np.pi / 3, 1e-6, None),
     (1.5, 1e-6, None),
 ])

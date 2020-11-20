@@ -1,5 +1,5 @@
-from netqasm.parsing import parse_text_subroutine
-from netqasm.encoding import COMMANDS, COMMAND_BYTES
+from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.lang.encoding import COMMANDS, COMMAND_BYTES
 
 
 def test_command_length():

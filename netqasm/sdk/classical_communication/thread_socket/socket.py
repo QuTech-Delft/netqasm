@@ -1,12 +1,19 @@
 import os
 from typing import Dict, Optional
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging.glob import get_netqasm_logger
 from ..socket import Socket
 from .socket_hub import _socket_hub
-from netqasm.log_util import LineTracker
-from netqasm.output import SocketOperation, ClassCommLogger
+from netqasm.util.log import LineTracker
+from netqasm.logging.output import SocketOperation, ClassCommLogger
 from netqasm.sdk.config import LogConfig
+
+
+def trim_msg(msg: str) -> str:
+    trimmed_msg = msg
+    if trimmed_msg.endswith('EOF'):
+        trimmed_msg = trimmed_msg.split('EOF')[0]
+    return trimmed_msg
 
 
 def log_send(method):
@@ -20,10 +27,11 @@ def log_send(method):
                 hfl = hostline.filename
 
         if self._comm_logger is not None:
-            log = f"Send classical message to {self.remote_app_name}: {msg}"
+            trimmed_msg = trim_msg(msg)
+            log = f"Send classical message to {self.remote_app_name}: {trimmed_msg}"
             self._comm_logger.log(
                 socket_op=SocketOperation.SEND,
-                msg=msg,
+                msg=trimmed_msg,
                 sender=self._app_name,
                 receiver=self._remote_app_name,
                 socket_id=self._id,
@@ -63,10 +71,11 @@ def log_recv(method):
         msg = method(self, *args, **kwargs)
 
         if self._comm_logger is not None:
-            log = f"Message received from {self.remote_app_name}: {msg}"
+            trimmed_msg = trim_msg(msg)
+            log = f"Message received from {self.remote_app_name}: {trimmed_msg}"
             self._comm_logger.log(
                 socket_op=SocketOperation.RECV,
-                msg=msg,
+                msg=trimmed_msg,
                 sender=self._remote_app_name,
                 receiver=self._app_name,
                 socket_id=self._id,

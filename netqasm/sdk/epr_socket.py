@@ -1,10 +1,12 @@
+"""TODO write about epr sockets"""
+
 import abc
 from contextlib import contextmanager
 
 from qlink_interface import EPRType
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.instructions.instr_enum import Instruction
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.lang.instr.instr_enum import Instruction
 
 
 class NoCircuitError(RuntimeError):
@@ -16,6 +18,7 @@ def _assert_has_conn(method):
         if self._conn is None:
             raise NoCircuitError("To use the socket it first needs to be setup by giving it to a `NetQASMConnection`")
         return method(self, *args, **kwargs)
+    new_method.__doc__ = method.__doc__
     return new_method
 
 
@@ -25,6 +28,7 @@ class EPRSocket(abc.ABC):
         remote_app_name,
         epr_socket_id=0,
         remote_epr_socket_id=0,
+        min_fidelity=100
     ):
         """Encapsulates the notion of an EPR socket which sets up a virtual circuit in the network
         when instantiated and can then be used for entanglement generation.
@@ -37,6 +41,9 @@ class EPRSocket(abc.ABC):
             The identifier used for this socket.
         remote_epr_socket_id : int
             The identifier used by the remote node.
+        min_fidelity : int
+            The minimum desired fidelity of EPR pairs generated using this socket.
+            Values are integers in the range 0-100.
         """
         self._conn = None
         self._remote_app_name = remote_app_name
@@ -44,16 +51,47 @@ class EPRSocket(abc.ABC):
         self._epr_socket_id = epr_socket_id
         self._remote_epr_socket_id = remote_epr_socket_id
 
+        if not isinstance(min_fidelity, int) or (min_fidelity < 0) or min_fidelity > 100:
+            raise ValueError(f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}")
+        self._min_fidelity: int = min_fidelity
+
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
 
     @property
     def conn(self):
+        """Get the underlying :class:`NetQASMConnection`"""
         return self._conn
 
     @conn.setter
     def conn(self, conn):
         self._conn = conn
         self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
+
+    @property
+    def remote_app_name(self):
+        """Get the remote application name"""
+        return self._remote_app_name
+
+    @property
+    def remote_node_id(self):
+        """Get the remote node ID"""
+        return self._remote_node_id
+
+    @property
+    def epr_socket_id(self):
+        """Get the EPR socket ID"""
+        return self._epr_socket_id
+
+    @property
+    def remote_epr_socket_id(self):
+        """Get the remote EPR socket ID"""
+        return self._remote_epr_socket_id
+
+    @property
+    def min_fidelity(self):
+        """Get the desired minimum fidelity"""
+        return self._remote_epr_socket_id
+        return self._min_fidelity
 
     @_assert_has_conn
     def create(
@@ -65,7 +103,11 @@ class EPRSocket(abc.ABC):
         random_basis_local=None,
         random_basis_remote=None,
     ):
-        """Creates EPR pair with a remote node
+        # First line is to have the correct signature after decorating
+        """
+        create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K, \
+        random_basis_local=None, random_basis_remote=None)
+        Creates EPR pair with a remote node
 
         Parameters
         ----------
@@ -82,9 +124,11 @@ class EPRSocket(abc.ABC):
             for example to state that the qubit should be measured in the Hadamard basis
             one can provide the following function
 
-            >>> def post_create(conn, q, pair):
-            >>>     q.H()
-            >>>     q.measure(future=outcomes.get_future_index(pair))
+            .. code-block::
+
+                def post_create(conn, q, pair):
+                    q.H()
+                    q.measure(future=outcomes.get_future_index(pair))
 
             where `outcomes` is an already allocated array and `pair` is then used to
             put the outcome at the correct index of the array.
@@ -107,15 +151,19 @@ class EPRSocket(abc.ABC):
             Depending on the type of request the method will return different things,
             for example if the request is of type `K` a list of qubits will be returned:
 
-            >>> qubits = epr_socket.create(number=3, tp=EPRType.K)
-            >>> for q in qubits:
-            >>>     q.H()
+            .. code-block::
+
+                qubits = epr_socket.create(number=3, tp=EPRType.K)
+                for q in qubits:
+                    q.H()
 
             however for type `M` requests it will be a list of entanglement generations:
 
-            >>> ent_infos = epr_socket.create(number=3, tp=EPRType.K)
-            >>> for ent_info in ent_infos:
-            >>>     assert isinstance(ent_info, tuple)
+            .. code-block::
+
+                ent_infos = epr_socket.create(number=3, tp=EPRType.K)
+                for ent_info in ent_infos:
+                    assert isinstance(ent_info, tuple)
         """
         return self._conn._create_epr(
             remote_node_id=self._remote_node_id,
@@ -137,9 +185,12 @@ class EPRSocket(abc.ABC):
         Example
         -------
         To create two pairs and measure both of these in the Hadamard basis one can do as follows:
-        >>> with epr_socket.create_context(number=num) as (q, pair):
-        >>>     q.H()
-        >>>     m = q.measure()
+
+        .. code-block::
+
+            with epr_socket.create_context(number=num) as (q, pair):
+                q.H()
+                m = q.measure()
 
         NOTE: The `sequential` flag can be used to specify if the qubits should use the same
         virtual qubit and there only exists one at a time or not.
@@ -160,9 +211,11 @@ class EPRSocket(abc.ABC):
             for example to state that the qubit should be measured in the Hadamard basis
             one can provide the following function
 
-            >>> def post_create(conn, q, pair):
-            >>>     q.H()
-            >>>     q.measure(future=outcomes.get_future_index(pair))
+            .. code-block::
+
+                def post_create(conn, q, pair):
+                    q.H()
+                    q.measure(future=outcomes.get_future_index(pair))
 
             where `outcomes` is an already allocated array and `pair` is then used to
             put the outcome at the correct index of the array.
@@ -203,7 +256,11 @@ class EPRSocket(abc.ABC):
 
     @_assert_has_conn
     def recv(self, number=1, post_routine=None, sequential=False, tp=EPRType.K):
-        """Receives EPR pair with a remote node (see doc of :meth:`~.create`)"""
+        # First line is to have the correct signature after decorating
+        """
+        recv(self, number=1, post_routine=None, sequential=False, tp=EPRType.K)
+        Receives EPR pair with a remote node (see doc of :meth:`~.create`)
+        """
         return self._conn._recv_epr(
             remote_node_id=self._remote_node_id,
             epr_socket_id=self._epr_socket_id,

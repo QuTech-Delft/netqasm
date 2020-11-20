@@ -1,4 +1,6 @@
-from netqasm.instructions.instr_enum import Instruction
+"""TODO write about qubits"""
+
+from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.sdk.futures import RegFuture
 
 
@@ -30,7 +32,13 @@ class Qubit:
             return "Not active qubit"
 
     @property
+    def connection(self):
+        """Get the NetQASM connection of this qubit"""
+        return self._conn
+
+    @property
     def qubit_id(self):
+        """Get the qubit ID"""
         return self._qubit_id
 
     @qubit_id.setter
@@ -69,10 +77,14 @@ class Qubit:
 
     @property
     def entanglement_info(self):
+        """Get the entanglement info"""
         return self._ent_info
 
     @property
     def remote_entangled_node(self):
+        """Get the name of the remote node the qubit is entangled with.
+        If not entanled, `None` is returned.
+        """
         if self._remote_ent_node is not None:
             return self._remote_ent_node
         if self.entanglement_info is None:
@@ -233,8 +245,8 @@ class Qubit:
         )
 
     def reset(self):
-        """
-        Resets the qubit to the state |0>
+        r"""
+        Resets the qubit to the state \|0>
         """
         self._conn.add_init_qubit_command(qubit_id=self.qubit_id)
 

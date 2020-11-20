@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from netqasm.states_util import bloch_sphere_rep
+from netqasm.util.states import bloch_sphere_rep
 
 
 @pytest.mark.parametrize("mat, expected", [

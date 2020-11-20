@@ -3,10 +3,10 @@ import random
 import importlib
 import numpy as np
 
-from netqasm.logging import get_netqasm_logger
-from netqasm.run.app_config import AppConfig
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.runtime.app_config import AppConfig
 from netqasm.sdk.external import run_applications
-from netqasm.settings import get_simulator, Simulator
+from netqasm.runtime.settings import get_simulator, Simulator
 
 from netqasm.examples.apps.blind_rotation.app_client import main as blind_rotation_client
 from netqasm.examples.apps.blind_rotation.app_server import main as blind_rotation_server

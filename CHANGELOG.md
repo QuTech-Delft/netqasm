@@ -4,6 +4,20 @@ CHANGELOG
 Upcoming
 --------
 
+2020-11-20 (0.4.0)
+------------------
+- Added preliminary documentation, including a quickstart and information about the SDK.
+  Build it locally using `make build` from within the `docs` directory.
+- Added `netqasm new` and `netqasm init` commands.
+- Internal restructuring of modules.
+- Logging and configuration formats are now described as dataclasses in `netqasm.runtime.interface`.
+- Added more results to the BB84 application output.
+- Distinguish between 'Measure Directly' and 'Create and Keep' types of entanglement in the network log.
+- Fixes regarding entanglement logging and qubit group calculation.
+- Instruction log files now again use the role name instead of the node name.
+- Made array IDs, EPR socket IDs and node IDs `int32` instead of `uint32` such that they can be stored in registers.
+- Added `min_fidelity` to EPR socket.
+
 2020-10-19 (0.3.0)
 ------------------
 - Added `netqasm run` command to launch applications without also starting a simulation backend.

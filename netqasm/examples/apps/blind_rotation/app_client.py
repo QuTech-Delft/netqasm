@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-from netqasm.logging import get_netqasm_logger
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.examples.lib.bqc import teleport_state, send_meas_cmd, recv_meas_outcome
