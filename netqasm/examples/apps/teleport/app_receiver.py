@@ -1,8 +1,5 @@
-from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-
-logger = get_netqasm_logger()
 
 
 def main(app_config=None):
@@ -26,17 +23,20 @@ def main(app_config=None):
 
         # Get the corrections
         msg = socket.recv()
-        logger.info(f"receiver got corrections: {msg}")
+        print(f"`receiver` got corrections: {msg}")
         m1, m2 = eval(msg)
         if m2 == 1:
+            print("`receiver` will perform X correction")
             epr.X()
         if m1 == 1:
+            print("`receiver` will perform Z correction")
             epr.Z()
 
         receiver.flush()
         # Get the qubit state
         # NOTE only possible in simulation, not part of actual application
         dm = get_qubit_state(epr)
+        print(f"`receiver` recieved the teleported state {dm}")
         return {"qubit_state": dm if dm is None else dm.tolist()}
 
 

@@ -24,11 +24,13 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
 
     Depending on if down_epr_socket and/or up_epr_socket is specified the node,
     either takes the role of the:
+
     * "start", which intialises the process and creates an EPR
       with the next node using the `up_epr_socket`.
     * "middle", which receives an EPR pair on the `down_epr_socket` and then
       creates one on the `up_epr_socket`.
     * "end", which receives an EPR pair on the `down_epr_socket`.
+
     NOTE There has to be exactly one "start" and exactly one "end" but zero or more "middle".
     NOTE Both `down_epr_socket` and `up_epr_socket` cannot be `None`.
 

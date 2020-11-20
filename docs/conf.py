@@ -38,9 +38,25 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
+    'sphinx.ext.extlinks',
+    'sphinx_autodoc_typehints',
+    # 'sphinx_exercise',
 ]
 napoleon_include_init_with_doc = True
 autodoc_member_order = 'bysource'
+autoclass_content = 'both'
+always_document_param_types = True
+
+extlinks = {
+    "netsquid": ("https://netsquid.org/%s", ""),
+    "simulaqron": ("http://www.simulaqron.org/%s", ""),
+    "squidasm": ("https://gitlab.com/softwarequtech/netqasm/squidasm/%s", ""),
+    "network-layer": ("https://arxiv.org/abs/2010.02575/%s", ""),
+    "repcode": ("https://en.wikipedia.org/wiki/Quantum_error_correction/%s", ""),
+    "netqasm-paper": ("https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-paper/%s", ""),
+    # TODO add link to qnodeos
+    "qnodeos": ("%s", "")
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -56,7 +72,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

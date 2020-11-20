@@ -200,6 +200,8 @@ def flip_branch_instr(instr):
             Instruction.BNE: Instruction.BEQ,
             Instruction.BLT: Instruction.BGE,
             Instruction.BGE: Instruction.BLT,
+            Instruction.BEZ: Instruction.BNZ,
+            Instruction.BNZ: Instruction.BEZ,
         }[instr]
     except KeyError:
         raise ValueError(f"Not a branch instruction {instr}")

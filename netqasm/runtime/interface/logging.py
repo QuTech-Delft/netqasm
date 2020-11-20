@@ -28,148 +28,170 @@ class EntanglementStage(Enum):
 
 @dataclass
 class InstrLogEntry:
-    # Wall clock time. Format is Python's `datetime.now()`.
     WCT: str
+    """Wall clock time. Format is Python's `datetime.now()`."""
 
-    # Time in NetSquid simulation, in nanoseconds.
     SIT: int
+    """ Time in NetSquid simulation, in nanoseconds."""
 
-    # App ID, used internally by the backend.
     AID: int
+    """ App ID, used internally by the backend."""
 
-    # Subroutine ID. Used internally by the Executor.
     SID: int
+    """ Subroutine ID. Used internally by the Executor."""
 
-    # Program counter. Used internally by the Executor.
     PRC: int
+    """ Program counter. Used internally by the Executor."""
 
-    # Host line number.
-    # Line number in source file (.py) related to what is currently executed.
-    # The line is in the file given by HFL (see below).
     HLN: int
+    """
+    Host line number.
+    Line number in source file (.py) related to what is currently executed.
+    The line is in the file given by HFL (see below).
+    """
 
-    # Host file.
-    # Source file (.py) of current executed instruction.
     HFL: str
+    """
+    Host file.
+    Source file (.py) of current executed instruction.
+    """
 
-    # Mnemonic of the NetQASM instruction being executed.
     INS: str
+    """ Mnemonic of the NetQASM instruction being executed."""
 
-    # Operands (register, array-entries..).
-    # List of "op=val" strings
     OPR: List[str]
+    """
+    Operands (register, array-entries..).
+    List of "op=val" strings
+    """
 
-    # Physical qubit IDs of qubits part of the current operation.
     QID: List[int]
+    """ Physical qubit IDs of qubits part of the current operation."""
 
-    # Virtual qubit IDs of qubits part of the current operation.
     VID: List[int]
+    """ Virtual qubit IDs of qubits part of the current operation."""
 
-    # Qubit states of the qubits part of the operations after execution.
     QST: Optional[List[QubitState]]
+    """ Qubit states of the qubits part of the operations after execution."""
 
-    # Measurement outcome. Only set in case of a measurement instruction.
     OUT: Optional[int]
+    """ Measurement outcome. Only set in case of a measurement instruction."""
 
-    # Dictionary specifying groups of qubits across the network.
     QGR: Optional[QubitGroups]
+    """ Dictionary specifying groups of qubits across the network."""
 
-    # Human-readable message.
     LOG: str
+    """ Human-readable message."""
 
 
 @dataclass
 class NetworkLogEntry:
-    # Wall clock time. Format is Python's `datetime.now()`.
     WCT: str
+    """ Wall clock time. Format is Python's `datetime.now()`."""
 
-    # Time in NetSquid simulation, in nanoseconds.
     SIT: int
+    """ Time in NetSquid simulation, in nanoseconds."""
 
-    # Entanglement generation type (Measure Directly or Create and Keep).
-    # For the 'start' entanglement stage (see INS below), this value is None
-    # since at this stage the value cannot be determined yet.
-    # For the 'finish' stage, the correct value is filled in, however.
     TYP: Optional[EntanglementType]
+    """
+    Entanglement generation type(Measure Directly or Create and Keep).
+    For the 'start' entanglement stage (see INS below), this value is None
+    since at this stage the value cannot be determined yet.
+    For the 'finish' stage, the correct value is filled in, however.
+    """
 
-    # Entanglement generation stage (start or finish).
     INS: EntanglementStage
+    """ Entanglement generation stage(start or finish)."""
 
-    # Bases in which the two qubits (one on each end) were measured in.
-    # Only applies to the Measure Directly case. It is `None` otherwise.
     BAS: Optional[List[int]]
+    """
+    Bases in which the two qubits(one on each end) were measured in .
+    Only applies to the Measure Directly case. It is `None` otherwise.
+    """
 
-    # Measurement outcomes of the two qubits (one on each end).
-    # Only applies to the Measure Directly case. It is `None` otherwise.
     MSR: List[int]
+    """
+    Measurement outcomes of the two qubits(one on each end).
+    Only applies to the Measure Directly case. It is `None` otherwise.
+    """
 
-    # Node names involved in this entanglement operation.
     NOD: List[str]
+    """ Node names involved in this entanglement operation."""
 
-    # Path of links used for entanglement generation.
-    # Links are identified using their names.
     PTH: List[str]
+    """
+    Path of links used for entanglement generation.
+    Links are identified using their names.
+    """
 
-    # Physical qubit IDs of qubits part of the current operation.
     QID: List[int]
+    """ Physical qubit IDs of qubits part of the current operation."""
 
-    # Qubit states of the qubits part of the operations after execution.
     QST: Optional[List[QubitState]]
+    """ Qubit states of the qubits part of the operations after execution."""
 
-    # Dictionary specifying groups of qubits across the network,
-    # as they are after the current operation.
     QGR: Optional[QubitGroups]
+    """
+    Dictionary specifying groups of qubits across the network,
+    as they are after the current operation.
+    """
 
-    # Human-readable message.
     LOG: str
+    """ Human-readable message."""
 
 
 @dataclass
 class ClassCommLogEntry:
-    # Wall clock time. Format is Python's `datetime.now()`.
     WCT: str
+    """ Wall clock time. Format is Python's `datetime.now()`."""
 
-    # Host line number.
-    # Line number in source file (.py) related to what is currently executed.
-    # The line is in the file given by HFL (see below).
     HLN: int
+    """
+    Host line number.
+    Line number in source file (.py) related to what is currently executed.
+    The line is in the file given by HFL(see below).
+    """
 
-    # Host file.
-    # Source file (.py) of current executed instruction.
     HFL: str
+    """
+    Host file.
+    Source file (.py) of current executed instruction.
+    """
 
-    # Classical operation being performed.
     INS: str
+    """ Classical operation being performed."""
 
-    # Message that is sent or received.
     MSG: str
+    """ Message that is sent or received."""
 
-    # Name (role) of the sender.
     SEN: str
+    """ Name(role) of the sender."""
 
-    # Name (role) of the receiver.
     REC: str
+    """ Name(role) of the receiver."""
 
-    # Socket ID (used internally).
     SOD: str
+    """ Socket ID(used internally)."""
 
-    # Human-readable message.
     LOG: str
+    """ Human-readable message."""
 
 
 @dataclass
 class AppLogEntry:
-    # Wall clock time. Format is Python's `datetime.now()`.
     WCT: str
+    """ Wall clock time. Format is Python's `datetime.now()`."""
 
-    # Host line number.
-    # Line number in source file (.py) related to what is currently executed.
-    # The line is in the file given by HFL (see below).
     HLN: int
+    """
+    Host line number.
+    Line number in source file (.py) related to what is currently executed.
+    The line is in the file given by HFL(see below).
+    """
 
-    # Host file.
     # Source file (.py) of current executed instruction.
+    """ Host file."""
     HFL: str
 
-    # Human-readable message.
     LOG: str
+    """ Human-readable message."""

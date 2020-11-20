@@ -11,11 +11,11 @@ INSTR_ID = ctypes.c_uint8
 class Deserializer:
     """
     Deserializes raw bytes into a Subroutine, given a Flavour.
-    `NetQASMInstructions` are immediately created from the binary encoding.
+    :class:`~.NetQASMInstructions` are immediately created from the binary encoding.
 
     (This is in contrast with the parsing.text module, which first converts the input
-    to a `PreSubroutine`, consisting of `Commands`, before transforming it into
-    a `Subroutine` containing `NetQASMInstruction`s.)
+    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.Command` s, before transforming it into
+    a :class:`~.Subroutine` containing :class:`~.NetQASMInstruction` s.)
     """
 
     def __init__(self, flavour: Flavour):

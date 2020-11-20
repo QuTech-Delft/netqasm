@@ -1,3 +1,5 @@
+"""TODO write about connections"""
+
 import os
 import abc
 import math
@@ -155,14 +157,17 @@ class BaseNetQASMConnection(abc.ABC):
 
     @property
     def app_name(self):
+        """Get the application name"""
         return self._app_name
 
     @property
     def node_name(self):
+        """Get the node name"""
         return self._node_name
 
     @property
     def app_id(self):
+        """Get the application ID"""
         return self._app_id
 
     @abc.abstractmethod
@@ -185,9 +190,33 @@ class BaseNetQASMConnection(abc.ABC):
         return f"NetQASM connection for app '{self.app_name}' with node '{self.node_name}'"
 
     def __enter__(self):
+        """Used to open the connection in a context.
+
+        This is the intended behaviour of the connection.
+        Operations specified using the connection or a qubit created with it gets combined into a
+        subroutine, until either :meth:`~.flush` is called or the connection goes out of context
+        which calls :meth:`~.__exit__`.
+
+        .. code-block::
+
+            # Open the connection
+            with NetQASMConnection(app_name="alice") as alice:
+                # Create a qubit
+                q = Qubit(alice)
+                # Perform a Hadamard
+                q.H()
+                # Measure the qubit
+                m = q.measure()
+                # Flush the subroutine to populate the variable `m` with the outcome
+                # Alternetively, this can be done by letting the connection
+                # go out of context and move the print to after.
+                alice.flush()
+                print(m)
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """TODO describe"""
         # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
         self.close(
             clear_app=self._clear_app_on_exit,
@@ -985,7 +1014,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def if_nz(self, a, body):
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+        self._handle_if(Instruction.BNZ, a, b=None, body=body)
 
     def _handle_if(self, condition, a, b, body):
         """Used to build effective if-statements"""
@@ -1005,8 +1034,13 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_commands(commands=pre_commands)
             return
         branch_instruction = flip_branch_instr(condition)
+        # Construct a list of all commands to see what branch labels are already used
+        all_commands = pre_commands + body_commands
+        # We also need to check any existing other pre context commands if they are nested
+        for pre_context_cmds in self._pre_context_commands.values():
+            all_commands += pre_context_cmds
         current_branch_variables = [
-            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
+            cmd.name for cmd in all_commands if isinstance(cmd, BranchLabel)
         ]
         if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,

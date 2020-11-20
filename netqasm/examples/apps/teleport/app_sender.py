@@ -14,6 +14,8 @@ def main(app_config=None, phi=0., theta=0.):
     # Create a EPR socket for entanglement generation
     epr_socket = EPRSocket("receiver")
 
+    print("`sender` will start to teleport a qubit to `receiver`")
+
     # Initialize the connection to the backend
     sender = NetQASMConnection(
         app_name=app_config.app_name,
@@ -39,7 +41,8 @@ def main(app_config=None, phi=0., theta=0.):
 
     app_logger.log(f"m1 = {m1}")
     app_logger.log(f"m2 = {m2}")
-    print(f"m1 = {m1}, m2 = {m2}")
+    print(f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}")
+    print("`sender` will send the corrections to `receiver`")
 
     msg = str((m1, m2))
     socket.send(msg)
