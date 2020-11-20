@@ -6,7 +6,7 @@ SDK objects
 Described below are the user-exposed components of the NetQASM SDK.
 
 * :class:`~.BaseNetQASMConnection`
-* :class:`~.Qubit`
+* :class:`~qubit.Qubit`
 * :class:`~.EPRSocket`
 * Futures:
 
@@ -35,7 +35,7 @@ The classes :class:`~.NetQASMConnection` and :class:`~.Socket` will be different
 If for example the application is simulated using `SquidASM`_ and `NetSquid`_, then the :class:`NetQASMConnection` will in fact be the class `squidasm.sdk.NetSquidConnection`.
 These different classes expose the same set of functionalities.
 They only differ in the way they communicate with the underlying simulator.
-For more details see :ref:`cli`.
+For more details see :ref:`first-app`.
 
 .. TODO Add link to SquidASM.
 .. _NetSquid: https://netsquid.org/

@@ -229,7 +229,7 @@ Since by default no noise is used, their outcomes will always be equal.
 .. tip::
 
    Checkout the documentation of :class:`~.EPRSocket` to see what arguments :meth:`~.EPRSocket.create` and :meth:`~.EPRSocket.recv` can take.
-   For example you will see that a number of pairs can be specified, which is why these methods return a list of :class:`~.Qubit`-objects.
+   For example you will see that a number of pairs can be specified, which is why these methods return a list of :class:`~.qubit.Qubit`-objects.
    Also checkout the methods :meth:`~.EPRSocket.create_context` and :meth:`~.EPRSocket.recv_context()`, which allows to specify what to do whenever a pair is generated, using a context.
 
 Adding classical communication
