@@ -45,11 +45,11 @@ which, if everything went well, will print some information about a ``sender`` a
 What this application in fact does is to teleport a qubit from the ``sender`` to the ``recevier``.
 We will go through how this works more in detail in :ref:`using-sdk`.
 Amazing, you have just teleported qubit over a simulated quantum network.
-What's perhaps even more exiting is that you will soon be able to execute this application without changing the files on real quantum hardware using our XXX which is work in progress.
+What's perhaps even more exiting is that you will soon be able to execute this application without changing the files on real quantum hardware using our Web SDK which is work in progress.
 
 .. warning::
 
-   TODO update XXX with what we will call it, and provide link?
+   TODO provide link to Web SDK?
 
 To see what options the CLI tool takes, do:
 
