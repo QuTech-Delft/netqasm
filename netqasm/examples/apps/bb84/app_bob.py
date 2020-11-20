@@ -77,12 +77,12 @@ def estimate_error_rate(socket, pairs_info, num_test_bits):
 
     test_outcomes = [(i, pairs_info[i].outcome) for i in test_indices]
 
-    logger.warning(f"bob test indices: {test_indices}")
-    logger.warning(f"bob test outcomes: {test_outcomes}")
+    logger.info(f"bob test indices: {test_indices}")
+    logger.info(f"bob test outcomes: {test_outcomes}")
 
     sendClassicalAssured(socket, test_outcomes)
     target_test_outcomes = recvClassicalAssured(socket)
-    logger.warning(f"bob target_test_outcomes: {target_test_outcomes}")
+    logger.info(f"bob target_test_outcomes: {target_test_outcomes}")
 
     num_error = 0
     for (i1, t1), (i2, t2) in zip(test_outcomes, target_test_outcomes):
@@ -150,8 +150,8 @@ def main(app_config=None, num_bits=100):
     outcomes = [int(b) for b in bit_flips]
     bases = [int(b) for b in basis_flips]
 
-    logger.warning(f"bob outcomes: {outcomes}")
-    logger.warning(f"bob bases: {bases}")
+    logger.info(f"bob outcomes: {outcomes}")
+    logger.info(f"bob bases: {bases}")
 
     pairs_info = []
     for i in range(num_bits):
@@ -165,10 +165,10 @@ def main(app_config=None, num_bits=100):
     pairs_info = filter_bases(socket, pairs_info)
 
     pairs_info, error_rate = estimate_error_rate(socket, pairs_info, num_test_bits)
-    logger.warning(f"bob error_rate: {error_rate}")
+    logger.info(f"bob error_rate: {error_rate}")
 
     raw_key = [pair.outcome for pair in pairs_info if not pair.test_outcome]
-    logger.warning(f"alice raw key: {raw_key}")
+    logger.info(f"alice raw key: {raw_key}")
 
     # Return data.
 

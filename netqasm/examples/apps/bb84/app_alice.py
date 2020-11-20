@@ -84,14 +84,14 @@ def estimate_error_rate(socket, pairs_info, num_test_bits):
 
     test_outcomes = [(i, pairs_info[i].outcome) for i in test_indices]
 
-    logger.warning(f"alice finding {num_test_bits} test bits")
-    logger.warning(f"alice test indices: {test_indices}")
-    logger.warning(f"alice test outcomes: {test_outcomes}")
+    logger.info(f"alice finding {num_test_bits} test bits")
+    logger.info(f"alice test indices: {test_indices}")
+    logger.info(f"alice test outcomes: {test_outcomes}")
 
     sendClassicalAssured(socket, test_indices)
     target_test_outcomes = recvClassicalAssured(socket)
     sendClassicalAssured(socket, test_outcomes)
-    logger.warning(f"alice target_test_outcomes: {target_test_outcomes}")
+    logger.info(f"alice target_test_outcomes: {target_test_outcomes}")
 
     num_error = 0
     for (i1, t1), (i2, t2) in zip(test_outcomes, target_test_outcomes):
@@ -159,8 +159,8 @@ def main(app_config=None, num_bits=100):
     outcomes = [int(b) for b in bit_flips]
     theta = [int(b) for b in basis_flips]
 
-    logger.warning(f"alice outcomes: {outcomes}")
-    logger.warning(f"alice theta: {theta}")
+    logger.info(f"alice outcomes: {outcomes}")
+    logger.info(f"alice theta: {theta}")
 
     pairs_info = []
     for i in range(num_bits):
@@ -181,17 +181,7 @@ def main(app_config=None, num_bits=100):
     logger.info(f"alice error rate: {error_rate}")
 
     raw_key = [pair.outcome for pair in pairs_info if not pair.test_outcome]
-    logger.warning(f"alice raw key: {raw_key}")
-
-    for pair in pairs_info:
-        basis = "X" if pair.basis == 1 else "Z"
-        if pair.same_basis:
-            if pair.test_outcome:
-                print(f"ALICE {pair.index}       {basis}     {pair.outcome}     {pair.same_outcome}")
-            else:
-                print(f"ALICE {pair.index}       {basis}     {pair.outcome}")
-        else:
-            print(f"ALICE {pair.index} [RED] {basis}     {pair.outcome}")
+    logger.info(f"alice raw key: {raw_key}")
 
     # Return data.
 
