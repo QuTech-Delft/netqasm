@@ -112,7 +112,19 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         index_changes = {}  # map index in commands to index in new_commands
 
+        # Non-zero if we are replacing a sequence of SWAP instructions by a move.
+        # When the value is 7 (all relevant instructions skipped), reset.
+        skip_swap = 0
+
         for i, instr in enumerate(self._subroutine.commands):
+            # Check if we should skip the current instruction because it has already been
+            # handled by a swap sequence that started earlier.
+            if skip_swap > 0:
+                skip_swap += 1
+                if skip_swap == 7:
+                    skip_swap = 0  # end of swap sequence
+                continue
+
             # check which registers are being written to
             affected_regs = instr.writes_to()
 
@@ -141,7 +153,13 @@ class NVSubroutineCompiler(SubroutineCompiler):
                     or isinstance(instr, core.RotationInstruction)):
                 new_commands += self._handle_single_qubit_gate(instr)
             elif isinstance(instr, core.TwoQubitInstruction):
-                new_commands += self._handle_two_qubit_gate(instr)
+                # First check if this is the start of a swap sequence,
+                # which we should rewrite as a more efficient electron->carbon move.
+                if self._is_swap(i):
+                    new_commands += self._move_electron_carbon(instr)
+                    skip_swap += 1  # so that we skip the next few instructions (part of the swap)
+                else:
+                    new_commands += self._handle_two_qubit_gate(instr)
             else:
                 new_commands += [instr]
 
@@ -152,6 +170,55 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         self._subroutine.commands = new_commands
         return self._subroutine
+
+    def _is_swap(self, instr_index: int) -> bool:
+        """
+        Check if there are 3 CNOTs (with Set instructions inbetween) in the vanilla subroutine,
+        between virtual IDs 0 and 1, starting at this instruction index.
+        """
+        if instr_index + 6 >= len(self._subroutine.commands):
+            return False
+
+        swap_instrs = [
+            vanilla.CnotInstruction,
+            core.SetInstruction,
+            core.SetInstruction,
+            vanilla.CnotInstruction,
+            core.SetInstruction,
+            core.SetInstruction,
+            vanilla.CnotInstruction,
+        ]
+
+        instrs = self._subroutine.commands[instr_index:instr_index+7]
+        if not all(isinstance(instr, typ) for (instr, typ) in zip(instrs, swap_instrs)):
+            return False
+
+        set_instrs = [instrs[1], instrs[2], instrs[4], instrs[5]]
+        set_values = [instr.imm.value for instr in set_instrs]
+
+        return set_values == [1, 0, 0, 1]
+
+    def _move_electron_carbon(self, instr: vanilla.CnotInstruction) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
+        electron = instr.reg0
+        carbon = instr.reg1
+        return [
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+            nv.ControlledRotYInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+        ]
 
     def _handle_two_qubit_gate(
         self,
@@ -279,7 +346,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 lineno=instr.lineno, reg=carbon, imm0=Immediate(8), imm1=Immediate(4)
             ),
             nv.ControlledRotXInstruction(
-                lineno=instr.lineno, reg0=electron, reg1=electron, imm0=Immediate(8), imm1=Immediate(4)
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(8), imm1=Immediate(4)
             ),
             nv.RotZInstruction(
                 lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
