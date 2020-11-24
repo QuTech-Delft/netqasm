@@ -943,11 +943,7 @@ class BaseNetQASMConnection(abc.ABC):
                             # Virtual qubit 0 is already used. Move it to virtual qubit 1.
                             # NOTE: this assumes that virtual qubit 1 is *not* currently used.
                             self.add_new_qubit_commands(1)
-                            # 'Hack': insert a full SWAP by using 3 CNOTs.
-                            # The NV compiler will recognize this sequence and replace them by an electron->carbon move.
-                            self.add_two_qubit_commands(Instruction.CNOT, 0, 1)
-                            self.add_two_qubit_commands(Instruction.CNOT, 1, 0)
-                            self.add_two_qubit_commands(Instruction.CNOT, 0, 1)
+                            self.add_two_qubit_commands(Instruction.MOV, 0, 1)
                             self.add_qfree_commands(0)
                             # From now on, the original qubit should be referred to with virtual ID 1.
                             q.qubit_id = 1

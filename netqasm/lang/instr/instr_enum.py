@@ -77,6 +77,9 @@ class Instruction(Enum):
     RET_REG = 39
     RET_ARR = 40
 
+    # Move (only used internally)
+    MOV = 41
+
 
 _COMMAND_GROUPS = {
     RegCommand: [

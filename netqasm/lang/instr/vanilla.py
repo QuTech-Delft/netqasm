@@ -153,3 +153,19 @@ class CphaseInstruction(core.TwoQubitInstruction):
             [1, 0],
             [0, -1]
         ])
+
+
+@dataclass
+class MovInstruction(core.TwoQubitInstruction):
+    id: int = 41
+    mnemonic: str = "mov"
+
+    def to_matrix(self) -> np.array:  # type: ignore
+        # NOTE: The mov instruction is only meant to be used internally by the compiler.
+        # Therefore, it is OK to not explicitly define a matrix.
+        return None
+
+    def to_matrix_target_only(self) -> np.array:  # type: ignore
+        # NOTE: The mov instruction is only meant to be used internally by the compiler.
+        # Therefore, it is OK to not explicitly define a matrix.
+        return None
