@@ -4,6 +4,13 @@ CHANGELOG
 Upcoming
 --------
 
+2020-11-24 (0.4.1)
+------------------
+- Added `return_arrays` argument to the `NetQASMConnection` constructor.
+  When `False`, no arrays are returned at the end of a subroutine, even if they are used in that subroutine.
+- The NV compiler now moves a qubit (if any) from the electron to the carbon before generating another entangled qubit.
+- Added a `mov` instruction to the vanilla flavour. For now only used by the NV compiler, and is not in the SDK.
+
 2020-11-20 (0.4.0)
 ------------------
 - Added preliminary documentation, including a quickstart and information about the SDK.

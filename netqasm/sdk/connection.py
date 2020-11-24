@@ -26,6 +26,7 @@ from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.progress_bar import ProgressBar
+from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.util.log import LineTracker
 from netqasm.backend.network_stack import OK_FIELDS
 from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
@@ -84,6 +85,7 @@ class BaseNetQASMConnection(abc.ABC):
         log_config=None,
         epr_sockets=None,
         compiler=None,
+        return_arrays=True,
         _init_app=True,
         _setup_epr_sockets=True,
     ):
@@ -121,6 +123,9 @@ class BaseNetQASMConnection(abc.ABC):
 
         # Arrays to return
         self._arrays_to_return = []
+
+        # If False, don't return arrays even if they are used in a subroutine
+        self._return_arrays = return_arrays
 
         # Registers to return
         self._registers_to_return = []
@@ -439,13 +444,14 @@ class BaseNetQASMConnection(abc.ABC):
                         lineno=array.lineno,
                     ))
             # Command for returning the array by the end of the subroutine
-            return_arrays.append(Command(
-                instruction=Instruction.RET_ARR,
-                operands=[
-                    Address(array.address),
-                ],
-                lineno=array.lineno,
-            ))
+            if self._return_arrays:
+                return_arrays.append(Command(
+                    instruction=Instruction.RET_ARR,
+                    operands=[
+                        Address(array.address),
+                    ],
+                    lineno=array.lineno,
+                ))
         return init_arrays, return_arrays
 
     def _subroutine_from_commands(self, commands) -> PreSubroutine:
@@ -928,7 +934,22 @@ class BaseNetQASMConnection(abc.ABC):
                 else:
                     qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
             else:
-                qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice)
+                virtual_address = None
+                if self._compiler == NVSubroutineCompiler:
+                    # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
+                    # So, if this qubit is already in use, we need to move it away first.
+                    for q in self.active_qubits:
+                        if q.qubit_id == 0:
+                            # Virtual qubit 0 is already used. Move it to virtual qubit 1.
+                            # NOTE: this assumes that virtual qubit 1 is *not* currently used.
+                            self.add_new_qubit_commands(1)
+                            self.add_two_qubit_commands(Instruction.MOV, 0, 1)
+                            self.add_qfree_commands(0)
+                            # From now on, the original qubit should be referred to with virtual ID 1.
+                            q.qubit_id = 1
+                    # The virtual address to use for entanglement generation can be 0, since it is free (again).
+                    virtual_address = 0
+                qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
             qubits.append(qubit)
 
         return qubits

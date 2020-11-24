@@ -153,6 +153,28 @@ class NVSubroutineCompiler(SubroutineCompiler):
         self._subroutine.commands = new_commands
         return self._subroutine
 
+    def _move_electron_carbon(self, instr: vanilla.MovInstruction) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
+        electron = instr.reg0
+        carbon = instr.reg1
+        return [
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+            nv.ControlledRotYInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+        ]
+
     def _handle_two_qubit_gate(
         self,
         instr: core.TwoQubitInstruction
@@ -181,6 +203,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 return self._map_cphase_electron_carbon(swapped)
             else:
                 return self._map_cphase_carbon_carbon(instr)
+        elif isinstance(instr, vanilla.MovInstruction):
+            return self._move_electron_carbon(instr)
         else:
             raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
 
@@ -279,7 +303,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 lineno=instr.lineno, reg=carbon, imm0=Immediate(8), imm1=Immediate(4)
             ),
             nv.ControlledRotXInstruction(
-                lineno=instr.lineno, reg0=electron, reg1=electron, imm0=Immediate(8), imm1=Immediate(4)
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(8), imm1=Immediate(4)
             ),
             nv.RotZInstruction(
                 lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
