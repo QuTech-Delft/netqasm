@@ -951,8 +951,8 @@ class BaseNetQASMConnection(abc.ABC):
                             self.add_qfree_commands(0)
                             # From now on, the original qubit should be referred to with virtual ID 1.
                             q.qubit_id = 1
-                            # The virtual address to use for entanglement generation can be 0, since it is free again.
-                            virtual_address = 0
+                    # The virtual address to use for entanglement generation can be 0, since it is free (again).
+                    virtual_address = 0
                 qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
             qubits.append(qubit)
 
