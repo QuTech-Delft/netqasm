@@ -193,7 +193,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
         if not all(isinstance(instr, typ) for (instr, typ) in zip(instrs, swap_instrs)):
             return False
 
-        set_instrs = [instrs[1], instrs[2], instrs[4], instrs[5]]
+        set_instrs: List[core.SetInstruction] = [instrs[1], instrs[2], instrs[4], instrs[5]]  # type: ignore
         set_values = [instr.imm.value for instr in set_instrs]
 
         return set_values == [1, 0, 0, 1]
