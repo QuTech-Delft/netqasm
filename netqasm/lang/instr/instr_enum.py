@@ -77,7 +77,7 @@ class Instruction(Enum):
     RET_REG = 39
     RET_ARR = 40
 
-    # Move (only used internally)
+    # Move source qubit to target qubit (target is overwritten)
     MOV = 41
 
 

@@ -157,15 +157,19 @@ class CphaseInstruction(core.TwoQubitInstruction):
 
 @dataclass
 class MovInstruction(core.TwoQubitInstruction):
+    """Move source qubit to target qubit (target is overwritten)"""
     id: int = 41
     mnemonic: str = "mov"
 
-    def to_matrix(self) -> np.array:  # type: ignore
-        # NOTE: The mov instruction is only meant to be used internally by the compiler.
-        # Therefore, it is OK to not explicitly define a matrix.
-        return None
+    def to_matrix(self) -> np.array:
+        # NOTE: Currently this is represented as a full SWAP.
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1]])
 
     def to_matrix_target_only(self) -> np.array:  # type: ignore
-        # NOTE: The mov instruction is only meant to be used internally by the compiler.
+        # NOTE: The mov instruction is not meant to be viewed as control-target gate.
         # Therefore, it is OK to not explicitly define a matrix.
         return None
