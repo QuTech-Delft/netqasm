@@ -92,6 +92,7 @@ def log_recv(method):
 class ThreadSocket(Socket):
 
     _COMM_LOGGERS: Dict[str, Optional[ClassCommLogger]] = {}
+    _SOCKET_HUB = _socket_hub
 
     def __init__(self, app_name, remote_app_name, socket_id=0, timeout=None,
                  use_callbacks=False, log_config=None):
@@ -132,9 +133,6 @@ class ThreadSocket(Socket):
         # Received messages
         self._received_messages = []
 
-        # The global socket hub
-        self._socket_hub = _socket_hub
-
         # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
@@ -150,7 +148,7 @@ class ThreadSocket(Socket):
             )
 
         # Connect
-        self._socket_hub.connect(self, timeout=timeout)
+        self._SOCKET_HUB.connect(self, timeout=timeout)
 
     @classmethod
     def get_comm_logger(cls, app_name, comm_log_dir):
@@ -166,7 +164,7 @@ class ThreadSocket(Socket):
         if self.connected:
             self._logger.debug("Closing connection")
         self._connected = False
-        self._socket_hub.disconnect(self)
+        self._SOCKET_HUB.disconnect(self)
 
     @property
     def app_name(self):
@@ -190,7 +188,7 @@ class ThreadSocket(Socket):
 
     @property
     def connected(self):
-        return self._socket_hub.is_connected(self)
+        return self._SOCKET_HUB.is_connected(self)
 
     @property
     def use_callbacks(self):
@@ -219,7 +217,7 @@ class ThreadSocket(Socket):
         if not self.connected:
             raise ConnectionError("Socket is not connected so cannot send")
 
-        self._socket_hub.send(self, msg)
+        self._SOCKET_HUB.send(self, msg)
 
     @log_recv
     def recv(self, block=True, timeout=None, maxsize=None):
@@ -248,7 +246,7 @@ class ThreadSocket(Socket):
             If `block=False` and there is no available message
         """
         # TODO use maxsize?
-        return self._socket_hub.recv(self, block=block, timeout=timeout)
+        return self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
 
     def wait(self):
         """Waits until the connection gets lost"""
