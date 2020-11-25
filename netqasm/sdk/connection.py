@@ -566,7 +566,8 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_measure_commands(self, qubit_id, future, inplace):
         if self._compiler == NVSubroutineCompiler:
-            self._free_up_qubit(virtual_address=0)
+            if qubit_id != 0:
+                self._free_up_qubit(virtual_address=0)
         outcome_reg = self._get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         meas_command = Command(
