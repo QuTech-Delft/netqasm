@@ -90,7 +90,6 @@ class EPRSocket(abc.ABC):
     @property
     def min_fidelity(self):
         """Get the desired minimum fidelity"""
-        return self._remote_epr_socket_id
         return self._min_fidelity
 
     @_assert_has_conn
