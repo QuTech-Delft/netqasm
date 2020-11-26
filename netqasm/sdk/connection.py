@@ -547,7 +547,26 @@ class BaseNetQASMConnection(abc.ABC):
         commands = set_commands1 + set_commands2 + [qubit_command]
         self.add_pending_commands(commands=commands)
 
+    def _free_up_qubit(self, virtual_address):
+        if self._compiler == NVSubroutineCompiler:
+            for q in self.active_qubits:
+                # Find a free qubit
+                new_virtual_address = self._get_new_qubit_address()
+                if q.qubit_id == virtual_address:
+                    # Virtual address is already used. Move it to the new virtual address.
+                    # NOTE: this assumes that the new virtual address is *not* currently used.
+                    self.add_new_qubit_commands(new_virtual_address)
+                    self.add_two_qubit_commands(Instruction.MOV, virtual_address, new_virtual_address)
+                    self.add_qfree_commands(virtual_address)
+                    # From now on, the original qubit should be referred to with the new virtual address.
+                    q.qubit_id = new_virtual_address
+
     def add_measure_commands(self, qubit_id, future, inplace):
+        if self._compiler == NVSubroutineCompiler:
+            # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
+            # So, if this qubit is already in use, we need to move it away first.
+            if qubit_id != 0:
+                self._free_up_qubit(virtual_address=0)
         outcome_reg = self._get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         meas_command = Command(
@@ -938,17 +957,8 @@ class BaseNetQASMConnection(abc.ABC):
                 if self._compiler == NVSubroutineCompiler:
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
-                    for q in self.active_qubits:
-                        if q.qubit_id == 0:
-                            # Virtual qubit 0 is already used. Move it to virtual qubit 1.
-                            # NOTE: this assumes that virtual qubit 1 is *not* currently used.
-                            self.add_new_qubit_commands(1)
-                            self.add_two_qubit_commands(Instruction.MOV, 0, 1)
-                            self.add_qfree_commands(0)
-                            # From now on, the original qubit should be referred to with virtual ID 1.
-                            q.qubit_id = 1
-                    # The virtual address to use for entanglement generation can be 0, since it is free (again).
                     virtual_address = 0
+                self._free_up_qubit(virtual_address=virtual_address)
                 qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice, virtual_address=virtual_address)
             qubits.append(qubit)
 
