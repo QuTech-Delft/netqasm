@@ -175,6 +175,34 @@ class NVSubroutineCompiler(SubroutineCompiler):
             ),
         ]
 
+    def _move_carbon_electron(self, instr: vanilla.MovInstruction) -> List[NetQASMInstruction]:
+        """
+        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
+        for the circuit.
+        """
+        electron = instr.reg1
+        carbon = instr.reg0
+        return [
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+            nv.ControlledRotYInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.RotXInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.ControlledRotXInstruction(
+                lineno=instr.lineno, reg0=electron, reg1=carbon, imm0=Immediate(8), imm1=Immediate(4)
+            ),
+            nv.RotYInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+            nv.RotZInstruction(
+                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
+            ),
+        ]
+
     def _handle_two_qubit_gate(
         self,
         instr: core.TwoQubitInstruction
@@ -204,7 +232,12 @@ class NVSubroutineCompiler(SubroutineCompiler):
             else:
                 return self._map_cphase_carbon_carbon(instr)
         elif isinstance(instr, vanilla.MovInstruction):
-            return self._move_electron_carbon(instr)
+            if qubit_id0 == 0 and qubit_id1 != 0:
+                return self._move_electron_carbon(instr)
+            elif qubit_id0 != 0 and qubit_id1 == 0:
+                return self._move_carbon_electron(instr)
+            else:
+                raise RuntimeError(f"Cannot move qubit {qubit_id0} to {qubit_id1}")
         else:
             raise ValueError(f"Don't know how to map instruction {instr} of type {type(instr)}")
 

@@ -547,6 +547,13 @@ class BaseNetQASMConnection(abc.ABC):
         commands = set_commands1 + set_commands2 + [qubit_command]
         self.add_pending_commands(commands=commands)
 
+    def _add_move_qubit_commands(self, source, target):
+        # Moves a qubit from one position to another (assumes that target is free)
+        assert target not in [q.qubit_id for q in self.active_qubits]
+        self.add_new_qubit_commands(target)
+        self.add_two_qubit_commands(Instruction.MOV, source, target)
+        self.add_qfree_commands(source)
+
     def _free_up_qubit(self, virtual_address):
         if self._compiler == NVSubroutineCompiler:
             for q in self.active_qubits:
@@ -555,9 +562,7 @@ class BaseNetQASMConnection(abc.ABC):
                 if q.qubit_id == virtual_address:
                     # Virtual address is already used. Move it to the new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
-                    self.add_new_qubit_commands(new_virtual_address)
-                    self.add_two_qubit_commands(Instruction.MOV, virtual_address, new_virtual_address)
-                    self.add_qfree_commands(virtual_address)
+                    self._add_move_qubit_commands(source=virtual_address, target=new_virtual_address)
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
