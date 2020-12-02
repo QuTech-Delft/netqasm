@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2020-11-26 (0.4.2)
+------------------
+- Fixed a bug where the `EPRSocket` would return an incorrect `min_fidelity` value.
+
 2020-11-24 (0.4.1)
 ------------------
 - Added `return_arrays` argument to the `NetQASMConnection` constructor.

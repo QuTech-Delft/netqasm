@@ -1,11 +1,11 @@
-PYTHON3        = python3
-SOURCEDIR      = netqasm
-TESTDIR        = tests
-EXAMPLEDIR     = netqasm/examples
-PIP_FLAGS      = --extra-index-url=https://${NETSQUIDPYPI_USER}:${NETSQUIDPYPI_PWD}@pypi.netsquid.org
-RUNEXAMPLES    = ${EXAMPLEDIR}/run_examples.py
-MINCOV         = 0
-EXT_TEST       = test_external
+PYTHON3              = python3
+SOURCEDIR            = netqasm
+TESTDIR              = tests
+EXAMPLEDIR           = netqasm/examples
+EXTERNAL_PIP_FLAGS   = --extra-index-url=https://${NETSQUIDPYPI_USER}:${NETSQUIDPYPI_PWD}@pypi.netsquid.org
+RUNEXAMPLES          = ${EXAMPLEDIR}/run_examples.py
+MINCOV               = 0
+EXT_TEST             = test_external
 
 help:
 	@echo "install           Installs the package (editable)."
@@ -26,7 +26,7 @@ test-deps:
 	@$(PYTHON3) -m pip install -r test_requirements.txt
 
 external-test-deps:
-	@$(PYTHON3) -m pip install -r external_test_requirements.txt
+	@$(PYTHON3) -m pip install -r external_test_requirements.txt ${EXTERNAL_PIP_FLAGS}
 
 requirements python-deps:
 	@$(PYTHON3) -m pip install -r requirements.txt
@@ -60,7 +60,7 @@ build bdist: _clean_dist
 	@$(PYTHON3) setup.py bdist_wheel
 
 install: test-deps
-	@$(PYTHON3) -m pip install -e . ${PIP_FLAGS}
+	@$(PYTHON3) -m pip install -e .
 
 _clean_dist:
 	@/bin/rm -rf dist
