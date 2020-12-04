@@ -2,6 +2,7 @@ from netqasm.sdk import Qubit, EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.logging.output import get_new_app_logger
+from netqasm.sdk.classical_communication.message import StructuredMessage
 
 
 def main(app_config=None, phi=0., theta=0.):
@@ -44,10 +45,14 @@ def main(app_config=None, phi=0., theta=0.):
     print(f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}")
     print("`sender` will send the corrections to `receiver`")
 
-    msg = str((m1, m2))
-    socket.send(msg)
+    socket.send_structured(StructuredMessage("Corrections", (m1, m2)))
 
-    return {'m1': m1, 'm2': m2}
+    socket.send_silent(str((phi, theta)))
+
+    return {
+        "m1": m1,
+        "m2": m2
+    }
 
 
 if __name__ == "__main__":

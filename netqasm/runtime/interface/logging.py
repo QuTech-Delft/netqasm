@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union, Dict
-from netqasm.typing import TypedDict
 from enum import Enum
 
 
@@ -8,7 +7,8 @@ QubitState = Tuple[Tuple[complex, complex], Tuple[complex, complex]]  # 2x2 matr
 AbsoluteQubitID = List[Union[str, int]]  # [node_name, qubit_id]
 
 
-class QubitGroup(TypedDict):
+@dataclass
+class QubitGroup:
     is_entangled: Optional[bool]
     qubit_ids: List[AbsoluteQubitID]
 

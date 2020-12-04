@@ -2,7 +2,7 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Tuple, Optional, Set
+from typing import List, Tuple, Optional, Set, Dict
 from dataclasses import asdict
 
 from qlink_interface import RequestType
@@ -21,6 +21,7 @@ from netqasm.runtime.interface.logging import (
     InstrLogEntry,
     AppLogEntry,
     QubitState,
+    QubitGroup,
     QubitGroups,
     EntanglementType,
 )
@@ -128,19 +129,15 @@ class InstrLogger(StructuredLogger):
         )
         if should_ignore_instr(command):
             return None
-        if len(virtual_qubit_ids) > 0:
-            qubit_states = self._get_qubit_states(
-                subroutine_id=subroutine_id,
-                qubit_ids=virtual_qubit_ids,
-            )
-            qubit_groups = self._get_qubit_groups()
-        else:
-            # Note a qubit instruction
+        if len(virtual_qubit_ids) == 0:
+            # Not a qubit instruction
             return None
         if isinstance(command, instructions.core.MeasInstruction):
             outcome = output
         else:
             outcome = None
+
+        qubit_groups, qubit_states = self._get_qubit_groups_and_states()
         return asdict(InstrLogEntry(
             WCT=wall_time,
             SIT=sim_time,
@@ -264,6 +261,11 @@ class InstrLogger(StructuredLogger):
         raise NotImplementedError
 
     def _get_node_name(self) -> str:
+        # NOTE should be subclassed
+        raise NotImplementedError
+
+    @classmethod
+    def _get_qubit_groups_and_states(cls) -> Tuple[Dict[int, QubitGroup], Dict[int, QubitState]]:
         # NOTE should be subclassed
         raise NotImplementedError
 

@@ -1,0 +1,45 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Description of State Teleportation",
+            "parameters": {
+                "content": "The sender prepared one qubit to teleport to the receiver, and generated an entangled pair with the receiver over the quantum internet. Then, then sender measured both local qubits in the Z basis to obtain outcomes `m1` and `m2`, which you can see below. After receiving a classical message containing these values, the receiver performed one out of four possible correction sequences on their local qubit. In case of no noise, this qubit should then be equal to the original qubit as the sender prepared (i.e. the *fidelity* is 1). If there is noise, the fidelity might be less than 1."
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Corrections",
+            "parameters": {
+                "content": "- Sender outcome m1 = {{ $.app_sender.m1 }}. Receiver correction: {{ $.app_receiver.correction1 }}\n- Sender outcome m2 = {{ $.app_sender.m2 }}. Receiver correction: {{ $.app_receiver.correction2 }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "State to be teleported",
+            "parameters": {
+                "density_matrix": "$.app_receiver.original_state"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Final state at Receiver",
+            "parameters": {
+                "density_matrix": "$.app_receiver.received_state"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Fidelity",
+            "parameters": {
+                "content": "{{ $.app_receiver.fidelity }}"
+            }
+        }
+    ]
+]
