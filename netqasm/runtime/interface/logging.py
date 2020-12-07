@@ -4,13 +4,14 @@ from enum import Enum
 
 
 QubitState = Tuple[Tuple[complex, complex], Tuple[complex, complex]]  # 2x2 matrix
-AbsoluteQubitID = List[Union[str, int]]  # [node_name, qubit_id]
+AbsoluteQubitID = List[Union[str, int]]  # [app_name, qubit_id]
 
 
 @dataclass
 class QubitGroup:
     is_entangled: Optional[bool]
     qubit_ids: List[AbsoluteQubitID]
+    state: Optional[QubitState]  # only set when group size is 1
 
 
 QubitGroups = Dict[int, QubitGroup]  # group_id -> qubit_group
@@ -71,9 +72,6 @@ class InstrLogEntry:
     VID: List[int]
     """ Virtual qubit IDs of qubits part of the current operation."""
 
-    QST: Optional[List[QubitState]]
-    """ Qubit states of the qubits part of the operations after execution."""
-
     OUT: Optional[int]
     """ Measurement outcome. Only set in case of a measurement instruction."""
 
@@ -126,9 +124,6 @@ class NetworkLogEntry:
 
     QID: List[int]
     """ Physical qubit IDs of qubits part of the current operation."""
-
-    QST: Optional[List[QubitState]]
-    """ Qubit states of the qubits part of the operations after execution."""
 
     QGR: Optional[QubitGroups]
     """

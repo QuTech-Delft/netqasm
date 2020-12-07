@@ -2,7 +2,7 @@ import os
 import abc
 from enum import Enum
 from datetime import datetime
-from typing import List, Tuple, Optional, Set, Dict
+from typing import List, Tuple, Optional, Set
 from dataclasses import asdict
 
 from qlink_interface import RequestType
@@ -21,7 +21,6 @@ from netqasm.runtime.interface.logging import (
     InstrLogEntry,
     AppLogEntry,
     QubitState,
-    QubitGroup,
     QubitGroups,
     EntanglementType,
 )
@@ -137,7 +136,7 @@ class InstrLogger(StructuredLogger):
         else:
             outcome = None
 
-        qubit_groups, qubit_states = self._get_qubit_groups_and_states()
+        qubit_groups = self._get_qubit_groups()
         return asdict(InstrLogEntry(
             WCT=wall_time,
             SIT=sim_time,
@@ -150,7 +149,6 @@ class InstrLogger(StructuredLogger):
             OPR=ops_str,
             QID=virtual_qubit_ids,
             VID=physical_qubit_ids,
-            QST=qubit_states,
             OUT=outcome,
             QGR=qubit_groups,
             LOG=log
@@ -264,11 +262,6 @@ class InstrLogger(StructuredLogger):
         # NOTE should be subclassed
         raise NotImplementedError
 
-    @classmethod
-    def _get_qubit_groups_and_states(cls) -> Tuple[Dict[int, QubitGroup], Dict[int, QubitState]]:
-        # NOTE should be subclassed
-        raise NotImplementedError
-
 
 class NetworkLogger(StructuredLogger):
     def __init__(self, filepath):
@@ -289,7 +282,6 @@ class NetworkLogger(StructuredLogger):
         nodes = kwargs['nodes']
         path = kwargs['path']
         qubit_ids = kwargs['qubit_ids']
-        qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
         msg = kwargs['msg']
         return asdict(NetworkLogEntry(
@@ -302,7 +294,6 @@ class NetworkLogger(StructuredLogger):
             NOD=nodes,
             PTH=path,
             QID=qubit_ids,
-            QST=qubit_states,
             QGR=qubit_groups,
             LOG=msg
         ))
