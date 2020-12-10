@@ -17,6 +17,7 @@ IGNORED_FILES = [
     "__init__.py",
     "__pycache__",
     "log",
+    "cysignals_crash_logs",
 ]
 
 logger = get_netqasm_logger()
