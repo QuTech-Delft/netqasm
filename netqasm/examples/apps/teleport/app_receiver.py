@@ -1,32 +1,6 @@
-import netsquid as ns
-from netsquid.qubits.qubit import Qubit as NsQubit
-from netsquid.qubits import operators
-
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-
-
-def get_original(phi, theta) -> NsQubit:
-    """Only used for simulation output purposes.
-    Uses the original phi and theta values of the Sender (normally NOT known
-    to the Receiver) to reconstruct the original state."""
-    original = ns.qubits.create_qubits(1)[0]
-    rot_y = operators.create_rotation_op(theta, (0, 1, 0))
-    rot_z = operators.create_rotation_op(phi, (0, 0, 1))
-    ns.qubits.operate(original, rot_y)
-    ns.qubits.operate(original, rot_z)
-    return original
-
-
-def get_original_dm(original: NsQubit):
-    """Only used for simulation output purposes."""
-    return ns.qubits.reduced_dm(original)
-
-
-def get_fidelity(original, dm):
-    """Only used for simulation output purposes.
-    Gets the fidelity between the original state and the received state"""
-    return original.qstate.fidelity(dm)
+from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm, get_fidelity
 
 
 def main(app_config=None):
@@ -64,11 +38,14 @@ def main(app_config=None):
         dm = get_qubit_state(epr)
         print(f"`receiver` recieved the teleported state {dm}")
 
-        msg = socket.recv_silent()
+        # Reconstruct the original qubit to compare with the received one
+        # NOTE only to check simulation results, normally the Sender does not
+        # need to send the phi and theta values!
+        msg = socket.recv_silent()  # don't log this
         phi, theta = eval(msg)
 
-        original = get_original(phi, theta)
-        original_dm = get_original_dm(original)
+        original = qubit_from(phi, theta)
+        original_dm = to_dm(original)
         fidelity = get_fidelity(original, dm)
 
         return {
