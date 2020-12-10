@@ -9,6 +9,12 @@ from netqasm.util.yaml import load_yaml
 TEMPLATE_EXAMPLE_NAME = "teleport"
 TEMPLATE_EXAMPLE_DIR = os.path.join(EXAMPLE_APPS_DIR, TEMPLATE_EXAMPLE_NAME)
 
+IGNORED_FILES = [
+    "__init__.py",
+    "__pycache__",
+    "log",
+]
+
 
 def test_version():
     runner = CliRunner()
@@ -27,11 +33,7 @@ def test_new():
         assert results.exit_code == 0
         assert results.output.startswith("Creating application")
         assert TEMPLATE_EXAMPLE_NAME in results.output
-        ignored_files = [
-            "__init__.py",
-            "__pycache__",
-        ]
-        expected_files = [f for f in os.listdir(TEMPLATE_EXAMPLE_DIR) if f not in ignored_files]
+        expected_files = [f for f in os.listdir(TEMPLATE_EXAMPLE_DIR) if f not in IGNORED_FILES]
         assert sorted(os.listdir(path)) == sorted(expected_files)
 
 
@@ -68,11 +70,7 @@ def test_new_template():
         assert results.exit_code == 0
         assert results.output.startswith("Creating application")
         assert template in results.output
-        ignored_files = [
-            "__init__.py",
-            "__pycache__",
-        ]
-        expected_files = [f for f in os.listdir(template_example_dir) if f not in ignored_files]
+        expected_files = [f for f in os.listdir(template_example_dir) if f not in IGNORED_FILES]
         assert sorted(os.listdir(path)) == sorted(expected_files)
 
 
