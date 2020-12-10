@@ -2,7 +2,6 @@ from netqasm.runtime.settings import get_simulator, Simulator
 
 if get_simulator() == Simulator.NETSQUID:
     import netsquid as ns
-    from netsquid.qubits.qubit import Qubit as NsQubit
     from netsquid.qubits import operators
 
 
