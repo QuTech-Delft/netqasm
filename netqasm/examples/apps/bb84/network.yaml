@@ -3,7 +3,7 @@ links:
   name: ch0
   node_name1: bob
   node_name2: alice
-  noise_type: Depolarise
+  noise_type: Bitflip
 nodes:
 - gate_fidelity: 1.0
   name: bob

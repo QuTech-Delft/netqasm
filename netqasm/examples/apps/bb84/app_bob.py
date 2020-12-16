@@ -1,18 +1,19 @@
 import json
+import random
 import math
 from dataclasses import dataclass
 from typing import Optional
 
-from qlink_interface import EPRType
-
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
+from netqasm.sdk.classical_communication.message import StructuredMessage
 
 logger = get_netqasm_logger()
 
 buf_msgs = []  # type: ignore
 EOF = "EOF"
+ALL_MEASURED = "All qubits measured"
 
 
 def recv_single_msg(socket):
@@ -46,22 +47,26 @@ def recvClassicalAssured(socket):
     return data
 
 
-def receive_bb84_states(epr_socket, socket, target, n):
-    bit_flips = []
-    basis_flips = []
+def receive_bb84_states(conn, epr_socket, socket, target, n):
+    bit_flips = [None for _ in range(n)]
+    basis_flips = [random.randint(0, 1) for _ in range(n)]
 
-    ent_infos = epr_socket.recv(number=n, tp=EPRType.M)
-    for ent_info in ent_infos:
-        bit_flips.append(ent_info.measurement_outcome)
-        basis_flips.append(ent_info.measurement_basis)
+    for i in range(n):
+        q = epr_socket.recv(1)[0]
+        if basis_flips[i]:
+            q.H()
+        m = q.measure()
+        conn.flush()
+        bit_flips[i] = int(m)
+
     return bit_flips, basis_flips
 
 
 def filter_bases(socket, pairs_info):
     bases = [(i, pairs_info[i].basis) for (i, pair) in enumerate(pairs_info)]
 
-    remote_bases = recvClassicalAssured(socket)
-    sendClassicalAssured(socket, bases)
+    remote_bases = socket.recv_structured().payload
+    socket.send_structured(StructuredMessage("Bases", bases))
 
     for (i, basis), (remote_i, remote_basis) in zip(bases, remote_bases):
         assert i == remote_i
@@ -71,7 +76,7 @@ def filter_bases(socket, pairs_info):
 
 
 def estimate_error_rate(socket, pairs_info, num_test_bits):
-    test_indices = recvClassicalAssured(socket)
+    test_indices = socket.recv_structured().payload
     for pair in pairs_info:
         pair.test_outcome = (pair.index in test_indices)
 
@@ -80,8 +85,8 @@ def estimate_error_rate(socket, pairs_info, num_test_bits):
     logger.info(f"bob test indices: {test_indices}")
     logger.info(f"bob test outcomes: {test_outcomes}")
 
-    sendClassicalAssured(socket, test_outcomes)
-    target_test_outcomes = recvClassicalAssured(socket)
+    socket.send_structured(StructuredMessage("Test outcomes", test_outcomes))
+    target_test_outcomes = socket.recv_structured().payload
     logger.info(f"bob target_test_outcomes: {target_test_outcomes}")
 
     num_error = 0
@@ -132,7 +137,7 @@ def h(p):
 
 
 def main(app_config=None, num_bits=100):
-    num_test_bits = num_bits // 4
+    num_test_bits = max(num_bits // 4, 1)
 
     # Socket for classical communication
     socket = Socket("bob", "alice", log_config=app_config.log_config)
@@ -145,7 +150,7 @@ def main(app_config=None, num_bits=100):
         epr_sockets=[epr_socket],
     )
     with bob:
-        bit_flips, basis_flips = receive_bb84_states(epr_socket, socket, "alice", num_bits)
+        bit_flips, basis_flips = receive_bb84_states(bob, epr_socket, socket, "alice", num_bits)
 
     outcomes = [int(b) for b in bit_flips]
     bases = [int(b) for b in basis_flips]
@@ -161,7 +166,7 @@ def main(app_config=None, num_bits=100):
             outcome=int(bit_flips[i]),
         ))
 
-    sendClassicalAssured(socket, 'BB84DISTACK')
+    socket.send(ALL_MEASURED)
     pairs_info = filter_bases(socket, pairs_info)
 
     pairs_info, error_rate = estimate_error_rate(socket, pairs_info, num_test_bits)
@@ -184,8 +189,8 @@ def main(app_config=None, num_bits=100):
     z_basis_count = num_bits - x_basis_count
     same_basis_count = sum(pair.same_basis for pair in pairs_info)
     outcome_comparison_count = sum(pair.test_outcome for pair in pairs_info if pair.same_basis)
-    same_outcome_count = sum(pair.same_outcome for pair in pairs_info if pair.test_outcome)
-    qber = (outcome_comparison_count - same_outcome_count) / outcome_comparison_count
+    diff_outcome_count = outcome_comparison_count - sum(pair.same_outcome for pair in pairs_info if pair.test_outcome)
+    qber = (diff_outcome_count) / outcome_comparison_count
     key_rate_potential = 1 - 2 * h(qber)
 
     return {
@@ -212,21 +217,13 @@ def main(app_config=None, num_bits=100):
         'outcome_comparison_count': outcome_comparison_count,
 
         # Number of compared outcomes with equal values.
-        'same_outcome_count': same_outcome_count,
+        'diff_outcome_count': diff_outcome_count,
 
         # Estimated Quantum Bit Error Rate (QBER).
         'qber': qber,
 
-        'qber_explanation': "QBER is the Quantum Bit Error Rate."
-                            "It is the fraction of compared measurement outcomes that are not equal, "
-                            "even though the result from measurements in the same basis.",
-
         # Rate of secure key that can in theory be extracted from the raw key.
         'key_rate_potential': key_rate_potential,
-
-        'key_rate_explanation': "Rate of secure key that can in theory be extracted from the raw key, "
-                                "(After more classical post-processing.)"
-                                " The rate is 'length of secure key' divided by 'length of raw key'.",
 
         # Raw key.
         # ('Result' of this application. In practice, there'll be post-processing to produce secure shared key.)

@@ -2,6 +2,8 @@
 
 import abc
 
+from netqasm.sdk.classical_communication.message import StructuredMessage
+
 
 class Socket(abc.ABC):
     def __init__(
@@ -25,6 +27,22 @@ class Socket(abc.ABC):
     def recv(self, block=True, maxsize=None):
         """Receive a message from the remote node."""
         pass
+
+    def send_structured(self, msg: StructuredMessage) -> None:
+        """Sends a structured message (with header and payload) to the remote node."""
+        raise NotImplementedError
+
+    def recv_structured(self, block=True, maxsize=None) -> StructuredMessage:
+        """Receive a message (with header and payload) from the remote node."""
+        raise NotImplementedError
+
+    def send_silent(self, msg) -> None:
+        """Sends a message without logging"""
+        raise NotImplementedError
+
+    def recv_silent(self, block=True, maxsize=None):
+        """Receive a message without logging"""
+        raise NotImplementedError
 
     def recv_callback(self, msg):
         """This method gets called when a message is received.

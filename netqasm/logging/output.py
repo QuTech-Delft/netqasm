@@ -128,19 +128,15 @@ class InstrLogger(StructuredLogger):
         )
         if should_ignore_instr(command):
             return None
-        if len(virtual_qubit_ids) > 0:
-            qubit_states = self._get_qubit_states(
-                subroutine_id=subroutine_id,
-                qubit_ids=virtual_qubit_ids,
-            )
-            qubit_groups = self._get_qubit_groups()
-        else:
-            # Note a qubit instruction
+        if len(virtual_qubit_ids) == 0:
+            # Not a qubit instruction
             return None
         if isinstance(command, instructions.core.MeasInstruction):
             outcome = output
         else:
             outcome = None
+
+        qubit_groups = self._get_qubit_groups()
         return asdict(InstrLogEntry(
             WCT=wall_time,
             SIT=sim_time,
@@ -153,7 +149,6 @@ class InstrLogger(StructuredLogger):
             OPR=ops_str,
             QID=virtual_qubit_ids,
             VID=physical_qubit_ids,
-            QST=qubit_states,
             OUT=outcome,
             QGR=qubit_groups,
             LOG=log
@@ -287,7 +282,6 @@ class NetworkLogger(StructuredLogger):
         nodes = kwargs['nodes']
         path = kwargs['path']
         qubit_ids = kwargs['qubit_ids']
-        qubit_states = kwargs['qubit_states']
         qubit_groups = kwargs['qubit_groups']
         msg = kwargs['msg']
         return asdict(NetworkLogEntry(
@@ -300,7 +294,6 @@ class NetworkLogger(StructuredLogger):
             NOD=nodes,
             PTH=path,
             QID=qubit_ids,
-            QST=qubit_states,
             QGR=qubit_groups,
             LOG=msg
         ))

@@ -13,6 +13,13 @@ from netqasm.runtime.settings import set_simulator, Simulator
 
 EXAMPLE_APPS_DIR = os.path.dirname(os.path.abspath(apps.__file__))
 
+IGNORED_FILES = [
+    "__init__.py",
+    "__pycache__",
+    "log",
+    "cysignals_crash_logs",
+]
+
 logger = get_netqasm_logger()
 
 
@@ -99,13 +106,9 @@ def new_folder(path, template="teleport", quiet=False):
     assert not os.path.exists(path), "Destination already exists"
     os.mkdir(path)
     template_example_dir = os.path.join(EXAMPLE_APPS_DIR, template)
-    ignore = [
-        "__init__.py",
-        "__pycache__",
-    ]
     for entry in os.listdir(template_example_dir):
         entry_path = os.path.join(template_example_dir, entry)
-        if entry not in ignore:
+        if entry not in IGNORED_FILES:
             target_path = os.path.join(path, entry)
             if os.path.isfile(entry_path):
                 shutil.copyfile(entry_path, target_path)
@@ -166,6 +169,14 @@ def init_folder(path, quiet=False):
     if not os.path.exists(readme_file_path):
         _create_new_readme_file(
             file_path=readme_file_path,
+        )
+        file_added = True
+
+    # Create results_config.json if non-existant
+    results_config_file_path = os.path.join(path, "results_config.json")
+    if not os.path.exists(results_config_file_path):
+        _create_new_results_config_file(
+            file_path=results_config_file_path,
         )
         file_added = True
 
@@ -279,9 +290,23 @@ def _create_new_readme_file(file_path, quiet=False):
         )
 
 
-def get_example_apps():
-    ignore = [
-        "__init__.py",
-        "__pycache__",
+@file_creation_notify
+def _create_new_results_config_file(file_path, quiet=False):
+    with open(file_path, 'w') as f:
+        f.write(
+            r"""[
+    [
+        {
+            "output_type": "text",
+            "title": "Results",
+            "parameters": {
+                "content": "Information about the results."
+            }
+        }
     ]
-    return [app_name for app_name in os.listdir(EXAMPLE_APPS_DIR) if app_name not in ignore]
+]"""
+        )
+
+
+def get_example_apps():
+    return [app_name for app_name in os.listdir(EXAMPLE_APPS_DIR) if app_name not in IGNORED_FILES]
