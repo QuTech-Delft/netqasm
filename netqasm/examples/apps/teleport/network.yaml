@@ -1,6 +1,5 @@
 nodes:
   - name: "the_hague"
-    hardware: "NV"
     gate_fidelity: 0.9
     qubits:
       - id: 0
@@ -10,7 +9,6 @@ nodes:
         t1: 1.e+10
         t2: 1.e+9
   - name: "delft"
-    hardware: "NV"
     gate_fidelity: 0.9
     qubits:
       - id: 0
