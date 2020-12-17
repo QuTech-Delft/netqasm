@@ -4,6 +4,30 @@ CHANGELOG
 Upcoming
 --------
 
+2020-12-17 (0.5.0)
+------------------
+- Removed the QST (qubit state) field from log entries.
+- The QGR (qubit groups) field now contains a dict of *all* qubit groups in the whole simulation,
+  so also of qubits not directly acted on in the current logged operation.
+- Added the `StructuredMessage` class in the SDK, which distinguishes between a header and the payload.
+- Added `send_structured` and `recv_structured` functions to the `Socket` class for communication `StructuredMessage`s.
+- Added `send_silent` and `recv_silent` functions to the `Socket` class for sending standard messages
+  that are not logged to the `<role>_class_comm.yaml` files.
+- Added `sim_states` module to the SDK with some helper functions for dealing with NetSquid (only works with the `netsquid`
+  backend).
+- Added the `--log-to-files` CLI parameter. If `True`, no logs are written to any files.
+- The `Depolarise` NoiseType for network links now always generates general mixed states, instead of either a perfect 
+  state or a fully mixed state.
+- Added a `DiscreteDepolarise` NoiseType for network links that has the old behavior of `Depolarise`.
+- Log directories and Python cache files are not anymore copied from the `teleport` example when creating using
+  `netqasm new` or `netqasm init`.
+- `netqasm new` and `netqasm init` now also create a `results_config.json` file.
+- Added support for more accurate NV simulation. A `nv.yaml` file can be used additionally to the `network.yaml` file.
+- The BB84 example was changed to use Create and Keep entanglement generation.
+- Added `results_config.json` to the `bb84` and `teleport` examples.
+- Fixed bugs in CLI unit test.
+- Fixed a bug related to vritual address allocation.
+
 2020-11-26 (0.4.2)
 ------------------
 - Fixed a bug where the `EPRSocket` would return an incorrect `min_fidelity` value.
