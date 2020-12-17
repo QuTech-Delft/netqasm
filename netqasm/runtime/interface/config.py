@@ -12,6 +12,7 @@ class QuantumHardware(Enum):
 class NoiseType(Enum):
     NoNoise = "NoNoise"
     Depolarise = "Depolarise"
+    DiscreteDepolarise = "DiscreteDepolarise"
     Bitflip = "Bitflip"
 
 
