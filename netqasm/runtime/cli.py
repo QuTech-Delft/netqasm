@@ -75,6 +75,11 @@ option_log_level = click.option(
          "Note, this affects logging to stderr, not logging instructions to file."
 )
 
+option_log_to_files = click.option(
+    "--log-to-files", type=bool, default=True,
+    help="Set to false to completely disable logging to files."
+)
+
 
 ############
 # simulate #
@@ -89,6 +94,7 @@ option_log_level = click.option(
 @option_post_func_file
 @option_results_file
 @option_log_level
+@option_log_to_files
 @click.option("--network-config-file", type=str, default=None,
               help="Explicitly choose the network config file, "
                    "default is `app-folder/network.yaml`."
@@ -111,6 +117,7 @@ def simulate(
     app_config_dir,
     log_dir,
     log_level,
+    log_to_files,
     post_function_file,
     results_file,
     simulator,
@@ -137,6 +144,7 @@ def simulate(
         app_config_dir=app_config_dir,
         log_dir=log_dir,
         log_level=log_level.upper(),
+        log_to_files=log_to_files,
         post_function_file=post_function_file,
         results_file=results_file,
         formalism=formalism,
@@ -156,6 +164,7 @@ def simulate(
 @option_log_dir
 @option_results_file
 @option_log_level
+@option_log_to_files
 def run(
     app_dir,
     lib_dirs,
@@ -163,6 +172,7 @@ def run(
     app_config_dir,
     log_dir,
     log_level,
+    log_to_files,
     results_file,
 ):
     """
@@ -178,6 +188,7 @@ def run(
         track_lines=track_lines,
         app_config_dir=app_config_dir,
         log_dir=log_dir,
+        log_to_files=log_to_files,
         log_level=log_level.upper(),
         results_file=results_file,
     )

@@ -878,6 +878,8 @@ class Executioner:
         unit_module = self._qubit_unit_modules.get(app_id)
         if unit_module is None:
             return False
+        if virtual_address < 0 or virtual_address >= len(unit_module):
+            return False
         return unit_module[virtual_address] is not None
 
     def _allocate_physical_qubit(self, subroutine_id, virtual_address, physical_address=None):

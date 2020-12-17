@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Optional
+import json
 
 from netqasm.logging.glob import get_netqasm_logger
 from ..socket import Socket
@@ -7,6 +8,7 @@ from .socket_hub import _socket_hub
 from netqasm.util.log import LineTracker
 from netqasm.logging.output import SocketOperation, ClassCommLogger
 from netqasm.sdk.config import LogConfig
+from netqasm.sdk.classical_communication.message import StructuredMessage
 
 
 def trim_msg(msg: str) -> str:
@@ -41,6 +43,37 @@ def log_send(method):
             )
 
         method(self, msg)
+
+    return new_method
+
+
+def log_send_structured(method):
+    def new_method(self, msg: StructuredMessage):
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
+
+        logged_msg = f"{msg.header}: {msg.payload}"
+        raw_msg = json.dumps(msg.__dict__)
+
+        if self._comm_logger is not None:
+            log = f"Send classical message to {self.remote_app_name}: {raw_msg}"
+            self._comm_logger.log(
+                socket_op=SocketOperation.SEND,
+                msg=logged_msg,
+                sender=self._app_name,
+                receiver=self._remote_app_name,
+                socket_id=self._id,
+                hln=hln,
+                hfl=hfl,
+                log=log,
+            )
+
+        method(self, raw_msg)
 
     return new_method
 
@@ -89,9 +122,56 @@ def log_recv(method):
     return new_method
 
 
+def log_recv_structured(method):
+    def new_method(self, *args, **kwargs):
+        hln = None
+        hfl = None
+        if self._line_tracker is not None:
+            hostline = self._line_tracker.get_line()
+            if hostline is not None:
+                hln = hostline.lineno
+                hfl = hostline.filename
+
+        if self._comm_logger is not None:
+            log = f"Waiting for a classical message from {self.remote_app_name}..."
+            self._comm_logger.log(
+                socket_op=SocketOperation.WAIT_RECV,
+                msg=None,
+                sender=self._remote_app_name,
+                receiver=self._app_name,
+                socket_id=self._id,
+                hln=hln,
+                hfl=hfl,
+                log=log,
+            )
+
+        raw_msg = method(self, *args, **kwargs)
+        msg_dict = json.loads(raw_msg)
+        msg = StructuredMessage(header=msg_dict['header'], payload=msg_dict['payload'])
+        logged_msg = f"{msg.header}: {msg.payload}"
+
+        if self._comm_logger is not None:
+            log = f"Message received from {self.remote_app_name}: {msg}"
+            self._comm_logger.log(
+                socket_op=SocketOperation.RECV,
+                msg=logged_msg,
+                sender=self._remote_app_name,
+                receiver=self._app_name,
+                socket_id=self._id,
+                hln=hln,
+                hfl=hfl,
+                log=log,
+            )
+
+        return msg
+
+    return new_method
+
+
 class ThreadSocket(Socket):
 
     _COMM_LOGGERS: Dict[str, Optional[ClassCommLogger]] = {}
+    _SOCKET_HUB = _socket_hub
 
     def __init__(self, app_name, remote_app_name, socket_id=0, timeout=None,
                  use_callbacks=False, log_config=None):
@@ -132,9 +212,6 @@ class ThreadSocket(Socket):
         # Received messages
         self._received_messages = []
 
-        # The global socket hub
-        self._socket_hub = _socket_hub
-
         # Logger
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
 
@@ -150,7 +227,7 @@ class ThreadSocket(Socket):
             )
 
         # Connect
-        self._socket_hub.connect(self, timeout=timeout)
+        self._SOCKET_HUB.connect(self, timeout=timeout)
 
     @classmethod
     def get_comm_logger(cls, app_name, comm_log_dir):
@@ -166,7 +243,7 @@ class ThreadSocket(Socket):
         if self.connected:
             self._logger.debug("Closing connection")
         self._connected = False
-        self._socket_hub.disconnect(self)
+        self._SOCKET_HUB.disconnect(self)
 
     @property
     def app_name(self):
@@ -190,7 +267,7 @@ class ThreadSocket(Socket):
 
     @property
     def connected(self):
-        return self._socket_hub.is_connected(self)
+        return self._SOCKET_HUB.is_connected(self)
 
     @property
     def use_callbacks(self):
@@ -219,7 +296,7 @@ class ThreadSocket(Socket):
         if not self.connected:
             raise ConnectionError("Socket is not connected so cannot send")
 
-        self._socket_hub.send(self, msg)
+        self._SOCKET_HUB.send(self, msg)
 
     @log_recv
     def recv(self, block=True, timeout=None, maxsize=None):
@@ -248,13 +325,38 @@ class ThreadSocket(Socket):
             If `block=False` and there is no available message
         """
         # TODO use maxsize?
-        return self._socket_hub.recv(self, block=block, timeout=timeout)
+        return self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
+
+    @log_send_structured
+    def send_structured(self, msg):
+        if not self.connected:
+            raise ConnectionError("Socket is not connected so cannot send")
+
+        self._SOCKET_HUB.send(self, msg)
+
+    @log_recv_structured
+    def recv_structured(self, block=True, timeout=None, maxsize=None):
+        # TODO use maxsize?
+        return self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
 
     def wait(self):
         """Waits until the connection gets lost"""
         while True:
             if not self.connected:
                 return
+
+    def send_silent(self, msg) -> None:
+        """Sends a message without logging"""
+        if not isinstance(msg, str):
+            raise TypeError(f"Messages needs to be a string, not {type(msg)}")
+        if not self.connected:
+            raise ConnectionError("Socket is not connected so cannot send")
+
+        self._SOCKET_HUB.send(self, msg)
+
+    def recv_silent(self, block=True, timeout=None, maxsize=None):
+        """Receive a message without logging"""
+        return self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
 
 
 class StorageThreadSocket(ThreadSocket):
