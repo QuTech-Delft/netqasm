@@ -49,7 +49,7 @@ A log-folder contains a seperate log-file for each host from the simulation (e.g
 
 A line in a log-file looks for example as follows:
 ```sh
-NetQASM.Instr-by-NetSquidExecutioner(alice) : WCT=2020-04-23 12:45:10,482 : NST=13952.0 : SID=0 : PRC=18 : HLN=19 : INS=init : Doing instruction init with operands Q0
+NetQASM.Instr-by-NetSquidExecutor(alice) : WCT=2020-04-23 12:45:10,482 : NST=13952.0 : SID=0 : PRC=18 : HLN=19 : INS=init : Doing instruction init with operands Q0
 ```
 containing the following fields:
 > TODO update fields.

@@ -80,14 +80,14 @@ class StructuredLogger(abc.ABC):
         return values
 
     def _get_op_value(self, subroutine_id, operand):
-        app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
+        app_id = self._executor._get_app_id(subroutine_id=subroutine_id)
         value = None
         if isinstance(operand, int):
             value = operand
         elif isinstance(operand, Register):
-            value = self._executioner._get_register(app_id=app_id, register=operand)
+            value = self._executor._get_register(app_id=app_id, register=operand)
         elif isinstance(operand, ArrayEntry):
-            value = self._executioner._get_array_entry(app_id=app_id, array_entry=operand)
+            value = self._executor._get_array_entry(app_id=app_id, array_entry=operand)
         return value
 
     def save(self):
@@ -100,9 +100,9 @@ class InstrLogger(StructuredLogger):
     # List of (node_name, subroutine_id, qubit_id)
     _qubits: Set[Tuple[str, int, int]] = set()
 
-    def __init__(self, filepath: str, executioner):
+    def __init__(self, filepath: str, executor):
         super().__init__(filepath)
-        self._executioner = executioner
+        self._executor = executor
 
     def _construct_entry(self, *args, **kwargs):
         command = kwargs['command']
@@ -110,7 +110,7 @@ class InstrLogger(StructuredLogger):
         subroutine_id = kwargs['subroutine_id']
         output = kwargs['output']
         wall_time = str(datetime.now())
-        sim_time = self._executioner._get_simulated_time()
+        sim_time = self._executor._get_simulated_time()
         program_counter = kwargs['program_counter']
         instr_name = command.mnemonic
         operands = command.operands
@@ -165,7 +165,7 @@ class InstrLogger(StructuredLogger):
             instructions.core.CreateEPRInstruction,
             instructions.core.RecvEPRInstruction,
         ]
-        app_id = self._executioner._get_app_id(subroutine_id=subroutine_id)
+        app_id = self._executor._get_app_id(subroutine_id=subroutine_id)
         if any(isinstance(command, cmd_cls) for cmd_cls in epr_instructions):
             # Ignore a constant register since this indicates it's a measure directly request
             if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
@@ -174,7 +174,7 @@ class InstrLogger(StructuredLogger):
                 subroutine_id=subroutine_id,
                 operand=command.qubit_addr_array,  # type: ignore
             ))
-            virtual_qubit_ids = self._executioner._get_array(
+            virtual_qubit_ids = self._executor._get_array(
                 app_id=app_id,
                 address=qubit_id_array_address,
             )  # type: ignore
@@ -200,7 +200,7 @@ class InstrLogger(StructuredLogger):
         physical_qubit_ids = []
         for virtual_qubit_id in virtual_qubit_ids:
             try:
-                physical_qubit_id = self._executioner._get_position_in_unit_module(
+                physical_qubit_id = self._executor._get_position_in_unit_module(
                     app_id=app_id,
                     address=virtual_qubit_id,
                 )
@@ -239,7 +239,7 @@ class InstrLogger(StructuredLogger):
 
     def _get_app_id(self, subroutine_id: int) -> int:
         """Returns the app ID for a given subroutine ID"""
-        return self._executioner._get_app_id(subroutine_id=subroutine_id)  # type: ignore
+        return self._executor._get_app_id(subroutine_id=subroutine_id)  # type: ignore
 
     @classmethod
     def _get_qubit_states(
