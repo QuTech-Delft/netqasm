@@ -1,19 +1,39 @@
+import json
+import logging
 import os
 import click
 import importlib
-
+import requests
 import netqasm
 from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
+from netqasm.logging.glob import get_netqasm_logger
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+QNE_FOLDER_PATH = os.path.expanduser('~') + '/.qne'
+
+logger = get_netqasm_logger(sub_logger='cli')
+logger.setLevel(logging.INFO)
+logger.propagate = False
+logger.handlers = []  # Clear all handlers
+formatter = logging.Formatter('{message}', style='{')
+sh = logging.StreamHandler()
+sh.setFormatter(formatter)
+logger.addHandler(sh)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-def cli():
+@click.option('--verbose', '-v', is_flag=True, help='Print info and debug warnings to the console.')
+def cli(verbose):
     """Command line interface for managing virtual python environments."""
-    pass
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+
+
+@cli.group(context_settings=CONTEXT_SETTINGS)
+def qne():
+    """Command line interface for managing calls to the QNE apirouter."""
 
 
 ###########
@@ -79,6 +99,102 @@ option_log_to_files = click.option(
     "--log-to-files", type=bool, default=True,
     help="Set to false to completely disable logging to files."
 )
+
+option_specify_host = click.option(
+    "--host", type=str, default='qne-staging.quantum-inspire.com',
+    help="Specify the IP and port of the api router."
+)
+
+
+#########
+# login #
+#########
+
+@qne.command()
+@option_specify_host
+def login(host):
+    """Generate an API token by logging in."""
+    username = click.prompt('Username')
+    password = click.prompt('Password', hide_input=True)
+    try:
+        return _login(username, password, host)
+    except (ValueError, TypeError, AssertionError) as e:
+        logger.error(e)
+
+
+def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspire.com'):
+    # All the login logic except the user input.
+    if not isinstance(username, str):
+        raise TypeError("The username must be a string.")
+    elif len(username) == 0:
+        raise ValueError("The username cannot be empty.")
+    if not isinstance(password, str):
+        raise TypeError("The password must be a string.")
+    elif len(password) == 0:
+        raise ValueError("The password cannot be empty.")
+    if not isinstance(host, str):
+        raise TypeError("The host address must be a string.")
+    logger.debug("Logging in.")
+    jwt_req = requests.post(f'http://{host}/jwt/',
+                            {'username': [username],
+                             'password': [password]}
+                            )
+    if jwt_req.status_code == 401:
+        raise ValueError("Invalid credentials supplied.")
+    if jwt_req.status_code != 200:
+        raise AssertionError(f'Received invalid response code ({jwt_req.status_code}) from the host.')
+    try:
+        jwt_token = jwt_req.json().get('access')
+    except json.JSONDecodeError:
+        raise AssertionError('Received invalid response from the host.')
+    jwt_header = {'Authorization': f"JWT {jwt_token}"}
+    # NOTE: Since we get a JWT token, do we need to be cautious the token will fail also?
+    logger.debug("Generating new API token.")
+    rm_req = requests.post(f'http://{host}/auth/token/destroy/',
+                           data={'user': username},
+                           headers=jwt_header)
+    if rm_req.status_code != 204:
+        raise AssertionError(f'Received invalid response code ({rm_req.status_code}) from the host.')
+    api_req = requests.post(f'http://{host}/auth/token/create/',
+                            data={'user': username},
+                            headers=jwt_header)
+    if api_req.status_code != 200:
+        raise AssertionError(f'Received invalid response code ({api_req.status_code}) from the host.')
+    api_token = api_req.json()['access']
+    if not os.path.exists(QNE_FOLDER_PATH):
+        os.mkdir(QNE_FOLDER_PATH)
+    with open(f'{QNE_FOLDER_PATH}/api_token', 'w') as f:
+        json.dump({host: (username, api_token)}, f)
+    logger.info("Generated API token successfully.")
+
+
+@qne.command()
+def logout():
+    try:
+        host, username, token_header = _get_token_header()
+    except FileNotFoundError:
+        logger.info('User is not logged in.')
+        return
+    rm_req = requests.post(f'http://{host}/auth/token/destroy/',
+                           data={'user': username},
+                           headers=token_header)
+    if rm_req.status_code == 401:
+        logger.debug('API token was already invalid.')
+    elif rm_req.status_code != 204:
+        raise AssertionError(f'Received invalid response code ({rm_req.status_code}) from the host.')
+    logger.debug('API token successfully removed from host.')
+    os.remove(f'{QNE_FOLDER_PATH}/api_token')
+    logger.info('User logged out successfully.')
+
+
+def _get_token_header():
+    # Extract username and token header from API token file.
+    with open(f'{QNE_FOLDER_PATH}/api_token', 'r') as f:
+        api_token = json.load(f)
+    assert len(api_token) == 1
+    host, (username, token_value) = list(api_token.items())[0]
+    token_header = {'Authorization': f'TOKEN {token_value}'}
+    return host, username, token_header
 
 
 ############
