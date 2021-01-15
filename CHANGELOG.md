@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-01-15 (0.5.1)
+------------------
+- Renamed `Executioner` to `Executor`.
+- Fixed NV compilation when doing sequential EPR create commands.
+
 2020-12-17 (0.5.0)
 ------------------
 - Removed the QST (qubit state) field from log entries.
