@@ -268,6 +268,77 @@ def simulate(
     )
 
 
+@cli.command()
+@option_app_dir
+@option_lib_dirs
+@option_track_lines
+@option_app_config_dir
+@option_log_dir
+@option_post_func_file
+@option_results_file
+@option_log_level
+@option_log_to_files
+@click.option("--network-config-file", type=str, default=None,
+              help="Explicitly choose the network config file, "
+                   "default is `app-folder/network.yaml`."
+              )
+@click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=None,
+              help="Choose with simulator to use, "
+                   "default uses what environment variable 'NETQASM_SIMULATOR' is set to, otherwise 'netsquid'"
+              )
+@click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
+              help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
+              )
+@click.option("--flavour", type=click.Choice(["vanilla", "nv"]), default="vanilla",
+              help="Choose the NetQASM flavour that is used. Default is vanilla."
+              )
+def simulate2(
+    app_dir,
+    lib_dirs,
+    track_lines,
+    network_config_file,
+    app_config_dir,
+    log_dir,
+    log_level,
+    log_to_files,
+    post_function_file,
+    results_file,
+    simulator,
+    formalism,
+    flavour
+):
+    """
+    Simulate an application on a simulated QNodeOS.
+    """
+    if simulator is None:
+        simulator = os.environ.get("NETQASM_SIMULATOR", Simulator.NETSQUID.value)
+    else:
+        simulator = Simulator(simulator)
+    formalism = Formalism(formalism)
+    flavour = Flavour(flavour)
+    set_simulator(simulator=simulator)
+    # Import correct function after setting the simulator
+    # setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
+    # setup_apps(
+    #     app_dir=app_dir,
+    #     lib_dirs=lib_dirs,
+    #     track_lines=track_lines,
+    #     network_config_file=network_config_file,
+    #     app_config_dir=app_config_dir,
+    #     log_dir=log_dir,
+    #     log_level=log_level.upper(),
+    #     log_to_files=log_to_files,
+    #     post_function_file=post_function_file,
+    #     results_file=results_file,
+    #     formalism=formalism,
+    #     flavour=flavour
+    # )
+    simulator = importlib.import_module("squidasm.run.simulate")
+    app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
+    network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
+    simulator.simulate_application(app_instance, network_cfg=network_cfg)
+
+
 ##################
 # Run on QNodeOS #
 ##################

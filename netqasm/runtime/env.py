@@ -5,6 +5,7 @@ from runpy import run_path
 from datetime import datetime
 from itertools import combinations
 from functools import wraps
+from typing import Dict, Any
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.util.yaml import load_yaml, dump_yaml
@@ -23,7 +24,7 @@ IGNORED_FILES = [
 logger = get_netqasm_logger()
 
 
-def load_app_config_file(app_dir, app_name):
+def load_app_config_file(app_dir, app_name) -> Dict[str, Any]:
     ext = '.yaml'
     file_path = os.path.join(app_dir, f"{app_name}{ext}")
     if os.path.exists(file_path):
@@ -49,7 +50,7 @@ def load_roles_config(roles_config_file):
         return None
 
 
-def load_app_files(app_dir):
+def load_app_files(app_dir) -> Dict[str, str]:  # app_name -> file
     app_tag = 'app_'
     ext = '.py'
     app_files = {}

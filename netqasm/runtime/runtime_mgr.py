@@ -1,5 +1,7 @@
 from abc import abstractmethod
 
+from netqasm.runtime.application import ApplicationOutput
+
 
 class NetworkInstance:
     pass
@@ -10,10 +12,6 @@ class NetworkConfig:
 
 
 class ApplicationInstance:
-    pass
-
-
-class ApplicationOutput:
     pass
 
 

@@ -19,6 +19,7 @@ elif simulator == Simulator.NETSQUID:
         from squidasm.sdk import NetSquidConnection as NetQASMConnection  # type: ignore
         from squidasm.util.sim import get_qubit_state  # type: ignore
         # from squidasm.run import run_applications  # type: ignore
+        from squidasm.run.simulate import simulate_application  # type: ignore
     except ModuleNotFoundError:
         raise ModuleNotFoundError(f"to use {Simulator.NETSQUID.value} as simulator, `squidasm` needs to be installed")
 elif simulator == Simulator.SIMULAQRON:

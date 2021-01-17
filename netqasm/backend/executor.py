@@ -140,10 +140,18 @@ class Executor:
     def node_id(self):
         return self._node.ID
 
+    def set_instr_logger(self, instr_log_dir):
+        self._instr_logger = self.__class__.get_instr_logger(
+            node_name=self._name,
+            instr_log_dir=instr_log_dir,
+            executor=self,
+            force_override=True,
+        )
+
     @classmethod
-    def get_instr_logger(cls, node_name, instr_log_dir, executor):
+    def get_instr_logger(cls, node_name, instr_log_dir, executor, force_override=False):
         instr_logger = cls._INSTR_LOGGERS.get(node_name)
-        if instr_logger is None:
+        if instr_logger is None or force_override:
             filename = f"{str(node_name).lower()}_instrs.yaml"
             filepath = os.path.join(instr_log_dir, filename)
             instr_logger = cls.instr_logger_class(
