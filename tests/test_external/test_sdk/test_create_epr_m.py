@@ -1,7 +1,6 @@
 from qlink_interface import EPRType
 
 from netqasm.sdk import EPRSocket
-from netqasm.runtime.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, simulate_application
 from netqasm.runtime.application import default_app_instance
 from netqasm.logging.glob import get_netqasm_logger
@@ -44,4 +43,5 @@ def test_create_epr_m():
 
 
 if __name__ == "__main__":
-    test_create_epr_m()
+    for _ in range(100):
+        test_create_epr_m()

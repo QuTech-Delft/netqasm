@@ -5,10 +5,9 @@ from dataclasses import dataclass
 from typing import Callable, List, Dict, Any, Optional, Tuple
 
 from netqasm.runtime import env
-from netqasm.runtime.interface.config import NetworkConfig
 from netqasm.sdk.config import LogConfig
 from netqasm.util.yaml import load_yaml
-from netqasm.runtime.interface.config import default_network_config, parse_network_config, NetworkConfig
+from netqasm.runtime.interface.config import parse_network_config, NetworkConfig
 
 
 @dataclass
@@ -30,16 +29,16 @@ class AppMetadata:
 @dataclass
 class Application:
     programs: List[Program]
-    metadata: AppMetadata
+    metadata: Optional[AppMetadata]
 
 
 @dataclass
 class ApplicationInstance:
     app: Application
     program_inputs: Dict[str, Dict[str, Any]]
-    network: NetworkConfig  # TODO: decide if needed
+    network: Optional[NetworkConfig]
     party_alloc: Dict[str, str]
-    logging_cfg: LogConfig
+    logging_cfg: Optional[LogConfig]
 
 
 @dataclass
@@ -88,7 +87,7 @@ def app_instance_from_path(app_dir: str = None) -> ApplicationInstance:
     return app_instance
 
 
-def default_app_instance(programs: Tuple[str, Callable]) -> ApplicationInstance:
+def default_app_instance(programs: List[Tuple[str, Callable]]) -> ApplicationInstance:
     """
     Create an Application Instance with programs that take no arguments.
     """

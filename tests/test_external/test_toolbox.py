@@ -2,13 +2,11 @@ import pytest
 import numpy as np
 
 from netqasm.sdk import EPRSocket
-# from netqasm.sdk.external import Socket, NetQASMConnection, run_applications
 from netqasm.sdk.external import Socket, NetQASMConnection, simulate_application
-from netqasm.runtime.app_config import AppConfig
 from netqasm.sdk.toolbox import create_ghz
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 
-from netqasm.runtime.application import Program, ApplicationInstance, default_app_instance
+from netqasm.runtime.application import Program, default_app_instance
 
 
 @pytest.mark.parametrize('angle, tol, expected_nds', [

@@ -1,6 +1,5 @@
 import random
 from netqasm.sdk import Qubit
-from netqasm.runtime.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, simulate_application
 from netqasm.runtime.application import default_app_instance
 from netqasm.logging.glob import get_netqasm_logger

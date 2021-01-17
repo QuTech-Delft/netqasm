@@ -340,7 +340,7 @@ class AppLogger(StructuredLogger):
         if log is None:
             assert len(args) == 1, "AppLogger only takes on argument"
             log = args[0]
-        host_line = self._line_tracker.get_line()
+        # host_line = self._line_tracker.get_line()
         hln = None  # TODO: fix
         hfl = None  # TODO: fix
         wall_time = str(datetime.now())

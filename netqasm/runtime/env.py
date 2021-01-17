@@ -24,7 +24,7 @@ IGNORED_FILES = [
 logger = get_netqasm_logger()
 
 
-def load_app_config_file(app_dir, app_name) -> Dict[str, Any]:
+def load_app_config_file(app_dir, app_name) -> Any:
     ext = '.yaml'
     file_path = os.path.join(app_dir, f"{app_name}{ext}")
     if os.path.exists(file_path):
