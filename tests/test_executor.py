@@ -119,3 +119,16 @@ if __name__ == '__main__':
     expected_output = 10
 
     test_executor(subroutine_str, expected_register, expected_output)
+
+    subroutine_str = """
+        # NETQASM 0.0
+        # APPID 0
+        set R0 1
+        add R0 R0 R0
+        set R1 0
+        addm R0 R0 R0 R1
+        """
+    error_type = RuntimeError
+    error_line = 3
+
+    test_failing_executor(subroutine_str, error_type, error_line)

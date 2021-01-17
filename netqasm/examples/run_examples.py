@@ -44,7 +44,7 @@ def main(external):
                 continue
             print(f"Running example app {app_path} using simulator {get_simulator()}")
             result = subprocess.run(
-                ["netqasm", "simulate2", "--app-dir", app_path],
+                ["netqasm", "simulate", "--app-dir", app_path],
                 stdout=subprocess.DEVNULL,
             )
             if result.returncode != 0:

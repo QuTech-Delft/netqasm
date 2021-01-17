@@ -114,10 +114,6 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
 
 @pytest.mark.parametrize('do_corrections', [True, False])
 @pytest.mark.parametrize('num_nodes', range(2, 6))
-@pytest.mark.parametrize('i', range(10))  # Run 10 times
-@pytest.mark.skipif(
-    True,
-    reason="This sometimes (non-deterministically) hangs. TODO: FIGURE OUT WHY.",
-)
+@pytest.mark.parametrize('i', range(5))  # Run 10 times
 def test_create_ghz(do_corrections, num_nodes, i):
     _gen_create_ghz(num_nodes, do_corrections)
