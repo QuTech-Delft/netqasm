@@ -8,6 +8,7 @@ import netqasm
 from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.config import LogConfig
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -333,10 +334,13 @@ def simulate2(
     #     formalism=formalism,
     #     flavour=flavour
     # )
-    simulator = importlib.import_module("squidasm.run.simulate")
+
+    # simulator = importlib.import_module("squidasm.run.simulate")
+    simulate_application = importlib.import_module("netqasm.sdk.external").simulate_application
     app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
     network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
-    simulator.simulate_application(app_instance, network_cfg=network_cfg)
+    log_cfg = LogConfig(log_dir=os.path.join(app_dir, "log"))
+    simulate_application(app_instance, network_cfg=network_cfg, log_cfg=log_cfg)
 
 
 ##################

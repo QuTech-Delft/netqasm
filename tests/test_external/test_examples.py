@@ -5,7 +5,9 @@ import numpy as np
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.runtime.app_config import AppConfig
-from netqasm.sdk.external import run_applications
+# from netqasm.sdk.external import run_applications
+from netqasm.sdk.external import simulate_application
+from netqasm.runtime.application import default_app_instance
 from netqasm.runtime.settings import get_simulator, Simulator
 
 from netqasm.examples.apps.blind_rotation.app_client import main as blind_rotation_client
@@ -41,24 +43,32 @@ def run_blind_rotation():
         'num_iter': num_iter
     }
 
-    applications = [
-        AppConfig(
-            app_name="client",
-            node_name="client",
-            main_func=blind_rotation_client,
-            log_config=None,
-            inputs=alice_app_inputs
-        ),
-        AppConfig(
-            app_name="server",
-            node_name="server",
-            main_func=blind_rotation_server,
-            log_config=None,
-            inputs=bob_app_inputs
-        ),
-    ]
+    app_instance = default_app_instance([
+        ("client", blind_rotation_client),
+        ("server", blind_rotation_server),
+    ])
+    app_instance.program_inputs["client"] = alice_app_inputs
+    app_instance.program_inputs["server"] = bob_app_inputs
 
-    results = run_applications(applications)
+    # applications = [
+    #     AppConfig(
+    #         app_name="client",
+    #         node_name="client",
+    #         main_func=blind_rotation_client,
+    #         log_config=None,
+    #         inputs=alice_app_inputs
+    #     ),
+    #     AppConfig(
+    #         app_name="server",
+    #         node_name="server",
+    #         main_func=blind_rotation_server,
+    #         log_config=None,
+    #         inputs=bob_app_inputs
+    #     ),
+    # ]
+
+    # results = run_applications(applications)
+    results = simulate_application(app_instance, enable_logging=False)
 
     output_state = results['app_server']['output_state']
     s = results['app_client']['s']
@@ -119,24 +129,32 @@ def run_blind_grover():
 
     bob_app_inputs = {}
 
-    applications = [
-        AppConfig(
-            app_name="client",
-            node_name="client",
-            main_func=blind_grover_client,
-            log_config=None,
-            inputs=alice_app_inputs
-        ),
-        AppConfig(
-            app_name="server",
-            node_name="server",
-            main_func=blind_grover_server,
-            log_config=None,
-            inputs=bob_app_inputs
-        ),
-    ]
+    app_instance = default_app_instance([
+        ("client", blind_grover_client),
+        ("server", blind_grover_server),
+    ])
+    app_instance.program_inputs["client"] = alice_app_inputs
+    app_instance.program_inputs["server"] = bob_app_inputs
 
-    results = run_applications(applications)
+    # applications = [
+    #     AppConfig(
+    #         app_name="client",
+    #         node_name="client",
+    #         main_func=blind_grover_client,
+    #         log_config=None,
+    #         inputs=alice_app_inputs
+    #     ),
+    #     AppConfig(
+    #         app_name="server",
+    #         node_name="server",
+    #         main_func=blind_grover_server,
+    #         log_config=None,
+    #         inputs=bob_app_inputs
+    #     ),
+    # ]
+
+    # results = run_applications(applications)
+    results = simulate_application(app_instance, enable_logging=False)
 
     m0 = results['app_client']['result0']
     m1 = results['app_client']['result1']

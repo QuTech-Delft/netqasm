@@ -301,14 +301,14 @@ class Executor:
         while self._program_counters[subroutine_id] < len(commands):
             prog_counter = self._program_counters[subroutine_id]
             command = commands[prog_counter]
-            try:
-                output = self._execute_command(subroutine_id, command)
-                if isinstance(output, GeneratorType):  # sanity check: should always be the case
-                    yield from output
-            except Exception as exc:
-                traceback_str = ''.join(traceback.format_tb(exc.__traceback__))
-                self._handle_command_exception(exc, prog_counter, traceback_str)
-                break
+            # try:
+            output = self._execute_command(subroutine_id, command)
+            if isinstance(output, GeneratorType):  # sanity check: should always be the case
+                yield from output
+            # except Exception as exc:
+            #     traceback_str = ''.join(traceback.format_tb(exc.__traceback__))
+            #     self._handle_command_exception(exc, prog_counter, traceback_str)
+            #     break
 
     def _handle_command_exception(self, exc, prog_counter, traceback_str):
         raise exc.__class__(f"At line {prog_counter}: {exc}\n{traceback_str}") from exc

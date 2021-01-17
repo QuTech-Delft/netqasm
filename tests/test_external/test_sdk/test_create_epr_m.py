@@ -2,7 +2,8 @@ from qlink_interface import EPRType
 
 from netqasm.sdk import EPRSocket
 from netqasm.runtime.app_config import default_app_config
-from netqasm.sdk.external import NetQASMConnection, run_applications
+from netqasm.sdk.external import NetQASMConnection, simulate_application
+from netqasm.runtime.application import default_app_instance
 from netqasm.logging.glob import get_netqasm_logger
 
 logger = get_netqasm_logger()
@@ -31,11 +32,16 @@ def run_bob():
 
 
 def test_create_epr_m():
-    outcomes = run_applications([
-        default_app_config("alice", run_alice),
-        default_app_config("bob", run_bob),
-    ], use_app_config=False)
+    app_instance = default_app_instance([
+        ("alice", run_alice),
+        ("bob", run_bob),
+    ])
+    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)
 
     print(outcomes)
     for i in range(num):
         assert int(outcomes['app_alice'][i]) == int(outcomes['app_bob'][i])
+
+
+if __name__ == "__main__":
+    test_create_epr_m()

@@ -4,11 +4,10 @@ import numpy as np
 from netqasm.sdk import EPRSocket
 from netqasm.runtime.app_config import default_app_config
 from netqasm.sdk.external import NetQASMConnection, simulate_application
-from netqasm.sdk.external import NetQASMConnection
+from netqasm.runtime.application import default_app_instance
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.runtime.settings import get_simulator, Simulator
 
-from netqasm.runtime.application import Application, ApplicationInstance, Program, default_app_instance
 
 logger = get_netqasm_logger()
 
@@ -45,15 +44,15 @@ def post_function(backend):
     reason="SimulaQron does not yet support a post_function",
 )
 def test_create_epr():
-    # run_applications([
-    #     default_app_config("Alice", run_alice),
-    #     default_app_config("Bob", run_bob),
-    # ], use_app_config=False, post_function=post_function)
+    # app_instance = default_app_instance([
+    #     ("Alice", run_alice),
+    #     ("Bob", run_bob),
+    # ])
     app_instance = default_app_instance([
         ("Alice", run_alice),
         ("Bob", run_bob),
     ])
-    simulate_application(app_instance, use_app_config=False, post_function=post_function)
+    simulate_application(app_instance, use_app_config=False, post_function=post_function, enable_logging=False)
 
 
 if __name__ == "__main__":
