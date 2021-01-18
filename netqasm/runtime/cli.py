@@ -5,7 +5,7 @@ import click
 import importlib
 import requests
 import netqasm
-from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
+from netqasm.runtime.settings import Simulator, Formalism, set_simulator, set_is_using_hardware
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.config import LogConfig
