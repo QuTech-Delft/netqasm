@@ -128,4 +128,4 @@ def post_function_from_path(app_dir: str = None, post_function_file: str = None)
     else:
         module = importlib.import_module(post_function_file)
         main_func = getattr(module, "main")
-        return main_func
+        return main_func  # type: ignore

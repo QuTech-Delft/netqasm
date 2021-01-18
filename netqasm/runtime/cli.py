@@ -287,6 +287,9 @@ def simulate_old(
 @click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
               help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
               )
+@click.option("--num", type=int, default=1,
+              help="Number of times to run this application."
+              )
 def simulate(
     app_dir,
     track_lines,
@@ -298,6 +301,7 @@ def simulate(
     simulator,
     formalism,
     flavour
+    num,
 ):
     """
     Simulate an application on a simulated QNodeOS.
@@ -312,6 +316,8 @@ def simulate(
     set_simulator(simulator=simulator)
 
     simulate_application = importlib.import_module("netqasm.sdk.external").simulate_application
+    if app_dir is None:
+        app_dir = "."
     app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
     network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
     post_function = netqasm.runtime.application.post_function_from_path(app_dir, post_function_file)
@@ -320,11 +326,12 @@ def simulate(
     log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
     simulate_application(
         app_instance=app_instance,
+        num_rounds=num,
         network_cfg=network_cfg,
         formalism=formalism,
         post_function=post_function,
         log_cfg=log_cfg,
-        enable_logging=log_to_files
+        enable_logging=log_to_files,
     )
 
 
