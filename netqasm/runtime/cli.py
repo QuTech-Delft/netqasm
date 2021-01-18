@@ -9,6 +9,7 @@ from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulato
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.config import LogConfig
+from netqasm.logging.glob import set_log_level
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -271,10 +272,8 @@ def simulate_old(
 @option_app_dir
 @option_lib_dirs
 @option_track_lines
-@option_app_config_dir
 @option_log_dir
 @option_post_func_file
-@option_results_file
 @option_log_level
 @option_log_to_files
 @click.option("--network-config-file", type=str, default=None,
@@ -292,12 +291,10 @@ def simulate(
     app_dir,
     track_lines,
     network_config_file,
-    app_config_dir,
     log_dir,
     log_level,
     log_to_files,
     post_function_file,
-    results_file,
     simulator,
     formalism,
     flavour
@@ -305,17 +302,30 @@ def simulate(
     """
     Simulate an application on a simulated QNodeOS.
     """
+    set_log_level(log_level)
+
     if simulator is None:
         simulator = os.environ.get("NETQASM_SIMULATOR", Simulator.NETSQUID.value)
     else:
         simulator = Simulator(simulator)
     formalism = Formalism(formalism)
     set_simulator(simulator=simulator)
+
     simulate_application = importlib.import_module("netqasm.sdk.external").simulate_application
     app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
     network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
-    log_cfg = LogConfig(log_dir=os.path.join(app_dir, "log"))
-    simulate_application(app_instance, network_cfg=network_cfg, log_cfg=log_cfg)
+    post_function = netqasm.runtime.application.post_function_from_path(app_dir, post_function_file)
+    if log_dir is None:
+        log_dir = os.path.join(app_dir, "log")
+    log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
+    simulate_application(
+        app_instance=app_instance,
+        network_cfg=network_cfg,
+        formalism=formalism,
+        post_function=post_function,
+        log_cfg=log_cfg,
+        enable_logging=log_to_files
+    )
 
 
 ##################

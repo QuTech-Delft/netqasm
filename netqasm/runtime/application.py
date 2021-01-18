@@ -115,3 +115,17 @@ def network_cfg_from_path(app_dir: str = None, network_config_file: str = None) 
         yaml_dict = load_yaml_file(network_config_file)
         network_cfg = parse_network_config(yaml_dict)
         return network_cfg
+
+
+def post_function_from_path(app_dir: str = None, post_function_file: str = None) -> Optional[Callable]:
+    if post_function_file is None:
+        post_function_file = "post_function.yaml"
+    if app_dir is not None:
+        post_function_file = os.path.join(app_dir, post_function_file)
+
+    if not os.path.exists(post_function_file):
+        return None
+    else:
+        module = importlib.import_module(post_function_file)
+        main_func = getattr(module, "main")
+        return main_func
