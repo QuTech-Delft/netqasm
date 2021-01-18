@@ -1,6 +1,7 @@
 import json
 import os
 from click.testing import CliRunner
+import pytest
 
 import netqasm
 from netqasm.runtime.cli import cli
@@ -148,6 +149,7 @@ def test_init_no_overwrite():
                 assert f.read() == "test"
 
 
+@pytest.mark.skipif(True, reason="Don't rely on the QNE server to be working.")
 def test_qne_login():
     """Test logging into the QNE produces a token."""
     from netqasm.runtime.cli import QNE_FOLDER_PATH, _login
@@ -193,6 +195,7 @@ def test_qne_login():
         assert results.exit_code == 0
 
 
+@pytest.mark.skipif(True, reason="Don't rely on the QNE server to be working.")
 def test_qne_logout():
     """Test logging out."""
     from netqasm.runtime.cli import QNE_FOLDER_PATH

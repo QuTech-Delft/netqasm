@@ -63,8 +63,8 @@ class _Tuple(tuple):
 
 class BaseNetQASMConnection(abc.ABC):
 
-    # Used app IDs
-    _app_ids: Dict[str, List[int]] = {}
+    # Global dict to track all used app IDs for each program
+    _app_ids: Dict[str, List[int]] = {}  # <party> -> [<app_id1>, <app_id2>, ...]
 
     # Dict[node_name, Dict[app_id, app_name]]
     _app_names: Dict[str, Dict[int, str]] = {}
@@ -258,7 +258,7 @@ class BaseNetQASMConnection(abc.ABC):
     def clear(self):
         self._pop_app_id()
 
-    def close(self, clear_app=True, stop_backend=True):
+    def close(self, clear_app=True, stop_backend=False):
         """Handle exiting of context."""
         # Flush all pending commands
         self.flush()

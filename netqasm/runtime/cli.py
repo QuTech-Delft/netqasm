@@ -5,9 +5,11 @@ import click
 import importlib
 import requests
 import netqasm
-from netqasm.runtime.settings import Simulator, Formalism, Flavour, set_simulator, set_is_using_hardware
+from netqasm.runtime.settings import Simulator, Formalism, set_simulator, set_is_using_hardware
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.config import LogConfig
+from netqasm.logging.glob import set_log_level
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -197,18 +199,11 @@ def _get_token_header():
     return host, username, token_header
 
 
-############
-# simulate #
-############
-
 @cli.command()
 @option_app_dir
-@option_lib_dirs
 @option_track_lines
-@option_app_config_dir
 @option_log_dir
 @option_post_func_file
-@option_results_file
 @option_log_level
 @option_log_to_files
 @click.option("--network-config-file", type=str, default=None,
@@ -222,49 +217,50 @@ def _get_token_header():
 @click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
               help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
               )
-@click.option("--flavour", type=click.Choice(["vanilla", "nv"]), default="vanilla",
-              help="Choose the NetQASM flavour that is used. Default is vanilla."
+@click.option("--num", type=int, default=1,
+              help="Number of times to run this application."
               )
 def simulate(
     app_dir,
-    lib_dirs,
     track_lines,
-    network_config_file,
-    app_config_dir,
     log_dir,
+    post_function_file,
     log_level,
     log_to_files,
-    post_function_file,
-    results_file,
+    network_config_file,
     simulator,
     formalism,
-    flavour
+    num,
 ):
     """
     Simulate an application on a simulated QNodeOS.
     """
+    set_log_level(log_level)
+
     if simulator is None:
         simulator = os.environ.get("NETQASM_SIMULATOR", Simulator.NETSQUID.value)
     else:
         simulator = Simulator(simulator)
     formalism = Formalism(formalism)
-    flavour = Flavour(flavour)
     set_simulator(simulator=simulator)
-    # Import correct function after setting the simulator
-    setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
-    setup_apps(
-        app_dir=app_dir,
-        lib_dirs=lib_dirs,
-        track_lines=track_lines,
-        network_config_file=network_config_file,
-        app_config_dir=app_config_dir,
-        log_dir=log_dir,
-        log_level=log_level.upper(),
-        log_to_files=log_to_files,
-        post_function_file=post_function_file,
-        results_file=results_file,
+
+    simulate_application = importlib.import_module("netqasm.sdk.external").simulate_application
+    if app_dir is None:
+        app_dir = "."
+    app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
+    network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
+    post_function = netqasm.runtime.application.post_function_from_path(app_dir, post_function_file)
+    if log_dir is None:
+        log_dir = os.path.join(app_dir, "log")
+    log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
+    simulate_application(
+        app_instance=app_instance,
+        num_rounds=num,
+        network_cfg=network_cfg,
         formalism=formalism,
-        flavour=flavour
+        post_function=post_function,
+        log_cfg=log_cfg,
+        enable_logging=log_to_files,
     )
 
 
