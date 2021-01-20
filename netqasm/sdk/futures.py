@@ -1,7 +1,7 @@
 """TODO write about futures"""
 
 import abc
-from typing import Union, Optional
+from typing import Union, Optional, List, Any
 
 from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.subroutine import Symbols, Command, Register
@@ -401,7 +401,7 @@ class Array:
     def address(self):
         return self._address
 
-    def get_future_index(self, index):
+    def get_future_index(self, index) -> Future:
         """TODO doc-string"""
         if isinstance(index, str):
             index = parse_register(index)
@@ -411,7 +411,7 @@ class Array:
             index=index,
         )
 
-    def get_future_slice(self, s):
+    def get_future_slice(self, s) -> List[Future]:
         """TODO doc-string"""
         range_args = []
         for attr in ["start", "stop", "step"]:

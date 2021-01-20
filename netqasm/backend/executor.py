@@ -19,7 +19,8 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
 from netqasm.lang.instr.operand import Register, ArrayEntry, ArraySlice, Address
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
-from netqasm.backend.network_stack import BaseNetworkStack, OK_FIELDS
+from netqasm.backend.network_stack import BaseNetworkStack
+from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.lang.parsing import parse_address
 from netqasm.util.error import NotAllocatedError
 

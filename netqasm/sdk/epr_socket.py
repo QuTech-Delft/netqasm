@@ -164,7 +164,7 @@ class EPRSocket(abc.ABC):
                 for ent_info in ent_infos:
                     assert isinstance(ent_info, tuple)
         """
-        return self._conn._create_epr(
+        return self._conn.create_epr(
             remote_node_id=self._remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -260,7 +260,7 @@ class EPRSocket(abc.ABC):
         recv(self, number=1, post_routine=None, sequential=False, tp=EPRType.K)
         Receives EPR pair with a remote node (see doc of :meth:`~.create`)
         """
-        return self._conn._recv_epr(
+        return self._conn.recv_epr(
             remote_node_id=self._remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
