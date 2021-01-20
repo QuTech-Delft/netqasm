@@ -351,6 +351,12 @@ class BaseNetQASMConnection(abc.ABC):
         self._arrays_to_return.append(array)
         return array
 
+    def new_register(self, init_value=0):
+        reg = self._get_inactive_register(activate=True)
+        self.add_pending_command(Command(instruction=Instruction.SET, operands=[reg, init_value]))
+        self._registers_to_return.append(reg)
+        return RegFuture(connection=self, reg=reg)
+
     def add_pending_commands(self, commands):
         calling_lineno = self._line_tracker.get_line()
         for command in commands:
@@ -1022,8 +1028,8 @@ class BaseNetQASMConnection(abc.ABC):
                 return address
 
     def _reset(self):
-        if len(self._active_registers) > 0:
-            raise RuntimeError("Should not have active registers left when flushing")
+        # if len(self._active_registers) > 0:
+        #     raise RuntimeError("Should not have active registers left when flushing")
         self._arrays_to_return = []
         self._registers_to_return = []
         self._used_meas_registers = []
