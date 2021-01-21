@@ -11,6 +11,7 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
 
 from netqasm.sdk import Qubit
+from netqasm.sdk.external import NetQASMConnection
 
 
 class EPRMeasBasis(Enum):
@@ -55,7 +56,7 @@ class EPRSocket(abc.ABC):
             The minimum desired fidelity of EPR pairs generated using this socket.
             Values are integers in the range 0-100.
         """
-        self._conn = None
+        self._conn: NetQASMConnection = None
         self._remote_app_name = remote_app_name
         self._remote_node_id = None  # Gets set when the connection is set
         self._epr_socket_id = epr_socket_id
@@ -68,12 +69,12 @@ class EPRSocket(abc.ABC):
         self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
 
     @property
-    def conn(self):
+    def conn(self) -> NetQASMConnection:
         """Get the underlying :class:`NetQASMConnection`"""
         return self._conn
 
     @conn.setter
-    def conn(self, conn):
+    def conn(self, conn: NetQASMConnection):
         self._conn = conn
         self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
 
@@ -200,7 +201,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self._conn.create_epr(
+        return self._conn.create_epr(  # type: ignore
             remote_node_id=self._remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,

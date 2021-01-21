@@ -1,11 +1,7 @@
-from netqasm.sdk import Qubit, EPRSocket
-from netqasm.sdk.external import NetQASMConnection, Socket
-from netqasm.sdk.toolbox import set_qubit_state
-from netqasm.logging.output import get_new_app_logger
-from netqasm.sdk.classical_communication.message import StructuredMessage
-from netqasm.sdk.epr_socket import EPRType, EPRMeasBasis
-from qlink_interface import RandomBasis
-from netqasm.sdk.futures import Register
+# from netqasm.sdk import Qubit
+from netqasm.sdk.epr_socket import EPRSocket, EPRType, EPRMeasBasis
+from netqasm.sdk.external import NetQASMConnection
+# from netqasm.sdk.futures import Register
 
 
 def main(app_config=None, phi=0., theta=0.):

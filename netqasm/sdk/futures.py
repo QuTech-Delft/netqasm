@@ -1,7 +1,7 @@
 """TODO write about futures"""
 
 import abc
-from typing import Union, Optional, List, Any
+from typing import Union, Optional, List
 
 from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.subroutine import Symbols, Command, Register

@@ -7,7 +7,7 @@ import pickle
 from enum import Enum
 from itertools import count
 from contextlib import contextmanager
-from typing import List, Optional, Dict, Type, Any, Union
+from typing import List, Optional, Dict, Type, Union
 
 from qlink_interface import (
     EPRType,
@@ -657,13 +657,13 @@ class BaseNetQASMConnection(abc.ABC):
         rotations_local=(0, 0, 0),
         rotations_remote=(0, 0, 0),
         **kwargs,
-    ) -> Array:
+    ) -> Optional[Array]:
         # qubit addresses
         if tp == EPRType.K:
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
             qubit_ids_array_address = qubit_ids_array.address
         else:
-            qubit_ids_array = None
+            qubit_ids_array = None  # type: ignore
             # NOTE since this argument won't be used just set it to some
             # constant register for now
             qubit_ids_array_address = Register(RegisterName.C, 0)
@@ -690,15 +690,19 @@ class BaseNetQASMConnection(abc.ABC):
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
 
-            rotx1_local, roty_local, rotx2_local = rotations_local
-            rotx1_remote, roty_remote, rotx2_remote = rotations_remote
+            if tp == EPRType.M:
+                rotx1_local, roty_local, rotx2_local = rotations_local
+                rotx1_remote, roty_remote, rotx2_remote = rotations_remote
 
-            create_kwargs['rotation_X_local1'] = rotx1_local
-            create_kwargs['rotation_Y_local'] = roty_local
-            create_kwargs['rotation_X_local2'] = rotx2_local
-            create_kwargs['rotation_X_remote1'] = rotx1_remote
-            create_kwargs['rotation_Y_remote'] = roty_remote
-            create_kwargs['rotation_X_remote2'] = rotx2_remote
+                if rotations_local != (0, 0, 0):  # instructions for explicitly setting to zero are redundant
+                    create_kwargs['rotation_X_local1'] = rotx1_local
+                    create_kwargs['rotation_Y_local'] = roty_local
+                    create_kwargs['rotation_X_local2'] = rotx2_local
+
+                if rotations_remote != (0, 0, 0):  # instructions for explicitly setting to zero are redundant
+                    create_kwargs['rotation_X_remote1'] = rotx1_remote
+                    create_kwargs['rotation_Y_remote'] = roty_remote
+                    create_kwargs['rotation_X_remote2'] = rotx2_remote
 
             create_args = []
             # NOTE we don't include the two first args since these are remote_node_id
@@ -735,7 +739,7 @@ class BaseNetQASMConnection(abc.ABC):
         if wait_all:
             wait_cmds = [Command(
                 instruction=Instruction.WAIT_ALL,
-                operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],
+                operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],  # type: ignore
             )]
         else:
             wait_cmds = []
@@ -842,7 +846,7 @@ class BaseNetQASMConnection(abc.ABC):
         if tp == EPRType.K:
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
         else:
-            virtual_qubit_ids = None
+            virtual_qubit_ids = None  # type: ignore
         wait_all = post_routine is None
 
         qubit_ids_array = self._add_epr_commands(
@@ -970,9 +974,10 @@ class BaseNetQASMConnection(abc.ABC):
         ent_info_slices = []
         num_fields = OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
         for i in range(num_pairs):
-            ent_info_slice: List[Future] = ent_info_array.get_future_slice(slice(i * num_fields, (i + 1) * num_fields))
+            ent_info_slice_futures: List[Future] = ent_info_array.get_future_slice(
+                slice(i * num_fields, (i + 1) * num_fields))
             ent_info_slice: Union[LinkLayerOKTypeK, LinkLayerOKTypeM,
-                                  LinkLayerOKTypeR] = self.__class__.ENT_INFO[tp](*ent_info_slice)
+                                  LinkLayerOKTypeR] = self.__class__.ENT_INFO[tp](*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
