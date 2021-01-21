@@ -7,7 +7,7 @@ import pickle
 from enum import Enum
 from itertools import count
 from contextlib import contextmanager
-from typing import List, Optional, Dict, Type
+from typing import List, Optional, Dict, Type, Union
 
 from qlink_interface import (
     EPRType,
@@ -28,7 +28,7 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.util.log import LineTracker
-from netqasm.backend.network_stack import OK_FIELDS
+from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
 from netqasm.lang.subroutine import (
     PreSubroutine,
@@ -338,7 +338,7 @@ class BaseNetQASMConnection(abc.ABC):
             min_fidelity=min_fidelity,
         ))
 
-    def new_array(self, length=1, init_values=None):
+    def new_array(self, length=1, init_values=None) -> Array:
         address = self._get_new_array_address()
         lineno = self._line_tracker.get_line()
         array = Array(
@@ -350,6 +350,12 @@ class BaseNetQASMConnection(abc.ABC):
         )
         self._arrays_to_return.append(array)
         return array
+
+    def new_register(self, init_value=0):
+        reg = self._get_inactive_register(activate=True)
+        self.add_pending_command(Command(instruction=Instruction.SET, operands=[reg, init_value]))
+        self._registers_to_return.append(reg)
+        return RegFuture(connection=self, reg=reg)
 
     def add_pending_commands(self, commands):
         calling_lineno = self._line_tracker.get_line()
@@ -648,14 +654,16 @@ class BaseNetQASMConnection(abc.ABC):
         tp,
         random_basis_local=None,
         random_basis_remote=None,
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
         **kwargs,
-    ):
+    ) -> Optional[Array]:
         # qubit addresses
         if tp == EPRType.K:
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
             qubit_ids_array_address = qubit_ids_array.address
         else:
-            qubit_ids_array = None
+            qubit_ids_array = None  # type: ignore
             # NOTE since this argument won't be used just set it to some
             # constant register for now
             qubit_ids_array_address = Register(RegisterName.C, 0)
@@ -681,6 +689,20 @@ class BaseNetQASMConnection(abc.ABC):
                     "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
+
+            if tp == EPRType.M:
+                rotx1_local, roty_local, rotx2_local = rotations_local
+                rotx1_remote, roty_remote, rotx2_remote = rotations_remote
+
+                if rotations_local != (0, 0, 0):  # instructions for explicitly setting to zero are redundant
+                    create_kwargs['rotation_X_local1'] = rotx1_local
+                    create_kwargs['rotation_Y_local'] = roty_local
+                    create_kwargs['rotation_X_local2'] = rotx2_local
+
+                if rotations_remote != (0, 0, 0):  # instructions for explicitly setting to zero are redundant
+                    create_kwargs['rotation_X_remote1'] = rotx1_remote
+                    create_kwargs['rotation_Y_remote'] = roty_remote
+                    create_kwargs['rotation_X_remote2'] = rotx2_remote
 
             create_args = []
             # NOTE we don't include the two first args since these are remote_node_id
@@ -717,7 +739,7 @@ class BaseNetQASMConnection(abc.ABC):
         if wait_all:
             wait_cmds = [Command(
                 instruction=Instruction.WAIT_ALL,
-                operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],
+                operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],  # type: ignore
             )]
         else:
             wait_cmds = []
@@ -745,7 +767,7 @@ class BaseNetQASMConnection(abc.ABC):
                 q = _FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
             elif tp == EPRType.M:
-                slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
+                slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
                 ent_info_slice = ent_info_array.get_future_slice(slc)
                 post_routine(self, ent_info_slice, pair)
             else:
@@ -776,7 +798,7 @@ class BaseNetQASMConnection(abc.ABC):
                 instruction=Instruction.ADD,
                 operands=[arr_start, arr_start, pair],
             ))
-        self.loop_body(add_arr_start, stop=OK_FIELDS)
+        self.loop_body(add_arr_start, stop=OK_FIELDS_K)
 
         # Let tmp be pair + 1
         self.add_pending_command(Command(
@@ -791,7 +813,7 @@ class BaseNetQASMConnection(abc.ABC):
                 instruction=Instruction.ADD,
                 operands=[arr_stop, arr_stop, tmp],
             ))
-        self.loop_body(add_arr_stop, stop=OK_FIELDS)
+        self.loop_body(add_arr_stop, stop=OK_FIELDS_K)
 
         wait_cmd = Command(
             instruction=Instruction.WAIT_ALL,
@@ -813,22 +835,20 @@ class BaseNetQASMConnection(abc.ABC):
         tp,
         random_basis_local=None,
         random_basis_remote=None,
-    ):
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
+    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential, tp=tp)
         # NOTE the `output` is either a list of qubits or a list of entanglement information
         # depending on the type of the request.
-        output, ent_info_array = self._handle_arguments(
-            instruction=instruction,
-            remote_node_id=remote_node_id,
-            number=number,
-            tp=tp,
-            sequential=sequential,
-        )
+        ent_info_array = self._create_ent_info_array(number=number, tp=tp)
+        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
         if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in output]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
         else:
-            virtual_qubit_ids = None
+            virtual_qubit_ids = None  # type: ignore
         wait_all = post_routine is None
+
         qubit_ids_array = self._add_epr_commands(
             instruction=instruction,
             virtual_qubit_ids=virtual_qubit_ids,
@@ -840,24 +860,24 @@ class BaseNetQASMConnection(abc.ABC):
             tp=tp,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
         )
 
         self._add_post_commands(qubit_ids_array, number, ent_info_array, tp, post_routine)
 
-        return output
+        return result_futures
 
     def _pre_epr_context(self, instruction, remote_node_id, epr_socket_id, number=1, sequential=False, tp=EPRType.K):
         # NOTE since this is in a context there will be a post_routine
         self._assert_epr_args(number=number, post_routine=True, sequential=sequential, tp=tp)
-        output, ent_info_array = self._handle_arguments(
-            instruction=instruction,
-            remote_node_id=remote_node_id,
+        ent_info_array = self._create_ent_info_array(
             number=number,
             tp=tp,
-            sequential=sequential,
         )
+        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
         if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in output]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
         else:
             raise ValueError("EPR generation as a context is only allowed for K type requests")
         qubit_ids_array = self._add_epr_commands(
@@ -876,14 +896,14 @@ class BaseNetQASMConnection(abc.ABC):
         if tp == EPRType.K:
             q_id = qubit_ids_array.get_future_index(pair)
             q = _FutureQubit(conn=self, future_id=q_id)
-            output = q
+            result_futures = q
         # elif tp == EPRType.M:
         #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
         #     ent_info_slice = ent_info_array.get_future_slice(slc)
         #     output = ent_info_slice
         else:
             raise NotImplementedError
-        return pre_commands, loop_register, ent_info_array, output, pair
+        return pre_commands, loop_register, ent_info_array, result_futures, pair
 
     def _post_epr_context(self, pre_commands, number, loop_register, ent_info_array, pair):
         body_commands = self._pop_pending_commands()
@@ -914,15 +934,22 @@ class BaseNetQASMConnection(abc.ABC):
             raise ValueError(f"When not using sequential mode for K type, the number of pairs {number} cannot be "
                              f"greater than the maximum number of qubits specified ({self._max_qubits}).")
 
-    def _handle_arguments(self, instruction, remote_node_id, number, tp, sequential):
-        if instruction == Instruction.CREATE_EPR:
-            self._logger.debug(f"App {self.app_name} puts command to create EPR with {remote_node_id}")
-        elif instruction == Instruction.RECV_EPR:
-            self._logger.debug(f"App {self.app_name} puts command to recv EPR from {remote_node_id}")
+    def _create_ent_info_array(self, number, tp) -> Array:
+        if tp == EPRType.K:
+            ent_info_array = self.new_array(length=OK_FIELDS_K * number)
+        elif tp == EPRType.M:
+            ent_info_array = self.new_array(length=OK_FIELDS_M * number)
         else:
-            raise ValueError(f"Not an epr instruction {instruction}")
+            raise ValueError(f"Unsupported Create type: {tp}")
+        return ent_info_array
 
-        ent_info_array = self.new_array(length=OK_FIELDS * number)
+    def _get_futures_array(
+        self,
+        tp,
+        number,
+        sequential,
+        ent_info_array: Array
+    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         ent_info_slices = self._create_ent_info_slices(
             num_pairs=number,
             ent_info_array=ent_info_array,
@@ -933,21 +960,32 @@ class BaseNetQASMConnection(abc.ABC):
                 ent_info_slices=ent_info_slices,
                 sequential=sequential,
             )
-            return qubits, ent_info_array
+            return qubits
         elif tp == EPRType.M:
-            return ent_info_slices, ent_info_array
+            return ent_info_slices
         else:
             raise NotImplementedError
 
-    def _create_ent_info_slices(self, num_pairs, ent_info_array, tp):
+    def _create_ent_info_slices(self,
+                                num_pairs: int,
+                                ent_info_array: Array,
+                                tp: EPRType,
+                                ) -> Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         ent_info_slices = []
+        num_fields = OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
         for i in range(num_pairs):
-            ent_info_slice = ent_info_array.get_future_slice(slice(i * OK_FIELDS, (i + 1) * OK_FIELDS))
-            ent_info_slice = self.__class__.ENT_INFO[tp](*ent_info_slice)
+            ent_info_slice_futures: List[Future] = ent_info_array.get_future_slice(
+                slice(i * num_fields, (i + 1) * num_fields))
+            ent_info_slice: Union[LinkLayerOKTypeK, LinkLayerOKTypeM,
+                                  LinkLayerOKTypeR] = self.__class__.ENT_INFO[tp](*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
-    def _create_ent_qubits(self, ent_info_slices, sequential):
+    def _create_ent_qubits(
+        self,
+        ent_info_slices: Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]],
+        sequential: bool,
+    ) -> List[Qubit]:
         qubits = []
         virtual_address = None
         for i, ent_info_slice in enumerate(ent_info_slices):
@@ -970,7 +1008,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         return qubits
 
-    def _create_epr(
+    def create_epr(
         self,
         remote_node_id,
         epr_socket_id,
@@ -980,10 +1018,13 @@ class BaseNetQASMConnection(abc.ABC):
         tp=EPRType.K,
         random_basis_local=None,
         random_basis_remote=None,
-    ):
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
+    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         """Receives EPR pair with a remote node"""
         if not isinstance(remote_node_id, int):
             raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
+
         return self._handle_request(
             instruction=Instruction.CREATE_EPR,
             remote_node_id=remote_node_id,
@@ -994,9 +1035,19 @@ class BaseNetQASMConnection(abc.ABC):
             tp=tp,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
         )
 
-    def _recv_epr(self, remote_node_id, epr_socket_id, number=1, post_routine=None, sequential=False, tp=EPRType.K):
+    def recv_epr(
+        self,
+        remote_node_id,
+        epr_socket_id,
+        number=1,
+        post_routine=None,
+        sequential=False,
+        tp=EPRType.K,
+    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         """Receives EPR pair with a remote node"""
         return self._handle_request(
             instruction=Instruction.RECV_EPR,
@@ -1022,8 +1073,8 @@ class BaseNetQASMConnection(abc.ABC):
                 return address
 
     def _reset(self):
-        if len(self._active_registers) > 0:
-            raise RuntimeError("Should not have active registers left when flushing")
+        # if len(self._active_registers) > 0:
+        #     raise RuntimeError("Should not have active registers left when flushing")
         self._arrays_to_return = []
         self._registers_to_return = []
         self._used_meas_registers = []
