@@ -19,7 +19,8 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
 from netqasm.lang.instr.operand import Register, ArrayEntry, ArraySlice, Address
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
-from netqasm.backend.network_stack import BaseNetworkStack, OK_FIELDS
+from netqasm.backend.network_stack import BaseNetworkStack
+from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.lang.parsing import parse_address
 from netqasm.util.error import NotAllocatedError
 
@@ -140,10 +141,18 @@ class Executor:
     def node_id(self):
         return self._node.ID
 
+    def set_instr_logger(self, instr_log_dir):
+        self._instr_logger = self.__class__.get_instr_logger(
+            node_name=self._name,
+            instr_log_dir=instr_log_dir,
+            executor=self,
+            force_override=True,
+        )
+
     @classmethod
-    def get_instr_logger(cls, node_name, instr_log_dir, executor):
+    def get_instr_logger(cls, node_name, instr_log_dir, executor, force_override=False):
         instr_logger = cls._INSTR_LOGGERS.get(node_name)
-        if instr_logger is None:
+        if instr_logger is None or force_override:
             filename = f"{str(node_name).lower()}_instrs.yaml"
             filepath = os.path.join(instr_log_dir, filename)
             instr_logger = cls.instr_logger_class(
