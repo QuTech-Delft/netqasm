@@ -4,6 +4,13 @@ CHANGELOG
 Upcoming
 --------
 
+2021-01-21 (0.5.2)
+------------------
+- Added support for choosing the measurement basis for M-type EPR generation.
+- Added the ability to manually create a Register in the SDK. Further use with these Registers is limited for now.
+- Added interfaces for applications and the runtime environment, to make it easier to instantiate and run apps.
+- Added the `netqasm qne login` and `netqasm qne logout` commands.
+
 2021-01-15 (0.5.1)
 ------------------
 - Renamed `Executioner` to `Executor`.
