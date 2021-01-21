@@ -2,11 +2,21 @@
 
 import abc
 from contextlib import contextmanager
+from enum import Enum, auto
+from typing import Tuple, Union, List
 
-from qlink_interface import EPRType
+from qlink_interface import EPRType, LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
+
+from netqasm.sdk import Qubit
+
+
+class EPRMeasBasis(Enum):
+    X = 0
+    Y = auto()
+    Z = auto()
 
 
 class NoCircuitError(RuntimeError):
@@ -99,9 +109,13 @@ class EPRSocket(abc.ABC):
         post_routine=None,
         sequential=False,
         tp=EPRType.K,
+        basis_local: EPRMeasBasis = None,
+        basis_remote: EPRMeasBasis = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local=None,
         random_basis_remote=None,
-    ):
+    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         # First line is to have the correct signature after decorating
         """
         create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K, \
@@ -164,6 +178,28 @@ class EPRSocket(abc.ABC):
                 for ent_info in ent_infos:
                     assert isinstance(ent_info, tuple)
         """
+        if basis_local == EPRMeasBasis.X:
+            rotations_local = (0, 24, 0)
+        elif basis_local == EPRMeasBasis.Y:
+            rotations_local = (8, 0, 0)
+        elif basis_local == EPRMeasBasis.Z:
+            rotations_local = (0, 0, 0)
+        elif basis_local is None:
+            pass  # use rotations_local argument value
+        else:
+            raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
+
+        if basis_remote == EPRMeasBasis.X:
+            rotations_remote = (0, 24, 0)
+        elif basis_remote == EPRMeasBasis.Y:
+            rotations_remote = (8, 0, 0)
+        elif basis_remote == EPRMeasBasis.Z:
+            rotations_remote = (0, 0, 0)
+        elif basis_remote is None:
+            pass  # use rotations_remote argument value
+        else:
+            raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
+
         return self._conn.create_epr(
             remote_node_id=self._remote_node_id,
             epr_socket_id=self._epr_socket_id,
@@ -173,6 +209,8 @@ class EPRSocket(abc.ABC):
             tp=tp,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
         )
 
     @contextmanager

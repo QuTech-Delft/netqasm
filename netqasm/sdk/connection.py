@@ -338,7 +338,7 @@ class BaseNetQASMConnection(abc.ABC):
             min_fidelity=min_fidelity,
         ))
 
-    def new_array(self, length=1, init_values=None):
+    def new_array(self, length=1, init_values=None) -> Array:
         address = self._get_new_array_address()
         lineno = self._line_tracker.get_line()
         array = Array(
@@ -654,8 +654,10 @@ class BaseNetQASMConnection(abc.ABC):
         tp,
         random_basis_local=None,
         random_basis_remote=None,
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
         **kwargs,
-    ):
+    ) -> Array:
         # qubit addresses
         if tp == EPRType.K:
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)
@@ -687,6 +689,16 @@ class BaseNetQASMConnection(abc.ABC):
                     "Can only random measure in one of two bases for now")
                 create_kwargs['random_basis_remote'] = random_basis_remote
                 create_kwargs['probability_dist_remote1'] = 128
+
+            rotx1_local, roty_local, rotx2_local = rotations_local
+            rotx1_remote, roty_remote, rotx2_remote = rotations_remote
+
+            create_kwargs['rotation_X_local1'] = rotx1_local
+            create_kwargs['rotation_Y_local'] = roty_local
+            create_kwargs['rotation_X_local2'] = rotx2_local
+            create_kwargs['rotation_X_remote1'] = rotx1_remote
+            create_kwargs['rotation_Y_remote'] = roty_remote
+            create_kwargs['rotation_X_remote2'] = rotx2_remote
 
             create_args = []
             # NOTE we don't include the two first args since these are remote_node_id
@@ -819,6 +831,8 @@ class BaseNetQASMConnection(abc.ABC):
         tp,
         random_basis_local=None,
         random_basis_remote=None,
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
     ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         self._assert_epr_args(number=number, post_routine=post_routine, sequential=sequential, tp=tp)
         # NOTE the `output` is either a list of qubits or a list of entanglement information
@@ -830,6 +844,7 @@ class BaseNetQASMConnection(abc.ABC):
         else:
             virtual_qubit_ids = None
         wait_all = post_routine is None
+
         qubit_ids_array = self._add_epr_commands(
             instruction=instruction,
             virtual_qubit_ids=virtual_qubit_ids,
@@ -841,6 +856,8 @@ class BaseNetQASMConnection(abc.ABC):
             tp=tp,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
         )
 
         self._add_post_commands(qubit_ids_array, number, ent_info_array, tp, post_routine)
@@ -996,10 +1013,13 @@ class BaseNetQASMConnection(abc.ABC):
         tp=EPRType.K,
         random_basis_local=None,
         random_basis_remote=None,
+        rotations_local=(0, 0, 0),
+        rotations_remote=(0, 0, 0),
     ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
         """Receives EPR pair with a remote node"""
         if not isinstance(remote_node_id, int):
             raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
+
         return self._handle_request(
             instruction=Instruction.CREATE_EPR,
             remote_node_id=remote_node_id,
@@ -1010,6 +1030,8 @@ class BaseNetQASMConnection(abc.ABC):
             tp=tp,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
         )
 
     def recv_epr(
