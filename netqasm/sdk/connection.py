@@ -439,7 +439,7 @@ class BaseNetQASMConnection(abc.ABC):
             # Populate the array if needed
             if array._init_values is not None:
                 for i, value in enumerate(array._init_values):
-                    if value is None:
+                    if value is None or value == 0:
                         continue
                     init_arrays.append(Command(
                         instruction=Instruction.STORE,
