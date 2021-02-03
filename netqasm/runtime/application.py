@@ -66,7 +66,7 @@ def app_instance_from_path(app_dir: str = None) -> ApplicationInstance:
     for party, prog_file in program_files.items():
         prog_module = importlib.import_module(prog_file[:-len('.py')])
         main_func = getattr(prog_module, "main")
-        prog = Program(party=party, entry=main_func, args=["app_config"], results=[])
+        prog = Program(party=party, entry=main_func, args=[], results=[])
         programs += [prog]
         prog_inputs = env.load_app_config_file(app_dir, party)
         program_inputs[party] = prog_inputs

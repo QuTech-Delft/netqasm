@@ -50,7 +50,7 @@ class NetworkConfig:
 _DEFAULT_NUM_QUBITS = 5
 
 
-def default_network_config(node_names: List[str]) -> NetworkConfig:
+def default_network_config(node_names: List[str], hardware: QuantumHardware = QuantumHardware.Generic) -> NetworkConfig:
     """Create a config for a fully connected network of nodes with the given names"""
     nodes = []
     links = []
@@ -58,7 +58,7 @@ def default_network_config(node_names: List[str]) -> NetworkConfig:
         qubits = [Qubit(id=i, t1=0, t2=0) for i in range(_DEFAULT_NUM_QUBITS)]
         node = Node(
             name=name,
-            hardware=QuantumHardware.Generic,
+            hardware=hardware,
             qubits=qubits,
             gate_fidelity=1
         )
