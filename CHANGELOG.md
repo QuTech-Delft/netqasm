@@ -4,6 +4,23 @@ CHANGELOG
 Upcoming
 --------
 
+2021-02-05 (0.6.0)
+------------------
+- Added support for choosing the measurement basis for M-type EPR generation.
+- Added the ability to manually create a Register in the SDK. Further use with these Registers is limited for now.
+- Added interfaces for applications and the runtime environment, to make it easier to instantiate and run apps.
+- Added the `netqasm qne login` and `netqasm qne logout` commands.
+- Renamed `Executioner` to `Executor`.
+- Optimized initialization of arrays when all elements have the same initial value (use a loop).
+- Fixed NV compilation when doing sequential EPR create commands.
+- Fixed NV compilation of `K` gates.
+- Fixed bug where multiple branch labels with the same name could appear.
+
+2021-02-05 (0.5.3)
+------------------
+- Reverted patches 0.5.1 and 0.5.2.
+  0.5.3 is exactly the same as 0.5.0.
+
 2021-01-21 (0.5.2)
 ------------------
 - Added support for choosing the measurement basis for M-type EPR generation.
