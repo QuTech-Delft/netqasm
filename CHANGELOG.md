@@ -4,11 +4,6 @@ CHANGELOG
 Upcoming
 --------
 
-2021-02-05 (0.5.3)
-------------------
-- Reverted patches 0.5.1 and 0.5.2.
-  0.5.3 is exactly the same as 0.5.0.
-
 2021-01-21 (0.5.2)
 ------------------
 - Added support for choosing the measurement basis for M-type EPR generation.

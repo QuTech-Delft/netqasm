@@ -1,7 +1,7 @@
 """TODO write about futures"""
 
 import abc
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.subroutine import Symbols, Command, Register
@@ -322,6 +322,53 @@ class RegFuture(BaseFuture):
             self._value = value
         return value
 
+    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+        if isinstance(other, str):
+            other = parse_register(other)
+
+        # Store self in a temporary register
+        load_commands = []
+        store_commands = []
+
+        # If other is a Future, also load this into a temporary register
+        if isinstance(other, Future):
+            other_tmp_register = self._connection._get_inactive_register(activate=True)
+            other_operand = other_tmp_register
+            load_commands += other._get_load_commands(other_tmp_register)
+            store_commands += other._get_store_commands(other_tmp_register)
+        elif isinstance(other, Register) or isinstance(other, int):
+            other_tmp_register = None
+            other_operand = other
+        else:
+            raise NotImplementedError('for type {type(other)}')
+
+        add_operands = [
+            self._reg,
+            self._reg,
+            other_operand,
+        ]
+        if mod is None:
+            add_instr = Instruction.ADD
+        else:
+            if not isinstance(mod, int):
+                raise NotImplementedError
+            add_instr = Instruction.ADDM
+            add_operands.append(mod)
+
+        commands = (
+            load_commands +
+            [Command(
+                instruction=add_instr,
+                operands=add_operands,
+            )] +
+            store_commands
+        )
+
+        if other_tmp_register is not None:
+            self._connection._remove_active_register(other_tmp_register)
+
+        self._connection.add_pending_commands(commands)
+
 
 class Array:
     def __init__(self, connection, length, address, init_values=None, lineno=None):
@@ -354,7 +401,7 @@ class Array:
     def address(self):
         return self._address
 
-    def get_future_index(self, index):
+    def get_future_index(self, index) -> Future:
         """TODO doc-string"""
         if isinstance(index, str):
             index = parse_register(index)
@@ -364,7 +411,7 @@ class Array:
             index=index,
         )
 
-    def get_future_slice(self, s):
+    def get_future_slice(self, s) -> List[Future]:
         """TODO doc-string"""
         range_args = []
         for attr in ["start", "stop", "step"]:
