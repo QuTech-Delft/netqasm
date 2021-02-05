@@ -13,7 +13,7 @@ class BaseSubroutineHandler:
 
         self.flavour = flavour
 
-        self._executor = self._get_executor_class(flavour=flavour)(
+        self._executioner = self._get_executioner_class(flavour=flavour)(
             name=name,
             instr_log_dir=instr_log_dir,
             **kwargs,
@@ -33,7 +33,7 @@ class BaseSubroutineHandler:
 
     @classmethod
     @abc.abstractmethod
-    def _get_executor_class(cls, flavour=None):
+    def _get_executioner_class(cls, flavour=None):
         pass
 
     @abc.abstractmethod
@@ -62,11 +62,11 @@ class BaseSubroutineHandler:
 
     @property
     def network_stack(self):
-        return self._executor.network_stack
+        return self._executioner.network_stack
 
     @network_stack.setter
     def network_stack(self, network_stack):
-        self._executor.network_stack = network_stack
+        self._executioner.network_stack = network_stack
 
     def _get_message_handlers(self):
         return {
@@ -78,7 +78,7 @@ class BaseSubroutineHandler:
         }
 
     def add_network_stack(self, network_stack):
-        self._executor.network_stack = network_stack
+        self._executioner.network_stack = network_stack
 
     @abc.abstractmethod
     def _mark_message_finished(self, msg_id, msg):
@@ -91,7 +91,7 @@ class BaseSubroutineHandler:
         yield from self._execute_subroutine(subroutine=subroutine)
 
     def _execute_subroutine(self, subroutine):
-        yield from self._executor.execute_subroutine(subroutine=subroutine)
+        yield from self._executioner.execute_subroutine(subroutine=subroutine)
 
     def _handle_init_new_app(self, msg):
         app_id = msg.app_id
@@ -99,7 +99,7 @@ class BaseSubroutineHandler:
         max_qubits = msg.max_qubits
         self._logger.debug(f"Allocating a new "
                            f"unit module of size {max_qubits} for application with app ID {app_id}.\n")
-        self._executor.init_new_application(
+        self._executioner.init_new_application(
             app_id=app_id,
             max_qubits=max_qubits,
         )
@@ -114,7 +114,7 @@ class BaseSubroutineHandler:
         app_id = msg.app_id
         self._remove_app(app_id=app_id)
         self._logger.debug(f"Stopping application with app ID {app_id}")
-        yield from self._executor.stop_application(app_id=app_id)
+        yield from self._executioner.stop_application(app_id=app_id)
 
     def _handle_signal(self, msg):
         signal = Signal(msg.signal)
@@ -127,7 +127,7 @@ class BaseSubroutineHandler:
             raise ValueError(f"Unkown signal {signal}")
 
     def _handle_open_epr_socket(self, msg):
-        yield from self._executor.setup_epr_socket(
+        yield from self._executioner.setup_epr_socket(
             epr_socket_id=msg.epr_socket_id,
             remote_node_id=msg.remote_node_id,
             remote_epr_socket_id=msg.remote_epr_socket_id,

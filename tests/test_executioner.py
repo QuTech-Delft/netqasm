@@ -3,7 +3,7 @@ import logging
 
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.subroutine import Register
-from netqasm.backend.executor import Executor
+from netqasm.backend.executioner import Executioner
 from netqasm.lang.parsing import parse_text_subroutine
 from netqasm.logging.glob import set_log_level
 
@@ -46,19 +46,19 @@ from netqasm.logging.glob import set_log_level
         10,
     ),
 ])
-def test_executor(subroutine_str, expected_register, expected_output):
+def test_executioner(subroutine_str, expected_register, expected_output):
     set_log_level(logging.DEBUG)
     subroutine = parse_text_subroutine(subroutine_str)
 
     print(subroutine)
 
     app_id = 0
-    executor = Executor()
+    executioner = Executioner()
     # Consume the generator
-    executor.init_new_application(app_id=app_id, max_qubits=1)
+    executioner.init_new_application(app_id=app_id, max_qubits=1)
     for _ in range(10):
-        list(executor.execute_subroutine(subroutine=subroutine))
-        assert executor._get_register(app_id, expected_register) == expected_output
+        list(executioner.execute_subroutine(subroutine=subroutine))
+        assert executioner._get_register(app_id, expected_register) == expected_output
 
 
 @pytest.mark.parametrize("subroutine_str, error_type, error_line", [
@@ -86,18 +86,18 @@ def test_executor(subroutine_str, expected_register, expected_output):
         2
     )
 ])
-def test_failing_executor(subroutine_str, error_type, error_line):
+def test_failing_executioner(subroutine_str, error_type, error_line):
     set_log_level(logging.DEBUG)
     subroutine = parse_text_subroutine(subroutine_str)
 
     print(subroutine)
 
     app_id = 0
-    executor = Executor()
-    executor.init_new_application(app_id=app_id, max_qubits=1)
+    executioner = Executioner()
+    executioner.init_new_application(app_id=app_id, max_qubits=1)
 
     with pytest.raises(error_type) as exc:
-        executor._consume_execute_subroutine(subroutine=subroutine)
+        executioner._consume_execute_subroutine(subroutine=subroutine)
 
     print(f"Exception: {exc.value}")
     assert str(exc.value).startswith(f"At line {error_line}")
@@ -118,17 +118,4 @@ if __name__ == '__main__':
     expected_register = Register(RegisterName.R, 0)
     expected_output = 10
 
-    test_executor(subroutine_str, expected_register, expected_output)
-
-    subroutine_str = """
-        # NETQASM 0.0
-        # APPID 0
-        set R0 1
-        add R0 R0 R0
-        set R1 0
-        addm R0 R0 R0 R1
-        """
-    error_type = RuntimeError
-    error_line = 3
-
-    test_failing_executor(subroutine_str, error_type, error_line)
+    test_executioner(subroutine_str, expected_register, expected_output)

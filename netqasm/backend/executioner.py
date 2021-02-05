@@ -19,8 +19,7 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
 from netqasm.lang.instr.operand import Register, ArrayEntry, ArraySlice, Address
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
-from netqasm.backend.network_stack import BaseNetworkStack
-from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
+from netqasm.backend.network_stack import BaseNetworkStack, OK_FIELDS
 from netqasm.lang.parsing import parse_address
 from netqasm.util.error import NotAllocatedError
 
@@ -50,7 +49,7 @@ def inc_program_counter(method):
     return new_method
 
 
-class Executor:
+class Executioner:
 
     _INSTR_LOGGERS: Dict[str, Optional[InstrLogger]] = {}
     instr_logger_class = InstrLogger
@@ -70,7 +69,7 @@ class Executor:
         Parameters
         ----------
         name : str or None
-            Give a name to the executor for logging purposes.
+            Give a name to the executioner for logging purposes.
         """
         if name is None:
             self._name = f"{self.__class__}"
@@ -127,7 +126,7 @@ class Executor:
             self._instr_logger = self.__class__.get_instr_logger(
                 node_name=self._name,
                 instr_log_dir=instr_log_dir,
-                executor=self,
+                executioner=self,
             )
 
         # Logger
@@ -141,23 +140,15 @@ class Executor:
     def node_id(self):
         return self._node.ID
 
-    def set_instr_logger(self, instr_log_dir):
-        self._instr_logger = self.__class__.get_instr_logger(
-            node_name=self._name,
-            instr_log_dir=instr_log_dir,
-            executor=self,
-            force_override=True,
-        )
-
     @classmethod
-    def get_instr_logger(cls, node_name, instr_log_dir, executor, force_override=False):
+    def get_instr_logger(cls, node_name, instr_log_dir, executioner):
         instr_logger = cls._INSTR_LOGGERS.get(node_name)
-        if instr_logger is None or force_override:
+        if instr_logger is None:
             filename = f"{str(node_name).lower()}_instrs.yaml"
             filepath = os.path.join(instr_log_dir, filename)
             instr_logger = cls.instr_logger_class(
                 filepath=filepath,
-                executor=executor,
+                executioner=executioner,
             )
             cls._INSTR_LOGGERS[node_name] = instr_logger
         return instr_logger
@@ -236,7 +227,7 @@ class Executor:
         self._program_counters.pop(subroutine_id, 0)
 
     def clear_subroutine(self, subroutine_id):
-        """Clears a subroutine from the executor"""
+        """Clears a subroutine from the executioner"""
         self.reset_program_counter(subroutine_id=subroutine_id)
         self._subroutines.pop(subroutine_id, 0)
 
@@ -284,7 +275,7 @@ class Executor:
         list(self.execute_subroutine(subroutine=subroutine))
 
     def execute_subroutine(self, subroutine):
-        """Executes the a subroutine given to the executor"""
+        """Executes the a subroutine given to the executioner"""
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
         self.reset_program_counter(subroutine_id)

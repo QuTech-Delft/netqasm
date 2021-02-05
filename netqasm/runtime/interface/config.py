@@ -50,11 +50,12 @@ class NetworkConfig:
 _DEFAULT_NUM_QUBITS = 5
 
 
-def default_network_config(node_names: List[str]) -> NetworkConfig:
-    """Create a config for a fully connected network of nodes with the given names"""
+# Create a config for a fully connected network where the nodes
+# have the same names as the apps.
+def default_network_config(app_names: List[str]) -> NetworkConfig:
     nodes = []
     links = []
-    for name in node_names:
+    for name in app_names:
         qubits = [Qubit(id=i, t1=0, t2=0) for i in range(_DEFAULT_NUM_QUBITS)]
         node = Node(
             name=name,
@@ -64,7 +65,7 @@ def default_network_config(node_names: List[str]) -> NetworkConfig:
         )
         nodes += [node]
 
-        for other_name in node_names:
+        for other_name in app_names:
             if other_name == name:
                 continue
             link = Link(
