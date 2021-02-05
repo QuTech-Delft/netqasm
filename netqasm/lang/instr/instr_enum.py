@@ -80,6 +80,9 @@ class Instruction(Enum):
     # Move source qubit to target qubit (target is overwritten)
     MOV = 41
 
+    CROT_X = 51
+    CROT_Y = 52
+
 
 _COMMAND_GROUPS = {
     RegCommand: [

@@ -136,7 +136,7 @@ def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspir
         raise ValueError("The password cannot be empty.")
     if not isinstance(host, str):
         raise TypeError("The host address must be a string.")
-    logger.debug("Logging in.")
+    logger.debug(f"Logging in to {host}.")
     jwt_req = requests.post(f'http://{host}/jwt/',
                             {'username': [username],
                              'password': [password]}
@@ -149,6 +149,7 @@ def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspir
         jwt_token = jwt_req.json().get('access')
     except json.JSONDecodeError:
         raise AssertionError('Received invalid response from the host.')
+    logger.debug("Logged in successfully.")
     jwt_header = {'Authorization': f"JWT {jwt_token}"}
     # NOTE: Since we get a JWT token, do we need to be cautious the token will fail also?
     logger.debug("Generating new API token.")
@@ -168,6 +169,7 @@ def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspir
     with open(f'{QNE_FOLDER_PATH}/api_token', 'w') as f:
         json.dump({host: (username, api_token)}, f)
     logger.info("Generated API token successfully.")
+    logger.debug(f"The path to the token is {QNE_FOLDER_PATH}/api_token")
 
 
 @qne.command()
@@ -220,6 +222,12 @@ def _get_token_header():
 @click.option("--num", type=int, default=1,
               help="Number of times to run this application."
               )
+@click.option("--sim-context/--no-sim-context", type=bool, default=True,
+              help="Whether to pass an AppConfig object containing simulation context to a program's main function."
+              )
+@click.option("--hardware", type=click.Choice(["generic", "nv"]), default="generic",
+              help="What quantum hardware to use in nodes if no explicit network config is specified"
+              )
 def simulate(
     app_dir,
     track_lines,
@@ -231,6 +239,8 @@ def simulate(
     simulator,
     formalism,
     num,
+    sim_context,
+    hardware,
 ):
     """
     Simulate an application on a simulated QNodeOS.
@@ -260,7 +270,9 @@ def simulate(
         formalism=formalism,
         post_function=post_function,
         log_cfg=log_cfg,
+        use_app_config=sim_context,
         enable_logging=log_to_files,
+        hardware=hardware,
     )
 
 

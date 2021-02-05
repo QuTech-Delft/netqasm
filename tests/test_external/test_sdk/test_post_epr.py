@@ -45,7 +45,7 @@ def test_post_epr():
         ("alice", run_alice),
         ("bob", run_bob),
     ])
-    results = simulate_application(app_instance, use_app_config=False, enable_logging=False)
+    results = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
     print(results)
 
     assert results["app_alice"] == results["app_bob"]

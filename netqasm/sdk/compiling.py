@@ -429,9 +429,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
             ]
         elif isinstance(instr, vanilla.GateKInstruction):
             return [
-                nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(8), imm1=Immediate(4)),
                 nv.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=Immediate(24), imm1=Immediate(4)),
+                nv.RotYInstruction(
                     lineno=instr.lineno, reg=instr.reg, imm0=Immediate(16), imm1=Immediate(4)),
             ]
         elif isinstance(instr, vanilla.GateSInstruction):
