@@ -10,8 +10,7 @@ from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.encoding import RegisterName
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
-from netqasm.backend.network_stack import CREATE_FIELDS
-from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
+from netqasm.backend.network_stack import CREATE_FIELDS, OK_FIELDS
 
 from netqasm.lang import instr as instructions
 from netqasm.lang.instr.operand import (

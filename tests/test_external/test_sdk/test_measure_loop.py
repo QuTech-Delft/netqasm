@@ -1,6 +1,6 @@
 from netqasm.sdk import Qubit
-from netqasm.sdk.external import NetQASMConnection, simulate_application
-from netqasm.runtime.application import default_app_instance
+from netqasm.runtime.app_config import default_app_config
+from netqasm.sdk.external import NetQASMConnection, run_applications
 from netqasm.logging.glob import get_netqasm_logger
 
 logger = get_netqasm_logger()
@@ -26,7 +26,6 @@ def run_alice():
 
 
 def test_measure_loop():
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-    ])
-    simulate_application(app_instance, use_app_config=False, enable_logging=False)
+    run_applications([
+        default_app_config("Alice", run_alice),
+    ], use_app_config=False)

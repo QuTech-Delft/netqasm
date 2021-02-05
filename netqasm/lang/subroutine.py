@@ -121,7 +121,7 @@ class Subroutine:
     A :class:`~.Subroutine` object represents a subroutine consisting of valid
     instructions, i.e. objects deriving from :class:`~.NetQASMInstruction`.
 
-    :class:`~.Subroutine` s are executed by :class:`~.Executor` s.
+    :class:`~.Subroutine` s are executed by :class:`~.Executioner` s.
     """
     netqasm_version: tuple
     app_id: int

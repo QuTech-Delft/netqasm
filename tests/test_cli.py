@@ -1,7 +1,5 @@
-import json
 import os
 from click.testing import CliRunner
-import pytest
 
 import netqasm
 from netqasm.runtime.cli import cli
@@ -147,75 +145,3 @@ def test_init_no_overwrite():
         for entry in os.listdir(path):
             with open(os.path.join(path, entry), 'r') as f:
                 assert f.read() == "test"
-
-
-@pytest.mark.skipif(True, reason="Don't rely on the QNE server to be working.")
-def test_qne_login():
-    """Test logging into the QNE produces a token."""
-    from netqasm.runtime.cli import QNE_FOLDER_PATH, _login
-    runner = CliRunner()
-    try:
-        username = os.environ['QNE_TEST_USER']
-        password = os.environ['QNE_TEST_PWD']
-    except AttributeError:
-        # We allow this test to fail if the variables aren't set.
-        return
-    api_file = f'{QNE_FOLDER_PATH}/api_token'
-    with runner.isolated_filesystem():
-        assert not os.path.exists(api_file)
-        for args in [(username, ''),
-                     ('', password),
-                     (True, password),
-                     (username, True),
-                     (username, password, True)]:
-            try:
-                _login(*args)
-            except (ValueError, TypeError):
-                assert not os.path.exists(api_file)
-        # Test authentication doesn't crash if invalid credentials are supplied.
-        results = runner.invoke(cli, ['qne', 'login'], input=f'{username}\nwrongpass\n')
-        assert results.exit_code == 0
-        assert not os.path.exists(api_file)
-        # Test we can authenticate successfully
-        results = runner.invoke(cli, ['qne', 'login'], input=f'{username}\n{password}\n')
-        assert results.exit_code == 0
-        assert os.path.exists(api_file)
-        with open(api_file) as f:
-            api_token = json.load(f)
-        assert username == list(api_token.values())[0][0]
-        # Test we get new tokens
-        results = runner.invoke(cli, ['qne', 'login'], input=f'{username}\n{password}\n')
-        assert results.exit_code == 0
-        with open(api_file) as f:
-            new_api_token = json.load(f)
-        assert username == list(new_api_token.values())[0][0]
-        assert api_token != new_api_token
-        # Test we can run in verbose mode
-        results = runner.invoke(cli, ['--verbose', 'qne', 'login'], input=f'{username}\n{password}\n')
-        assert results.exit_code == 0
-
-
-@pytest.mark.skipif(True, reason="Don't rely on the QNE server to be working.")
-def test_qne_logout():
-    """Test logging out."""
-    from netqasm.runtime.cli import QNE_FOLDER_PATH
-    runner = CliRunner()
-    try:
-        username = os.environ['QNE_TEST_USER']
-        password = os.environ['QNE_TEST_PWD']
-    except AttributeError:
-        # We allow this test to fail if the variables aren't set.
-        return
-    with runner.isolated_filesystem():
-        # Create an API token
-        results = runner.invoke(cli, ['qne', 'login'], input=f'{username}\n{password}\n')
-        assert results.exit_code == 0
-        assert os.path.exists(f'{QNE_FOLDER_PATH}/api_token')
-        # Test API token is destroyed when logged out.
-        results = runner.invoke(cli, ['qne', 'logout'])
-        assert results.exit_code == 0
-        assert not os.path.exists(f'{QNE_FOLDER_PATH}/api_token')
-        # Test logging out when already logged out doesn't crash.
-        results = runner.invoke(cli, ['qne', 'logout'])
-        assert results.exit_code == 0
-        assert not os.path.exists(f'{QNE_FOLDER_PATH}/api_token')

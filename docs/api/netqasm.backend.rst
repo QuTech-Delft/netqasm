@@ -4,10 +4,10 @@ netqasm.backend package
 Submodules
 ----------
 
-netqasm.backend.executor module
+netqasm.backend.executioner module
 ----------------------------------
 
-.. automodule:: netqasm.backend.executor
+.. automodule:: netqasm.backend.executioner
    :members:
    :undoc-members:
    :show-inheritance:
