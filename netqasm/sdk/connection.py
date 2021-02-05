@@ -133,6 +133,8 @@ class BaseNetQASMConnection(abc.ABC):
         # Storing commands before an conditional statement
         self._pre_context_commands = {}
 
+        self._used_branch_variables = []
+
         # Can be set to false for e.g. debugging, not exposed to user atm
         self._clear_app_on_exit = True
         self._stop_backend_on_exit = True
@@ -437,18 +439,37 @@ class BaseNetQASMConnection(abc.ABC):
                 lineno=array.lineno,
             ))
             # Populate the array if needed
-            if array._init_values is not None:
-                for i, value in enumerate(array._init_values):
-                    if value is None:
-                        continue
-                    init_arrays.append(Command(
-                        instruction=Instruction.STORE,
-                        operands=[
-                            value,
-                            ArrayEntry(Address(array.address), i),
-                        ],
-                        lineno=array.lineno,
-                    ))
+            init_vals = array._init_values
+            if init_vals is not None:
+                length = len(init_vals)
+                if length > 1 and init_vals.count(init_vals[0]) == length:
+                    # Ad-hoc optimization: if all values are the same, put the initialization commands in a loop
+                    loop_register = self._get_inactive_register()
+
+                    def init_array_elt(conn):
+                        conn.add_pending_command(Command(
+                            instruction=Instruction.STORE,
+                            operands=[
+                                init_vals[0],
+                                ArrayEntry(Address(array.address), loop_register),
+                            ],
+                            lineno=array.lineno,
+                        ))
+                    self.loop_body(init_array_elt, stop=length, loop_register=loop_register)
+                    init_arrays += self._pop_pending_commands()
+                else:
+                    for i, value in enumerate(init_vals):
+                        if value is None:
+                            continue
+                        else:
+                            init_arrays.append(Command(
+                                instruction=Instruction.STORE,
+                                operands=[
+                                    value,
+                                    ArrayEntry(Address(array.address), i),
+                                ],
+                                lineno=array.lineno,
+                            ))
             # Command for returning the array by the end of the subroutine
             if self._return_arrays:
                 return_arrays.append(Command(
@@ -1127,14 +1148,11 @@ class BaseNetQASMConnection(abc.ABC):
         # We also need to check any existing other pre context commands if they are nested
         for pre_context_cmds in self._pre_context_commands.values():
             all_commands += pre_context_cmds
-        current_branch_variables = [
-            cmd.name for cmd in all_commands if isinstance(cmd, BranchLabel)
-        ]
         if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,
             a=a,
             b=b,
-            current_branch_variables=current_branch_variables,
+            current_branch_variables=self._used_branch_variables,
         )
         commands = pre_commands + if_start + body_commands + if_end
 
@@ -1143,6 +1161,7 @@ class BaseNetQASMConnection(abc.ABC):
     def _get_branch_commands(self, branch_instruction, a, b, current_branch_variables):
         # Exit label
         exit_label = self._find_unused_variable(start_with="IF_EXIT", current_variables=current_branch_variables)
+        self._used_branch_variables.append(exit_label)
         cond_values = []
         if_start = []
         for x in [a, b]:
@@ -1228,15 +1247,11 @@ class BaseNetQASMConnection(abc.ABC):
         if len(body_commands) == 0:
             self.add_pending_commands(commands=pre_commands)
             return
-        current_branch_variables = [
-            cmd.name for cmd in pre_commands + body_commands if isinstance(cmd, BranchLabel)
-        ]
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(
             start=start,
             stop=stop,
             step=step,
-            current_branch_variables=current_branch_variables,
             current_registers=current_registers,
             loop_register=loop_register,
         )
@@ -1286,9 +1301,11 @@ class BaseNetQASMConnection(abc.ABC):
     def _remove_active_register(self, register):
         self._active_registers.remove(register)
 
-    def _get_loop_commands(self, start, stop, step, current_branch_variables, current_registers, loop_register):
-        entry_label = self._find_unused_variable(start_with="LOOP", current_variables=current_branch_variables)
-        exit_label = self._find_unused_variable(start_with="LOOP_EXIT", current_variables=current_branch_variables)
+    def _get_loop_commands(self, start, stop, step, current_registers, loop_register):
+        entry_label = self._find_unused_variable(start_with="LOOP", current_variables=self._used_branch_variables)
+        exit_label = self._find_unused_variable(start_with="LOOP_EXIT", current_variables=self._used_branch_variables)
+        self._used_branch_variables.append(entry_label)
+        self._used_branch_variables.append(exit_label)
 
         entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
             start=start,

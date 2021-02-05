@@ -222,6 +222,12 @@ def _get_token_header():
 @click.option("--num", type=int, default=1,
               help="Number of times to run this application."
               )
+@click.option("--sim-context/--no-sim-context", type=bool, default=True,
+              help="Whether to pass an AppConfig object containing simulation context to a program's main function."
+              )
+@click.option("--hardware", type=click.Choice(["generic", "nv"]), default="generic",
+              help="What quantum hardware to use in nodes if no explicit network config is specified"
+              )
 def simulate(
     app_dir,
     track_lines,
@@ -233,6 +239,8 @@ def simulate(
     simulator,
     formalism,
     num,
+    sim_context,
+    hardware,
 ):
     """
     Simulate an application on a simulated QNodeOS.
@@ -262,7 +270,9 @@ def simulate(
         formalism=formalism,
         post_function=post_function,
         log_cfg=log_cfg,
+        use_app_config=sim_context,
         enable_logging=log_to_files,
+        hardware=hardware,
     )
 
 
