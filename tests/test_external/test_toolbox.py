@@ -86,7 +86,7 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
         app_instance.party_alloc[node] = node
 
     # Run the applications
-    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)
+    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
     outcomes = {node: outcome for node, outcome in outcomes.items() if node != "backend"}
     print(outcomes)
 
