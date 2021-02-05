@@ -48,7 +48,7 @@ def run_blind_rotation():
     app_instance.program_inputs["client"] = alice_app_inputs
     app_instance.program_inputs["server"] = bob_app_inputs
 
-    results = simulate_application(app_instance, enable_logging=False)
+    results = simulate_application(app_instance, enable_logging=False)[0]
 
     output_state = results['app_server']['output_state']
     s = results['app_client']['s']
@@ -117,7 +117,7 @@ def run_blind_grover():
     app_instance.program_inputs["server"] = bob_app_inputs
 
     # results = run_applications(applications)
-    results = simulate_application(app_instance, enable_logging=False)
+    results = simulate_application(app_instance, enable_logging=False)[0]
 
     m0 = results['app_client']['result0']
     m1 = results['app_client']['result1']

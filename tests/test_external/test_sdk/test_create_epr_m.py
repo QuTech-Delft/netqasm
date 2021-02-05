@@ -35,7 +35,7 @@ def test_create_epr_m():
         ("alice", run_alice),
         ("bob", run_bob),
     ])
-    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)
+    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
 
     print(outcomes)
     for i in range(num):
