@@ -124,11 +124,13 @@ class NVSubroutineCompiler(SubroutineCompiler):
                     # OK, value is a known Immediate. Update register value:
                     self._register_values[reg] = instr.imm
                 else:
+                    pass
                     # don't allow writing to a Q-register by any other instruction type
-                    raise RuntimeError(
-                        f"Cannot compile: the instruction {instr} writes to"
-                        " a Q-register but the value cannot be determined"
-                        " at compile time.")
+                    # TODO
+                    # raise RuntimeError(
+                    #     f"Cannot compile: the instruction {instr} writes to"
+                    #     " a Q-register but the value cannot be determined"
+                    #     " at compile time.")
 
             for op in instr.operands:
                 # update used registers
@@ -145,10 +147,26 @@ class NVSubroutineCompiler(SubroutineCompiler):
             else:
                 new_commands += [instr]
 
+        add_no_op_at_end = False
+
         for instr in new_commands:
             if (isinstance(instr, core.BranchUnaryInstruction)
                     or isinstance(instr, core.BranchBinaryInstruction)):
-                instr.line = Immediate(index_changes[instr.line.value])
+                original_line = instr.line.value
+                if original_line == len(self._subroutine.commands):
+                    # There was a label in the original subroutine at the very end.
+                    # Since this label is now removed, we should put a "no-op"
+                    # instruction there so there is something to jump to.
+                    add_no_op_at_end = True
+                    instr.line = Immediate(len(new_commands))
+                else:
+                    instr.line = Immediate(index_changes[instr.line.value])
+
+        if add_no_op_at_end:
+            new_commands += [
+                core.SetInstruction(
+                    lineno=None, reg=Register(RegisterName.C, 15), imm=Immediate(1337))
+            ]
 
         self._subroutine.commands = new_commands
         return self._subroutine
