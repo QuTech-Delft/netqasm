@@ -59,8 +59,7 @@
             "output_type": "text",
             "title": "General statistics",
             "parameters": {
-                "content": "- Number of pairs measured in the same basis: {{ $.app_alice.same_basis_count }}\n- Number of pairs chosen to compare measurement outcomes for: {{ $.app_alice.outcome_comparison_count }}\n- Number of different measurement outcomes among the pairs chosen to compare {{ $.app_alice.diff_outcome_count }}\n- QBER: {{ $.app_alice.qber }}. QBER is the Quantum Bit Error Rate. It is the fraction of compared measurement outcomes that are not equal, even though the result from measurements in the same basis.\n- Key rate potential: {{ $.app_alice.key_rate_potential }}. Rate of secure key that can in theory be extracted from the raw key (after more classical post-processing). The rate is 'length of secure key' divided by 'length of raw key'."
-            }
+                "content": "- Number of pairs measured in the same basis: {{ $.app_alice.same_basis_count }}\n- Number of pairs chosen to compare measurement outcomes for: {{ $.app_alice.outcome_comparison_count }}\n- Number of different measurement outcomes among the pairs chosen to compare: {{ $.app_alice.diff_outcome_count }}\n- QBER: {{ $.app_alice.qber }}. *QBER is the Quantum Bit Error Rate. It is the fraction of compared measurement outcomes that are not equal, even though they result from measurements in the same basis.* \n- Key rate potential: {{ $.app_alice.key_rate_potential }}. *Rate of secure key that can in theory be extracted from the raw key (after more classical post-processing). The rate is 'length of secure key' divided by 'length of raw key'.*" }
         }
     ],
     [
