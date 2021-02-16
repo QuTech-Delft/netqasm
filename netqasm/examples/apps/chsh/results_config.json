@@ -1,0 +1,36 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Description of CHSH",
+            "parameters": {
+                "content": "<Placeholder> CHSH is a way to verify that two parties have an entangled link between each other. Here, we spice things up by establishing this link through a repeater node."
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Entanglement swap",
+            "parameters": {
+                "content": "- Repeater measurement outcomes:: {{ $.app_repeater.m1 }} and {{ $.app_repeater.m2 }}.\n - Bob corrections: {{ $.app_receiver.corrections }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Alice's measurement",
+            "parameters": {
+                "content": "- Basis: {{ $.app_alice.basis }} \n - Outcome: {{ $.app_alice.a }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Bob's measurement outcome",
+            "parameters": {
+                "content": "- Basis: {{ $.app_bob.basis }} \n - Outcome: {{ $.app_bob.b }}"
+            }
+        }
+    ]
+]

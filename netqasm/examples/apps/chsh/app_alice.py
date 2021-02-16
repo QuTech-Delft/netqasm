@@ -12,6 +12,13 @@ def measure_basis_1(alice, q):
     return q.measure()
 
 
+def format_measurement_basis(x):
+    if x == 0:
+        return "Z-basis"
+    elif x == 1:
+        return "X-basis"
+
+
 def main(app_config=None, x=0):
     if not (x == 0 or x == 1):
         raise ValueError(f"x should be 0 or 1, not {x}")
@@ -41,7 +48,10 @@ def main(app_config=None, x=0):
             a = measure_basis_1(alice, epr)
 
     app_logger.log(f"Alice outputs a = {a}")
-    return {'a': int(a)}
+    return {
+        'a': int(a),
+        "basis": format_measurement_basis(x),
+    }
 
 
 if __name__ == "__main__":

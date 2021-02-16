@@ -15,6 +15,24 @@ def measure_basis_1(bob, q):
     return q.measure()
 
 
+def format_corrections(m1, m2):
+    if (m1, m2) == (0, 0):
+        return "No corrections"
+    elif (m1, m2) == (0, 1):
+        return "X"
+    elif (m1, m2) == (1, 0):
+        return "Z"
+    elif (m1, m2) == (1, 1):
+        return "X and Z"
+
+
+def format_measurement_basis(y):
+    if y == 0:
+        return "Z-basis rotated around Y by pi / 4"
+    elif y == 1:
+        return "Z-basis rotated around Y by -pi / 4"
+
+
 def main(app_config=None, y=0):
     if not (y == 0 or y == 1):
         raise ValueError(f"y should be 0 or 1, not {y}")
@@ -55,7 +73,11 @@ def main(app_config=None, y=0):
             b = measure_basis_1(bob, epr)
 
     app_logger.log(f"Bob outputs b = {b}")
-    return {'b': int(b)}
+    return {
+        'b': int(b),
+        "corrections": format_corrections(m1, m2),
+        "basis": format_measurement_basis(y),
+    }
 
 
 if __name__ == "__main__":
