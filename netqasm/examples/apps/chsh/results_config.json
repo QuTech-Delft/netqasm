@@ -27,7 +27,7 @@
         },
         {
             "output_type": "text",
-            "title": "Bob's measurement outcome",
+            "title": "Bob's measurement",
             "parameters": {
                 "content": "- Basis: {{ $.app_bob.basis }} \n - Outcome: {{ $.app_bob.b }}"
             }
