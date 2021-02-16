@@ -1,0 +1,12 @@
+{
+    "networks": [
+        "randstad",
+        "the_netherlands",
+        "europe"
+    ],
+    "roles": [
+        "alice",
+        "repeater",
+        "bob"
+    ]
+}

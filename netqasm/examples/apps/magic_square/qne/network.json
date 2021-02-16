@@ -1,0 +1,11 @@
+{
+    "networks": [
+        "randstad",
+        "the_netherlands",
+        "europe"
+    ],
+    "roles": [
+        "player1",
+        "player2"
+    ]
+}
