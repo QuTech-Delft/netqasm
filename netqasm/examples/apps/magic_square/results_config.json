@@ -1,0 +1,41 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Description of Magic Square",
+            "parameters": {
+                "content": "Magic Square"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Row of player 1",
+            "parameters": {
+                "content": "{{ $.app_player1.row }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Column of player 2",
+            "parameters": {
+                "content": "{{ $.app_player2.col }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "table",
+            "title": "Filled-in square",
+            "parameters": {
+                "data": "$.app_player2.square",
+                "headers": [
+                    "",
+                    "",
+                    ""
+                ]
+            }
+        }
+    ]
+]

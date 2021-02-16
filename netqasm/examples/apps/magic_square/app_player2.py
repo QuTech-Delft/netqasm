@@ -1,7 +1,7 @@
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.toolbox.measurements import parity_meas
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import NetQASMConnection
+from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
@@ -15,6 +15,8 @@ def _get_default_strategy():
 
 
 def main(app_config=None, col=0, strategy=None):
+    # This socket is only for post-processing purposes and not needed for the strategy to work.
+    socket = Socket("player2", "player1", log_config=app_config.log_config)
 
     # Get the strategy
     if strategy is None:
@@ -63,8 +65,30 @@ def main(app_config=None, col=0, strategy=None):
     to_print += "\n\n"
     logger.info(to_print)
 
+    # Only needed for visualization: to check at which cell the column intersects with the row of the other player.
+    player1_row = eval(socket.recv_silent())
+    player1_outcomes = eval(socket.recv_silent())
+    col_outcomes = [int(m0), int(m1), int(m2)]
+
+    square = [["", "", ""], ["", "", ""], ["", "", ""]]
+
+    square[player1_row][0] = str(player1_outcomes[0])
+    square[player1_row][1] = str(player1_outcomes[1])
+    square[player1_row][2] = str(player1_outcomes[2])
+    square[0][col] = str(col_outcomes[0])
+    square[1][col] = str(col_outcomes[1])
+    square[2][col] = str(col_outcomes[2])
+    square[player1_row][col] = f"{player1_outcomes[col]}/{col_outcomes[player1_row]}"
+
+    # table = []
+    # for row in range(3):
+    #     table.append(
+    #         square[row]
+    #     )
+
     return {
-        'col': [int(m0), int(m1), int(m2)],
+        'col': col_outcomes,
+        'square': square,
     }
 
 

@@ -1,7 +1,7 @@
 from netqasm.sdk.toolbox.measurements import parity_meas
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import NetQASMConnection
+from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
@@ -15,6 +15,8 @@ def _get_default_strategy():
 
 
 def main(app_config=None, row=0, strategy=None):
+    # This socket is only for post-processing purposes and not needed for the strategy to work.
+    socket = Socket("player1", "player2", log_config=app_config.log_config)
 
     if strategy is None:
         strategy = _get_default_strategy()
@@ -64,6 +66,11 @@ def main(app_config=None, row=0, strategy=None):
     to_print += "==========================\n"
     to_print += "\n\n"
     logger.info(to_print)
+
+    # Only needed for visualization: to check at which cell the row intersects with the column of the other player.
+    socket.send_silent(str(row))
+    p1 = [int(m0), int(m1), int(m2)]
+    socket.send_silent(str(p1))
 
     return {
         'row': [int(m0), int(m1), int(m2)],
