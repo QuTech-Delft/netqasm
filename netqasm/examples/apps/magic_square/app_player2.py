@@ -1,5 +1,6 @@
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.toolbox.measurements import parity_meas
+from netqasm.logging.output import get_new_app_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 
@@ -17,6 +18,11 @@ def _get_default_strategy():
 def main(app_config=None, col=0, strategy=None):
     # This socket is only for post-processing purposes and not needed for the strategy to work.
     socket = Socket("player2", "player1", log_config=app_config.log_config)
+
+    app_logger = get_new_app_logger(
+        app_name=app_config.app_name,
+        log_config=app_config.log_config
+    )
 
     # Get the strategy
     if strategy is None:
@@ -53,7 +59,20 @@ def main(app_config=None, col=0, strategy=None):
             qd = q1
 
         # Perform the three measurements
-        m0, m1, m2 = (parity_meas([qb, qd], strategy[col][i]) for i in range(3))
+        app_logger.log(f"Measuring {strategy[col][0]} ...")
+        m0 = parity_meas([qb, qd], strategy[col][0])
+        player2.flush()
+        app_logger.log(f"Outcome: {m0}")
+
+        app_logger.log(f"Measuring {strategy[col][1]} ...")
+        m1 = parity_meas([qb, qd], strategy[col][1])
+        player2.flush()
+        app_logger.log(f"Outcome: {m1}")
+
+        app_logger.log(f"Measuring {strategy[col][2]} ...")
+        m2 = parity_meas([qb, qd], strategy[col][2])
+        player2.flush()
+        app_logger.log(f"Outcome: {m2}")
 
     to_print = "\n\n"
     to_print += "==========================\n"
