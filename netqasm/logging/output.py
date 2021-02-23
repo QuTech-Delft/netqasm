@@ -26,6 +26,13 @@ from netqasm.runtime.interface.logging import (
 )
 
 
+def pretty_instr_name(mne: str) -> str:
+    if mne == "h":
+        return "Hadamard"
+    else:
+        return mne
+
+
 def should_ignore_instr(instr):
     return (
         isinstance(instr, instructions.core.SetInstruction)
@@ -112,7 +119,8 @@ class InstrLogger(StructuredLogger):
         wall_time = str(datetime.now())
         sim_time = self._executioner._get_simulated_time()
         program_counter = kwargs['program_counter']
-        instr_name = command.mnemonic
+        # instr_name = command.mnemonic
+        instr_name = pretty_instr_name(command.mnemonic)
         operands = command.operands
         op_values = self._get_op_values(subroutine_id=subroutine_id, operands=operands)
         ops_str = [f"{op}={opv}" for op, opv in zip(operands, op_values)]

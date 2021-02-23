@@ -1,5 +1,6 @@
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
+from netqasm.logging.output import get_new_app_logger
 
 
 def main(app_config=None):
@@ -7,6 +8,11 @@ def main(app_config=None):
 
     socket_bob = Socket("repeater", "bob", log_config=app_config.log_config)
     epr_socket_bob = EPRSocket("bob")
+
+    app_logger = get_new_app_logger(
+        app_name=app_config.app_name,
+        log_config=app_config.log_config
+    )
 
     repeater = NetQASMConnection(
         app_name=app_config.app_name,
@@ -22,6 +28,7 @@ def main(app_config=None):
         epr_bob = epr_socket_bob.create()[0]
 
         # Teleport qubit that is entangled with Alice to Bob
+        app_logger.log(f"Doing entanglement swap")
         epr_alice.cnot(epr_bob)
         epr_alice.H()
         m1 = epr_alice.measure()

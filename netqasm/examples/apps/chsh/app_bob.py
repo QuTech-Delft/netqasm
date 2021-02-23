@@ -41,7 +41,10 @@ def main(app_config=None, y=0):
         app_name=app_config.app_name,
         log_config=app_config.log_config
     )
-    app_logger.log(f"Bob received input bit y = {y}")
+
+    # Only to enforce global order of operations for nice visualization,
+    # NOT needed to obtain CHSH outcome correlations.
+    socket_alice = Socket("bob", "alice", log_config=app_config.log_config)
 
     socket = Socket("bob", "repeater", log_config=app_config.log_config)
     epr_socket = EPRSocket("repeater")
@@ -59,14 +62,19 @@ def main(app_config=None, y=0):
 
         # Receive teleportation corrections
         msg = socket.recv()
-        app_logger.log(f"Bob got teleportation corrections: {msg}")
         m1, m2 = eval(msg)
+        app_logger.log(f"Applying teleportation corrections {format_corrections(m1, m2)}")
         if m2 == 1:
             epr.X()
         if m1 == 1:
             epr.Z()
+        bob.flush()
+
+        # Tell Alice entanglement has been established
+        socket_alice.send_silent("")
 
         # CHSH strategy: measure in one of 2 bases depending on y.
+        app_logger.log(f"Measuring in basis y = {y}...")
         if y == 0:
             b = measure_basis_0(bob, epr)
         else:
