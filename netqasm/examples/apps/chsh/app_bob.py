@@ -33,6 +33,19 @@ def format_measurement_basis(y):
         return "Z-basis rotated around Y by -pi / 4"
 
 
+def game_won(x, y, a, b):
+    if x == 1 and y == 1:
+        if a != b:
+            return f"Alice and Bob won the game, since x * y = 1 and a ^ b = 1"
+        else:
+            return f"Alice and Bob lost the game, since x * y = 1 and a ^ b = 0"
+    else:
+        if a == b:
+            return f"Alice and Bob won the game, since x * y = 0 and a ^ b = 0"
+        else:
+            return f"Alice and Bob lost the game, since x * y = 0 and a ^ b = 1"
+
+
 def main(app_config=None, y=0):
     if not (y == 0 or y == 1):
         raise ValueError(f"y should be 0 or 1, not {y}")
@@ -80,11 +93,15 @@ def main(app_config=None, y=0):
         else:
             b = measure_basis_1(bob, epr)
 
+    msg = socket_alice.recv_silent()
+    x, a = eval(msg)
+
     app_logger.log(f"Bob outputs b = {b}")
     return {
         'b': int(b),
         "corrections": format_corrections(m1, m2),
         "basis": format_measurement_basis(y),
+        "game_won": game_won(x, y, a, b),
     }
 
 

@@ -55,6 +55,9 @@ def main(app_config=None, x=0):
         else:
             a = measure_basis_1(alice, epr)
 
+    # So that Bob can determine the outcome, purely for visualization purposes.
+    socket_bob.send_silent(str((x, int(a))))
+
     app_logger.log(f"Alice outputs a = {a}")
     return {
         'a': int(a),

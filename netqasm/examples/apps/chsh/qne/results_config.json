@@ -13,7 +13,7 @@
             "output_type": "text",
             "title": "Entanglement swap",
             "parameters": {
-                "content": "- Repeater measurement outcomes:: {{ $.app_repeater.m1 }} and {{ $.app_repeater.m2 }}.\n - Bob corrections: {{ $.app_receiver.corrections }}"
+                "content": "- Repeater measurement outcomes:: {{ $.app_repeater.m1 }} and {{ $.app_repeater.m2 }}.\n - Bob corrections: {{ $.app_bob.corrections }}"
             }
         }
     ],
@@ -30,6 +30,15 @@
             "title": "Bob's measurement",
             "parameters": {
                 "content": "- Basis: {{ $.app_bob.basis }} \n - Outcome: {{ $.app_bob.b }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Did they win the game?",
+            "parameters": {
+                "content": "{{ $.app_bob.game_won }}"
             }
         }
     ]
