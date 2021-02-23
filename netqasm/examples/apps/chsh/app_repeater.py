@@ -28,7 +28,7 @@ def main(app_config=None):
         epr_bob = epr_socket_bob.create()[0]
 
         # Teleport qubit that is entangled with Alice to Bob
-        app_logger.log(f"Doing entanglement swap")
+        app_logger.log("Doing entanglement swap")
         epr_alice.cnot(epr_bob)
         epr_alice.H()
         m1 = epr_alice.measure()

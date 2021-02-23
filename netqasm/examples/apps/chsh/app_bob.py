@@ -36,14 +36,14 @@ def format_measurement_basis(y):
 def game_won(x, y, a, b):
     if x == 1 and y == 1:
         if a != b:
-            return f"Alice and Bob won the game, since x * y = 1 and a ^ b = 1"
+            return "Alice and Bob won the game, since x * y = 1 and a ^ b = 1"
         else:
-            return f"Alice and Bob lost the game, since x * y = 1 and a ^ b = 0"
+            return "Alice and Bob lost the game, since x * y = 1 and a ^ b = 0"
     else:
         if a == b:
-            return f"Alice and Bob won the game, since x * y = 0 and a ^ b = 0"
+            return "Alice and Bob won the game, since x * y = 0 and a ^ b = 0"
         else:
-            return f"Alice and Bob lost the game, since x * y = 0 and a ^ b = 1"
+            return "Alice and Bob lost the game, since x * y = 0 and a ^ b = 1"
 
 
 def main(app_config=None, y=0):
