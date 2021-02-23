@@ -1,7 +1,7 @@
 from netqasm.sdk import EPRSocket, Qubit
 from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm, get_fidelity
+from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm
 from netqasm.logging.output import get_new_app_logger
 
 

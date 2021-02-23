@@ -1,7 +1,7 @@
 from netqasm.sdk import EPRSocket, Qubit
 from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm, get_fidelity
+from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm
 from netqasm.logging.output import get_new_app_logger
 
 
@@ -48,10 +48,10 @@ def main(app_config=None, phi=0.0, theta=0.0):
         # between his EPR half and the original control qubit
         target_meas = class_socket.recv()
         if target_meas == "1":
-            app_logger.log(f"Outcome = 1, so doing Z correction")
+            app_logger.log("Outcome = 1, so doing Z correction")
             ctrl_qubit.Z()
         else:
-            app_logger.log(f"Outcome = 0, no corrections needed")
+            app_logger.log("Outcome = 0, no corrections needed")
 
         controller.flush()
 
