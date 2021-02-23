@@ -26,13 +26,6 @@ from netqasm.runtime.interface.logging import (
 )
 
 
-def pretty_instr_name(mne: str) -> str:
-    if mne == "h":
-        return "Hadamard"
-    else:
-        return mne
-
-
 def should_ignore_instr(instr):
     return (
         isinstance(instr, instructions.core.SetInstruction)
