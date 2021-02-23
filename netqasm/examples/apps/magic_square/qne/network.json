@@ -1,7 +1,7 @@
 {
     "networks": [
         "randstad",
-        "the_netherlands",
+        "the-netherlands",
         "europe"
     ],
     "roles": [

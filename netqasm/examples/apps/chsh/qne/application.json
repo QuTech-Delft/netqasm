@@ -11,7 +11,7 @@
                 "maximum_value": 1
             }
         ],
-        "input_type": "int",
+        "input_type": "number",
         "roles": [
             "alice"
         ]
@@ -28,7 +28,7 @@
                 "maximum_value": 1
             }
         ],
-        "input_type": "int",
+        "input_type": "number",
         "roles": [
             "bob"
         ]

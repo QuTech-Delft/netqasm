@@ -2,7 +2,7 @@
     [
         {
             "output_type": "text",
-            "title": "Description of Magic Square",
+            "title": "The two players just performed measurements on their qubits. Here we can see what their results are and if the intersection between the row of Player 1 and the column of Player 2 are indeed the same!",
             "parameters": {
                 "content": "Magic Square"
             }

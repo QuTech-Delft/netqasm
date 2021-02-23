@@ -4,7 +4,7 @@
             "output_type": "text",
             "title": "Description of CHSH",
             "parameters": {
-                "content": "<Placeholder> CHSH is a way to verify that two parties have an entangled link between each other. Here, we spice things up by establishing this link through a repeater node."
+                "content": "Alice and Bob used their entangled pair (created through the repeater) to try and win the CHSH game. Let's see if they won!"
             }
         }
     ],
@@ -38,7 +38,7 @@
             "output_type": "text",
             "title": "Did they win the game?",
             "parameters": {
-                "content": "{{ $.app_bob.game_won }}"
+                "content": "{{ $.app_bob.game_won }}!"
             }
         }
     ]

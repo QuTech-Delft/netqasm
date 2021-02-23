@@ -2,9 +2,9 @@
     [
         {
             "output_type": "text",
-            "title": "Description of BB84",
+            "title": "QKD results",
             "parameters": {
-                "content": "The goal of BB84 is to generate a secret key (a string of classical bits) that is shared by Alice and Bob, and is unknown to any third party.\n\nAlice and Bob just created a *raw key* for both of them, which can still be slightly different (due to errors) and is not yet necessarily fully secure (an eavesdropper might have some information). Typically, *classical post-processing* would now be performed to transform the raw keys in a single secure key that is shared between Alice and Bob.\n\nTo obtain these raw keys, Alice and Bob generated N entangled pairs over the quantum internet, and locally measured their qubits to produce classical bits. Then they exchanged classical messages which are used to filter out incompatible measurement outcomes, and perform an error estimation. The measurement outcomes not used for basis filtering or error estimation are the raw keys.\n\nIn the tables below you can see the information that Alice and Bob generated during the protocol, and which lead to their raw keys.\n\nFor each entangled qubit pair that they generated over the quantum internet, they independently chose to either measure in the X or Z basis. They then checked which pairs were measured in the same basis. Then, the measurement outcomes of some of the remaining pairs were compared to estimate a *Quantum Bit Error Rate (QBER)*. The outcomes that were not compared (denoted with a \"-\") form the raw keys."
+                "content": "Here we see an overview of all measurements, outcomes, and comparisons Alice and Bob made throughout the protocol. Finally, we show their raw keys. If there was not too much noise, it can be made into a secret key!"
             }
         }
     ],

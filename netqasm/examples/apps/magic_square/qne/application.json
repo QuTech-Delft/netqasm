@@ -11,7 +11,7 @@
                 "maximum_value": 2
             }
         ],
-        "input_type": "int",
+        "input_type": "number",
         "roles": [
             "player1"
         ]
@@ -28,7 +28,7 @@
                 "maximum_value": 2
             }
         ],
-        "input_type": "int",
+        "input_type": "number",
         "roles": [
             "player2"
         ]

@@ -175,6 +175,11 @@ def main(app_config=None, num_bits=100):
     raw_key = [pair.outcome for pair in pairs_info if not pair.test_outcome]
     logger.info(f"alice raw key: {raw_key}")
 
+    if len(raw_key) == 0:
+        raw_key_text = "empty - there were not enough outcomes left"
+    else:
+        raw_key_text = str(raw_key)
+
     # Return data.
 
     table = []
@@ -190,7 +195,10 @@ def main(app_config=None, num_bits=100):
     same_basis_count = sum(pair.same_basis for pair in pairs_info)
     outcome_comparison_count = sum(pair.test_outcome for pair in pairs_info if pair.same_basis)
     diff_outcome_count = outcome_comparison_count - sum(pair.same_outcome for pair in pairs_info if pair.test_outcome)
-    qber = (diff_outcome_count) / outcome_comparison_count
+    if outcome_comparison_count == 0:
+        qber = 1
+    else:
+        qber = (diff_outcome_count) / outcome_comparison_count
     key_rate_potential = 1 - 2 * h(qber)
 
     return {
@@ -227,7 +235,7 @@ def main(app_config=None, num_bits=100):
 
         # Raw key.
         # ('Result' of this application. In practice, there'll be post-processing to produce secure shared key.)
-        'raw_key': raw_key
+        'raw_key': raw_key_text
     }
 
 
