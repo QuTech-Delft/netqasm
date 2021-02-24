@@ -90,7 +90,7 @@
             "parameters": {
                 "content": "shared [0, 100]: {{ $.app_party1.shared }}"
             }
-        },
+        }
     ],
     [
         {
@@ -183,6 +183,6 @@
             "parameters": {
                 "content": "shared [0, 100]: {{ $.app_party2.shared }}"
             }
-        },
-    ],
+        }
+    ]
 ]
