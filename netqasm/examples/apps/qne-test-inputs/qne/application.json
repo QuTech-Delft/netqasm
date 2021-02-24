@@ -1,0 +1,372 @@
+[
+    {
+        "title": "Party 1 Integer 1",
+        "slug": "party1_i1",
+        "description": "Any value. Default: 0",
+        "values": [
+            {
+                "name": "i1",
+                "default_value": 0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Integer 2",
+        "slug": "party1_i2",
+        "description": "Any value. Default: 0",
+        "values": [
+            {
+                "name": "i2",
+                "default_value": 0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Float 1",
+        "slug": "party1_f1",
+        "description": "Any value. Default: 0.0",
+        "values": [
+            {
+                "name": "f1",
+                "default_value": 0.0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Float 2",
+        "slug": "party1_f2",
+        "description": "Any value. Default: 0.0",
+        "values": [
+            {
+                "name": "f2",
+                "default_value": 0.0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Bit 1",
+        "slug": "party1_b1",
+        "description": "0 or 1. Default: 0",
+        "values": [
+            {
+                "name": "b1",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Bit 2",
+        "slug": "party1_b2",
+        "description": "0 or 1. Default: 0",
+        "values": [
+            {
+                "name": "b2",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Range 1",
+        "slug": "party1_range1",
+        "description": "Range [-10, 10] (including). Default: 0",
+        "values": [
+            {
+                "name": "range1",
+                "default_value": 0,
+                "minimum_value": -10,
+                "maximum_value": 10
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Range 2",
+        "slug": "party1_range2",
+        "description": "Range [1, 5] (including). Default: 1",
+        "values": [
+            {
+                "name": "range1",
+                "default_value": 1,
+                "minimum_value": 1,
+                "maximum_value": 5
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Qubit 1 (theta and phi angles)",
+        "slug": "party1_q1",
+        "description": "Theta: [0, 1.0] (including). Default: 0.0. Phi: [-1.0, 1.0] (including). Default: 0.0. Simulator should get both values scaled by factor pi.",
+        "values": [
+            {
+                "name": "phi",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            },
+            {
+                "name": "theta",
+                "default_value": 0.0,
+                "minimum_value": 0.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "qubit",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Party 1 Angle 1",
+        "slug": "party1_angle1",
+        "description": "Range: [-1.0, 1.0] (including). Default: 0.0. Simulator should get this value scaled by factor pi.",
+        "values": [
+            {
+                "name": "angle1",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1"
+        ]
+    },
+    {
+        "title": "Shared value",
+        "slug": "shared_value",
+        "description": "Range: [0, 100] (including). Default: 0. Given to both parties.",
+        "values": [
+            {
+                "name": "shared",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 100
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party1",
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Integer 1",
+        "slug": "party2_i1",
+        "description": "Any value. Default: 0",
+        "values": [
+            {
+                "name": "i1",
+                "default_value": 0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Integer 2",
+        "slug": "party2_i2",
+        "description": "Any value. Default: 0",
+        "values": [
+            {
+                "name": "i2",
+                "default_value": 0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Float 1",
+        "slug": "party2_f1",
+        "description": "Any value. Default: 0.0",
+        "values": [
+            {
+                "name": "f1",
+                "default_value": 0.0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Float 2",
+        "slug": "party2_f2",
+        "description": "Any value. Default: 0.0",
+        "values": [
+            {
+                "name": "f2",
+                "default_value": 0.0,
+                "minimum_value": null,
+                "maximum_value": null
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Bit 1",
+        "slug": "party2_b1",
+        "description": "0 or 1. Default: 0",
+        "values": [
+            {
+                "name": "b1",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Bit 2",
+        "slug": "party2_b2",
+        "description": "0 or 1. Default: 0",
+        "values": [
+            {
+                "name": "b2",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Range 1",
+        "slug": "party2_range1",
+        "description": "Range [-10, 10] (including). Default: 0",
+        "values": [
+            {
+                "name": "range1",
+                "default_value": 0,
+                "minimum_value": -10,
+                "maximum_value": 10
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Range 2",
+        "slug": "party2_range2",
+        "description": "Range [1, 5] (including). Default: 1",
+        "values": [
+            {
+                "name": "range1",
+                "default_value": 1,
+                "minimum_value": 1,
+                "maximum_value": 5
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Qubit 1 (theta and phi angles)",
+        "slug": "party2_q1",
+        "description": "Theta: [0, 1.0] (including). Default: 0.0. Phi: [-1.0, 1.0] (including). Default: 0.0. Simulator should get both values scaled by factor pi.",
+        "values": [
+            {
+                "name": "phi",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            },
+            {
+                "name": "theta",
+                "default_value": 0.0,
+                "minimum_value": 0.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "qubit",
+        "roles": [
+            "party2"
+        ]
+    },
+    {
+        "title": "Party 2 Angle 1",
+        "slug": "party2_angle1",
+        "description": "Range: [-1.0, 1.0] (including). Default: 0.0. Simulator should get this value scaled by factor pi.",
+        "values": [
+            {
+                "name": "angle1",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "party2"
+        ]
+    }
+]

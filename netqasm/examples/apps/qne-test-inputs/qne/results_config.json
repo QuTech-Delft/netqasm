@@ -1,0 +1,188 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Party 1 Integer 1",
+            "parameters": {
+                "content": "i1 (any integer): {{ $.app_party1.i1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Integer 2",
+            "parameters": {
+                "content": "i2 (any integer): {{ $.app_party1.i2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Float 1",
+            "parameters": {
+                "content": "f1 (any float): {{ $.app_party1.f1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Float 2",
+            "parameters": {
+                "content": "f2 (any float): {{ $.app_party1.f2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Bit 1",
+            "parameters": {
+                "content": "b1 (0 or 1): {{ $.app_party1.b1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Bit 2",
+            "parameters": {
+                "content": "b2 (0 or 1): {{ $.app_party1.b2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Range 1",
+            "parameters": {
+                "content": "range1 [-10, 10]: {{ $.app_party1.range1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Range 2",
+            "parameters": {
+                "content": "range2 [1, 5]: {{ $.app_party1.range2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Phi",
+            "parameters": {
+                "content": "phi [-pi, pi]: {{ $.app_party1.phi }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Theta",
+            "parameters": {
+                "content": "theta [0, pi]: {{ $.app_party1.theta }}"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Party 1 Qubit 1",
+            "parameters": {
+                "content": "$.app_party1.qubit1"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Angle 1",
+            "parameters": {
+                "content": "angle1 [-pi, pi]: {{ $.app_party1.angle }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 1 Shared",
+            "parameters": {
+                "content": "shared [0, 100]: {{ $.app_party1.shared }}"
+            }
+        },
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Party 2 Integer 1",
+            "parameters": {
+                "content": "i1 (any integer): {{ $.app_party2.i1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Integer 2",
+            "parameters": {
+                "content": "i2 (any integer): {{ $.app_party2.i2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Float 1",
+            "parameters": {
+                "content": "f1 (any float): {{ $.app_party2.f1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Float 2",
+            "parameters": {
+                "content": "f2 (any float): {{ $.app_party2.f2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Bit 1",
+            "parameters": {
+                "content": "b1 (0 or 1): {{ $.app_party2.b1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Bit 2",
+            "parameters": {
+                "content": "b2 (0 or 1): {{ $.app_party2.b2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Range 1",
+            "parameters": {
+                "content": "range1 [-10, 10]: {{ $.app_party2.range1 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Range 2",
+            "parameters": {
+                "content": "range2 [1, 5]: {{ $.app_party2.range2 }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Phi",
+            "parameters": {
+                "content": "phi [-pi, pi]: {{ $.app_party2.phi }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Theta",
+            "parameters": {
+                "content": "theta [0, pi]: {{ $.app_party2.theta }}"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Party 2 Qubit 1",
+            "parameters": {
+                "content": "$.app_party2.qubit1"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Angle 1",
+            "parameters": {
+                "content": "angle1 [-pi, pi]: {{ $.app_party2.angle }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Party 2 Shared",
+            "parameters": {
+                "content": "shared [0, 100]: {{ $.app_party2.shared }}"
+            }
+        },
+    ],
+]
