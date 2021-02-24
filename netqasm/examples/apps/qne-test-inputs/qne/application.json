@@ -159,12 +159,12 @@
         ]
     },
     {
-        "title": "Party 1 Angle 1",
-        "slug": "party1_angle1",
+        "title": "Party 1 Angle",
+        "slug": "party1_angle",
         "description": "Range: [-1.0, 1.0] (including). Default: 0.0. Simulator should get this value scaled by factor pi.",
         "values": [
             {
-                "name": "angle1",
+                "name": "angle",
                 "default_value": 0.0,
                 "minimum_value": -1.0,
                 "maximum_value": 1.0
@@ -353,12 +353,12 @@
         ]
     },
     {
-        "title": "Party 2 Angle 1",
-        "slug": "party2_angle1",
+        "title": "Party 2 Angle",
+        "slug": "party2_angle",
         "description": "Range: [-1.0, 1.0] (including). Default: 0.0. Simulator should get this value scaled by factor pi.",
         "values": [
             {
-                "name": "angle1",
+                "name": "angle",
                 "default_value": 0.0,
                 "minimum_value": -1.0,
                 "maximum_value": 1.0

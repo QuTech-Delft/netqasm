@@ -1,5 +1,5 @@
 from netqasm.sdk import Qubit
-from netqasm.sdk.external import NetQASMConnection
+from netqasm.sdk.external import NetQASMConnection, get_qubit_state
 from netqasm.sdk.toolbox import set_qubit_state
 
 
@@ -19,7 +19,7 @@ def main(
     shared: int = 0,  # shared with other party, [0, 100]
 ):
     with NetQASMConnection("party2") as party2:
-        q = Qubit(party1)
+        q = Qubit(party2)
         set_qubit_state(q, phi, theta)
         party2.flush()
 

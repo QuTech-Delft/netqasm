@@ -79,9 +79,9 @@
         },
         {
             "output_type": "text",
-            "title": "Party 1 Angle 1",
+            "title": "Party 1 Angle",
             "parameters": {
-                "content": "angle1 [-pi, pi]: {{ $.app_party1.angle }}"
+                "content": "angle [-pi, pi]: {{ $.app_party1.angle }}"
             }
         },
         {
@@ -172,9 +172,9 @@
         },
         {
             "output_type": "text",
-            "title": "Party 2 Angle 1",
+            "title": "Party 2 Angle",
             "parameters": {
-                "content": "angle1 [-pi, pi]: {{ $.app_party2.angle }}"
+                "content": "angle [-pi, pi]: {{ $.app_party2.angle }}"
             }
         },
         {
