@@ -74,7 +74,7 @@
             "output_type": "quantum-state",
             "title": "Party 1 Qubit 1",
             "parameters": {
-                "content": "$.app_party1.qubit1"
+                "density_matrix": "$.app_party1.qubit1"
             }
         },
         {
@@ -167,7 +167,7 @@
             "output_type": "quantum-state",
             "title": "Party 2 Qubit 1",
             "parameters": {
-                "content": "$.app_party2.qubit1"
+                "density_matrix": "$.app_party2.qubit1"
             }
         },
         {
