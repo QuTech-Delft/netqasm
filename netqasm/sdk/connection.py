@@ -8,7 +8,7 @@ import logging
 from enum import Enum
 from itertools import count
 from contextlib import contextmanager
-from typing import List, Optional, Dict, Type, Union, Set, Tuple
+from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable
 
 from qlink_interface import (
     EPRType,
@@ -50,9 +50,14 @@ from netqasm.backend.messages import (
     OpenEPRSocketMessage,
     SubroutineMessage,
     SignalMessage,
+    Message,
 )
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.network import NetworkInfo
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from netqasm.sdk.epr_socket import EPRSocket
 
 
 # NOTE this is needed to be able to instanciate tuples the same way as namedtuples
@@ -84,7 +89,7 @@ class BaseNetQASMConnection(abc.ABC):
         app_id: Optional[int] = None,
         max_qubits: int = 5,
         log_config: LogConfig = None,
-        epr_sockets=None,  # Optional[List[EPRSocket]]
+        epr_sockets: Optional[List[EPRSocket]] = None,
         compiler: Optional[SubroutineCompiler] = None,
         return_arrays: bool = True,
         _init_app: bool = True,
@@ -231,7 +236,7 @@ class BaseNetQASMConnection(abc.ABC):
             stop_backend=self._stop_backend_on_exit,
         )
 
-    def _get_new_app_id(self, app_id) -> int:
+    def _get_new_app_id(self, app_id: int) -> int:
         """Finds a new app ID if not specific"""
         name = self.app_name
         if name not in self._app_ids:
@@ -261,7 +266,7 @@ class BaseNetQASMConnection(abc.ABC):
     def clear(self) -> None:
         self._pop_app_id()
 
-    def close(self, clear_app=True, stop_backend=False) -> None:
+    def close(self, clear_app: bool = True, stop_backend: bool = False) -> None:
         """Handle exiting of context."""
         # Flush all pending commands
         self.flush()
@@ -274,13 +279,15 @@ class BaseNetQASMConnection(abc.ABC):
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
 
-    def _commit_message(self, msg, block=True, callback=None) -> None:
+    def _commit_message(self, msg: Message, block: bool = True, callback: Optional[Callable] = None) -> None:
         """Commit a message to the backend/qnodeos"""
         self._logger.debug(f"Committing message {msg}")
         self._commit_serialized_message(raw_msg=bytes(msg), block=block, callback=callback)
 
     @abc.abstractmethod
-    def _commit_serialized_message(self, raw_msg, block=True, callback=None) -> None:
+    def _commit_serialized_message(
+        self, raw_msg: bytes, block: bool = True, callback: Optional[Callable] = None
+    ) -> None:
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
         pass
@@ -290,7 +297,7 @@ class BaseNetQASMConnection(abc.ABC):
             q = self.active_qubits.pop()
             q.active = False
 
-    def _signal_stop(self, clear_app=True, stop_backend=True) -> None:
+    def _signal_stop(self, clear_app: bool = True, stop_backend: bool = True) -> None:
         if clear_app:
             self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
@@ -310,14 +317,14 @@ class BaseNetQASMConnection(abc.ABC):
     def new_qubit_id(self) -> int:
         return self._get_new_qubit_address()
 
-    def _init_new_app(self, max_qubits) -> None:
+    def _init_new_app(self, max_qubits: int) -> None:
         """Informs the backend of the new application and how many qubits it will maximally use"""
         self._commit_message(msg=InitNewAppMessage(
             app_id=self._app_id,
             max_qubits=max_qubits,
         ))
 
-    def _setup_epr_sockets(self, epr_sockets) -> None:
+    def _setup_epr_sockets(self, epr_sockets: List[EPRSocket]) -> None:
         if epr_sockets is None:
             return
         for epr_socket in epr_sockets:
