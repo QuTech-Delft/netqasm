@@ -11,7 +11,7 @@ from netqasm.runtime.settings import get_is_using_hardware
 
 class SubroutineCompiler(abc.ABC):
     @abc.abstractmethod
-    def compile(self, subroutine):
+    def compile(self, subroutine) -> Subroutine:
         """Compile a subroutine (inplace) to a specific hardware
 
         Parameters
@@ -24,10 +24,10 @@ class SubroutineCompiler(abc.ABC):
 
 class NVSubroutineCompiler(SubroutineCompiler):
     def __init__(self, subroutine: Subroutine, debug=False):
-        self._subroutine = subroutine
+        self._subroutine: Subroutine = subroutine
         self._used_registers: Set[Register] = set()
         self._register_values: Dict[Register, Immediate] = dict()
-        self._debug = debug
+        self._debug: bool = debug
 
     def get_reg_value(self, reg: Register) -> Immediate:
         """Get the value of a register at this moment"""
@@ -103,12 +103,12 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         return gates
 
-    def compile(self):
+    def compile(self) -> Subroutine:
         """
         Very simple compiling pass: iterate over all instructions once and rewrite them in-line.
         While iterating, keep track of which registers are in use and what their values are.
         """
-        new_commands = []
+        new_commands: List[NetQASMInstruction] = []
 
         index_changes = {}  # map index in commands to index in new_commands
 

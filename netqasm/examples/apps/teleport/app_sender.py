@@ -24,6 +24,7 @@ def main(app_config=None, phi=0., theta=0.):
         epr_sockets=[epr_socket]
     )
     with sender:
+        sender.new_register()
         # Create a qubit to teleport
         q = Qubit(sender)
         set_qubit_state(q, phi, theta)
@@ -36,6 +37,9 @@ def main(app_config=None, phi=0., theta=0.):
         q.H()
         m1 = q.measure()
         m2 = epr.measure()
+
+        with m1.if_eq(1):
+            m1.add(1)
 
     # Send the correction information
     m1, m2 = int(m1), int(m2)

@@ -6,6 +6,7 @@ from typing import Union, Optional, List
 from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.subroutine import Symbols, Command, Register
 from netqasm.lang.instr.instr_enum import Instruction
+from netqasm.util.log import HostLine
 
 
 class NoValueError(RuntimeError):
@@ -99,7 +100,7 @@ class BaseFuture(int):
 
     def __init__(self, connection):
         self._value = None
-        self._connection = connection
+        self._connection = connection  # BaseNetQASMConnection
 
     def __repr__(self):
         return f"{self.__class__} with value={self.value}"
@@ -259,7 +260,7 @@ class Future(BaseFuture):
     def _get_store_commands(self, register):
         return self._get_access_commands(Instruction.STORE, register)
 
-    def _get_access_commands(self, instruction, register):
+    def _get_access_commands(self, instruction, register) -> List[Command]:
         assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
         commands = []
         if isinstance(self._index, Future):
@@ -371,7 +372,7 @@ class RegFuture(BaseFuture):
 
 
 class Array:
-    def __init__(self, connection, length, address, init_values=None, lineno=None):
+    def __init__(self, connection, length, address: int, init_values=None, lineno: HostLine = None):
         """Array(connection, length, address, init_values=None, lineno=None)
         TODO write doc-string
         """

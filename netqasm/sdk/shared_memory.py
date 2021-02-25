@@ -12,7 +12,7 @@ def reset_memories():
         _MEMORIES.pop(key)
 
 
-def get_shared_memory(node_name, key=None):
+def get_shared_memory(node_name, key=None) -> 'SharedMemory':
     absolute_key = (node_name, key)
     memory = _MEMORIES.get(absolute_key)
     if memory is None:

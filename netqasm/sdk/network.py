@@ -3,25 +3,25 @@ import abc
 
 class NetworkInfo:
     @abc.abstractclassmethod
-    def _get_node_id(cls, node_name):
+    def _get_node_id(cls, node_name) -> int:
         """Returns the node id for the node with the given name"""
         # Should be subclassed
         pass
 
     @abc.abstractclassmethod
-    def _get_node_name(cls, node_id):
+    def _get_node_name(cls, node_id) -> str:
         """Returns the node name for the node with the given ID"""
         # Should be subclassed
         pass
 
     @abc.abstractclassmethod
-    def get_node_id_for_app(cls, app_name):
+    def get_node_id_for_app(cls, app_name) -> int:
         """Returns the node id for the app with the given name"""
         # Should be subclassed
         pass
 
     @abc.abstractclassmethod
-    def get_node_name_for_app(cls, app_name):
+    def get_node_name_for_app(cls, app_name) -> str:
         """Returns the node name for the app with the given name"""
         # Should be subclassed
         pass
