@@ -28,6 +28,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
         epr = target_epr.create(1)[0]
 
         # initialize control qubit of the distributed CNOT
+        controller.flush()
         app_logger.log("Initializing control qubit...")
         ctrl_qubit = Qubit(controller)
         set_qubit_state(ctrl_qubit, phi, theta)

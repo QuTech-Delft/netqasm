@@ -2,11 +2,11 @@
     {
         "title": "Party 1 Integer 1",
         "slug": "party1_i1",
-        "description": "Any value. Default: 0",
+        "description": "Any value. Default: 36",
         "values": [
             {
                 "name": "i1",
-                "default_value": 0,
+                "default_value": 36,
                 "minimum_value": null,
                 "maximum_value": null
             }
@@ -19,11 +19,11 @@
     {
         "title": "Party 1 Integer 2",
         "slug": "party1_i2",
-        "description": "Any value. Default: 0",
+        "description": "Any value. Default: -9",
         "values": [
             {
                 "name": "i2",
-                "default_value": 0,
+                "default_value": -9,
                 "minimum_value": null,
                 "maximum_value": null
             }
@@ -36,11 +36,11 @@
     {
         "title": "Party 1 Float 1",
         "slug": "party1_f1",
-        "description": "Any value. Default: 0.0",
+        "description": "Any value. Default: 7.6",
         "values": [
             {
                 "name": "f1",
-                "default_value": 0.0,
+                "default_value": 7.6,
                 "minimum_value": null,
                 "maximum_value": null
             }
@@ -53,11 +53,11 @@
     {
         "title": "Party 1 Float 2",
         "slug": "party1_f2",
-        "description": "Any value. Default: 0.0",
+        "description": "Any value. Default: -25.0",
         "values": [
             {
                 "name": "f2",
-                "default_value": 0.0,
+                "default_value": -25.0,
                 "minimum_value": null,
                 "maximum_value": null
             }
@@ -87,11 +87,11 @@
     {
         "title": "Party 1 Bit 2",
         "slug": "party1_b2",
-        "description": "0 or 1. Default: 0",
+        "description": "0 or 1. Default: 1",
         "values": [
             {
                 "name": "b2",
-                "default_value": 0,
+                "default_value": 1,
                 "minimum_value": 0,
                 "maximum_value": 1
             }
@@ -104,11 +104,11 @@
     {
         "title": "Party 1 Range 1",
         "slug": "party1_range1",
-        "description": "Range [-10, 10] (including). Default: 0",
+        "description": "Range [-10, 10] (including). Default: -2",
         "values": [
             {
                 "name": "range1",
-                "default_value": 0,
+                "default_value": -2,
                 "minimum_value": -10,
                 "maximum_value": 10
             }
@@ -121,11 +121,11 @@
     {
         "title": "Party 1 Range 2",
         "slug": "party1_range2",
-        "description": "Range [1, 5] (including). Default: 1",
+        "description": "Range [1, 5] (including). Default: 5",
         "values": [
             {
                 "name": "range1",
-                "default_value": 1,
+                "default_value": 5,
                 "minimum_value": 1,
                 "maximum_value": 5
             }
@@ -138,17 +138,17 @@
     {
         "title": "Party 1 Qubit 1 (theta and phi angles)",
         "slug": "party1_q1",
-        "description": "Theta: [0, 1.0] (including). Default: 0.0. Phi: [-1.0, 1.0] (including). Default: 0.0. Simulator should get both values scaled by factor pi.",
+        "description": "Theta: [0, 1.0] (including). Default: 0.5. Phi: [-1.0, 1.0] (including). Default: -0.5. Simulator should get both values scaled by factor pi.",
         "values": [
             {
                 "name": "phi",
-                "default_value": 0.0,
+                "default_value": -0.5,
                 "minimum_value": -1.0,
                 "maximum_value": 1.0
             },
             {
                 "name": "theta",
-                "default_value": 0.0,
+                "default_value": 0.5,
                 "minimum_value": 0.0,
                 "maximum_value": 1.0
             }
@@ -161,11 +161,11 @@
     {
         "title": "Party 1 Angle",
         "slug": "party1_angle",
-        "description": "Range: [-1.0, 1.0] (including). Default: 0.0. Simulator should get this value scaled by factor pi.",
+        "description": "Range: [-1.0, 1.0] (including). Default: -0.2. Simulator should get this value scaled by factor pi.",
         "values": [
             {
                 "name": "angle",
-                "default_value": 0.0,
+                "default_value": -0.2,
                 "minimum_value": -1.0,
                 "maximum_value": 1.0
             }
@@ -178,11 +178,11 @@
     {
         "title": "Shared value",
         "slug": "shared_value",
-        "description": "Range: [0, 100] (including). Default: 0. Given to both parties.",
+        "description": "Range: [0, 100] (including). Default: 21. Given to both parties.",
         "values": [
             {
                 "name": "shared",
-                "default_value": 0,
+                "default_value": 21,
                 "minimum_value": 0,
                 "maximum_value": 100
             }

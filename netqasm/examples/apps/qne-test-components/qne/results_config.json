@@ -11,9 +11,9 @@
     [
         {
             "output_type": "text",
-            "title": "Text with result dynamically filled in",
+            "title": "Text with result dynamically filled in. v1 should be 42, v2 should be -17, v3 should be 'Hello'",
             "parameters": {
-                "content": "m1: {{ $.app_party1.m1 }}, m2: {{ $.app_party1.m2 }}"
+                "content": "v1: {{ $.app_party1.v1 }}, v2: {{ $.app_party1.v2 }}, v3: {{ $.app_party1.v3 }}"
             }
         }
     ],
@@ -36,9 +36,45 @@
     [
         {
             "output_type": "quantum-state",
-            "title": "A bloch sphere",
+            "title": "A bloch sphere. Should show the |0> state (theta = 0, phi = 0).",
             "parameters": {
-                "density_matrix": "$.app_party1.state"
+                "density_matrix": "$.app_party1.state_0"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "A bloch sphere. Should show the |1> state (theta = pi, phi = 0).",
+            "parameters": {
+                "density_matrix": "$.app_party1.state_1"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "A bloch sphere. Should show the |+> state (theta = pi / 2, phi = 0).",
+            "parameters": {
+                "density_matrix": "$.app_party1.state_plus"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "A bloch sphere. Should show the |-> state (theta = pi / 2, phi = pi).",
+            "parameters": {
+                "density_matrix": "$.app_party1.state_minus"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "A bloch sphere. Should show a state with (theta = pi / 2, phi = pi / 4).",
+            "parameters": {
+                "density_matrix": "$.app_party1.state_plus_pi4"
             }
         }
     ],
