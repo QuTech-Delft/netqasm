@@ -1,5 +1,5 @@
 import abc
-from typing import Set, Dict, List, Optional, Tuple
+from typing import Set, Dict, List, Optional, Tuple, Union
 
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.instr import core, vanilla, nv
@@ -393,13 +393,13 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
     def _handle_single_qubit_gate(
         self,
-        instr: core.SingleQubitInstruction
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
     ) -> List[NetQASMInstruction]:
         return self._map_single_gate(instr)
 
     def _map_single_gate(
         self,
-        instr: core.SingleQubitInstruction
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
     ) -> List[NetQASMInstruction]:
         if isinstance(instr, vanilla.GateXInstruction):
             return [

@@ -1,5 +1,7 @@
 """TODO write about connections"""
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import os
 import abc
 import math
@@ -55,7 +57,6 @@ from netqasm.backend.messages import (
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.network import NetworkInfo
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
 
@@ -115,7 +116,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         self._used_meas_registers: List[int] = []
 
-        self._pending_commands: List[Command] = []
+        self._pending_commands: List[Union[Command, BranchLabel]] = []
 
         self._max_qubits: int = max_qubits
 
@@ -157,7 +158,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._commited_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
-        self._compiler: SubroutineCompiler = compiler
+        self._compiler: Optional[SubroutineCompiler] = compiler
 
         self._logger: logging.Logger = get_netqasm_logger(f"{self.__class__.__name__}({self.app_name})")
 
@@ -236,7 +237,7 @@ class BaseNetQASMConnection(abc.ABC):
             stop_backend=self._stop_backend_on_exit,
         )
 
-    def _get_new_app_id(self, app_id: int) -> int:
+    def _get_new_app_id(self, app_id: Optional[int]) -> int:
         """Finds a new app ID if not specific"""
         name = self.app_name
         if name not in self._app_ids:
@@ -248,6 +249,7 @@ class BaseNetQASMConnection(abc.ABC):
                 if app_id not in self._app_ids[name]:
                     self._app_ids[name].append(app_id)
                     return app_id
+            raise RuntimeError("This should never be reached")
         else:
             if app_id in self._app_ids[name]:
                 raise ValueError("app_id={} is already in use".format(app_id))
@@ -306,7 +308,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _save_log_subroutines(self) -> None:
         filename = f'subroutines_{self.app_name}.pkl'
-        filepath = os.path.join(self._log_subroutines_dir, filename)
+        filepath = os.path.join(self._log_subroutines_dir, filename)  # type: ignore
         with open(filepath, 'wb') as f:
             pickle.dump(self._commited_subroutines, f)
 
@@ -324,7 +326,7 @@ class BaseNetQASMConnection(abc.ABC):
             max_qubits=max_qubits,
         ))
 
-    def _setup_epr_sockets(self, epr_sockets: List[EPRSocket]) -> None:
+    def _setup_epr_sockets(self, epr_sockets: Optional[List[EPRSocket]]) -> None:
         if epr_sockets is None:
             return
         for epr_socket in epr_sockets:
@@ -374,7 +376,7 @@ class BaseNetQASMConnection(abc.ABC):
                 command.lineno = calling_lineno
             self.add_pending_command(command)
 
-    def add_pending_command(self, command) -> None:
+    def add_pending_command(self, command: Union[Command, BranchLabel]) -> None:
         assert isinstance(command, Command) or isinstance(command, BranchLabel)
         if command.lineno is None:
             command.lineno = self._line_tracker.get_line()
