@@ -61,7 +61,9 @@ T_Cmd = Union[Command, BranchLabel]
 T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
 T_Message = Union[Message, SubroutineMessage]
 T_CValue = Union[int, Future, RegFuture]
-
+T_PostRoutine = Callable[['BaseNetQASMConnection', Union[_FutureQubit, List[Future]], operand.Register], None]
+T_BranchRoutine = Callable[['BaseNetQASMConnection'], None]
+T_LoopRoutine = Callable[['BaseNetQASMConnection'], None]
 
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
@@ -801,7 +803,7 @@ class BaseNetQASMConnection(abc.ABC):
         number: int,
         ent_info_array: Array,
         tp: EPRType,
-        post_routine: Optional[Callable],
+        post_routine: Optional[T_PostRoutine],
     ) -> None:
         if post_routine is None:
             return
@@ -883,7 +885,7 @@ class BaseNetQASMConnection(abc.ABC):
         remote_node_id: int,
         epr_socket_id: int,
         number: int,
-        post_routine: Optional[Callable],
+        post_routine: Optional[T_PostRoutine],
         sequential: bool,
         tp: EPRType,
         random_basis_local: Optional[RandomBasis] = None,
@@ -940,7 +942,7 @@ class BaseNetQASMConnection(abc.ABC):
         # TODO Fix weird handling of post_routine parameter here
         def dummy():
             pass
-        self._assert_epr_args(number=number, post_routine=dummy, sequential=sequential, tp=tp)
+        self._assert_epr_args(number=number, post_routine=dummy, sequential=sequential, tp=tp)  # type: ignore
         ent_info_array = self._create_ent_info_array(
             number=number,
             tp=tp,
@@ -1006,7 +1008,7 @@ class BaseNetQASMConnection(abc.ABC):
     def _assert_epr_args(
         self,
         number: int,
-        post_routine: Optional[Callable],
+        post_routine: Optional[T_PostRoutine],
         sequential: bool,
         tp: EPRType,
     ) -> None:
@@ -1100,7 +1102,7 @@ class BaseNetQASMConnection(abc.ABC):
         remote_node_id: int,
         epr_socket_id: int,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Optional[T_PostRoutine] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
         random_basis_local: Optional[RandomBasis] = None,
@@ -1131,7 +1133,7 @@ class BaseNetQASMConnection(abc.ABC):
         remote_node_id: int,
         epr_socket_id: int,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Optional[T_PostRoutine] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
@@ -1169,31 +1171,33 @@ class BaseNetQASMConnection(abc.ABC):
         self._used_meas_registers = []
         self._pre_context_commands = {}
 
-    def if_eq(self, a: T_CValue, b: T_CValue, body: Callable) -> None:
+    def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
         self._handle_if(Instruction.BEQ, a, b, body)
 
-    def if_ne(self, a: T_CValue, b: T_CValue, body: Callable) -> None:
+    def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != b"""
         self._handle_if(Instruction.BNE, a, b, body)
 
-    def if_lt(self, a: T_CValue, b: T_CValue, body: Callable) -> None:
+    def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a < b"""
         self._handle_if(Instruction.BLT, a, b, body)
 
-    def if_ge(self, a: T_CValue, b: T_CValue, body: Callable) -> None:
+    def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a >= b"""
         self._handle_if(Instruction.BGE, a, b, body)
 
-    def if_ez(self, a: T_CValue, body: Callable) -> None:
+    def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == 0"""
         self._handle_if(Instruction.BEZ, a, b=None, body=body)
 
-    def if_nz(self, a: T_CValue, body: Callable) -> None:
+    def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
         self._handle_if(Instruction.BNZ, a, b=None, body=body)
 
-    def _handle_if(self, condition: Instruction, a: Optional[T_CValue], b: Optional[T_CValue], body: Callable) -> None:
+    def _handle_if(
+        self, condition: Instruction, a: Optional[T_CValue], b: Optional[T_CValue], body: T_BranchRoutine
+    ) -> None:
         """Used to build effective if-statements"""
         current_commands = self._pop_pending_commands()
         body(self)
@@ -1309,7 +1313,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def loop_body(
         self,
-        body: Callable,
+        body: T_LoopRoutine,
         stop: int,
         start: int = 0,
         step: int = 1,
@@ -1527,7 +1531,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._remove_active_register(register=loop_register)
 
     def tomography(
-        self, preparation: Callable, iterations: int, progress: bool = True
+        self, preparation: Callable[[BaseNetQASMConnection], Qubit], iterations: int, progress: bool = True
     ) -> Dict[str, float]:
         """
         Does a tomography on the output from the preparation specified.
@@ -1589,7 +1593,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def test_preparation(
         self,
-        preparation: Callable,
+        preparation: Callable[[BaseNetQASMConnection], Qubit],
         exp_values: Tuple[float, float, float],
         conf: float = 2,
         iterations: int = 100,
