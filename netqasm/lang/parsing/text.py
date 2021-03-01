@@ -1,6 +1,6 @@
 from itertools import count
 from collections import defaultdict
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Union, Tuple, Set
 
 from netqasm.util.string import group_by_word, is_variable_name, is_number
 from netqasm.util.error import NetQASMSyntaxError, NetQASMInstrError
@@ -13,6 +13,8 @@ from netqasm.lang.subroutine import Command, BranchLabel, Subroutine, PreSubrout
 from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
 from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
+
+T_Cmd = Union[Command, BranchLabel]
 
 
 def parse_text_subroutine(
@@ -197,7 +199,7 @@ def _parse_label(label):
 _REGISTER_NAMES = {reg.name: reg for reg in RegisterName}
 
 
-def parse_register(register):
+def parse_register(register) -> Register:
     try:
         register_name = _REGISTER_NAMES[register[0]]
     except KeyError:
@@ -477,7 +479,7 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
     return commands
 
 
-def get_current_registers(commands):
+def get_current_registers(commands: List[T_Cmd]) -> Set[str]:
     current_registers = set()
     for command in commands:
         if not isinstance(command, Command):

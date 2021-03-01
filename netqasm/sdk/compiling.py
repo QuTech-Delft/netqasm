@@ -10,6 +10,9 @@ from netqasm.runtime.settings import get_is_using_hardware
 
 
 class SubroutineCompiler(abc.ABC):
+    def __init__(self, subroutine: Subroutine, debug=False):
+        pass
+
     @abc.abstractmethod
     def compile(self) -> Subroutine:
         """Compile a subroutine (inplace) to a specific hardware

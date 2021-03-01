@@ -372,7 +372,14 @@ class RegFuture(BaseFuture):
 
 
 class Array:
-    def __init__(self, connection, length, address: int, init_values=None, lineno: HostLine = None):
+    def __init__(
+        self,
+        connection,
+        length,
+        address: int,
+        init_values: Optional[List[Optional[int]]] = None,
+        lineno: HostLine = None
+    ):
         """Array(connection, length, address, init_values=None, lineno=None)
         TODO write doc-string
         """

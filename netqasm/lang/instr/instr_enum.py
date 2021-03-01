@@ -199,7 +199,7 @@ def instruction_to_string(instr):
     return instr.name.lower()
 
 
-def flip_branch_instr(instr):
+def flip_branch_instr(instr: Instruction) -> Instruction:
     try:
         return {
             Instruction.BEQ: Instruction.BNE,

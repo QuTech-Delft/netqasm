@@ -1,7 +1,8 @@
 """TODO write about qubits"""
+from typing import Optional, Union
 
 from netqasm.lang.instr.instr_enum import Instruction
-from netqasm.sdk.futures import RegFuture
+from netqasm.sdk.futures import RegFuture, Future
 
 
 class QubitNotActiveError(MemoryError):
@@ -102,7 +103,9 @@ class Qubit:
         if not self.active:
             raise QubitNotActiveError(f"Qubit {self.qubit_id} is not active")
 
-    def measure(self, future=None, inplace=False, store_array=True):
+    def measure(
+        self, future: Optional[Union[Future, RegFuture]] = None, inplace=False, store_array=True
+    ) -> Union[Future, RegFuture]:
         """
         Measures the qubit in the standard basis and returns the measurement outcome.
 
