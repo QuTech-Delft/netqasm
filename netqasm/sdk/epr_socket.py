@@ -4,6 +4,8 @@ if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
 from typing import Tuple, Union, List, Optional, Callable
 
+import logging
+
 """TODO write about epr sockets"""
 
 import abc
@@ -16,6 +18,8 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
 
 from netqasm.sdk import Qubit
+
+T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
 
 
 class EPRMeasBasis(Enum):
@@ -70,15 +74,18 @@ class EPRSocket(abc.ABC):
             raise ValueError(f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}")
         self._min_fidelity: int = min_fidelity
 
-        self._logger = get_netqasm_logger(f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
+        self._logger: logging.Logger = get_netqasm_logger(
+            f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
 
     @property
-    def conn(self):
+    def conn(self) -> BaseNetQASMConnection:
         """Get the underlying :class:`NetQASMConnection`"""
+        if self._conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
         return self._conn
 
     @conn.setter
-    def conn(self, conn):
+    def conn(self, conn: BaseNetQASMConnection):
         self._conn = conn
         self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
 
@@ -109,7 +116,8 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
-    @_assert_has_conn
+    # TODO: remote commented-out decorators
+    # @_assert_has_conn
     def create(
         self,
         number: int = 1,
@@ -207,7 +215,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self._conn.create_epr(  # type: ignore
+        return self.conn.create_epr(  # type: ignore
             remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -221,8 +229,8 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    @_assert_has_conn
-    def create_context(self, number=1, sequential=False):
+    # @_assert_has_conn
+    def create_context(self, number: int = 1, sequential: bool = False):
         """Creates EPR pairs with a remote node and handles each pair by
         the operations defined in a subsequent context, see example below.
 
@@ -280,7 +288,7 @@ class EPRSocket(abc.ABC):
         try:
             instruction = Instruction.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, output, pair = self._conn._pre_epr_context(
+            pre_commands, loop_register, ent_info_array, output, pair = self.conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -290,7 +298,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self._conn._post_epr_context(
+            self.conn._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -298,14 +306,14 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    @_assert_has_conn
+    # @_assert_has_conn
     def recv(
         self,
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K
-    ):
+    ) -> Union[List[Qubit], T_LinkLayerOkList]:
         # First line is to have the correct signature after decorating
         """
         recv(self, number=1, post_routine=None, sequential=False, tp=EPRType.K)
@@ -313,9 +321,10 @@ class EPRSocket(abc.ABC):
         """
 
         if self.conn is None:
-            raise RuntimeError("Connection has not been initialized")
+            raise RuntimeError("EPRSocket does not have an open connection")
+
         return self.conn.recv_epr(
-            remote_node_id=self._remote_node_id,
+            remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
             post_routine=post_routine,
@@ -324,15 +333,15 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    @_assert_has_conn
-    def recv_context(self, number=1, sequential=False):
+    # @_assert_has_conn
+    def recv_context(self, number: int = 1, sequential: bool = False):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
             instruction = Instruction.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, output, pair = self._conn._pre_epr_context(
+            pre_commands, loop_register, ent_info_array, output, pair = self.conn._pre_epr_context(
                 instruction=instruction,
-                remote_node_id=self._remote_node_id,
+                remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
                 number=number,
                 sequential=sequential,
@@ -340,7 +349,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self._conn._post_epr_context(
+            self.conn._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -348,6 +357,6 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    @_assert_has_conn
-    def _get_node_id(self, app_name):
-        return self._conn.network_info.get_node_id_for_app(app_name=app_name)
+    # @_assert_has_conn
+    def _get_node_id(self, app_name: str) -> int:
+        return self.conn.network_info.get_node_id_for_app(app_name=app_name)
