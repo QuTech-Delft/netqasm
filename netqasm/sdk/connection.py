@@ -707,6 +707,10 @@ class BaseNetQASMConnection(abc.ABC):
         **kwargs,
     ) -> Optional[Array]:
         # qubit addresses
+
+        qubit_ids_array_address: Union[int, operand.Register]
+        epr_cmd_operands: List[T_OperandUnion]
+
         if tp == EPRType.K:
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
             qubit_ids_array_address = qubit_ids_array.address
@@ -872,7 +876,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         wait_cmd = Command(
             instruction=Instruction.WAIT_ALL,
-            operands=[ArraySlice(ent_info_array.address, start=arr_start, stop=arr_stop)],
+            operands=[ArraySlice(Address(ent_info_array.address), start=arr_start, stop=arr_stop)],
         )
         self.add_pending_command(wait_cmd)
 
@@ -1265,6 +1269,7 @@ class BaseNetQASMConnection(abc.ABC):
                 cond_values.append(reg)
                 if_start.append(load)
             elif isinstance(x, RegFuture):
+                assert x.reg is not None
                 cond_values.append(x.reg)
             elif isinstance(x, int):
                 cond_values.append(x)
