@@ -1,6 +1,6 @@
 from itertools import count
 from collections import defaultdict
-from typing import List, Dict, Union, Tuple, Set
+from typing import List, Dict, Union, Tuple, Set, Optional
 
 from netqasm.util.string import group_by_word, is_variable_name, is_number
 from netqasm.util.error import NetQASMSyntaxError, NetQASMInstrError
@@ -15,6 +15,7 @@ from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 
 T_Cmd = Union[Command, BranchLabel]
+T_ParsedValue = Union[int, Register, Label]
 
 
 def parse_text_subroutine(
@@ -96,7 +97,7 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
                 raise NetQASMSyntaxError(f"The branch label {branch_label} is not a valid label")
             commands.append(BranchLabel(branch_label))
         else:
-            words = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
+            words: List[str] = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
             instr_name, args = _split_instr_and_args(words[0])
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
@@ -137,13 +138,13 @@ def _parse_args(args):
                 .split(Symbols.ARGS_DELIM)]
 
 
-def _parse_constant(constant):
+def _parse_constant(constant: str) -> int:
     if not is_number(constant):
         raise NetQASMSyntaxError(f"Expected constant, got {constant}")
     return int(constant)
 
 
-def _parse_operands(words):
+def _parse_operands(words: List[str]):
     operands = []
     for word in words:
         operand = _parse_operand(word.strip())
@@ -152,14 +153,14 @@ def _parse_operands(words):
     return operands
 
 
-def _parse_operand(word):
+def _parse_operand(word: str):
     if word.startswith(Symbols.ADDRESS_START):
         return parse_address(word)
     else:
         return _parse_value(word, allow_label=True)
 
 
-def _parse_value(value, allow_label=False):
+def _parse_value(value: str, allow_label: bool = False) -> T_ParsedValue:
     # Try to parse a constant
     try:
         return _parse_constant(value)
@@ -190,7 +191,7 @@ def _is_byte(value):
     return is_number(value[2:])
 
 
-def _parse_label(label):
+def _parse_label(label: str) -> Label:
     if not is_variable_name(label):
         raise NetQASMSyntaxError(f"Expected a label, got {label}")
     return Label(label)
@@ -199,7 +200,7 @@ def _parse_label(label):
 _REGISTER_NAMES = {reg.name: reg for reg in RegisterName}
 
 
-def parse_register(register) -> Register:
+def parse_register(register: str) -> Register:
     try:
         register_name = _REGISTER_NAMES[register[0]]
     except KeyError:
@@ -208,26 +209,34 @@ def parse_register(register) -> Register:
     return Register(register_name, value)
 
 
-def parse_address(address):
-    base_address, index = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
-    base_address = _parse_base_address(base_address)
-    index = _parse_index(index)
-    address = Address(base_address)
+def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
+    base_address, index_str = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
+    base_address_int: int = _parse_base_address(base_address)
+    index = _parse_index(index_str)
+    address_parsed = Address(base_address_int)
     if index is None:
-        return address
+        return address_parsed
     elif isinstance(index, tuple):
-        return ArraySlice(address, start=index[0], stop=index[1])
+        if not isinstance(index[0], Register) or not isinstance(index[1], Register):
+            raise TypeError(
+                f"indices {index[0]} and {index[1]} should be Registers, not {type(index[0])} and {type(index[1])}")
+        return ArraySlice(address_parsed, start=index[0], stop=index[1])
+    elif isinstance(index, int) or isinstance(index, Register):
+        return ArrayEntry(address_parsed, index)
     else:
-        return ArrayEntry(address, index)
+        raise TypeError(f"Index cannot have type {type(index)}")
 
 
-def _parse_base_address(base_address):
+def _parse_base_address(base_address: str) -> int:
     if not base_address.startswith(Symbols.ADDRESS_START):
         raise NetQASMSyntaxError(f"Expected address, got {base_address}")
-    return _parse_value(base_address.lstrip(Symbols.ADDRESS_START))
+    value = _parse_value(base_address.lstrip(Symbols.ADDRESS_START))
+    if not isinstance(value, int):
+        raise TypeError(f"Address should be an int, not a {type(value)}")
+    return value
 
 
-def _parse_index(index):
+def _parse_index(index: str) -> Optional[Union[T_ParsedValue, Tuple[T_ParsedValue, T_ParsedValue]]]:
     if index == "":
         return None
     index = index.strip(Symbols.INDEX_BRACKETS).strip()
@@ -238,8 +247,11 @@ def _parse_index(index):
         return _parse_value(index)
 
 
-def _split_of_bracket(word, brackets):
-    start_bracket, end_bracket = brackets
+def _split_of_bracket(word: str, brackets: str) -> Tuple[str, str]:
+    if len(brackets) != 2:
+        raise ValueError(f"`brackets` cannot be {brackets}")
+    start_bracket: str = brackets[0]
+    end_bracket: str = brackets[1]
     start = word.find(start_bracket)
     if start == -1:
         return word, ""

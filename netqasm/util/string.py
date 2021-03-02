@@ -7,7 +7,7 @@ NUM = "0123456789"
 ALPHA_NUM = ALPHA_ALL + NUM
 
 
-def group_by_word(line, seperator=' ', brackets=None) -> List[str]:
+def group_by_word(line: str, seperator=' ', brackets=None) -> List[str]:
     """Groups a string by words and contents within brackets"""
     line = line.strip()
     line += seperator  # This makes it easer to find the last word

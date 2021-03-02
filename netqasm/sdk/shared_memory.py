@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional, List, Any
 
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.lang.parsing import parse_address, parse_register
@@ -102,7 +102,7 @@ class Arrays:
         except IndexError:
             raise IndexError(f"index {index} is out of range for array with address {address}")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Tuple[int, Union[int, Slice]]) -> Optional[int]:
         address, index = self._extract_key(key)
         try:
             array = self._get_array(address)
@@ -115,22 +115,22 @@ class Arrays:
             raise IndexError(f"index {index} is out of range for array with address {address}")
         return value
 
-    def _get_array(self, address) -> List[int]:
+    def _get_array(self, address: int) -> List[int]:
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         return self._arrays[address]
 
-    def _set_array(self, address, array):
+    def _set_array(self, address: int, array: List[int]):
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         self._assert_list(array)
         self._arrays[address] = array
 
-    def has_array(self, address):
+    def has_array(self, address: int) -> bool:
         return address in self._arrays
 
     @staticmethod
-    def _extract_key(key):
+    def _extract_key(key: Tuple[int, int]) -> Tuple[int, int]:
         try:
             address, index = key
         except (TypeError, ValueError):
@@ -139,7 +139,7 @@ class Arrays:
         return address, index
 
     @staticmethod
-    def _assert_list(value):
+    def _assert_list(value: Any) -> None:
         if not isinstance(value, list):
             raise TypeError(f"expected 'list', not {type(value)}")
         for x in value:
@@ -174,7 +174,7 @@ class SharedMemory:
     def set_register(self, register, value):
         self._registers[register.name][register.index] = value
 
-    def get_array_part(self, address, index):
+    def get_array_part(self, address: int, index: int):
         return self._arrays[address, index]
 
     def set_array_part(self, address, index, value):

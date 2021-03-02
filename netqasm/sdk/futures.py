@@ -1,12 +1,23 @@
 """TODO write about futures"""
+from __future__ import annotations
 
 import abc
 from typing import Union, Optional, List
+from typing import TYPE_CHECKING
 
 from netqasm.lang.parsing import parse_register, parse_address
-from netqasm.lang.subroutine import Symbols, Command, Register
+from netqasm.lang.subroutine import Symbols, Command, BranchLabel
 from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.util.log import HostLine
+
+from netqasm.lang.instr import operand
+
+if TYPE_CHECKING:
+    from netqasm.sdk.connection import BaseNetQASMConnection
+    from netqasm.lang.subroutine import T_OperandUnion
+
+T_Cmd = Union[Command, BranchLabel]
+T_CValue = Union[int, 'Future', 'RegFuture']
 
 
 class NoValueError(RuntimeError):
@@ -98,15 +109,15 @@ class BaseFuture(int):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection):
-        self._value = None
-        self._connection = connection  # BaseNetQASMConnection
+    def __init__(self, connection: BaseNetQASMConnection):
+        self._value: Optional[int] = None
+        self._connection: BaseNetQASMConnection = connection
 
     def __repr__(self):
         return f"{self.__class__} with value={self.value}"
 
     @property
-    def value(self):
+    def value(self) -> Optional[int]:
         """Get the value of the future.
         If it's not set yet, `None` is returned."""
         if self._value is not None:
@@ -115,17 +126,17 @@ class BaseFuture(int):
             return self._try_get_value()
 
     @abc.abstractmethod
-    def _try_get_value(self):
+    def _try_get_value(self) -> Optional[int]:
         raise NotImplementedError
 
-    def add(self, other: Union[int, str, Register, 'BaseFuture'], mod: Optional[int] = None):
+    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None):
         """Adds another integer to this by appending to appropriate instruction to
         the current subroutine.
         Note that `self` does not need to have a value yet.
         """
         raise NotImplementedError(f"add is not implement for {self.__class__.__name__}")
 
-    def if_eq(self, other):
+    def if_eq(self, other: Optional[T_CValue]):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEQ,
@@ -133,7 +144,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ne(self, other):
+    def if_ne(self, other: Optional[T_CValue]):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNE,
@@ -141,7 +152,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_lt(self, other):
+    def if_lt(self, other: Optional[T_CValue]):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BLT,
@@ -149,7 +160,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ge(self, other):
+    def if_ge(self, other: Optional[T_CValue]):
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BGE,
@@ -179,14 +190,14 @@ class Future(BaseFuture):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection, address, index):
+    def __init__(self, connection: BaseNetQASMConnection, address, index):
         """
         Future(connection, address, index)
         TODO write doc-string
         """
         super().__init__(connection=connection)
-        self._address = address
-        self._index = index
+        self._address: int = address
+        self._index: Union[int, Future, operand.Register] = index
 
     def __str__(self):
         value = self.value
@@ -205,7 +216,7 @@ class Future(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[str, operand.Register, Future], mod: Optional[int] = None):  # type: ignore
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -214,19 +225,20 @@ class Future(BaseFuture):
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
+        other_tmp_register: Optional[operand.Register] = None
+
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_tmp_register = self._connection._get_inactive_register(activate=True)
-            other_operand = other_tmp_register
+            other_operand = self._connection._get_inactive_register(activate=True)
+            other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
-        elif isinstance(other, Register) or isinstance(other, int):
-            other_tmp_register = None
+        elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
         else:
             raise NotImplementedError('for type {type(other)}')
 
-        add_operands = [
+        add_operands: List[T_OperandUnion] = [
             tmp_register,
             tmp_register,
             other_operand,
@@ -254,13 +266,13 @@ class Future(BaseFuture):
 
         self._connection.add_pending_commands(commands)
 
-    def _get_load_commands(self, register):
+    def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(Instruction.LOAD, register)
 
-    def _get_store_commands(self, register):
+    def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(Instruction.STORE, register)
 
-    def _get_access_commands(self, instruction, register) -> List[Command]:
+    def _get_access_commands(self, instruction: Instruction, register: operand.Register) -> List[T_Cmd]:
         assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
         commands = []
         if isinstance(self._index, Future):
@@ -274,8 +286,8 @@ class Future(BaseFuture):
                     register=tmp_register,
                 )
             commands += access_index_cmds
-            index = tmp_register
-        elif isinstance(self._index, int) or isinstance(self._index, Register):
+            index: Union[int, operand.Register] = tmp_register
+        elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
             raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
@@ -323,7 +335,7 @@ class RegFuture(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[str, operand.Register, 'Future'], mod: Optional[int] = None):  # type: ignore
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -331,14 +343,15 @@ class RegFuture(BaseFuture):
         load_commands = []
         store_commands = []
 
+        other_tmp_register: Optional[operand.Register] = None
+
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_tmp_register = self._connection._get_inactive_register(activate=True)
-            other_operand = other_tmp_register
+            other_operand: operand.Register = self._connection._get_inactive_register(activate=True)
+            other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
-        elif isinstance(other, Register) or isinstance(other, int):
-            other_tmp_register = None
+        elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
         else:
             raise NotImplementedError('for type {type(other)}')
