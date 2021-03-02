@@ -1,8 +1,9 @@
-from typing import Dict, Tuple, Optional, List, Any
+from typing import Dict, Tuple, Optional, List, Any, Union
 
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.lang.subroutine import Symbols
+from netqasm.lang.instr import operand
 
 _MEMORIES: Dict[Tuple[str, Optional[int]], Optional['SharedMemory']] = {}  # string literal to fwd declare
 
@@ -30,8 +31,8 @@ def _assert_within_width(value, width):
 
 class Register:
     def __init__(self):
-        self._size = 2 ** REG_INDEX_BITS
-        self._register = {}
+        self._size: int = 2 ** REG_INDEX_BITS
+        self._register: Dict[int, Optional[int]] = {}
 
     def __len__(self):
         return self._size
@@ -39,30 +40,30 @@ class Register:
     def __str__(self):
         return str(self._register)
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int, value: int) -> None:
         self._assert_within_length(index)
         _assert_within_width(value, ADDRESS_BITS)
         self._register[index] = value
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Optional[int]:
         self._assert_within_length(index)
         return self._register.get(index)
 
-    def _assert_within_length(self, index):
+    def _assert_within_length(self, index: int) -> None:
         if not (0 <= index < len(self)):
             raise IndexError(f"index {index} is not within 0 and {len(self)}")
 
-    def _get_active_values(self):
+    def _get_active_values(self) -> List[Tuple[int, int]]:
         return [(index, value) for index, value in self._register.items() if value is not None]
 
 
-def setup_registers():
+def setup_registers() -> Dict[RegisterName, Register]:
     return {reg_name: Register() for reg_name in RegisterName}
 
 
 class Arrays:
     def __init__(self):
-        self._arrays: Dict[int, List[int]] = {}
+        self._arrays: Dict[int, List[Optional[int]]] = {}
 
     # TODO add test for this
     def _get_active_values(self):
@@ -102,7 +103,7 @@ class Arrays:
         except IndexError:
             raise IndexError(f"index {index} is out of range for array with address {address}")
 
-    def __getitem__(self, key: Tuple[int, Union[int, Slice]]) -> Optional[int]:
+    def __getitem__(self, key: Tuple[int, Union[int, slice]]) -> Union[None, int, List[Optional[int]]]:
         address, index = self._extract_key(key)
         try:
             array = self._get_array(address)
@@ -115,12 +116,12 @@ class Arrays:
             raise IndexError(f"index {index} is out of range for array with address {address}")
         return value
 
-    def _get_array(self, address: int) -> List[int]:
+    def _get_array(self, address: int) -> List[Optional[int]]:
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         return self._arrays[address]
 
-    def _set_array(self, address: int, array: List[int]):
+    def _set_array(self, address: int, array: List[Optional[int]]):
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         self._assert_list(array)
@@ -130,7 +131,7 @@ class Arrays:
         return address in self._arrays
 
     @staticmethod
-    def _extract_key(key: Tuple[int, int]) -> Tuple[int, int]:
+    def _extract_key(key: Tuple[int, Union[int, slice]]) -> Tuple[int, Union[int, slice]]:
         try:
             address, index = key
         except (TypeError, ValueError):
@@ -156,11 +157,13 @@ class Arrays:
 class SharedMemory:
 
     def __init__(self):
-        self._registers = setup_registers()
+        self._registers: Dict[RegisterName, Register] = setup_registers()
         self._arrays: Arrays = Arrays()
 
-    def __getitem__(self, key):
-        if isinstance(key, Register):
+    def __getitem__(
+        self, key: Union[operand.Register, Tuple[int, Union[int, slice]], int]
+    ) -> Union[None, int, List[Optional[int]]]:
+        if isinstance(key, operand.Register):
             return self.get_register(key)
         elif isinstance(key, tuple):
             address, index = key
@@ -168,19 +171,19 @@ class SharedMemory:
         elif isinstance(key, int):
             return self._get_array(key)
 
-    def get_register(self, register):
+    def get_register(self, register: operand.Register) -> Optional[int]:
         return self._registers[register.name][register.index]
 
-    def set_register(self, register, value):
+    def set_register(self, register: operand.Register, value: int) -> None:
         self._registers[register.name][register.index] = value
 
-    def get_array_part(self, address: int, index: int):
+    def get_array_part(self, address: int, index: Union[int, slice]) -> Union[None, int, List[Optional[int]]]:
         return self._arrays[address, index]
 
     def set_array_part(self, address, index, value):
         self._arrays[address, index] = value
 
-    def _get_array(self, address) -> List[int]:
+    def _get_array(self, address) -> List[Optional[int]]:
         return self._arrays._get_array(address)
 
     def init_new_array(self, address, length=1, new_array=None):

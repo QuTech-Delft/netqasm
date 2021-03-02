@@ -129,14 +129,14 @@ class BaseFuture(int):
     def _try_get_value(self) -> Optional[int]:
         raise NotImplementedError
 
-    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None):
+    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None) -> None:
         """Adds another integer to this by appending to appropriate instruction to
         the current subroutine.
         Note that `self` does not need to have a value yet.
         """
         raise NotImplementedError(f"add is not implement for {self.__class__.__name__}")
 
-    def if_eq(self, other: Optional[T_CValue]):
+    def if_eq(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEQ,
@@ -144,7 +144,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ne(self, other: Optional[T_CValue]):
+    def if_ne(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNE,
@@ -152,7 +152,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_lt(self, other: Optional[T_CValue]):
+    def if_lt(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BLT,
@@ -160,7 +160,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ge(self, other: Optional[T_CValue]):
+    def if_ge(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BGE,
@@ -168,7 +168,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ez(self):
+    def if_ez(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEZ,
@@ -176,7 +176,7 @@ class BaseFuture(int):
             b=None,
         )
 
-    def if_nz(self):
+    def if_nz(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNZ,
@@ -190,7 +190,7 @@ class Future(BaseFuture):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection: BaseNetQASMConnection, address, index):
+    def __init__(self, connection: BaseNetQASMConnection, address: int, index: Union[int, Future, operand.Register]):
         """
         Future(connection, address, index)
         TODO write doc-string
@@ -216,7 +216,7 @@ class Future(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, operand.Register, Future], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[str, operand.Register, Future], mod: Optional[int] = None) -> None:  # type: ignore
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -335,7 +335,7 @@ class RegFuture(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, operand.Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[str, operand.Register, 'Future'], mod: Optional[int] = None) -> None:  # type: ignore
         if isinstance(other, str):
             other = parse_register(other)
 
