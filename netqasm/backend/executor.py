@@ -867,14 +867,16 @@ class Executor:
         self, app_id: int, array_part: Union[ArrayEntry, ArraySlice]
     ) -> Tuple[int, Union[int, slice]]:
         address: int = array_part.address.address
+        index: Union[int, slice]
         if isinstance(array_part, ArrayEntry):
             if isinstance(array_part.index, int):
-                index: Union[int, slice] = array_part.index
+                index = array_part.index
             else:
                 index_from_reg = self._get_register(app_id=app_id, register=array_part.index)
                 if index_from_reg is None:
                     raise RuntimeError(
                         f"Trying to use register {array_part.index} to index an array but its value is None")
+                index = index_from_reg
         elif isinstance(array_part, ArraySlice):
             startstop: List[int] = []
             for raw_s in [array_part.start, array_part.stop]:
@@ -889,6 +891,8 @@ class Executor:
                 else:
                     raise RuntimeError(f"Something went wrong: raw_s should be int or Register but is {type(raw_s)}")
             index = slice(*startstop)
+        else:
+            raise RuntimeError(f"Something went wrong: array_part is a {type(array_part)}")
         return address, index
 
     def allocate_new_qubit_unit_module(self, app_id, num_qubits):

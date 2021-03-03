@@ -1,4 +1,8 @@
 from typing import Dict, Tuple, Optional, List, Any, Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from netqasm.lang.instr.operand import ArrayEntry
 
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.lang.parsing import parse_address, parse_register
@@ -8,12 +12,12 @@ from netqasm.lang.instr import operand
 _MEMORIES: Dict[Tuple[str, Optional[int]], Optional['SharedMemory']] = {}  # string literal to fwd declare
 
 
-def reset_memories():
+def reset_memories() -> None:
     for key in list(_MEMORIES.keys()):
         _MEMORIES.pop(key)
 
 
-def get_shared_memory(node_name, key=None) -> 'SharedMemory':
+def get_shared_memory(node_name: str, key: Optional[int] = None) -> 'SharedMemory':
     absolute_key = (node_name, key)
     memory = _MEMORIES.get(absolute_key)
     if memory is None:
@@ -22,7 +26,7 @@ def get_shared_memory(node_name, key=None) -> 'SharedMemory':
     return memory
 
 
-def _assert_within_width(value, width):
+def _assert_within_width(value: int, width: int) -> None:
     min_value = -(2**(width - 1))
     max_value = 2**(width - 1) - 1
     if not min_value <= value <= max_value:
@@ -34,10 +38,10 @@ class Register:
         self._size: int = 2 ** REG_INDEX_BITS
         self._register: Dict[int, Optional[int]] = {}
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._size
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._register)
 
     def __setitem__(self, index: int, value: int) -> None:
@@ -66,7 +70,7 @@ class Arrays:
         self._arrays: Dict[int, List[Optional[int]]] = {}
 
     # TODO add test for this
-    def _get_active_values(self):
+    def _get_active_values(self) -> List[Tuple[ArrayEntry, int]]:
         values = []
         for address, array in self._arrays.items():
             for index, value in enumerate(array):
@@ -76,15 +80,19 @@ class Arrays:
                     f"{Symbols.ADDRESS_START}{address}"
                     f"{Symbols.INDEX_BRACKETS[0]}{index}{Symbols.INDEX_BRACKETS[1]}"
                 )
+                if not isinstance(address_entry, ArrayEntry):
+                    raise RuntimeError(
+                        f"Something went wrong: address_entry should be ArrayEntry but it is {type(address_entry)}")
                 values.append((address_entry, value))
         return values
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._arrays)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Tuple[int, Union[int, slice]], value: Union[None, int, List[Optional[int]]]) -> None:
         address, index = self._extract_key(key)
         if isinstance(index, int):
+            assert isinstance(value, int)
             _assert_within_width(value, ADDRESS_BITS)
             _assert_within_width(index, ADDRESS_BITS)
         elif isinstance(index, slice):
@@ -98,8 +106,9 @@ class Arrays:
         array = self._get_array(address)
         try:
             if isinstance(index, slice):
+                assert isinstance(value, list)
                 assert len(array[index]) == len(value), "value not of correct length"
-            array[index] = value
+            array[index] = value  # type: ignore
         except IndexError:
             raise IndexError(f"index {index} is out of range for array with address {address}")
 
@@ -121,7 +130,7 @@ class Arrays:
             raise IndexError(f"No array with address {address}")
         return self._arrays[address]
 
-    def _set_array(self, address: int, array: List[Optional[int]]):
+    def _set_array(self, address: int, array: List[Optional[int]]) -> None:
         if address not in self._arrays:
             raise IndexError(f"No array with address {address}")
         self._assert_list(array)
@@ -148,7 +157,7 @@ class Arrays:
                 _assert_within_width(x, ADDRESS_BITS)
         _assert_within_width(len(value), ADDRESS_BITS)
 
-    def init_new_array(self, address, length):
+    def init_new_array(self, address: int, length: int) -> None:
         # TODO, is it okay to overwrite the array if it exists?
         _assert_within_width(address, ADDRESS_BITS)
         self._arrays[address] = [None] * length
@@ -180,24 +189,24 @@ class SharedMemory:
     def get_array_part(self, address: int, index: Union[int, slice]) -> Union[None, int, List[Optional[int]]]:
         return self._arrays[address, index]
 
-    def set_array_part(self, address, index, value):
+    def set_array_part(self, address: int, index: Union[int, slice], value: Union[None, int, List[Optional[int]]]):
         self._arrays[address, index] = value
 
-    def _get_array(self, address) -> List[Optional[int]]:
+    def _get_array(self, address: int) -> List[Optional[int]]:
         return self._arrays._get_array(address)
 
-    def init_new_array(self, address, length=1, new_array=None):
+    def init_new_array(self, address: int, length: int = 1, new_array: Optional[List[Optional[int]]] = None) -> None:
         if new_array is not None:
             length = len(new_array)
         self._arrays.init_new_array(address, length)
         if new_array is not None:
             self._arrays._set_array(address, new_array)
 
-    def _get_active_values(self):
-        all_values = []
+    def _get_active_values(self) -> List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]]:
+        all_values: List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]] = []
         for reg_name, reg in self._registers.items():
-            reg_values = reg._get_active_values()
-            reg_values = [(parse_register(f"{reg_name.name}{index}"), value) for index, value in reg_values]
+            act_reg_values = reg._get_active_values()
+            reg_values = [(parse_register(f"{reg_name.name}{index}"), value) for index, value in act_reg_values]
             all_values += reg_values
         all_values += self._arrays._get_active_values()
         return all_values
