@@ -115,3 +115,7 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
 @pytest.mark.parametrize('i', range(5))  # Run 10 times
 def test_create_ghz(do_corrections, num_nodes, i):
     _gen_create_ghz(num_nodes, do_corrections)
+
+
+if __name__ == "__main__":
+    _gen_create_ghz(False, 2)
