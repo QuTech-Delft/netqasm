@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
     from netqasm.sdk.classical_communication.socket import Socket
-    from netqasm.sdk.qubit import Qubit
     from netqasm.sdk.futures import Future, RegFuture
+
+from netqasm.sdk.qubit import Qubit
 
 
 class _Role(Enum):

@@ -352,9 +352,10 @@ class ThreadSocket(Socket):
     ) -> StructuredMessage:
         # TODO use maxsize?
         msg = self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
-        if not isinstance(msg, StructuredMessage):
-            raise RuntimeError(f"Received message of type {type(msg)} instead of StructuredMessage")
-        return msg
+        # if not isinstance(msg, StructuredMessage):
+        #     raise RuntimeError(f"Received message of type {type(msg)} instead of StructuredMessage")
+        # TODO fix return value type hints
+        return msg  # type: ignore
 
     def wait(self) -> None:
         """Waits until the connection gets lost"""
