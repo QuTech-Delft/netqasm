@@ -388,12 +388,12 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _init_new_app(self, max_qubits: int) -> None:
         """Informs the backend of the new application and how many qubits it will maximally use"""
-        self._commit_message(
-            msg=InitNewAppMessage(
-                app_id=self._app_id,
-                max_qubits=max_qubits,
-            )
-        )
+        self._commit_message(msg=InitNewAppMessage(
+            app_id=self._app_id,
+            max_qubits=max_qubits,
+        ))
+        while self.shared_memory is None:
+            pass
 
     def _setup_epr_sockets(self, epr_sockets: Optional[List[EPRSocket]]) -> None:
         if epr_sockets is None:
