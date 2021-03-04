@@ -57,6 +57,8 @@ def distribute_bb84_states(conn, epr_socket, socket, target, n):
             q.H()
         m = q.measure()
         conn.flush()
+        socket.send_silent("")
+        socket.recv_silent()
         bit_flips[i] = int(m)
     return bit_flips, basis_flips
 
