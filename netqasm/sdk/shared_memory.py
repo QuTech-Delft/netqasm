@@ -10,24 +10,6 @@ from netqasm.lang.subroutine import Symbols
 if TYPE_CHECKING:
     from netqasm.lang.instr.operand import ArrayEntry
 
-_MEMORIES: Dict[
-    Tuple[str, Optional[int]], Optional["SharedMemory"]
-] = {}  # string literal to fwd declare
-
-
-def reset_memories() -> None:
-    for key in list(_MEMORIES.keys()):
-        _MEMORIES.pop(key)
-
-
-def get_shared_memory(node_name: str, key: Optional[int] = None) -> "SharedMemory":
-    absolute_key = (node_name, key)
-    memory = _MEMORIES.get(absolute_key)
-    if memory is None:
-        memory = SharedMemory()
-        _MEMORIES[absolute_key] = memory
-    return memory
-
 
 def _assert_within_width(value: int, width: int) -> None:
     min_value = -(2 ** (width - 1))
@@ -250,3 +232,27 @@ class SharedMemory:
             all_values += reg_values
         all_values += self._arrays._get_active_values()
         return all_values
+
+
+class SharedMemoryManager:
+    _MEMORIES: Dict[Tuple[str, Optional[int]], Optional[SharedMemory]] = {}
+
+    @classmethod
+    def create_shared_memory(cls, node_name: str, key: Optional[int] = None) -> SharedMemory:
+        absolute_key = (node_name, key)
+        if cls._MEMORIES.get(absolute_key) is not None:
+            raise RuntimeError(f"Shared memory for (node, key): ({node_name}, {key}) already exists.")
+        memory = SharedMemory()
+        cls._MEMORIES[absolute_key] = memory
+        return memory
+
+    @classmethod
+    def get_shared_memory(cls, node_name: str, key: Optional[int] = None) -> Optional[SharedMemory]:
+        absolute_key = (node_name, key)
+        memory = cls._MEMORIES.get(absolute_key)
+        return memory
+
+    @classmethod
+    def reset_memories(cls) -> None:
+        for key in list(cls._MEMORIES.keys()):
+            cls._MEMORIES.pop(key)

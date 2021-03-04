@@ -36,22 +36,6 @@ class EPRMeasBasis(Enum):
     Z = auto()
 
 
-class NoCircuitError(RuntimeError):
-    pass
-
-
-def _assert_has_conn(method):
-    def new_method(self, *args, **kwargs):
-        if self._conn is None:
-            raise NoCircuitError(
-                "To use the socket it first needs to be setup by giving it to a `NetQASMConnection`"
-            )
-        return method(self, *args, **kwargs)
-
-    new_method.__doc__ = method.__doc__
-    return new_method
-
-
 class EPRSocket(abc.ABC):
     def __init__(
         self,
@@ -136,8 +120,6 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
-    # TODO: remove commented-out decorators
-    # @_assert_has_conn
     def create(
         self,
         number: int = 1,
@@ -254,7 +236,6 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    # @_assert_has_conn
     def create_context(self, number: int = 1, sequential: bool = False):
         """Creates EPR pairs with a remote node and handles each pair by
         the operations defined in a subsequent context, see example below.
@@ -337,7 +318,6 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    # @_assert_has_conn
     def recv(
         self,
         number: int = 1,
@@ -364,7 +344,6 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    # @_assert_has_conn
     def recv_context(self, number: int = 1, sequential: bool = False):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
@@ -394,6 +373,5 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    # @_assert_has_conn
     def _get_node_id(self, app_name: str) -> int:
         return self.conn.network_info.get_node_id_for_app(app_name=app_name)

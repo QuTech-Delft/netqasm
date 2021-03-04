@@ -26,6 +26,7 @@ from netqasm.lang.parsing import parse_address
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
+from netqasm.sdk.shared_memory import setup_registers, Arrays, SharedMemoryManager
 from netqasm.sdk import shared_memory
 from netqasm.sdk.shared_memory import Arrays, get_shared_memory, setup_registers
 from netqasm.util.error import NotAllocatedError
@@ -196,10 +197,8 @@ class Executor:
         self._app_arrays[app_id] = Arrays()
 
     def new_shared_memory(self, app_id):
-        """Instanciated a new shared memory with an application"""
-        self._shared_memories[app_id] = get_shared_memory(
-            node_name=self._name, key=app_id
-        )
+        """Instantiate a new shared memory with an application"""
+        self._shared_memories[app_id] = SharedMemoryManager.create_shared_memory(node_name=self._name, key=app_id)
 
     def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
         if self.network_stack is None:

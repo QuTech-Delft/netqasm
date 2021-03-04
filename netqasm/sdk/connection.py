@@ -74,6 +74,29 @@ from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.shared_memory import SharedMemory, get_shared_memory
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.util.log import LineTracker
+from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
+from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
+from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm import NETQASM_VERSION
+from qlink_interface import (
+    EPRType,
+    RandomBasis,
+    LinkLayerCreate,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+)
+from typing import TYPE_CHECKING
+import os
+import abc
+import math
+import pickle
+import logging
+from enum import Enum
+from itertools import count
+from contextlib import contextmanager
+from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable, Iterator
 
 T_Cmd = Union[Command, BranchLabel]
 T_LinkLayerOkList = Union[
@@ -150,9 +173,8 @@ class BaseNetQASMConnection(abc.ABC):
 
         self._max_qubits: int = max_qubits
 
-        self._shared_memory: SharedMemory = get_shared_memory(
-            self.node_name, key=self._app_id
-        )
+        self._shared_memory: Optional[SharedMemory] = SharedMemoryManager.get_shared_memory(
+            self.node_name, key=self._app_id)
 
         # Registers for looping etc.
         # These are registers that are for example currently hold data and should
@@ -354,6 +376,11 @@ class BaseNetQASMConnection(abc.ABC):
 
     @property
     def shared_memory(self) -> SharedMemory:
+        if self._shared_memory is None:
+            mem = SharedMemoryManager.get_shared_memory(self.node_name, key=self._app_id)
+            if mem is None:
+                raise RuntimeError("Trying to access connection's shared memory, but it does not exist")
+            self._shared_memory = mem
         return self._shared_memory
 
     def new_qubit_id(self) -> int:
