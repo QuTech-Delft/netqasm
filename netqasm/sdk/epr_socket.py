@@ -117,7 +117,7 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
-    # TODO: remote commented-out decorators
+    # TODO: remove commented-out decorators
     # @_assert_has_conn
     def create(
         self,
