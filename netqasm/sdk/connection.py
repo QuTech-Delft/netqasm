@@ -1518,7 +1518,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _exit_foreach_context(self, context_id: int, array: Array, return_index: bool) -> None:
         body_commands = self._pop_pending_commands()
-        pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(
+        pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
             context_id, None)  # type: ignore
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
