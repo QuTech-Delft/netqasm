@@ -1,5 +1,5 @@
 import abc
-from typing import Set, Dict, List, Optional, Tuple
+from typing import Set, Dict, List, Optional, Tuple, Union
 
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.instr import core, vanilla, nv
@@ -10,8 +10,11 @@ from netqasm.runtime.settings import get_is_using_hardware
 
 
 class SubroutineCompiler(abc.ABC):
+    def __init__(self, subroutine: Subroutine, debug: bool = False):
+        pass
+
     @abc.abstractmethod
-    def compile(self, subroutine):
+    def compile(self) -> Subroutine:
         """Compile a subroutine (inplace) to a specific hardware
 
         Parameters
@@ -24,10 +27,10 @@ class SubroutineCompiler(abc.ABC):
 
 class NVSubroutineCompiler(SubroutineCompiler):
     def __init__(self, subroutine: Subroutine, debug=False):
-        self._subroutine = subroutine
+        self._subroutine: Subroutine = subroutine
         self._used_registers: Set[Register] = set()
         self._register_values: Dict[Register, Immediate] = dict()
-        self._debug = debug
+        self._debug: bool = debug
 
     def get_reg_value(self, reg: Register) -> Immediate:
         """Get the value of a register at this moment"""
@@ -103,12 +106,12 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         return gates
 
-    def compile(self):
+    def compile(self) -> Subroutine:
         """
         Very simple compiling pass: iterate over all instructions once and rewrite them in-line.
         While iterating, keep track of which registers are in use and what their values are.
         """
-        new_commands = []
+        new_commands: List[NetQASMInstruction] = []
 
         index_changes = {}  # map index in commands to index in new_commands
 
@@ -393,13 +396,13 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
     def _handle_single_qubit_gate(
         self,
-        instr: core.SingleQubitInstruction
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
     ) -> List[NetQASMInstruction]:
         return self._map_single_gate(instr)
 
     def _map_single_gate(
         self,
-        instr: core.SingleQubitInstruction
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
     ) -> List[NetQASMInstruction]:
         if isinstance(instr, vanilla.GateXInstruction):
             return [

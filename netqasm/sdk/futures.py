@@ -1,11 +1,23 @@
 """TODO write about futures"""
+from __future__ import annotations
 
 import abc
 from typing import Union, Optional, List
+from typing import TYPE_CHECKING
 
 from netqasm.lang.parsing import parse_register, parse_address
-from netqasm.lang.subroutine import Symbols, Command, Register
+from netqasm.lang.subroutine import Symbols, Command, BranchLabel
 from netqasm.lang.instr.instr_enum import Instruction
+from netqasm.util.log import HostLine
+
+from netqasm.lang.instr import operand
+
+if TYPE_CHECKING:
+    from netqasm.sdk.connection import BaseNetQASMConnection
+    from netqasm.lang.subroutine import T_OperandUnion
+
+T_Cmd = Union[Command, BranchLabel]
+T_CValue = Union[int, 'Future', 'RegFuture']
 
 
 class NoValueError(RuntimeError):
@@ -97,15 +109,15 @@ class BaseFuture(int):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection):
-        self._value = None
-        self._connection = connection
+    def __init__(self, connection: BaseNetQASMConnection):
+        self._value: Optional[int] = None
+        self._connection: BaseNetQASMConnection = connection
 
     def __repr__(self):
         return f"{self.__class__} with value={self.value}"
 
     @property
-    def value(self):
+    def value(self) -> Optional[int]:
         """Get the value of the future.
         If it's not set yet, `None` is returned."""
         if self._value is not None:
@@ -114,17 +126,17 @@ class BaseFuture(int):
             return self._try_get_value()
 
     @abc.abstractmethod
-    def _try_get_value(self):
+    def _try_get_value(self) -> Optional[int]:
         raise NotImplementedError
 
-    def add(self, other: Union[int, str, Register, 'BaseFuture'], mod: Optional[int] = None):
+    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None) -> None:
         """Adds another integer to this by appending to appropriate instruction to
         the current subroutine.
         Note that `self` does not need to have a value yet.
         """
         raise NotImplementedError(f"add is not implement for {self.__class__.__name__}")
 
-    def if_eq(self, other):
+    def if_eq(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEQ,
@@ -132,7 +144,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ne(self, other):
+    def if_ne(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNE,
@@ -140,7 +152,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_lt(self, other):
+    def if_lt(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BLT,
@@ -148,7 +160,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ge(self, other):
+    def if_ge(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BGE,
@@ -156,7 +168,7 @@ class BaseFuture(int):
             b=other,
         )
 
-    def if_ez(self):
+    def if_ez(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BEZ,
@@ -164,7 +176,7 @@ class BaseFuture(int):
             b=None,
         )
 
-    def if_nz(self):
+    def if_nz(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
             condition=Instruction.BNZ,
@@ -178,16 +190,16 @@ class Future(BaseFuture):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection, address, index):
+    def __init__(self, connection: BaseNetQASMConnection, address: int, index: Union[int, Future, operand.Register]):
         """
         Future(connection, address, index)
         TODO write doc-string
         """
         super().__init__(connection=connection)
-        self._address = address
-        self._index = index
+        self._address: int = address
+        self._index: Union[int, Future, operand.Register] = index
 
-    def __str__(self):
+    def __str__(self) -> str:
         value = self.value
         if value is None:
             return (f"{self.__class__.__name__} to be stored in array with address "
@@ -196,15 +208,17 @@ class Future(BaseFuture):
         else:
             return str(value)
 
-    def _try_get_value(self):
+    def _try_get_value(self) -> Optional[int]:
         if not isinstance(self._index, int):
             raise NonConstantIndexError("index is not constant and cannot be resolved")
         value = self._connection.shared_memory.get_array_part(address=self._address, index=self._index)
+        if not isinstance(value, int) and value is not None:
+            raise RuntimeError(f"Something went wrong: future value {value} is not an int or None")
         if value is not None:
             self._value = value
         return value
 
-    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None) -> None:
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -213,19 +227,21 @@ class Future(BaseFuture):
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
+        other_tmp_register: Optional[operand.Register] = None
+        other_operand: Union[int, operand.Register]  # empty declaration for type hints
+
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_tmp_register = self._connection._get_inactive_register(activate=True)
-            other_operand = other_tmp_register
+            other_operand = self._connection._get_inactive_register(activate=True)
+            other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
-        elif isinstance(other, Register) or isinstance(other, int):
-            other_tmp_register = None
+        elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
         else:
             raise NotImplementedError('for type {type(other)}')
 
-        add_operands = [
+        add_operands: List[T_OperandUnion] = [
             tmp_register,
             tmp_register,
             other_operand,
@@ -253,13 +269,13 @@ class Future(BaseFuture):
 
         self._connection.add_pending_commands(commands)
 
-    def _get_load_commands(self, register):
+    def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(Instruction.LOAD, register)
 
-    def _get_store_commands(self, register):
+    def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(Instruction.STORE, register)
 
-    def _get_access_commands(self, instruction, register):
+    def _get_access_commands(self, instruction: Instruction, register: operand.Register) -> List[T_Cmd]:
         assert instruction == Instruction.LOAD or instruction == Instruction.STORE, "Not an access instruction"
         commands = []
         if isinstance(self._index, Future):
@@ -273,8 +289,8 @@ class Future(BaseFuture):
                     register=tmp_register,
                 )
             commands += access_index_cmds
-            index = tmp_register
-        elif isinstance(self._index, int) or isinstance(self._index, Register):
+            index: Union[int, operand.Register] = tmp_register
+        elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
             raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
@@ -291,21 +307,22 @@ class Future(BaseFuture):
 
 
 class RegFuture(BaseFuture):
-    def __init__(self, connection, reg=None):
+    def __init__(self, connection: BaseNetQASMConnection, reg: Optional[operand.Register] = None):
         """RegFuture(connection, reg=None)
         TODO doc-string"""
         super().__init__(connection=connection)
-        self._reg = reg
+        self._reg: Optional[operand.Register] = reg
 
     @property
-    def reg(self):
+    def reg(self) -> Optional[operand.Register]:
         return self._reg
 
     @reg.setter
-    def reg(self, new_val):
+    def reg(self, new_val: operand.Register) -> None:
         self._reg = new_val
 
-    def __str__(self):
+    def __str__(self) -> str:
+        assert self.reg is not None
         value = self.value
         if value is None:
             return (f"{self.__class__.__name__} to be stored in reg {self.reg} "
@@ -313,7 +330,8 @@ class RegFuture(BaseFuture):
         else:
             return str(value)
 
-    def _try_get_value(self):
+    def _try_get_value(self) -> Optional[int]:
+        assert self.reg is not None
         try:
             value = self._connection.shared_memory.get_register(self.reg)
         except KeyError:
@@ -322,7 +340,8 @@ class RegFuture(BaseFuture):
             self._value = value
         return value
 
-    def add(self, other: Union[str, Register, 'Future'], mod: Optional[int] = None):  # type: ignore
+    def add(self, other: Union[int, str, operand.Register, BaseFuture], mod: Optional[int] = None) -> None:
+        assert self.reg is not None
         if isinstance(other, str):
             other = parse_register(other)
 
@@ -330,21 +349,23 @@ class RegFuture(BaseFuture):
         load_commands = []
         store_commands = []
 
+        other_tmp_register: Optional[operand.Register] = None
+        other_operand: Union[int, operand.Register]  # empty declaration for type hints
+
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_tmp_register = self._connection._get_inactive_register(activate=True)
-            other_operand = other_tmp_register
+            other_operand = self._connection._get_inactive_register(activate=True)
+            other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
-        elif isinstance(other, Register) or isinstance(other, int):
-            other_tmp_register = None
+        elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
         else:
             raise NotImplementedError('for type {type(other)}')
 
-        add_operands = [
-            self._reg,
-            self._reg,
+        add_operands: List[T_OperandUnion] = [
+            self.reg,
+            self.reg,
             other_operand,
         ]
         if mod is None:
@@ -371,7 +392,14 @@ class RegFuture(BaseFuture):
 
 
 class Array:
-    def __init__(self, connection, length, address, init_values=None, lineno=None):
+    def __init__(
+        self,
+        connection: BaseNetQASMConnection,
+        length: int,
+        address: int,
+        init_values: Optional[List[Optional[int]]] = None,
+        lineno: Optional[HostLine] = None
+    ):
         """Array(connection, length, address, init_values=None, lineno=None)
         TODO write doc-string
         """
@@ -380,28 +408,28 @@ class Array:
                 raise TypeError("Array needs to consist of int's or None's")
             length = len(init_values)
         assert isinstance(length, int) and length > 0, f"{length} is not a valid length"
-        self._connection = connection
-        self._length = length
-        self._address = address
-        self._init_values = init_values
-        self._lineno = lineno
+        self._connection: BaseNetQASMConnection = connection
+        self._length: int = length
+        self._address: int = address
+        self._init_values: Optional[List[Optional[int]]] = init_values
+        self._lineno: Optional[HostLine] = lineno
 
     @property
-    def lineno(self):
+    def lineno(self) -> Optional[HostLine]:
         """What line in host application file initiated this array"""
         return self._lineno
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._length
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[int, slice]) -> Union[None, int, List[Optional[int]]]:
         return self._connection.shared_memory.get_array_part(address=self._address, index=index)
 
     @property
-    def address(self):
+    def address(self) -> int:
         return self._address
 
-    def get_future_index(self, index) -> Future:
+    def get_future_index(self, index: Union[int, str, operand.Register]) -> Future:
         """TODO doc-string"""
         if isinstance(index, str):
             index = parse_register(index)
@@ -411,7 +439,7 @@ class Array:
             index=index,
         )
 
-    def get_future_slice(self, s) -> List[Future]:
+    def get_future_slice(self, s: slice) -> List[Future]:
         """TODO doc-string"""
         range_args = []
         for attr in ["start", "stop", "step"]:
@@ -423,7 +451,7 @@ class Array:
                 range_args.append(x)
         return [self.get_future_index(index) for index in range(*range_args)]
 
-    def foreach(self):
+    def foreach(self) -> _ForEachContext:
         """TODO doc-string"""
         return _ForEachContext(
             connection=self._connection,
@@ -431,7 +459,7 @@ class Array:
             return_index=False,
         )
 
-    def enumerate(self):
+    def enumerate(self) -> _ForEachContext:
         """TODO doc-string"""
         return _ForEachContext(
             connection=self._connection,
@@ -442,7 +470,7 @@ class Array:
 
 class _Context:
 
-    next_id = 0
+    next_id: int = 0
 
     @property
     @abc.abstractmethod
@@ -454,12 +482,12 @@ class _Context:
     def EXIT_METH(self):
         pass
 
-    def __init__(self, connection, **kwargs):
-        self._id = self._get_id()
-        self._connection = connection
+    def __init__(self, connection: BaseNetQASMConnection, **kwargs):
+        self._id: int = self._get_id()
+        self._connection: BaseNetQASMConnection = connection
         self._kwargs = kwargs
 
-    def _get_id(self):
+    def _get_id(self) -> int:
         _Context.next_id += 1
         return _Context.next_id - 1
 
@@ -481,7 +509,9 @@ class _IfContext(_Context):
     ENTER_METH = '_enter_if_context'
     EXIT_METH = '_exit_if_context'
 
-    def __init__(self, connection, condition, a, b):
+    def __init__(
+        self, connection: BaseNetQASMConnection, condition: Instruction, a: Optional[T_CValue], b: Optional[T_CValue]
+    ):
         super().__init__(
             connection=connection,
             condition=condition,
@@ -495,7 +525,7 @@ class _ForEachContext(_Context):
     ENTER_METH = '_enter_foreach_context'
     EXIT_METH = '_exit_foreach_context'
 
-    def __init__(self, connection, array, return_index):
+    def __init__(self, connection: BaseNetQASMConnection, array: Array, return_index: bool):
         super().__init__(
             connection=connection,
             array=array,

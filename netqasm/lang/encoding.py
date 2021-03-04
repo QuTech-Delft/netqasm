@@ -27,7 +27,7 @@ IMMEDIATE = ctypes.c_uint8
 IMMEDIATE_BITS = len(bytes(IMMEDIATE())) * 8  # type: ignore
 
 ADDRESS = INTEGER
-ADDRESS_BITS = len(bytes(ADDRESS())) * 8  # type: ignore
+ADDRESS_BITS: int = len(bytes(ADDRESS())) * 8  # type: ignore
 
 INSTR_ID = ctypes.c_uint8
 

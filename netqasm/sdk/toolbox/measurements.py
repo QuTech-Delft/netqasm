@@ -1,7 +1,9 @@
-from netqasm.sdk.qubit import Qubit as qubit
+from typing import List, Union
+from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.futures import Future, RegFuture
 
 
-def parity_meas(qubits, bases):
+def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int]:
     """
     Performs a parity measurement on the provided qubits in the Pauli bases specified by 'bases'.
     `bases` should be a string with letters in 'IXYZ' and optionally start with '-'.
@@ -37,6 +39,9 @@ def parity_meas(qubits, bases):
 
     flip_basis = ["I"]*num_qubits
     non_identity_bases = []
+
+    # declare outcome variable
+    m: Union[Future, RegFuture, int]
 
     # Check if we need to flip the bases of the qubits
     for i in range(len(bases)):
@@ -83,7 +88,7 @@ def parity_meas(qubits, bases):
         conn = qubits[0]._conn
 
         # Initialize ancilla qubit
-        anc = qubit(conn)
+        anc = Qubit(conn)
 
         # Flip to correct basis
         for i in range(len(bases)):
@@ -106,5 +111,9 @@ def parity_meas(qubits, bases):
             if flip_basis[i] == 'K':
                 qubits[i].K()
     if negative:
-        m.add(1, mod=2)
+        if not isinstance(m, Future):
+            assert isinstance(m, int)
+            m = 1 - m
+        else:
+            m.add(1, mod=2)
     return m

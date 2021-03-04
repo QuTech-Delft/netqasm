@@ -1,8 +1,14 @@
+from __future__ import annotations
+from typing import List, Tuple
+from typing import TYPE_CHECKING
 import numpy as np
 from netqasm.lang.encoding import IMMEDIATE_BITS
 
+if TYPE_CHECKING:
+    from netqasm.sdk.qubit import Qubit
 
-def set_qubit_state(qubit, phi=0., theta=0.):
+
+def set_qubit_state(qubit: Qubit, phi: float = 0., theta: float = 0.) -> None:
     r"""Assuming that the qubit is in the state :math:`|0\rangle`, this function
     rotates the state to :math:`\cos(\theta / 2)|0\rangle + e^{i\phi}\sin(\theta / 2)|1\rangle`.
 
@@ -19,7 +25,7 @@ def set_qubit_state(qubit, phi=0., theta=0.):
     qubit.rot_Z(angle=phi)
 
 
-def get_angle_spec_from_float(angle, tol=1e-6):
+def get_angle_spec_from_float(angle: float, tol: float = 1e-6) -> List[Tuple[int, int]]:
     r"""Tries to find the shortest sequence of (n, d) such that :math:`abs(\sum_i n_i \pi / 2 ^ {d_i} - angle) < tol`
     This is to find a sequence of rotations for a given angle.
 

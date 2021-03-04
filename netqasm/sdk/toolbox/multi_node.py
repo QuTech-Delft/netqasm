@@ -1,4 +1,14 @@
+from __future__ import annotations
 from enum import Enum, auto
+from typing import Optional, Union, Tuple
+from typing import TYPE_CHECKING
+
+from netqasm.sdk.qubit import Qubit
+
+if TYPE_CHECKING:
+    from netqasm.sdk.epr_socket import EPRSocket
+    from netqasm.sdk.classical_communication.socket import Socket
+    from netqasm.sdk.futures import Future, RegFuture
 
 
 class _Role(Enum):
@@ -7,7 +17,13 @@ class _Role(Enum):
     end = auto()
 
 
-def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_socket=None, do_corrections=False):
+def create_ghz(
+    down_epr_socket: Optional[EPRSocket] = None,
+    up_epr_socket: Optional[EPRSocket] = None,
+    down_socket: Optional[Socket] = None,
+    up_socket: Optional[Socket] = None,
+    do_corrections: bool = False
+) -> Tuple[Qubit, Union[Future, RegFuture, int]]:
     r"""Local protocol to create a GHZ state between mutliples nodes.
 
     EPR pairs are generated in a line and turned into a GHZ state by performing half of a Bell measurement.
@@ -57,14 +73,18 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
         raise TypeError("Both down_epr_socket and up_epr_socket cannot be None")
 
     if down_epr_socket is None:
+        assert up_epr_socket is not None
         # Start role
         role = _Role.start
         q = up_epr_socket.create()[0]
-        conn = up_epr_socket._conn
+        assert isinstance(q, Qubit)
+        conn = up_epr_socket.conn
         m = 0
     else:
+        assert down_epr_socket is not None
         q = down_epr_socket.recv()[0]
-        conn = down_epr_socket._conn
+        assert isinstance(q, Qubit)
+        conn = down_epr_socket.conn
         if up_epr_socket is None:
             # End role
             role = _Role.end
@@ -82,22 +102,17 @@ def create_ghz(down_epr_socket=None, up_epr_socket=None, down_socket=None, up_so
 
     if do_corrections:
         if role == _Role.start:
-            _assert_socket(up_socket)
+            assert up_socket is not None
             up_socket.send(str(0))
         else:
-            _assert_socket(down_socket)
+            assert down_socket is not None
             corr = int(down_socket.recv(maxsize=1))
             if corr == 1:
                 q.X()
             if role == _Role.middle:
-                _assert_socket(up_socket)
+                assert up_socket is not None
                 corr = (corr + m) % 2
                 up_socket.send(str(corr))
         m = 0
 
     return q, m
-
-
-def _assert_socket(socket):
-    if socket is None:
-        raise TypeError("A socket is needed to do corrections")

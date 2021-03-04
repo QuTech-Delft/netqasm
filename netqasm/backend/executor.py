@@ -6,7 +6,7 @@ from itertools import count
 from types import GeneratorType
 from dataclasses import dataclass
 from collections import defaultdict
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Dict, List, Tuple
 
 from qlink_interface import (
     RequestType,
@@ -17,8 +17,12 @@ from qlink_interface import (
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
-from netqasm.lang.instr.operand import Register, ArrayEntry, ArraySlice, Address
+from netqasm.lang.instr.operand import ArrayEntry, ArraySlice, Address
+from netqasm.lang.instr import operand
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.subroutine import Subroutine
 from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
+from netqasm.sdk import shared_memory
 from netqasm.backend.network_stack import BaseNetworkStack
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.lang.parsing import parse_address
@@ -80,7 +84,7 @@ class Executor:
         self._instruction_handlers = self._get_instruction_handlers()
 
         # Registers for different apps
-        self._registers = {}
+        self._registers: Dict[int, Dict[RegisterName, shared_memory.Register]] = {}
 
         # Arrays stored in memory for different apps
         self._app_arrays: Dict[int, Arrays] = {}
@@ -94,7 +98,7 @@ class Executor:
         self._program_counters = defaultdict(int)
 
         # Keep track of what subroutines are currently handled
-        self._subroutines = {}
+        self._subroutines: Dict[int, Subroutine] = {}
 
         # Keep track of which subroutine in the order
         self._next_subroutine_id = 0
@@ -182,7 +186,7 @@ class Executor:
         self.setup_arrays(app_id=app_id)
         self.new_shared_memory(app_id=app_id)
 
-    def setup_registers(self, app_id):
+    def setup_registers(self, app_id: int) -> None:
         """Setup registers for application"""
         self._registers[app_id] = setup_registers()
 
@@ -235,7 +239,7 @@ class Executor:
         """Resets the program counter for a given subroutine ID"""
         self._program_counters.pop(subroutine_id, 0)
 
-    def clear_subroutine(self, subroutine_id):
+    def clear_subroutine(self, subroutine_id: int) -> None:
         """Clears a subroutine from the executor"""
         self.reset_program_counter(subroutine_id=subroutine_id)
         self._subroutines.pop(subroutine_id, 0)
@@ -283,7 +287,7 @@ class Executor:
         """Consumes the generator returned by execute_subroutine"""
         list(self.execute_subroutine(subroutine=subroutine))
 
-    def execute_subroutine(self, subroutine):
+    def execute_subroutine(self, subroutine: Subroutine):
         """Executes the a subroutine given to the executor"""
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
@@ -363,10 +367,10 @@ class Executor:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id, instr.reg, instr.imm.value)
 
-    def _set_register(self, app_id, register, value):
+    def _set_register(self, app_id, register, value: int):
         self._registers[app_id][register.name][register.index] = value
 
-    def _get_register(self, app_id, register):
+    def _get_register(self, app_id: int, register: operand.Register) -> Optional[int]:
         return self._registers[app_id][register.name][register.index]
 
     @inc_program_counter
@@ -464,10 +468,9 @@ class Executor:
         instr: Union[instructions.core.ClassicalOpInstruction,
                      instructions.core.ClassicalOpModInstruction]):
         app_id = self._get_app_id(subroutine_id=subroutine_id)
+        mod = None
         if isinstance(instr, instructions.core.ClassicalOpModInstruction):
             mod = self._get_register(app_id=app_id, register=instr.regmod)
-        else:
-            mod = None
         if mod is not None and mod < 1:
             raise RuntimeError(f"Modulus needs to be greater or equal to 1, not {mod}")
         a = self._get_register(app_id=app_id, register=instr.regin0)
@@ -725,7 +728,7 @@ class Executor:
         return int(len(self._app_arrays[app_id][ent_info_array_address, :]) / OK_FIELDS)
 
     @inc_program_counter
-    def _instr_wait_all(self, subroutine_id, instr: instructions.core.WaitAllInstruction):
+    def _instr_wait_all(self, subroutine_id: int, instr: instructions.core.WaitAllInstruction):
         array_slice = instr.slice
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._logger.debug(
@@ -734,6 +737,8 @@ class Executor:
         address, index = self._expand_array_part(app_id=app_id, array_part=array_slice)
         while True:
             values = self._app_arrays[app_id][address, index]
+            if not isinstance(values, list):
+                raise RuntimeError(f"Something went wrong: values should be a list but it is a {type(values)}")
             if any(value is None for value in values):
                 output = self._do_wait()
                 if isinstance(output, GeneratorType):
@@ -802,7 +807,7 @@ class Executor:
 
     def _update_shared_memory(self, app_id, entry, value):
         shared_memory = self._shared_memories[app_id]
-        if isinstance(entry, Register):
+        if isinstance(entry, operand.Register):
             self._logger.debug(f"Updating host about register {entry} with value {value}")
             shared_memory.set_register(entry, value)
         elif isinstance(entry, ArrayEntry) or isinstance(entry, ArraySlice):
@@ -843,37 +848,51 @@ class Executor:
                 f"for app ID {app_id} for node {self._name}")
         return position
 
-    def _get_array(self, app_id, address) -> List[int]:
+    def _get_array(self, app_id, address) -> List[Optional[int]]:
         return self._app_arrays[app_id]._get_array(address.address)
 
-    def _get_array_entry(self, app_id, array_entry):
+    def _get_array_entry(self, app_id, array_entry: ArrayEntry):
         address, index = self._expand_array_part(app_id=app_id, array_part=array_entry)
         return self._app_arrays[app_id][address, index]
 
-    def _set_array_entry(self, app_id, array_entry, value):
+    def _set_array_entry(self, app_id, array_entry: ArrayEntry, value):
         address, index = self._expand_array_part(app_id=app_id, array_part=array_entry)
         self._app_arrays[app_id][address, index] = value
 
-    def _get_array_slice(self, app_id, array_slice):
+    def _get_array_slice(self, app_id, array_slice: ArraySlice):
         address, index = self._expand_array_part(app_id=app_id, array_part=array_slice)
         return self._app_arrays[app_id][address, index]
 
-    def _expand_array_part(self, app_id, array_part):
-        address = array_part.address.address
+    def _expand_array_part(
+        self, app_id: int, array_part: Union[ArrayEntry, ArraySlice]
+    ) -> Tuple[int, Union[int, slice]]:
+        address: int = array_part.address.address
+        index: Union[int, slice]
         if isinstance(array_part, ArrayEntry):
             if isinstance(array_part.index, int):
                 index = array_part.index
             else:
-                index = self._get_register(app_id=app_id, register=array_part.index)
+                index_from_reg = self._get_register(app_id=app_id, register=array_part.index)
+                if index_from_reg is None:
+                    raise RuntimeError(
+                        f"Trying to use register {array_part.index} to index an array but its value is None")
+                index = index_from_reg
         elif isinstance(array_part, ArraySlice):
-            startstop = []
+            startstop: List[int] = []
             for raw_s in [array_part.start, array_part.stop]:
                 if isinstance(raw_s, int):
-                    s = raw_s
-                else:
+                    startstop.append(raw_s)
+                elif isinstance(raw_s, operand.Register):
                     s = self._get_register(app_id=app_id, register=raw_s)
-                startstop.append(s)
+                    if s is None:
+                        raise RuntimeError(
+                            f"Trying to use register {raw_s} to index an array but its value is None")
+                    startstop.append(s)
+                else:
+                    raise RuntimeError(f"Something went wrong: raw_s should be int or Register but is {type(raw_s)}")
             index = slice(*startstop)
+        else:
+            raise RuntimeError(f"Something went wrong: array_part is a {type(array_part)}")
         return address, index
 
     def allocate_new_qubit_unit_module(self, app_id, num_qubits):
@@ -947,7 +966,7 @@ class Executor:
         if not len(args) == num:
             raise TypeError(f"Expected {num} arguments, got {len(args)}")
 
-    def _get_app_id(self, subroutine_id):
+    def _get_app_id(self, subroutine_id: int) -> int:
         """Returns the app ID for the given subroutine"""
         subroutine = self._subroutines.get(subroutine_id)
         if subroutine is None:

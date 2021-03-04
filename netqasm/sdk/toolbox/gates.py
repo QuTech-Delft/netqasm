@@ -1,4 +1,7 @@
-def t_inverse(q):
+from netqasm.sdk.qubit import Qubit
+
+
+def t_inverse(q: Qubit) -> None:
     """Performs an inverse of the T gate by applying the T gate 7 times.
 
     Parameters
@@ -9,7 +12,7 @@ def t_inverse(q):
         q.T()
 
 
-def toffoli_gate(control1, control2, target):
+def toffoli_gate(control1: Qubit, control2: Qubit, target: Qubit) -> None:
     """Performs a Toffoli gate with `control1` and `control2` as control qubits
     and `target` as target, using CNOTS, Ts and Hadamard gates.
 

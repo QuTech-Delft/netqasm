@@ -1,30 +1,36 @@
 """TODO write about classical communication"""
+from __future__ import annotations
 
 import abc
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from netqasm.sdk.classical_communication.message import StructuredMessage
+
+if TYPE_CHECKING:
+    from netqasm.sdk.config import LogConfig
 
 
 class Socket(abc.ABC):
     def __init__(
         self,
-        app_name,
-        remote_app_name,
-        socket_id=0,
-        timeout=None,
-        use_callbacks=False,
-        log_config=None,
+        app_name: str,
+        remote_app_name: str,
+        socket_id: int = 0,
+        timeout: Optional[float] = None,
+        use_callbacks: bool = False,
+        log_config: Optional[LogConfig] = None,
     ):
         """Socket used to communicate classical data between applications."""
         pass
 
     @abc.abstractmethod
-    def send(self, msg):
+    def send(self, msg: str) -> None:
         """Sends a message to the remote node."""
         pass
 
     @abc.abstractmethod
-    def recv(self, block=True, maxsize=None):
+    def recv(self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None) -> str:
         """Receive a message from the remote node."""
         pass
 
@@ -32,19 +38,21 @@ class Socket(abc.ABC):
         """Sends a structured message (with header and payload) to the remote node."""
         raise NotImplementedError
 
-    def recv_structured(self, block=True, maxsize=None) -> StructuredMessage:
+    def recv_structured(
+        self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None
+    ) -> StructuredMessage:
         """Receive a message (with header and payload) from the remote node."""
         raise NotImplementedError
 
-    def send_silent(self, msg) -> None:
+    def send_silent(self, msg: str) -> None:
         """Sends a message without logging"""
         raise NotImplementedError
 
-    def recv_silent(self, block=True, maxsize=None):
+    def recv_silent(self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None) -> str:
         """Receive a message without logging"""
         raise NotImplementedError
 
-    def recv_callback(self, msg):
+    def recv_callback(self, msg: str) -> None:
         """This method gets called when a message is received.
 
         Subclass to define behaviour.
@@ -53,7 +61,7 @@ class Socket(abc.ABC):
         """
         pass
 
-    def conn_lost_callback(self):
+    def conn_lost_callback(self) -> None:
         """This method gets called when the connection is lost.
 
         Subclass to define behaviour.

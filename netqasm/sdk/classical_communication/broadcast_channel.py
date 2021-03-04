@@ -1,24 +1,31 @@
+from __future__ import annotations
+from typing import Type, Optional, List, Tuple
+from typing import TYPE_CHECKING
 import abc
 from timeit import default_timer as timer
 
 
+if TYPE_CHECKING:
+    from .socket import Socket
+
+
 class BroadcastChannel(abc.ABC):
-    def __init__(self, app_name, remote_app_names, timeout=None,
-                 use_callbacks=False):
+    def __init__(self, app_name: str, remote_app_names: List[str], timeout: Optional[float] = None,
+                 use_callbacks: bool = False):
         """Socket used to broadcast classical data between applications."""
         pass
 
     @abc.abstractmethod
-    def send(self, msg):
+    def send(self, msg: str) -> None:
         """Broadcast a message to all remote node."""
         pass
 
     @abc.abstractmethod
-    def recv(self, block=True):
+    def recv(self, block: bool = True) -> Tuple[str, str]:
         """Receive a message that was broadcast and from whom."""
         pass
 
-    def recv_callback(self, remote_app_name, msg):
+    def recv_callback(self, remote_app_name: str, msg: str) -> None:
         """This method gets called when a message is received.
 
         Subclass to define behaviour.
@@ -27,7 +34,7 @@ class BroadcastChannel(abc.ABC):
         """
         pass
 
-    def conn_lost_callback(self):
+    def conn_lost_callback(self) -> None:
         """This method gets called when the connection is lost.
 
         Subclass to define behaviour.
@@ -38,7 +45,7 @@ class BroadcastChannel(abc.ABC):
 
 
 class BroadcastChannelBySockets(BroadcastChannel):
-    def __init__(self, app_name, remote_app_names, **kwargs):
+    def __init__(self, app_name: str, remote_app_names: List[str], **kwargs):
         """Socket used to broadcast classical data between applications.
 
         Simple uses one-to-one sockets to acheive a broadcast.
@@ -69,15 +76,15 @@ class BroadcastChannelBySockets(BroadcastChannel):
 
     @property
     @abc.abstractmethod
-    def _socket_class(self):
+    def _socket_class(self) -> Type[Socket]:
         pass
 
-    def send(self, msg):
+    def send(self, msg: str) -> None:
         """Broadcast a message to all remote node."""
         for socket in self._sockets.values():
             socket.send(msg=msg)
 
-    def recv(self, block=True, timeout=None):
+    def recv(self, block: bool = True, timeout: Optional[float] = None) -> Tuple[str, str]:
         """Receive a message that was broadcast.
 
         Parameters

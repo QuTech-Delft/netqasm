@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from typing import List, Union, Optional
 from dataclasses import dataclass
 
@@ -15,8 +17,7 @@ from netqasm.lang.instr.operand import (
     Label
 )
 
-
-_OPERAND_UNION = Union[
+T_OperandUnion = Union[
     int,
     Register,
     Address,
@@ -24,6 +25,9 @@ _OPERAND_UNION = Union[
     ArraySlice,
     Label,
 ]
+
+if TYPE_CHECKING:
+    from netqasm.util.log import HostLine
 
 
 def _get_lineo_str(lineno):
@@ -38,8 +42,8 @@ def _get_lineo_str(lineno):
 class Command:
     instruction: Instruction
     args: List[int] = None  # type: ignore
-    operands: List[_OPERAND_UNION] = None  # type: ignore
-    lineno: Optional[int] = None
+    operands: List[T_OperandUnion] = None  # type: ignore
+    lineno: Optional[HostLine] = None
 
     def __post_init__(self):
         if self.args is None:
@@ -72,7 +76,7 @@ class Command:
 @dataclass
 class BranchLabel:
     name: str
-    lineno: Optional[int] = None
+    lineno: Optional[HostLine] = None
 
     def _assert_types(self):
         assert isinstance(self.name, str)
