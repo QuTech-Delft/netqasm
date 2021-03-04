@@ -111,7 +111,8 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
             if flip_basis[i] == 'K':
                 qubits[i].K()
     if negative:
-        if isinstance(m, int):
+        if not isinstance(m, Future):
+            assert isinstance(m, int)
             m = 1 - m
         else:
             m.add(1, mod=2)
