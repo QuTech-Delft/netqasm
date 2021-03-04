@@ -4,9 +4,6 @@ from typing import Dict, Optional, List, Tuple
 from typing import TYPE_CHECKING
 import json
 
-if TYPE_CHECKING:
-    import logging
-
 from netqasm.logging.glob import get_netqasm_logger
 from ..socket import Socket
 from .socket_hub import _socket_hub, _SocketHub
@@ -14,6 +11,9 @@ from netqasm.util.log import LineTracker
 from netqasm.logging.output import SocketOperation, ClassCommLogger
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.classical_communication.message import StructuredMessage
+
+if TYPE_CHECKING:
+    import logging
 
 T_ThreadSocketKey = Tuple[str, str, int]
 

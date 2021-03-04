@@ -2,12 +2,13 @@
 from __future__ import annotations
 from typing import Optional, Union
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
-    from qlink_interface import LinkLayerOKTypeK
 
 from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.sdk.futures import RegFuture, Future
+
+if TYPE_CHECKING:
+    from netqasm.sdk.connection import BaseNetQASMConnection
+    from qlink_interface import LinkLayerOKTypeK
 
 
 class QubitNotActiveError(MemoryError):

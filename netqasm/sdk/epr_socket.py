@@ -1,7 +1,5 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
 from typing import Tuple, Union, List, Optional, Callable
 
 import logging
@@ -18,6 +16,9 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
 
 from netqasm.sdk import Qubit
+
+if TYPE_CHECKING:
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
 

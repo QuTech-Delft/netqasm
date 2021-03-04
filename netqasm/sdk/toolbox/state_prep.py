@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import List, Tuple
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from netqasm.sdk.qubit import Qubit
-
 import numpy as np
 from netqasm.lang.encoding import IMMEDIATE_BITS
+
+if TYPE_CHECKING:
+    from netqasm.sdk.qubit import Qubit
 
 
 def set_qubit_state(qubit: Qubit, phi: float = 0., theta: float = 0.) -> None:

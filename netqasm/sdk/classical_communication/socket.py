@@ -5,10 +5,10 @@ import abc
 from typing import Optional
 from typing import TYPE_CHECKING
 
+from netqasm.sdk.classical_communication.message import StructuredMessage
+
 if TYPE_CHECKING:
     from netqasm.sdk.config import LogConfig
-
-from netqasm.sdk.classical_communication.message import StructuredMessage
 
 
 class Socket(abc.ABC):

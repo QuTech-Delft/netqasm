@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import Type, Optional, List, Tuple
 from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .socket import Socket
-
 import abc
 from timeit import default_timer as timer
+
+
+if TYPE_CHECKING:
+    from .socket import Socket
 
 
 class BroadcastChannel(abc.ABC):
