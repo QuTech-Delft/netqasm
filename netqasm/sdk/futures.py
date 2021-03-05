@@ -5,6 +5,8 @@ import abc
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang.instr import operand
+from netqasm.lang.parsing import parse_register, parse_address
+from netqasm.lang.subroutine import Symbols, ICmd, BranchLabel
 from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.lang.subroutine import BranchLabel, Command, Symbols
@@ -14,8 +16,8 @@ if TYPE_CHECKING:
     from netqasm.lang.subroutine import T_OperandUnion
     from netqasm.sdk.connection import BaseNetQASMConnection
 
-T_Cmd = Union[Command, BranchLabel]
-T_CValue = Union[int, "Future", "RegFuture"]
+T_Cmd = Union[ICmd, BranchLabel]
+T_CValue = Union[int, 'Future', 'RegFuture']
 
 
 class NoValueError(RuntimeError):
@@ -275,14 +277,12 @@ class Future(BaseFuture):
             add_operands.append(mod)
 
         commands = (
-            load_commands
-            + [
-                Command(
-                    instruction=add_instr,
-                    operands=add_operands,
-                )
-            ]
-            + store_commands
+            load_commands +
+            [ICmd(
+                instruction=add_instr,
+                operands=add_operands,
+            )] +
+            store_commands
         )
 
         self._connection._remove_active_register(tmp_register)
@@ -321,13 +321,9 @@ class Future(BaseFuture):
         elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
-            raise TypeError(
-                f"Cannot use type {type(self._index)} as index to load future"
-            )
-        address_entry = parse_address(
-            f"{Symbols.ADDRESS_START}{self._address}[{index}]"
-        )
-        access_cmd = Command(
+            raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
+        address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{index}]")
+        access_cmd = ICmd(
             instruction=instruction,
             operands=[
                 register,
@@ -417,14 +413,12 @@ class RegFuture(BaseFuture):
             add_operands.append(mod)
 
         commands = (
-            load_commands
-            + [
-                Command(
-                    instruction=add_instr,
-                    operands=add_operands,
-                )
-            ]
-            + store_commands
+            load_commands +
+            [ICmd(
+                instruction=add_instr,
+                operands=add_operands,
+            )] +
+            store_commands
         )
 
         if other_tmp_register is not None:

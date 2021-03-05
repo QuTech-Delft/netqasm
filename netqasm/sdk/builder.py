@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+from enum import Enum, auto
 import abc
 
 from netqasm.sdk.network import NetworkInfo
@@ -21,7 +22,7 @@ from netqasm.lang.instr import operand
 from netqasm.lang.subroutine import (
     PreSubroutine,
     Subroutine,
-    Command,
+    ICmd,
     Address,
     ArrayEntry,
     ArraySlice,
@@ -62,7 +63,7 @@ from itertools import count
 from contextlib import contextmanager
 from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable, Iterator
 
-T_Cmd = Union[Command, BranchLabel]
+T_Cmd = Union[ICmd, BranchLabel]
 T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
 T_Message = Union[Message, SubroutineMessage]
 T_CValue = Union[int, Future, RegFuture]
@@ -107,6 +108,16 @@ class _IQbt:
     def __init__(self):
         self.id: int = self.__class__._COUNT
         self.__class__._COUNT += 1
+
+
+class _ICmdType(Enum):
+    NEW_VAL = auto()
+    Q_ROT = auto()
+
+
+class _ICmd:
+    def __init__(self, typ: _ICmdType):
+        self.typ: _ICmdType = typ
 
 
 class ArrayHandle:
@@ -158,9 +169,11 @@ class Builder:
         return_arrays: bool = True,
     ):
         # IR
-        self._iregs: Set[_IReg]
-        self._iarrays: Set[_IArr]
-        self._iqubits: Set[_IQbt]
+        self._iregs: Set[_IReg] = set()
+        self._iarrays: Set[_IArr] = set()
+        self._iqubits: Set[_IQbt] = set()
+
+        self._icmds: List[_ICmd] = []
 
         # All qubits active for this connection
         self.active_qubits: List[Qubit] = []
@@ -191,46 +204,19 @@ class Builder:
         self._iqubits.add(qbt)
         return QubitHandle(qbt)
 
-    def add_pending_commands(self, commands: List[T_Cmd]) -> None:
-        calling_lineno = self._line_tracker.get_line()
-        for command in commands:
-            if command.lineno is None:
-                command.lineno = calling_lineno
-            self.add_pending_command(command)
-
-    def add_pending_command(self, command: T_Cmd) -> None:
-        assert isinstance(command, Command) or isinstance(command, BranchLabel)
-        if command.lineno is None:
-            command.lineno = self._line_tracker.get_line()
-        self._pending_commands.append(command)
+    def _push_cmd(self, cmd: _ICmd) -> None:
+        self._icmds.append(cmd)
 
     def add_single_qubit_rotation_commands(
-        self, instruction: Instruction, virtual_qubit_id: int, n: int = 0, d: int = 0, angle: Optional[float] = None
+        self, instruction: Instruction, virtual_qubit_id: int, angle: float
     ) -> None:
-        if angle is not None:
-            nds = get_angle_spec_from_float(angle=angle)
-            for n, d in nds:
-                self.add_single_qubit_rotation_commands(
-                    instruction=instruction,
-                    virtual_qubit_id=virtual_qubit_id,
-                    n=n,
-                    d=d,
-                )
-            return
-        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
-            raise ValueError(f'{n} * pi / 2 ^ {d} is not a valid angle specification')
-        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
-        rot_command = Command(
-            instruction=instruction,
-            operands=[register, n, d],
-        )
-        commands: List[T_Cmd] = set_commands + [rot_command]
-        self.add_pending_commands(commands)
+        cmd = _ICmd(typ=_ICmdType.Q_ROT)
+        self._push_cmd(cmd)
 
     def add_single_qubit_commands(self, instr: Instruction, qubit_id: int) -> None:
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
-        qubit_command = Command(
+        qubit_command = ICmd(
             instruction=instr,
             operands=[register],
         )
@@ -240,7 +226,7 @@ class Builder:
     def add_two_qubit_commands(self, instr: Instruction, control_qubit_id: int, target_qubit_id: int) -> None:
         register1, set_commands1 = self._get_set_qubit_reg_commands(control_qubit_id, reg_index=0)
         register2, set_commands2 = self._get_set_qubit_reg_commands(target_qubit_id, reg_index=1)
-        qubit_command = Command(
+        qubit_command = ICmd(
             instruction=instr,
             operands=[register1, register2],
         )
@@ -256,12 +242,12 @@ class Builder:
                     self._free_up_qubit(virtual_address=0)
         outcome_reg = self._get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        meas_command = Command(
+        meas_command = ICmd(
             instruction=Instruction.MEAS,
             operands=[qubit_reg, outcome_reg],
         )
         if not inplace:
-            free_commands = [Command(
+            free_commands = [ICmd(
                 instruction=Instruction.QFREE,
                 operands=[qubit_reg],
             )]
@@ -281,11 +267,11 @@ class Builder:
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qalloc_command = Command(
+        qalloc_command = ICmd(
             instruction=Instruction.QALLOC,
             operands=[qubit_reg],
         )
-        init_command = Command(
+        init_command = ICmd(
             instruction=Instruction.INIT,
             operands=[qubit_reg],
         )
@@ -294,7 +280,7 @@ class Builder:
 
     def add_init_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        init_command = Command(
+        init_command = ICmd(
             instruction=Instruction.INIT,
             operands=[qubit_reg],
         )
@@ -303,7 +289,7 @@ class Builder:
 
     def add_qfree_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qfree_command = Command(
+        qfree_command = ICmd(
             instruction=Instruction.QFREE,
             operands=[qubit_reg],
         )

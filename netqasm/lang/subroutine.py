@@ -32,7 +32,7 @@ def _get_lineo_str(lineno):
 
 
 @dataclass
-class Command:
+class ICmd:
     instruction: Instruction
     args: List[int] = None  # type: ignore
     operands: List[T_OperandUnion] = None  # type: ignore
@@ -103,7 +103,7 @@ class PreSubroutine:
 
     netqasm_version: tuple
     app_id: int
-    commands: List[Union[Command, BranchLabel]]
+    commands: List[Union[ICmd, BranchLabel]]
 
     def __str__(self):
         to_return = f"PreSubroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"

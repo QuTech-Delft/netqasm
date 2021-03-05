@@ -3,6 +3,10 @@ from itertools import count
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
+from netqasm.lang.instr.operand import Label
+from netqasm.lang.subroutine import ICmd, BranchLabel, Subroutine, PreSubroutine
+from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
+from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
 from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice, Label, Register
@@ -11,7 +15,7 @@ from netqasm.lang.symbols import Symbols
 from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.util.string import group_by_word, is_number, is_variable_name
 
-T_Cmd = Union[Command, BranchLabel]
+T_Cmd = Union[ICmd, BranchLabel]
 T_ParsedValue = Union[int, Register, Label]
 
 
@@ -25,7 +29,7 @@ def parse_text_subroutine(
     """
     Convert a text representation of a subroutine into a Subroutine object.
 
-    Internally, first a `PreSubroutine` object is created, consisting of `Command`s.
+    Internally, first a `PreSubroutine` object is created, consisting of `ICmd`s.
     This is then converted into a `Subroutine` using `assemble_subroutine`.
     """
     preamble_lines, body_lines_with_macros = _split_preamble_body(subroutine)
@@ -76,7 +80,7 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subrou
     )
 
     for command in pre_subroutine.commands:
-        assert isinstance(command, Command)
+        assert isinstance(command, ICmd)
 
         instr = flavour.get_instr_by_name(command.instruction.name.lower())
         new_command = instr.from_operands(command.operands)
@@ -87,7 +91,7 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subrou
 
 
 def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
-    commands: List[Union[Command, BranchLabel]] = []
+    commands: List[Union[ICmd, BranchLabel]] = []
     for line in body_lines:
         if line.endswith(Symbols.BRANCH_END):
             # A command defining a branch label should end with BRANCH_END
@@ -103,7 +107,7 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
             operands = _parse_operands(words[1:])
-            command = Command(
+            command = ICmd(
                 instruction=instr,
                 args=args,
                 operands=operands,
@@ -409,7 +413,7 @@ def _assign_branch_labels(subroutine):
         # Assign the label to the line/command number
         branch_labels[branch_label] = command_number
         # Remove the line
-        commands = commands[:command_number] + commands[command_number + 1 :]
+        commands = commands[:command_number] + commands[command_number + 1:]
     subroutine.commands = commands
     _update_labels(subroutine, branch_labels)
 
@@ -417,7 +421,7 @@ def _assign_branch_labels(subroutine):
 def _update_labels(subroutine, variables: Dict[str, int], from_command=0):
     """Updates labels in a subroutine with given values"""
     for command in subroutine.commands[from_command:]:
-        if isinstance(command, Command):
+        if isinstance(command, ICmd):
             _update_labels_in_command(command, variables)
 
 
@@ -443,7 +447,7 @@ def _get_unused_address(current_addresses):
 
 def _make_args_operands(subroutine):
     for command in subroutine.commands:
-        if not isinstance(command, Command):
+        if not isinstance(command, ICmd):
             continue
         command.operands = command.args + command.operands
         command.args = []
@@ -465,7 +469,7 @@ for instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
 
 
-def _replace_constants(commands: List[Union[Command, BranchLabel]]):
+def _replace_constants(commands: List[Union[ICmd, BranchLabel]]):
     current_registers = get_current_registers(commands)
 
     def reg_and_set_cmd(value, tmp_registers: List[Register], lineno=None):
@@ -475,7 +479,7 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
                 break
         else:
             raise RuntimeError("Could not replace constant since no registers left")
-        set_command = Command(
+        set_command = ICmd(
             instruction=Instruction.SET,
             args=[],
             operands=[register, value],
@@ -488,7 +492,7 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
     i = 0
     while i < len(commands):
         command = commands[i]
-        if not isinstance(command, Command):
+        if not isinstance(command, ICmd):
             i += 1
             continue
         tmp_registers: List[Register] = []
@@ -528,7 +532,7 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
 def get_current_registers(commands: List[T_Cmd]) -> Set[str]:
     current_registers = set()
     for command in commands:
-        if not isinstance(command, Command):
+        if not isinstance(command, ICmd):
             continue
         for op in command.operands:
             if isinstance(op, Register):

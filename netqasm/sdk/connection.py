@@ -53,6 +53,9 @@ from netqasm.lang.parsing.text import (
     parse_register,
 )
 from netqasm.lang.subroutine import (
+    PreSubroutine,
+    Subroutine,
+    ICmd,
     Address,
     ArrayEntry,
     ArraySlice,
@@ -98,10 +101,8 @@ from itertools import count
 from contextlib import contextmanager
 from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable, Iterator
 
-T_Cmd = Union[Command, BranchLabel]
-T_LinkLayerOkList = Union[
-    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
-]
+T_Cmd = Union[ICmd, BranchLabel]
+T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
 T_Message = Union[Message, SubroutineMessage]
 T_CValue = Union[int, Future, RegFuture]
 T_PostRoutine = Callable[
@@ -444,9 +445,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def new_register(self, init_value: int = 0) -> RegFuture:
         reg = self._get_inactive_register(activate=True)
-        self.add_pending_command(
-            Command(instruction=Instruction.SET, operands=[reg, init_value])
-        )
+        self.add_pending_command(ICmd(instruction=Instruction.SET, operands=[reg, init_value]))
         self._registers_to_return.append(reg)
         return RegFuture(connection=self, reg=reg)
 
@@ -458,7 +457,7 @@ class BaseNetQASMConnection(abc.ABC):
             self.add_pending_command(command)
 
     def add_pending_command(self, command: T_Cmd) -> None:
-        assert isinstance(command, Command) or isinstance(command, BranchLabel)
+        assert isinstance(command, ICmd) or isinstance(command, BranchLabel)
         if command.lineno is None:
             command.lineno = self._line_tracker.get_line()
         self._pending_commands.append(command)
@@ -508,9 +507,10 @@ class BaseNetQASMConnection(abc.ABC):
     def _add_ret_reg_commands(self) -> None:
         ret_reg_instrs: List[T_Cmd] = []
         for reg in self._registers_to_return:
-            ret_reg_instrs.append(
-                Command(instruction=Instruction.RET_REG, operands=[reg])
-            )
+            ret_reg_instrs.append(ICmd(
+                instruction=Instruction.RET_REG,
+                operands=[reg]
+            ))
         self.add_pending_commands(commands=ret_reg_instrs)
 
     def _add_array_commands(self) -> None:
@@ -524,17 +524,15 @@ class BaseNetQASMConnection(abc.ABC):
         init_arrays: List[T_Cmd] = []
         return_arrays: List[T_Cmd] = []
         for array in self._arrays_to_return:
-            # Command for initialising the array
-            init_arrays.append(
-                Command(
-                    instruction=Instruction.ARRAY,
-                    operands=[
-                        len(array),
-                        Address(array.address),
-                    ],
-                    lineno=array.lineno,
-                )
-            )
+            # ICmd for initialising the array
+            init_arrays.append(ICmd(
+                instruction=Instruction.ARRAY,
+                operands=[
+                    len(array),
+                    Address(array.address),
+                ],
+                lineno=array.lineno,
+            ))
             # Populate the array if needed
             init_vals = array._init_values
             if init_vals is not None:
@@ -544,47 +542,38 @@ class BaseNetQASMConnection(abc.ABC):
                     loop_register = self._get_inactive_register()
 
                     def init_array_elt(conn):
-                        conn.add_pending_command(
-                            Command(
-                                instruction=Instruction.STORE,
-                                operands=[
-                                    init_vals[0],
-                                    ArrayEntry(Address(array.address), loop_register),
-                                ],
-                                lineno=array.lineno,
-                            )
-                        )
-
-                    self.loop_body(
-                        init_array_elt, stop=length, loop_register=loop_register
-                    )
+                        conn.add_pending_command(ICmd(
+                            instruction=Instruction.STORE,
+                            operands=[
+                                init_vals[0],
+                                ArrayEntry(Address(array.address), loop_register),
+                            ],
+                            lineno=array.lineno,
+                        ))
+                    self.loop_body(init_array_elt, stop=length, loop_register=loop_register)
                     init_arrays += self._pop_pending_commands()
                 else:
                     for i, value in enumerate(init_vals):
                         if value is None:
                             continue
                         else:
-                            init_arrays.append(
-                                Command(
-                                    instruction=Instruction.STORE,
-                                    operands=[
-                                        value,
-                                        ArrayEntry(Address(array.address), i),
-                                    ],
-                                    lineno=array.lineno,
-                                )
-                            )
-            # Command for returning the array by the end of the subroutine
+                            init_arrays.append(ICmd(
+                                instruction=Instruction.STORE,
+                                operands=[
+                                    value,
+                                    ArrayEntry(Address(array.address), i),
+                                ],
+                                lineno=array.lineno,
+                            ))
+            # ICmd for returning the array by the end of the subroutine
             if self._return_arrays:
-                return_arrays.append(
-                    Command(
-                        instruction=Instruction.RET_ARR,
-                        operands=[
-                            Address(array.address),
-                        ],
-                        lineno=array.lineno,
-                    )
-                )
+                return_arrays.append(ICmd(
+                    instruction=Instruction.RET_ARR,
+                    operands=[
+                        Address(array.address),
+                    ],
+                    lineno=array.lineno,
+                ))
         return init_arrays, return_arrays
 
     def _subroutine_from_commands(self, commands: List[T_Cmd]) -> PreSubroutine:
@@ -643,7 +632,7 @@ class BaseNetQASMConnection(abc.ABC):
         if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
             raise ValueError(f"{n} * pi / 2 ^ {d} is not a valid angle specification")
         register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
-        rot_command = Command(
+        rot_command = ICmd(
             instruction=instruction,
             operands=[register, n, d],
         )
@@ -653,7 +642,7 @@ class BaseNetQASMConnection(abc.ABC):
     def add_single_qubit_commands(self, instr: Instruction, qubit_id: int) -> None:
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
-        qubit_command = Command(
+        qubit_command = ICmd(
             instruction=instr,
             operands=[register],
         )
@@ -668,31 +657,23 @@ class BaseNetQASMConnection(abc.ABC):
         if isinstance(q_address, Future):
             set_reg_cmds = q_address._get_load_commands(register)
         elif isinstance(q_address, int):
-            set_reg_cmds = [
-                Command(
-                    instruction=Instruction.SET,
-                    operands=[
-                        register,
-                        q_address,
-                    ],
-                )
-            ]
+            set_reg_cmds = [ICmd(
+                instruction=Instruction.SET,
+                operands=[
+                    register,
+                    q_address,
+                ],
+            )]
         else:
             raise NotImplementedError(
                 "Setting qubit reg for other types not yet implemented"
             )
         return register, set_reg_cmds
 
-    def add_two_qubit_commands(
-        self, instr: Instruction, control_qubit_id: int, target_qubit_id: int
-    ) -> None:
-        register1, set_commands1 = self._get_set_qubit_reg_commands(
-            control_qubit_id, reg_index=0
-        )
-        register2, set_commands2 = self._get_set_qubit_reg_commands(
-            target_qubit_id, reg_index=1
-        )
-        qubit_command = Command(
+    def add_two_qubit_commands(self, instr: Instruction, control_qubit_id: int, target_qubit_id: int) -> None:
+        register1, set_commands1 = self._get_set_qubit_reg_commands(control_qubit_id, reg_index=0)
+        register2, set_commands2 = self._get_set_qubit_reg_commands(target_qubit_id, reg_index=1)
+        qubit_command = ICmd(
             instruction=instr,
             operands=[register1, register2],
         )
@@ -731,17 +712,15 @@ class BaseNetQASMConnection(abc.ABC):
                     self._free_up_qubit(virtual_address=0)
         outcome_reg = self._get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        meas_command = Command(
+        meas_command = ICmd(
             instruction=Instruction.MEAS,
             operands=[qubit_reg, outcome_reg],
         )
         if not inplace:
-            free_commands = [
-                Command(
-                    instruction=Instruction.QFREE,
-                    operands=[qubit_reg],
-                )
-            ]
+            free_commands = [ICmd(
+                instruction=Instruction.QFREE,
+                operands=[qubit_reg],
+            )]
         else:
             free_commands = []
         if future is not None:
@@ -766,11 +745,11 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qalloc_command = Command(
+        qalloc_command = ICmd(
             instruction=Instruction.QALLOC,
             operands=[qubit_reg],
         )
-        init_command = Command(
+        init_command = ICmd(
             instruction=Instruction.INIT,
             operands=[qubit_reg],
         )
@@ -779,7 +758,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_init_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        init_command = Command(
+        init_command = ICmd(
             instruction=Instruction.INIT,
             operands=[qubit_reg],
         )
@@ -788,7 +767,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def add_qfree_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qfree_command = Command(
+        qfree_command = ICmd(
             instruction=Instruction.QFREE,
             operands=[qubit_reg],
         )
@@ -898,7 +877,7 @@ class BaseNetQASMConnection(abc.ABC):
             raise ValueError(f"Not an epr instruction {instruction}")
 
         # epr command
-        epr_cmd = Command(
+        epr_cmd = ICmd(
             instruction=instruction,
             args=[remote_node_id, epr_socket_id],
             operands=epr_cmd_operands,
@@ -906,12 +885,10 @@ class BaseNetQASMConnection(abc.ABC):
 
         # wait
         if wait_all:
-            wait_cmds = [
-                Command(
-                    instruction=Instruction.WAIT_ALL,
-                    operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],  # type: ignore
-                )
-            ]
+            wait_cmds = [ICmd(
+                instruction=Instruction.WAIT_ALL,
+                operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],  # type: ignore
+            )]
         else:
             wait_cmds = []
 
@@ -966,46 +943,36 @@ class BaseNetQASMConnection(abc.ABC):
         created_regs = [arr_start, tmp, arr_stop]
 
         for reg in created_regs:
-            self.add_pending_command(
-                Command(
-                    instruction=Instruction.SET,
-                    operands=[reg, 0],
-                )
-            )
+            self.add_pending_command(ICmd(
+                instruction=Instruction.SET,
+                operands=[reg, 0],
+            ))
 
         # Multiply pair * OK_FIELDS
         # TODO use loop context
         def add_arr_start(conn):
-            self.add_pending_command(
-                Command(
-                    instruction=Instruction.ADD,
-                    operands=[arr_start, arr_start, pair],
-                )
-            )
-
+            self.add_pending_command(ICmd(
+                instruction=Instruction.ADD,
+                operands=[arr_start, arr_start, pair],
+            ))
         self.loop_body(add_arr_start, stop=OK_FIELDS_K)
 
         # Let tmp be pair + 1
-        self.add_pending_command(
-            Command(
-                instruction=Instruction.ADD,
-                operands=[tmp, pair, 1],
-            )
-        )
+        self.add_pending_command(ICmd(
+            instruction=Instruction.ADD,
+            operands=[tmp, pair, 1],
+        ))
 
         # Multiply (tmp = pair + 1) * OK_FIELDS
         # TODO use loop context
         def add_arr_stop(conn):
-            self.add_pending_command(
-                Command(
-                    instruction=Instruction.ADD,
-                    operands=[arr_stop, arr_stop, tmp],
-                )
-            )
-
+            self.add_pending_command(ICmd(
+                instruction=Instruction.ADD,
+                operands=[arr_stop, arr_stop, tmp],
+            ))
         self.loop_body(add_arr_stop, stop=OK_FIELDS_K)
 
-        wait_cmd = Command(
+        wait_cmd = ICmd(
             instruction=Instruction.WAIT_ALL,
             operands=[
                 ArraySlice(
@@ -1407,7 +1374,7 @@ class BaseNetQASMConnection(abc.ABC):
         a: Optional[T_CValue],
         b: Optional[T_CValue],
         current_branch_variables: List[str],
-    ) -> Tuple[List[Command], List[BranchLabel]]:
+    ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
         exit_label = self._find_unused_variable(
             start_with="IF_EXIT", current_variables=current_branch_variables
@@ -1420,10 +1387,8 @@ class BaseNetQASMConnection(abc.ABC):
                 # Register for checking branching based on condition
                 reg = self._get_inactive_register(activate=True)
                 # Load values
-                address_entry = parse_address(
-                    f"{Symbols.ADDRESS_START}{x._address}[{x._index}]"
-                )
-                load = Command(
+                address_entry = parse_address(f"{Symbols.ADDRESS_START}{x._address}[{x._index}]")
+                load = ICmd(
                     instruction=Instruction.LOAD,
                     operands=[
                         reg,
@@ -1439,7 +1404,7 @@ class BaseNetQASMConnection(abc.ABC):
                 cond_values.append(x)
             else:
                 raise TypeError(f"Cannot do conditional statement with type {type(x)}")
-        branch = Command(
+        branch = ICmd(
             instruction=branch_instruction,
             operands=[
                 cond_values[0],
@@ -1622,12 +1587,12 @@ class BaseNetQASMConnection(abc.ABC):
         loop_register: operand.Register,
     ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
         entry_loop: List[T_Cmd] = [
-            Command(
+            ICmd(
                 instruction=Instruction.SET,
                 operands=[loop_register, start],
             ),
             BranchLabel(entry_label),
-            Command(
+            ICmd(
                 instruction=Instruction.BEQ,
                 operands=[
                     loop_register,
@@ -1637,7 +1602,7 @@ class BaseNetQASMConnection(abc.ABC):
             ),
         ]
         exit_loop: List[T_Cmd] = [
-            Command(
+            ICmd(
                 instruction=Instruction.ADD,
                 operands=[
                     loop_register,
@@ -1645,7 +1610,7 @@ class BaseNetQASMConnection(abc.ABC):
                     step,
                 ],
             ),
-            Command(
+            ICmd(
                 instruction=Instruction.JMP,
                 operands=[Label(entry_label)],
             ),
