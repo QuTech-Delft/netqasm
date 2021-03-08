@@ -2,7 +2,6 @@ import math
 
 from netqasm.sdk import Qubit, EPRSocket
 from netqasm.sdk.external import NetQASMConnection, get_qubit_state, Socket
-from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.logging.output import get_new_app_logger
 from netqasm.sdk.classical_communication.message import StructuredMessage
 
@@ -76,7 +75,7 @@ def main(app_config=None):
         socket.send("This is a simple message. After this follows a message with header and payload.")
         msg = StructuredMessage(header="This is a header", payload="This is the payload")
         socket.send_structured(msg)
-        app_logger.log(f"These classical messages and app logs should not remove the qubit state visualizations")
+        app_logger.log("These classical messages and app logs should not remove the qubit state visualizations")
 
         party1.flush()
         app_logger.log("Following operation: create entanglement")
