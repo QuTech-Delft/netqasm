@@ -135,6 +135,13 @@ class InstrLogger(StructuredLogger):
             outcome = output
         else:
             outcome = None
+        if (isinstance(command, instructions.core.RotationInstruction)
+                or isinstance(command, instructions.core.ControlledRotationInstruction)):
+            num = command.angle_num.value
+            denom = 2 ** command.angle_denom.value
+            angle = {"num": num, "denom": denom}
+        else:
+            angle = None
 
         qubit_groups = self._get_qubit_groups()
         return asdict(InstrLogEntry(
@@ -147,6 +154,7 @@ class InstrLogger(StructuredLogger):
             HFL=None,
             INS=instr_name,
             OPR=ops_str,
+            ANG=angle,
             QID=virtual_qubit_ids,
             VID=physical_qubit_ids,
             OUT=outcome,
