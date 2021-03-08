@@ -157,7 +157,3 @@ def test_init_no_overwrite():
                 continue
             with open(entry_path, 'r') as f:
                 assert f.read() == "test"
-
-
-if __name__ == "__main__":
-    test_init_no_overwrite()
