@@ -173,7 +173,7 @@ def init_folder(path, quiet=False):
         file_added = True
 
     # Create results_config.json if non-existant
-    results_config_file_path = os.path.join(path, "results_config.json")
+    results_config_file_path = os.path.join(path, "qne/results_config.json")
     if not os.path.exists(results_config_file_path):
         _create_new_results_config_file(
             file_path=results_config_file_path,
@@ -292,6 +292,7 @@ def _create_new_readme_file(file_path, quiet=False):
 
 @file_creation_notify
 def _create_new_results_config_file(file_path, quiet=False):
+    os.makedirs(os.path.dirname(file_path))
     with open(file_path, 'w') as f:
         f.write(
             r"""[

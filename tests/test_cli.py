@@ -1,5 +1,6 @@
 import os
 from click.testing import CliRunner
+import shutil
 
 import netqasm
 from netqasm.runtime.cli import cli
@@ -85,8 +86,13 @@ def test_init():
         files_start = os.listdir(path)
         # Remove all config files
         for entry in os.listdir(path):
-            if not (entry.startswith("app_") and entry.endswith(".py")):
-                os.remove(os.path.join(path, entry))
+            entry_path = os.path.join(path, entry)
+            if os.path.isfile(entry_path):
+                if not (entry.startswith("app_") and entry.endswith(".py")):
+                    os.remove(entry_path)
+            else:
+                assert os.path.isdir(entry_path)
+                shutil.rmtree(entry_path)
         assert len(os.listdir(path)) == 2
 
         # Initialize again
@@ -134,7 +140,10 @@ def test_init_no_overwrite():
         results = runner.invoke(cli, ["new", path])
         # Write test to all files
         for entry in os.listdir(path):
-            with open(os.path.join(path, entry), 'w') as f:
+            entry_path = os.path.join(path, entry)
+            if not os.path.isfile(entry_path):
+                continue
+            with open(entry_path, 'w') as f:
                 f.write("test")
 
         results = runner.invoke(cli, ["init", f"--path={path}"])
@@ -143,5 +152,12 @@ def test_init_no_overwrite():
 
         # Check that files remained
         for entry in os.listdir(path):
-            with open(os.path.join(path, entry), 'r') as f:
+            entry_path = os.path.join(path, entry)
+            if not os.path.isfile(entry_path):
+                continue
+            with open(entry_path, 'r') as f:
                 assert f.read() == "test"
+
+
+if __name__ == "__main__":
+    test_init_no_overwrite()
