@@ -1,26 +1,5 @@
 import ctypes
 from enum import Enum
-from typing import Dict
-
-from netqasm.lang.encoding import (
-    AddrCommand,
-    ArrayCommand,
-    ArrayEntryCommand,
-    ArraySliceCommand,
-    ImmCommand,
-    MeasCommand,
-    Reg5Command,
-    RegAddrCommand,
-    RegCommand,
-    RegEntryCommand,
-    RegImmCommand,
-    RegImmImmCommand,
-    RegRegCommand,
-    RegRegImmCommand,
-    RegRegRegCommand,
-    RegRegRegRegCommand,
-    SingleRegisterCommand,
-)
 
 
 class Instruction(Enum):
@@ -85,115 +64,6 @@ class Instruction(Enum):
     CROT_Y = 52
 
 
-_COMMAND_GROUPS = {
-    RegCommand: [
-        Instruction.QALLOC,
-        Instruction.INIT,
-        Instruction.X,
-        Instruction.Y,
-        Instruction.Z,
-        Instruction.H,
-        Instruction.S,
-        Instruction.K,
-        Instruction.T,
-        Instruction.QFREE,
-    ],
-    RegRegCommand: [
-        Instruction.CNOT,
-        Instruction.CPHASE,
-    ],
-    MeasCommand: [
-        Instruction.MEAS,
-    ],
-    RegImmImmCommand: [
-        Instruction.ROT_X,
-        Instruction.ROT_Y,
-        Instruction.ROT_Z,
-    ],
-    RegRegRegCommand: [
-        Instruction.ADD,
-        Instruction.SUB,
-    ],
-    RegRegRegRegCommand: [
-        Instruction.ADDM,
-        Instruction.SUBM,
-        Instruction.RECV_EPR,
-    ],
-    ImmCommand: [
-        Instruction.JMP,
-    ],
-    RegRegImmCommand: [
-        Instruction.BEQ,
-        Instruction.BNE,
-        Instruction.BLT,
-        Instruction.BGE,
-    ],
-    RegImmCommand: [
-        Instruction.SET,
-        Instruction.BEZ,
-        Instruction.BNZ,
-    ],
-    RegEntryCommand: [
-        Instruction.STORE,
-        Instruction.LOAD,
-    ],
-    RegAddrCommand: [
-        Instruction.LEA,
-    ],
-    ArrayEntryCommand: [
-        Instruction.UNDEF,
-        Instruction.WAIT_SINGLE,
-    ],
-    ArraySliceCommand: [
-        Instruction.WAIT_ALL,
-        Instruction.WAIT_ANY,
-    ],
-    SingleRegisterCommand: [
-        Instruction.RET_REG,
-    ],
-    ArrayCommand: [
-        Instruction.ARRAY,
-    ],
-    AddrCommand: [
-        Instruction.RET_ARR,
-    ],
-    Reg5Command: [
-        Instruction.CREATE_EPR,
-    ],
-}
-
-# Quantum gates
-STATIC_SINGLE_QUBIT_GATES = [
-    Instruction.X,
-    Instruction.Y,
-    Instruction.Z,
-    Instruction.H,
-    Instruction.K,
-    Instruction.S,
-    Instruction.T,
-]
-
-SINGLE_QUBIT_ROTATION_GATES = [
-    Instruction.ROT_X,
-    Instruction.ROT_Y,
-    Instruction.ROT_Z,
-]
-
-SINGLE_QUBIT_GATES = STATIC_SINGLE_QUBIT_GATES + SINGLE_QUBIT_ROTATION_GATES
-
-TWO_QUBIT_GATES = [
-    Instruction.CNOT,
-    Instruction.CPHASE,
-]
-
-QUBIT_GATES = SINGLE_QUBIT_GATES + TWO_QUBIT_GATES
-
-EPR_INSTR = [
-    Instruction.CREATE_EPR,
-    Instruction.RECV_EPR,
-]
-
-
 def instruction_to_string(instr):
     if not isinstance(instr, Instruction):
         raise ValueError(f"Unknown instruction {instr}")
@@ -222,21 +92,3 @@ def string_to_instruction(instr_str):
     if instr is None:
         raise ValueError(f"Unknown instruction {instr_str}")
     return instr
-
-
-def _create_command_struct(instr, command_group):
-    instr_name = instruction_to_string(instr)
-    class_name = f"{instr_name}Command"
-    class_name = class_name[0].upper() + class_name[1:]
-    return type(
-        class_name,
-        (command_group,),
-        {"ID": instr.value},
-    )
-
-
-COMMAND_STRUCTS: Dict[Instruction, ctypes.Structure] = {
-    instr: _create_command_struct(instr, command_group)
-    for command_group, instrs in _COMMAND_GROUPS.items()
-    for instr in instrs
-}
