@@ -1807,6 +1807,10 @@ class DebugConnection(BaseNetQASMConnection):
         self.storage = []
         super().__init__(*args, **kwargs)
 
+    @property
+    def shared_memory(self) -> SharedMemory:
+        return SharedMemory()
+
     def _commit_serialized_message(
         self, raw_msg: bytes, block: bool = True, callback: Optional[Callable] = None
     ) -> None:
