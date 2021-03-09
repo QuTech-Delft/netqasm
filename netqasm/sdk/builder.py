@@ -112,7 +112,18 @@ class _IQbt:
 
 class _ICmdType(Enum):
     NEW_VAL = auto()
-    Q_ROT = auto()
+    Q_SINGLE = auto()
+    Q_SINGLE_PARM = auto()
+    Q_MULTI = auto()
+    Q_MULTI_PARM = auto()
+    Q_ALLOC = auto()
+    Q_FREE = auto()
+    Q_MEAS = auto()
+    Q_ENTANGLE = auto()
+    C_NEW = auto()
+    C_NEW_ARRAY = auto()
+    B_LABEL = auto()
+    B_BRANCH = auto()
 
 
 class _ICmd:
@@ -210,7 +221,7 @@ class Builder:
     def add_single_qubit_rotation_commands(
         self, instruction: Instruction, virtual_qubit_id: int, angle: float
     ) -> None:
-        cmd = _ICmd(typ=_ICmdType.Q_ROT)
+        cmd = _ICmd(typ=_ICmdType.Q_SINGLE_PARM)
         self._push_cmd(cmd)
 
     def add_single_qubit_commands(self, instr: Instruction, qubit_id: int) -> None:
