@@ -2,6 +2,8 @@ import logging
 
 import pytest
 
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.instr.operand import Register
 from netqasm.backend.executor import Executor
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.parsing import parse_text_subroutine

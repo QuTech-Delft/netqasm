@@ -19,9 +19,9 @@ from netqasm.backend.messages import (
     Message,
 )
 from netqasm.lang.instr import operand
-from netqasm.lang.subroutine import (
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.ir import (
     PreSubroutine,
-    Subroutine,
     ICmd,
     Address,
     ArrayEntry,
@@ -40,7 +40,7 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
-from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
+from netqasm.lang.instr.instr_enum import GenericInstr, flip_branch_instr
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm import NETQASM_VERSION
@@ -219,12 +219,12 @@ class Builder:
         self._icmds.append(cmd)
 
     def add_single_qubit_rotation_commands(
-        self, instruction: Instruction, virtual_qubit_id: int, angle: float
+        self, instruction: GenericInstr, virtual_qubit_id: int, angle: float
     ) -> None:
         cmd = _ICmd(typ=_ICmdType.Q_SINGLE_PARM)
         self._push_cmd(cmd)
 
-    def add_single_qubit_commands(self, instr: Instruction, qubit_id: int) -> None:
+    def add_single_qubit_commands(self, instr: GenericInstr, qubit_id: int) -> None:
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
         qubit_command = ICmd(
@@ -234,7 +234,7 @@ class Builder:
         commands: List[T_Cmd] = set_commands + [qubit_command]
         self.add_pending_commands(commands)
 
-    def add_two_qubit_commands(self, instr: Instruction, control_qubit_id: int, target_qubit_id: int) -> None:
+    def add_two_qubit_commands(self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int) -> None:
         register1, set_commands1 = self._get_set_qubit_reg_commands(control_qubit_id, reg_index=0)
         register2, set_commands2 = self._get_set_qubit_reg_commands(target_qubit_id, reg_index=1)
         qubit_command = ICmd(
@@ -254,12 +254,12 @@ class Builder:
         outcome_reg = self._get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         meas_command = ICmd(
-            instruction=Instruction.MEAS,
+            instruction=GenericInstr.MEAS,
             operands=[qubit_reg, outcome_reg],
         )
         if not inplace:
             free_commands = [ICmd(
-                instruction=Instruction.QFREE,
+                instruction=GenericInstr.QFREE,
                 operands=[qubit_reg],
             )]
         else:
@@ -279,11 +279,11 @@ class Builder:
     def add_new_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qalloc_command = ICmd(
-            instruction=Instruction.QALLOC,
+            instruction=GenericInstr.QALLOC,
             operands=[qubit_reg],
         )
         init_command = ICmd(
-            instruction=Instruction.INIT,
+            instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
         commands = set_commands + [qalloc_command, init_command]
@@ -292,7 +292,7 @@ class Builder:
     def add_init_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         init_command = ICmd(
-            instruction=Instruction.INIT,
+            instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
         commands = set_commands + [init_command]
@@ -301,7 +301,7 @@ class Builder:
     def add_qfree_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qfree_command = ICmd(
-            instruction=Instruction.QFREE,
+            instruction=GenericInstr.QFREE,
             operands=[qubit_reg],
         )
         commands = set_commands + [qfree_command]
@@ -325,7 +325,7 @@ class Builder:
             raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
 
         return self._handle_request(
-            instruction=Instruction.CREATE_EPR,
+            instruction=GenericInstr.CREATE_EPR,
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
             number=number,
@@ -349,7 +349,7 @@ class Builder:
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
         return self._handle_request(
-            instruction=Instruction.RECV_EPR,
+            instruction=GenericInstr.RECV_EPR,
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
             number=number,
@@ -360,27 +360,27 @@ class Builder:
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
-        self._handle_if(Instruction.BEQ, a, b, body)
+        self._handle_if(GenericInstr.BEQ, a, b, body)
 
     def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != b"""
-        self._handle_if(Instruction.BNE, a, b, body)
+        self._handle_if(GenericInstr.BNE, a, b, body)
 
     def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a < b"""
-        self._handle_if(Instruction.BLT, a, b, body)
+        self._handle_if(GenericInstr.BLT, a, b, body)
 
     def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a >= b"""
-        self._handle_if(Instruction.BGE, a, b, body)
+        self._handle_if(GenericInstr.BGE, a, b, body)
 
     def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == 0"""
-        self._handle_if(Instruction.BEZ, a, b=None, body=body)
+        self._handle_if(GenericInstr.BEZ, a, b=None, body=body)
 
     def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._handle_if(Instruction.BNZ, a, b=None, body=body)
+        self._handle_if(GenericInstr.BNZ, a, b=None, body=body)
 
     @contextmanager
     def loop(

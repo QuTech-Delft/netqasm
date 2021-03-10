@@ -2,7 +2,7 @@ import ctypes
 from enum import Enum
 
 
-class Instruction(Enum):
+class GenericInstr(Enum):
     # Allocation
     QALLOC = 1
     # Initialization
@@ -65,26 +65,26 @@ class Instruction(Enum):
 
 
 def instruction_to_string(instr):
-    if not isinstance(instr, Instruction):
+    if not isinstance(instr, GenericInstr):
         raise ValueError(f"Unknown instruction {instr}")
     return instr.name.lower()
 
 
-def flip_branch_instr(instr: Instruction) -> Instruction:
+def flip_branch_instr(instr: GenericInstr) -> GenericInstr:
     try:
         return {
-            Instruction.BEQ: Instruction.BNE,
-            Instruction.BNE: Instruction.BEQ,
-            Instruction.BLT: Instruction.BGE,
-            Instruction.BGE: Instruction.BLT,
-            Instruction.BEZ: Instruction.BNZ,
-            Instruction.BNZ: Instruction.BEZ,
+            GenericInstr.BEQ: GenericInstr.BNE,
+            GenericInstr.BNE: GenericInstr.BEQ,
+            GenericInstr.BLT: GenericInstr.BGE,
+            GenericInstr.BGE: GenericInstr.BLT,
+            GenericInstr.BEZ: GenericInstr.BNZ,
+            GenericInstr.BNZ: GenericInstr.BEZ,
         }[instr]
     except KeyError:
         raise ValueError(f"Not a branch instruction {instr}")
 
 
-_STRING_TO_INSTRUCTION = {instruction_to_string(instr): instr for instr in Instruction}
+_STRING_TO_INSTRUCTION = {instruction_to_string(instr): instr for instr in GenericInstr}
 
 
 def string_to_instruction(instr_str):

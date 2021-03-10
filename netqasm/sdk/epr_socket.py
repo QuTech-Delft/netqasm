@@ -14,12 +14,11 @@ from qlink_interface import (
     RandomBasis,
 )
 
-from netqasm.lang.instr.instr_enum import Instruction
-from netqasm.logging.glob import get_netqasm_logger
-
 from .qubit import Qubit
 
 """TODO write about epr sockets"""
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.lang.instr.instr_enum import GenericInstr
 
 
 if TYPE_CHECKING:
@@ -292,7 +291,7 @@ class EPRSocket(abc.ABC):
                   the size of the unit module. However, if `sequential` is `True` is can.
         """
         try:
-            instruction = Instruction.CREATE_EPR
+            instruction = GenericInstr.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -347,7 +346,7 @@ class EPRSocket(abc.ABC):
     def recv_context(self, number: int = 1, sequential: bool = False):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
-            instruction = Instruction.RECV_EPR
+            instruction = GenericInstr.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,

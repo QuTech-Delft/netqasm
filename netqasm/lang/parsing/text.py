@@ -4,8 +4,9 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.instr.operand import Label
-from netqasm.lang.subroutine import ICmd, BranchLabel, Subroutine, PreSubroutine
-from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.ir import ICmd, BranchLabel, PreSubroutine
+from netqasm.lang.instr.instr_enum import GenericInstr, string_to_instruction
 from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
@@ -454,17 +455,17 @@ def _make_args_operands(subroutine):
 
 
 _REPLACE_CONSTANTS_EXCEPTION = [
-    (Instruction.SET, 1),
-    (Instruction.JMP, 0),
-    (Instruction.BEZ, 1),
-    (Instruction.BNZ, 1),
-    (Instruction.BEQ, 2),
-    (Instruction.BNE, 2),
-    (Instruction.BLT, 2),
-    (Instruction.BGE, 2),
+    (GenericInstr.SET, 1),
+    (GenericInstr.JMP, 0),
+    (GenericInstr.BEZ, 1),
+    (GenericInstr.BNZ, 1),
+    (GenericInstr.BEQ, 2),
+    (GenericInstr.BNE, 2),
+    (GenericInstr.BLT, 2),
+    (GenericInstr.BGE, 2),
 ]
 
-for instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
+for instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
     for index in [1, 2]:
         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
 
@@ -480,7 +481,7 @@ def _replace_constants(commands: List[Union[ICmd, BranchLabel]]):
         else:
             raise RuntimeError("Could not replace constant since no registers left")
         set_command = ICmd(
-            instruction=Instruction.SET,
+            instruction=GenericInstr.SET,
             args=[],
             operands=[register, value],
             lineno=lineno,
