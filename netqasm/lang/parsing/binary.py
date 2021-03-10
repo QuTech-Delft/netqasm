@@ -1,9 +1,8 @@
 import ctypes
 
 from netqasm.lang import encoding
-from netqasm.lang.instr.base import NetQASMInstruction
-from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.instr import Flavour, VanillaFlavour, NetQASMInstruction
 
 INSTR_ID = ctypes.c_uint8
 
@@ -24,7 +23,7 @@ class Deserializer:
     def _parse_metadata(self, raw):
         metadata = raw[: encoding.METADATA_BYTES]
         metadata = encoding.Metadata.from_buffer_copy(metadata)
-        data = raw[encoding.METADATA_BYTES :]
+        data = raw[encoding.METADATA_BYTES:]
         return metadata, data
 
     def deserialize_subroutine(self, raw: bytes) -> Subroutine:
@@ -35,7 +34,7 @@ class Deserializer:
 
         commands = [
             self.deserialize_command(
-                raw[i * encoding.COMMAND_BYTES : (i + 1) * encoding.COMMAND_BYTES]
+                raw[i * encoding.COMMAND_BYTES: (i + 1) * encoding.COMMAND_BYTES]
             )
             for i in range(num_commands)
         ]

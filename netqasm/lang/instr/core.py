@@ -5,8 +5,8 @@ from typing import List
 import numpy as np
 
 from netqasm.lang.operand import Register, Immediate
-from netqasm.lang.instr import base
-from netqasm.lang.instr.operand import Immediate, Register
+from . import base
+
 
 # Explicit core NetQASM instructions.
 

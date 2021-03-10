@@ -2,11 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-import netqasm.lang.instr.core as core
-from netqasm.util.quantum_gates import (
-    get_controlled_rotation_matrix,
-    get_rotation_matrix,
-)
+from . import core
+from netqasm.util.quantum_gates import get_rotation_matrix, get_controlled_rotation_matrix
+
 
 # Explicit instruction types in the NV flavour.
 

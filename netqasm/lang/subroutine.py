@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from netqasm.lang import encoding
 from netqasm.util.string import rspaces
 
-from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
+from netqasm.lang.instr import NetQASMInstruction, DebugInstruction
 
 
 @dataclass
