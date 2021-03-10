@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Union, Optional
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 
 from netqasm.util.string import rspaces
 from netqasm.lang.symbols import Symbols
@@ -21,64 +21,61 @@ from netqasm.lang.operand import (
 
 class GenericInstr(Enum):
     # Allocation
-    QALLOC = 1
+    QALLOC = auto()
     # Initialization
-    INIT = 2
-    ARRAY = 3
-    SET = 4
+    INIT = auto()
+    ARRAY = auto()
+    SET = auto()
     # Memory
-    STORE = 5
-    LOAD = 6
-    UNDEF = 7
-    LEA = 8
+    STORE = auto()
+    LOAD = auto()
+    UNDEF = auto()
+    LEA = auto()
     # Classical logic
-    JMP = 9
-    BEZ = 10
-    BNZ = 11
-    BEQ = 12
-    BNE = 13
-    BLT = 14
-    BGE = 15
+    JMP = auto()
+    BEZ = auto()
+    BNZ = auto()
+    BEQ = auto()
+    BNE = auto()
+    BLT = auto()
+    BGE = auto()
     # Classical operations
-    ADD = 16
-    SUB = 17
-    ADDM = 18
-    SUBM = 19
+    ADD = auto()
+    SUB = auto()
+    ADDM = auto()
+    SUBM = auto()
     # Single-qubit gates
-    X = 20
-    Y = 21
-    Z = 22
-    H = 23
-    S = 24
-    K = 25
-    T = 26
+    X = auto()
+    Y = auto()
+    Z = auto()
+    H = auto()
+    S = auto()
+    K = auto()
+    T = auto()
     # Single-qubit rotations
-    ROT_X = 27
-    ROT_Y = 28
-    ROT_Z = 29
+    ROT_X = auto()
+    ROT_Y = auto()
+    ROT_Z = auto()
     # Two-qubit gates
-    CNOT = 30
-    CPHASE = 31
+    CNOT = auto()
+    CPHASE = auto()
     # Measurement
-    MEAS = 32
+    MEAS = auto()
     # Entanglement generation
-    CREATE_EPR = 33
-    RECV_EPR = 34
+    CREATE_EPR = auto()
+    RECV_EPR = auto()
     # Waiting
-    WAIT_ALL = 35
-    WAIT_ANY = 36
-    WAIT_SINGLE = 37
+    WAIT_ALL = auto()
+    WAIT_ANY = auto()
+    WAIT_SINGLE = auto()
     # Deallocation
-    QFREE = 38
+    QFREE = auto()
     # Return
-    RET_REG = 39
-    RET_ARR = 40
+    RET_REG = auto()
+    RET_ARR = auto()
 
     # Move source qubit to target qubit (target is overwritten)
-    MOV = 41
-
-    CROT_X = 51
-    CROT_Y = 52
+    MOV = auto()
 
 
 def instruction_to_string(instr):

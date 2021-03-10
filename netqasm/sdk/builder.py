@@ -3,6 +3,7 @@
 """TODO write about connections"""
 
 from __future__ import annotations
+from netqasm.lang.ir2 import *
 from dataclasses import dataclass
 from enum import Enum, auto
 import abc
@@ -18,7 +19,7 @@ from netqasm.backend.messages import (
     SignalMessage,
     Message,
 )
-from netqasm.lang.instr import operand
+from netqasm.lang import operand
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.ir import (
     PreSubroutine,
@@ -74,6 +75,7 @@ T_LoopRoutine = Callable[['BaseNetQASMConnection'], None]
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
 
+
 ENT_INFO = {
     EPRType.K: LinkLayerOKTypeK,
     EPRType.M: LinkLayerOKTypeM,
@@ -84,30 +86,6 @@ ENT_INFO = {
 # 1. allocate registers without bound
 # 2. compile
 # 3. allocate concrete registers
-
-
-class _IReg:
-    _COUNT: int = 0
-
-    def __init__(self):
-        self.id: int = self.__class__._COUNT
-        self.__class__._COUNT += 1
-
-
-class _IArr:
-    _COUNT: int = 0
-
-    def __init__(self):
-        self.id: int = self.__class__._COUNT
-        self.__class__._COUNT += 1
-
-
-class _IQbt:
-    _COUNT: int = 0
-
-    def __init__(self):
-        self.id: int = self.__class__._COUNT
-        self.__class__._COUNT += 1
 
 
 class _ICmdType(Enum):
@@ -126,14 +104,9 @@ class _ICmdType(Enum):
     B_BRANCH = auto()
 
 
-class _ICmd:
-    def __init__(self, typ: _ICmdType):
-        self.typ: _ICmdType = typ
-
-
 class ArrayHandle:
-    def __init__(self, iarr: _IArr):
-        self._iarr: _IArr = iarr
+    def __init__(self, iarr: IrArr):
+        self._iarr: IrArr = iarr
 
     def get_value(self, index: int) -> Optional[int]:
         raise NotImplementedError
@@ -149,8 +122,8 @@ class ArrayHandle:
 
 
 class RegisterHandle:
-    def __init__(self, ireg: _IReg):
-        self._ireg: _IReg = ireg
+    def __init__(self, ireg: IrReg):
+        self._ireg: IrReg = ireg
 
     def get_value(self, index: int) -> Optional[int]:
         raise NotImplementedError
@@ -160,11 +133,27 @@ class RegisterHandle:
 
 
 class QubitHandle:
-    def __init__(self, iqbt: _IQbt):
-        self._iqbt: _IQbt = iqbt
+    def __init__(self, iqbt: IrQbt):
+        self._iqbt: IrQbt = iqbt
 
     def get_qubit(self) -> Qubit:
         raise NotImplementedError
+
+
+# Fixed IR Functions
+IR_new_array = IrFun(
+    args={
+        'array': IrArr,
+        'length': int,
+    }
+)
+
+IR_epr_create_keep = IrFun(
+    args={
+        'socket': IrEprSocket,
+        'number': int,
+    }
+)
 
 
 class Builder:
@@ -174,17 +163,15 @@ class Builder:
         node_name: Optional[str] = None,
         app_id: Optional[int] = None,
         max_qubits: int = 5,
-        log_config: LogConfig = None,
         epr_sockets: Optional[List[EPRSocket]] = None,
-        compiler: Optional[Type[SubroutineCompiler]] = None,
-        return_arrays: bool = True,
     ):
         # IR
-        self._iregs: Set[_IReg] = set()
-        self._iarrays: Set[_IArr] = set()
-        self._iqubits: Set[_IQbt] = set()
+        self._iregs: Set[IrReg] = set()
+        self._iarrays: Set[IrArr] = set()
+        self._iqubits: Set[IrQbt] = set()
 
-        self._icmds: List[_ICmd] = []
+        self._iinstrs: List[IrInstr] = []
+        self._outer_blk: IrBlk = IrBlk()
 
         # All qubits active for this connection
         self.active_qubits: List[Qubit] = []
@@ -197,166 +184,199 @@ class Builder:
 
         self._max_qubits: int = max_qubits
 
-        # What compiler (if any) to be used
-        self._compiler: Optional[Type[SubroutineCompiler]] = compiler
-
     def new_array(self, length: int = 1, init_values: Optional[List[Optional[int]]] = None) -> ArrayHandle:
-        arr = _IArr()
+        # Register new variable
+        arr = IrArr()
         self._iarrays.add(arr)
+
+        # Generate IR code
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.ARRAY,
+            operands=[arr, length],
+        ))
+
+        if init_values:
+            self._iinstrs.append(IrInstr(
+                typ=IrInstrType.PARAM,
+                operands=[length]
+            ))
+            self._iinstrs.append(IrInstr(
+                typ=IrInstrType.CALL,
+                operands=["IR_new_array", 1]
+            ))
+
+        # Return handle to variable for use in SDK
         return ArrayHandle(arr)
 
-    def new_register(self, init_value: int = 0) -> RegisterHandle:
-        reg = _IReg()
+    def _new_register(self) -> IrReg:
+        reg = IrReg()
         self._iregs.add(reg)
+        return reg
+
+    def new_register(self, init_value: int = 0) -> RegisterHandle:
+        # Register new variable
+        reg: IrReg = self._new_register()
+
+        # Generate IR code
+        if init_value:
+            self._iinstrs.append(IrInstr(
+                typ=IrInstrType.ASSIGN,
+                operands=[reg, init_value]
+            ))
+
+        # Return handle to variable for use in SDK
         return RegisterHandle(reg)
 
-    def new_qubit(self) -> QubitHandle:
-        qbt = _IQbt()
+    def _new_qubit(self) -> IrQbt:
+        qbt = IrQbt()
         self._iqubits.add(qbt)
+        return qbt
+
+    def new_qubit(self) -> QubitHandle:
+        # Register new variable
+        qbt = self._new_qubit()
+
+        # Generate IR code
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.NEW_QUBIT,
+            operands=[qbt]
+        ))
+
+        # Return handle to variable for use in SDK
         return QubitHandle(qbt)
 
-    def _push_cmd(self, cmd: _ICmd) -> None:
-        self._icmds.append(cmd)
-
-    def add_single_qubit_rotation_commands(
-        self, instruction: GenericInstr, virtual_qubit_id: int, angle: float
+    def q_rotate(
+        self, axis: IrRotAxis, qubit: QubitHandle, angle: float
     ) -> None:
-        cmd = _ICmd(typ=_ICmdType.Q_SINGLE_PARM)
-        self._push_cmd(cmd)
+        # Find qubit
+        qbt = qubit._iqbt
 
-    def add_single_qubit_commands(self, instr: GenericInstr, qubit_id: int) -> None:
-        register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        # Construct the qubit command
-        qubit_command = ICmd(
-            instruction=instr,
-            operands=[register],
-        )
-        commands: List[T_Cmd] = set_commands + [qubit_command]
-        self.add_pending_commands(commands)
+        # Generate IR code
+        rot_map = {
+            "X": IrInstrType.Q_ROT_X,
+            "Y": IrInstrType.Q_ROT_Y,
+            "Z": IrInstrType.Q_ROT_Z,
+        }
 
-    def add_two_qubit_commands(self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int) -> None:
-        register1, set_commands1 = self._get_set_qubit_reg_commands(control_qubit_id, reg_index=0)
-        register2, set_commands2 = self._get_set_qubit_reg_commands(target_qubit_id, reg_index=1)
-        qubit_command = ICmd(
-            instruction=instr,
-            operands=[register1, register2],
-        )
-        commands = set_commands1 + set_commands2 + [qubit_command]
-        self.add_pending_commands(commands=commands)
+        instr_type = rot_map[axis.name]
+        self._iinstrs.append(IrInstr(
+            typ=instr_type,
+            operands=[qbt, angle]
+        ))
 
-    def add_measure_commands(self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool) -> None:
-        if self._compiler == NVSubroutineCompiler:
-            # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
-            # So, if this qubit is already in use, we need to move it away first.
-            if not isinstance(qubit_id, Future):
-                if qubit_id != 0:
-                    self._free_up_qubit(virtual_address=0)
-        outcome_reg = self._get_new_meas_outcome_reg()
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        meas_command = ICmd(
-            instruction=GenericInstr.MEAS,
-            operands=[qubit_reg, outcome_reg],
-        )
+    def q_gate(
+        self, gate: IrSingleGate, qubit: QubitHandle
+    ) -> None:
+        # Find qubit
+        qbt = qubit._iqbt
+
+        # Generate IR code
+        gate_map = {
+            "X": IrInstrType.Q_X,
+            "Y": IrInstrType.Q_Y,
+            "Z": IrInstrType.Q_Z,
+            "H": IrInstrType.Q_H,
+            "S": IrInstrType.Q_S,
+        }
+
+        instr_type = gate_map[gate.name]
+        self._iinstrs.append(IrInstr(
+            typ=instr_type,
+            operands=[qbt]
+        ))
+
+    def q_two_gate(
+        self, gate: IrTwoGate, qubit1: QubitHandle, qubit2: QubitHandle,
+    ) -> None:
+        # Find qubit
+        qbt1 = qubit1._iqbt
+        qbt2 = qubit2._iqbt
+
+        # Generate IR code
+        gate_map = {
+            "CNOT": IrInstrType.Q_CNOT,
+            "CPHASE": IrInstrType.Q_CPHASE,
+            "MS": IrInstrType.Q_MS,
+        }
+
+        instr_type = gate_map[gate.name]
+        self._iinstrs.append(IrInstr(
+            typ=instr_type,
+            operands=[qbt1, qbt2]
+        ))
+
+    def measure(
+        self,
+        qubit: QubitHandle,
+        inplace: bool
+    ) -> RegisterHandle:
+        qbt: IrQbt = qubit._iqbt
+        reg: IrReg = self._new_register()
+
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.MEAS,
+            operands=[qbt, reg]
+        ))
+
         if not inplace:
-            free_commands = [ICmd(
-                instruction=GenericInstr.QFREE,
-                operands=[qubit_reg],
-            )]
-        else:
-            free_commands = []
-        if future is not None:
-            if isinstance(future, Future):
-                outcome_commands = future._get_store_commands(outcome_reg)
-            elif isinstance(future, RegFuture):
-                future.reg = outcome_reg
-                self._registers_to_return.append(outcome_reg)
-                outcome_commands = []
-            else:
-                outcome_commands = []
-        commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
-        self.add_pending_commands(commands)
+            self._iinstrs.append(IrInstr(
+                typ=IrInstrType.Q_FREE,
+                operands=[qbt]
+            ))
 
-    def add_new_qubit_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qalloc_command = ICmd(
-            instruction=GenericInstr.QALLOC,
-            operands=[qubit_reg],
-        )
-        init_command = ICmd(
-            instruction=GenericInstr.INIT,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [qalloc_command, init_command]
-        self.add_pending_commands(commands)
+        return RegisterHandle(reg)
 
-    def add_init_qubit_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        init_command = ICmd(
-            instruction=GenericInstr.INIT,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [init_command]
-        self.add_pending_commands(commands)
-
-    def add_qfree_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qfree_command = ICmd(
-            instruction=GenericInstr.QFREE,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [qfree_command]
-        self.add_pending_commands(commands)
-
-    def create_epr(
+    def epr_create_keep(
         self,
-        remote_node_id: int,
-        epr_socket_id: int,
+        socket: IrEprSocket,
         number: int = 1,
         post_routine: Optional[T_PostRoutine] = None,
         sequential: bool = False,
-        tp: EPRType = EPRType.K,
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        if not isinstance(remote_node_id, int):
-            raise TypeError(f"remote_node_id should be an int, not of type {type(remote_node_id)}")
+    ) -> List[QubitHandle]:
+        qubits: List[IrQbt] = [self._new_qubit() for _ in range(number)]
 
-        return self._handle_request(
-            instruction=GenericInstr.CREATE_EPR,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=tp,
-            random_basis_local=random_basis_local,
-            random_basis_remote=random_basis_remote,
-            rotations_local=rotations_local,
-            rotations_remote=rotations_remote,
-        )
+        # Generate IR code
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.PARAM,
+            operands=[number]
+        ))
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.PARAM,
+            operands=[socket]
+        ))
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.CALL,
+            operands=["IR_epr_create_keep", 2]
+        ))
 
-    def recv_epr(
+        # Return handle to variable for use in SDK
+        return [QubitHandle(qbt) for qbt in qubits]
+
+    def epr_recv_keep(
         self,
-        remote_node_id: int,
-        epr_socket_id: int,
+        socket: IrEprSocket,
         number: int = 1,
         post_routine: Optional[T_PostRoutine] = None,
         sequential: bool = False,
-        tp: EPRType = EPRType.K,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        return self._handle_request(
-            instruction=GenericInstr.RECV_EPR,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=tp,
-        )
+    ) -> List[QubitHandle]:
+        qubits: List[IrQbt] = [self._new_qubit() for _ in range(number)]
+
+        # Generate IR code
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.PARAM,
+            operands=[number]
+        ))
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.PARAM,
+            operands=[socket]
+        ))
+        self._iinstrs.append(IrInstr(
+            typ=IrInstrType.CALL,
+            operands=["IR_epr_recv_keep", 2]
+        ))
+
+        # Return handle to variable for use in SDK
+        return [QubitHandle(qbt) for qbt in qubits]
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
