@@ -14,6 +14,12 @@ from netqasm.logging.glob import set_log_level
 from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.compiling import NVSubroutineCompiler
+
+from netqasm.lang.instr.flavour import VanillaFlavour, NVFlavour
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.instr import core
+from netqasm.lang.operand import Register
 
 
 def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:

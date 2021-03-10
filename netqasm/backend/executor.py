@@ -18,6 +18,10 @@ from qlink_interface import (
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.backend.network_stack import BaseNetworkStack
 from netqasm.lang import instr as instructions
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.logging.output import InstrLogger
+from netqasm.lang.operand import ArrayEntry, ArraySlice, Address
+from netqasm.lang import operand
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr import operand
 from netqasm.lang.instr.base import NetQASMInstruction

@@ -7,7 +7,7 @@ from typing import List, Optional, Set, Tuple
 
 from qlink_interface import RequestType
 
-from netqasm.lang.instr.operand import Register, ArrayEntry, Address
+from netqasm.lang.operand import Register, ArrayEntry, Address
 from netqasm.util.yaml import dump_yaml
 from netqasm.util.log import LineTracker
 from netqasm.util.error import NotAllocatedError

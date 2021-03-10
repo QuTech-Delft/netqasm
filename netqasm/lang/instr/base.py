@@ -3,7 +3,12 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from netqasm.lang import encoding
-from netqasm.lang.instr.operand import (
+from netqasm.util.log import HostLine
+
+from netqasm.lang.operand import (
+    Operand,
+    Register,
+    Immediate,
     Address,
     ArrayEntry,
     ArraySlice,

@@ -6,8 +6,9 @@ from netqasm.backend.messages import deserialize_host_msg as deserialize_message
 from netqasm.backend.network_stack import CREATE_FIELDS
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.lang import instr as instructions
-from netqasm.lang.encoding import RegisterName
-from netqasm.lang.instr.operand import (
+from netqasm.lang.operand import (
+    Register,
+    Immediate,
     Address,
     ArrayEntry,
     ArraySlice,

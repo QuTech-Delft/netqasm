@@ -9,6 +9,8 @@ from netqasm.lang.parsing import parse_register, parse_address
 from netqasm.lang.ir import Symbols, ICmd, BranchLabel, GenericInstr
 from netqasm.util.log import HostLine
 
+from netqasm.lang import operand
+
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
     from netqasm.lang.ir import T_OperandUnion

@@ -55,6 +55,7 @@ from netqasm.lang.parsing.text import (
 from netqasm.lang.subroutine import (
     PreSubroutine,
     Subroutine,
+from netqasm.lang import operand
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.ir import (
     ICmd,

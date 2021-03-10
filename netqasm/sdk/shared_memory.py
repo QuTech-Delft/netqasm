@@ -7,10 +7,10 @@ from netqasm.lang.instr import operand
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.lang.subroutine import Symbols
 from netqasm.lang.ir import Symbols
-from netqasm.lang.instr import operand
+from netqasm.lang import operand
 
 if TYPE_CHECKING:
-    from netqasm.lang.instr.operand import ArrayEntry
+    from netqasm.lang.operand import ArrayEntry
 
 
 def _assert_within_width(value: int, width: int) -> None:

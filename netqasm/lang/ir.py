@@ -10,7 +10,7 @@ from netqasm.lang.symbols import Symbols
 if TYPE_CHECKING:
     from netqasm.util.log import HostLine
 
-from netqasm.lang.instr.operand import (
+from netqasm.lang.operand import (
     Register,
     Address,
     ArrayEntry,
