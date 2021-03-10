@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
 
-from netqasm.lang.instr.instr_enum import GenericInstr
+from netqasm.lang.ir import GenericInstr
 from netqasm.sdk.futures import RegFuture, Future
 
 if TYPE_CHECKING:

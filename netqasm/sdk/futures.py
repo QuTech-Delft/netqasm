@@ -6,10 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang.instr import operand
 from netqasm.lang.parsing import parse_register, parse_address
-from netqasm.lang.parsing import parse_address, parse_register
-from netqasm.lang.subroutine import BranchLabel, Command, Symbols
-from netqasm.lang.ir import Symbols, ICmd, BranchLabel
-from netqasm.lang.instr.instr_enum import GenericInstr
+from netqasm.lang.ir import Symbols, ICmd, BranchLabel, GenericInstr
 from netqasm.util.log import HostLine
 
 if TYPE_CHECKING:

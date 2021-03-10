@@ -5,8 +5,7 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.instr.operand import Label
 from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.ir import ICmd, BranchLabel, PreSubroutine
-from netqasm.lang.instr.instr_enum import GenericInstr, string_to_instruction
+from netqasm.lang.ir import ICmd, BranchLabel, PreSubroutine, GenericInstr, string_to_instruction
 from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
 from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction

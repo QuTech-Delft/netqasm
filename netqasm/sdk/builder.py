@@ -40,7 +40,7 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.futures import Future, RegFuture, Array
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
-from netqasm.lang.instr.instr_enum import GenericInstr, flip_branch_instr
+from netqasm.lang.ir import GenericInstr, flip_branch_instr
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm import NETQASM_VERSION

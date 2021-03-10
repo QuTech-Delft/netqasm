@@ -18,7 +18,7 @@ from .qubit import Qubit
 
 """TODO write about epr sockets"""
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.lang.instr.instr_enum import GenericInstr
+from netqasm.lang.ir import GenericInstr
 
 
 if TYPE_CHECKING:

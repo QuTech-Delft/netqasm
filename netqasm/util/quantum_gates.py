@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import linalg
 
-from netqasm.lang.instr.instr_enum import GenericInstr
+from netqasm.lang.ir import GenericInstr
 
 # Single-qubit gates
 X = np.array([[0, 1], [1, 0]])
