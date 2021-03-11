@@ -1,4 +1,4 @@
-from netqasm.sdk import EPRSocket, Qubit
+from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
 
 

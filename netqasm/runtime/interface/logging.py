@@ -66,6 +66,14 @@ class InstrLogEntry:
     List of "op=val" strings
     """
 
+    ANG: Optional[Dict[str, int]]
+    """
+    Angle represented as the fraction num/den.
+    For non-rotation instructions, ANG is None.
+    For rotation instructions ANG is a dictionary with 2 entries:
+    'num' (an int) and 'den' (an int).
+    """
+
     QID: List[int]
     """ Physical qubit IDs of qubits part of the current operation."""
 
