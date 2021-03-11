@@ -139,7 +139,7 @@ class InstrLogger(StructuredLogger):
                 or isinstance(command, instructions.core.ControlledRotationInstruction)):
             num = command.angle_num.value
             denom = 2 ** command.angle_denom.value
-            angle = {"num": num, "denom": denom}
+            angle = {"num": num, "den": denom}
         else:
             angle = None
 
