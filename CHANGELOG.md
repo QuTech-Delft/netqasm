@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-03-11 (0.5.4)
+------------------
+- Various updates to example application sources and configurations.
+- Added rotation angles to instruction logs.
+
 2021-02-05 (0.5.3)
 ------------------
 - Reverted patches 0.5.1 and 0.5.2.
