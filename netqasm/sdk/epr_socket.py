@@ -1,14 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from typing import Tuple, Union, List, Optional, Callable
-
-import logging
-
-"""TODO write about epr sockets"""
 
 import abc
+import logging
 from contextlib import contextmanager
 from enum import Enum, auto
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 from qlink_interface import (
     EPRType,
@@ -18,10 +14,12 @@ from qlink_interface import (
     RandomBasis,
 )
 
-from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
-
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import Qubit
+
+"""TODO write about epr sockets"""
+
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection

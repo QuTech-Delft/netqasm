@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
 # App results.
 # Each key is one of the role names or `backend`.

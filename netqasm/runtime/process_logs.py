@@ -1,10 +1,9 @@
 import os
-import shutil
 import pickle
-
-from netqasm.util.yaml import load_yaml, dump_yaml
+import shutil
 
 from netqasm.sdk.connection import BaseNetQASMConnection
+from netqasm.util.yaml import dump_yaml, load_yaml
 
 _LAST_LOG = "LAST"
 

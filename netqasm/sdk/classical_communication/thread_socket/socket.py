@@ -1,16 +1,17 @@
 from __future__ import annotations
-import os
-from typing import Dict, Optional, List, Tuple
-from typing import TYPE_CHECKING
+
 import json
+import os
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.logging.output import ClassCommLogger, SocketOperation
+from netqasm.sdk.classical_communication.message import StructuredMessage
+from netqasm.sdk.config import LogConfig
+from netqasm.util.log import LineTracker
+
 from ..socket import Socket
 from .socket_hub import _socket_hub, _SocketHub
-from netqasm.util.log import LineTracker
-from netqasm.logging.output import SocketOperation, ClassCommLogger
-from netqasm.sdk.config import LogConfig
-from netqasm.sdk.classical_communication.message import StructuredMessage
 
 if TYPE_CHECKING:
     import logging

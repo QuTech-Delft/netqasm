@@ -1,29 +1,27 @@
-import os
 import abc
-from enum import Enum
-from datetime import datetime
-from typing import List, Tuple, Optional, Set
+import os
 from dataclasses import asdict
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional, Set, Tuple
 
 from qlink_interface import RequestType
 
-from netqasm.lang.subroutine import Register, ArrayEntry, Address
-from netqasm.util.yaml import dump_yaml
-from netqasm.util.log import LineTracker
-from netqasm.util.error import NotAllocatedError
-
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
-
+from netqasm.lang.subroutine import Address, ArrayEntry, Register
 from netqasm.runtime.interface.logging import (
-    ClassCommLogEntry,
-    NetworkLogEntry,
-    InstrLogEntry,
     AppLogEntry,
-    QubitState,
-    QubitGroups,
+    ClassCommLogEntry,
     EntanglementType,
+    InstrLogEntry,
+    NetworkLogEntry,
+    QubitGroups,
+    QubitState,
 )
+from netqasm.util.error import NotAllocatedError
+from netqasm.util.log import LineTracker
+from netqasm.util.yaml import dump_yaml
 
 
 def should_ignore_instr(instr):

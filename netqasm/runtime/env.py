@@ -1,16 +1,16 @@
+import inspect
 import os
 import shutil
-import inspect
-from runpy import run_path
 from datetime import datetime
-from itertools import combinations
 from functools import wraps
-from typing import Dict, Any
+from itertools import combinations
+from runpy import run_path
+from typing import Any, Dict
 
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.util.yaml import load_yaml, dump_yaml
 from netqasm.examples import apps
-from netqasm.runtime.settings import set_simulator, Simulator
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.runtime.settings import Simulator, set_simulator
+from netqasm.util.yaml import dump_yaml, load_yaml
 
 EXAMPLE_APPS_DIR = os.path.dirname(os.path.abspath(apps.__file__))
 

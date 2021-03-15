@@ -1,11 +1,11 @@
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List
-from abc import abstractmethod
+
 import numpy as np
 
-from netqasm.lang.instr.operand import Register, Immediate
 from netqasm.lang.instr import base
-
+from netqasm.lang.instr.operand import Immediate, Register
 
 # Explicit core NetQASM instructions.
 

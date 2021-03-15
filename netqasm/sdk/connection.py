@@ -1,66 +1,79 @@
 """TODO write about connections"""
 
 from __future__ import annotations
-from netqasm.sdk.network import NetworkInfo
-from netqasm.sdk.config import LogConfig
-from netqasm.backend.messages import (
-    Signal,
-    InitNewAppMessage,
-    StopAppMessage,
-    OpenEPRSocketMessage,
-    SubroutineMessage,
-    SignalMessage,
-    Message,
+
+import abc
+import logging
+import math
+import os
+import pickle
+from contextlib import contextmanager
+from enum import Enum
+from itertools import count
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
 )
-from netqasm.lang.instr import operand
-from netqasm.lang.subroutine import (
-    PreSubroutine,
-    Subroutine,
-    Command,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label,
-    BranchLabel,
-    Symbols,
-    T_OperandUnion,
-)
-from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
-from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
-from netqasm.util.log import LineTracker
-from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
-from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.sdk.toolbox import get_angle_spec_from_float
-from netqasm.sdk.futures import Future, RegFuture, Array
-from netqasm.sdk.qubit import Qubit, _FutureQubit
-from netqasm.sdk.shared_memory import get_shared_memory, SharedMemory
-from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
-from netqasm.lang.parsing.text import (
-    assemble_subroutine,
-    parse_register,
-    get_current_registers,
-    parse_address,
-)
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm import NETQASM_VERSION
+
 from qlink_interface import (
     EPRType,
-    RandomBasis,
     LinkLayerCreate,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
+    RandomBasis,
 )
-from typing import TYPE_CHECKING
-import os
-import abc
-import math
-import pickle
-import logging
-from enum import Enum
-from itertools import count
-from contextlib import contextmanager
-from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable, Iterator
+
+from netqasm import NETQASM_VERSION
+from netqasm.backend.messages import (
+    InitNewAppMessage,
+    Message,
+    OpenEPRSocketMessage,
+    Signal,
+    SignalMessage,
+    StopAppMessage,
+    SubroutineMessage,
+)
+from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
+from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
+from netqasm.lang.instr import operand
+from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
+from netqasm.lang.parsing.text import (
+    assemble_subroutine,
+    get_current_registers,
+    parse_address,
+    parse_register,
+)
+from netqasm.lang.subroutine import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    BranchLabel,
+    Command,
+    Label,
+    PreSubroutine,
+    Subroutine,
+    Symbols,
+    T_OperandUnion,
+)
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
+from netqasm.sdk.config import LogConfig
+from netqasm.sdk.futures import Array, Future, RegFuture
+from netqasm.sdk.network import NetworkInfo
+from netqasm.sdk.progress_bar import ProgressBar
+from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.shared_memory import SharedMemory, get_shared_memory
+from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.util.log import LineTracker
 
 T_Cmd = Union[Command, BranchLabel]
 T_LinkLayerOkList = Union[

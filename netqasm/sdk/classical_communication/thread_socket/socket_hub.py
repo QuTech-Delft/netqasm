@@ -1,11 +1,11 @@
 from __future__ import annotations
-from time import sleep
-from threading import Lock
+
 from collections import defaultdict
+from threading import Lock
+from time import sleep
 from timeit import default_timer as timer
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 from weakref import WeakMethod
-from typing import Optional, Dict, List, Set, Union
-from typing import TYPE_CHECKING
 
 from netqasm.logging.glob import get_netqasm_logger
 

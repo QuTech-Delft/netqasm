@@ -1,6 +1,6 @@
-from enum import Enum
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from enum import Enum
+from typing import Any, Dict, List
 
 
 class QuantumHardware(Enum):

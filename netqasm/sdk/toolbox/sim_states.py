@@ -1,5 +1,6 @@
 from __future__ import annotations
-from netqasm.runtime.settings import get_simulator, Simulator
+
+from netqasm.runtime.settings import Simulator, get_simulator
 
 if get_simulator() == Simulator.NETSQUID:
     import numpy as np

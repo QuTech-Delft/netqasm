@@ -1,8 +1,8 @@
-from random import randint
 from collections import namedtuple
+from random import randint
 
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import Socket, BroadcastChannel
+from netqasm.sdk.external import BroadcastChannel, Socket
 from netqasm.sdk.toolbox import create_ghz
 
 

@@ -1,5 +1,5 @@
-from enum import Enum
 import ctypes
+from enum import Enum
 
 ############
 # METADATA #

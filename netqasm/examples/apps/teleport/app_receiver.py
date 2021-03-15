@@ -1,6 +1,6 @@
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm, get_fidelity
+from netqasm.sdk.toolbox.sim_states import get_fidelity, qubit_from, to_dm
 
 
 def main(app_config=None):

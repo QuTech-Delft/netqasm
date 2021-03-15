@@ -1,12 +1,12 @@
+from netqasm.examples.lib.bqc import (
+    measXY,
+    recv_meas_cmd,
+    recv_teleported_state,
+    send_meas_outcome,
+)
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.examples.lib.bqc import (
-    measXY,
-    recv_teleported_state,
-    recv_meas_cmd,
-    send_meas_outcome,
-)
 
 logger = get_netqasm_logger()
 

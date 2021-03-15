@@ -1,19 +1,18 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
-from abc import ABC, abstractmethod
 
-from netqasm.util.string import rspaces
 from netqasm.lang import encoding
-from netqasm.util.log import HostLine
-
 from netqasm.lang.instr.operand import (
-    Operand,
-    Register,
-    Immediate,
     Address,
     ArrayEntry,
     ArraySlice,
+    Immediate,
+    Operand,
+    Register,
 )
+from netqasm.util.log import HostLine
+from netqasm.util.string import rspaces
 
 # Abstract base instruction types. Should not be instantiated directly.
 

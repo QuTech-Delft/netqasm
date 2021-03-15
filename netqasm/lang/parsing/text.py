@@ -1,18 +1,26 @@
-from itertools import count
 from collections import defaultdict
-from typing import List, Dict, Union, Tuple, Set, Optional
+from itertools import count
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.util.string import group_by_word, is_variable_name, is_number
-from netqasm.util.error import NetQASMSyntaxError, NetQASMInstrError
-from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
-
-from netqasm.lang.symbols import Symbols
-
-from netqasm.lang.instr.operand import Label
-from netqasm.lang.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
-from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
-from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
+from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
+from netqasm.lang.instr.operand import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+    Register,
+)
+from netqasm.lang.subroutine import (
+    BranchLabel,
+    Command,
+    PreSubroutine,
+    Subroutine,
+)
+from netqasm.lang.symbols import Symbols
+from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
+from netqasm.util.string import group_by_word, is_number, is_variable_name
 
 T_Cmd = Union[Command, BranchLabel]
 T_ParsedValue = Union[int, Register, Label]

@@ -1,9 +1,9 @@
 import abc
 from types import GeneratorType
 
+from netqasm.backend.messages import MessageType, Signal
 from netqasm.lang.parsing import deserialize
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.backend.messages import MessageType, Signal
 
 
 class BaseSubroutineHandler:

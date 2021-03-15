@@ -1,15 +1,20 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from typing import List, Union, Optional
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import encoding
-from netqasm.util.string import rspaces
+from netqasm.lang.instr.base import DebugInstruction, NetQASMInstruction
 from netqasm.lang.instr.instr_enum import Instruction, instruction_to_string
+from netqasm.lang.instr.operand import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+    Register,
+)
 from netqasm.lang.symbols import Symbols
-
-from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
-from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice, Label
+from netqasm.util.string import rspaces
 
 T_OperandUnion = Union[
     int,

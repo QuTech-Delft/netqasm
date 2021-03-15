@@ -1,6 +1,7 @@
 from typing import List, Union
-from netqasm.sdk.qubit import Qubit
+
 from netqasm.sdk.futures import Future, RegFuture
+from netqasm.sdk.qubit import Qubit
 
 
 def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int]:

@@ -1,13 +1,13 @@
-import os
-import sys
-import runpy
 import inspect
-import subprocess
 import logging
+import os
+import runpy
+import subprocess
+import sys
 from collections import namedtuple
 
 from netqasm.logging.glob import set_log_level
-from netqasm.runtime.settings import get_simulator, Simulator
+from netqasm.runtime.settings import Simulator, get_simulator
 
 # Used to specify to skip some apps in some cases
 SkipIf = namedtuple("SkipIf", ["skip", "reason"])

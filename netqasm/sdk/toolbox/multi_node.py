@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 from enum import Enum, auto
-from typing import Optional, Union, Tuple
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.sdk.qubit import Qubit
 

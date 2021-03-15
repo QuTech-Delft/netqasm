@@ -1,7 +1,7 @@
-from netqasm.sdk.toolbox.measurements import parity_meas
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection
+from netqasm.sdk.toolbox.measurements import parity_meas
 
 logger = get_netqasm_logger()
 

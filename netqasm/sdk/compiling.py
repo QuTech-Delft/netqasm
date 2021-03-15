@@ -1,12 +1,12 @@
 import abc
-from typing import Set, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
+from netqasm.lang.instr import core, nv, vanilla
+from netqasm.lang.instr.base import DebugInstruction, NetQASMInstruction
+from netqasm.lang.instr.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.instr import core, vanilla, nv
-from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
-from netqasm.lang.instr.operand import Register, RegisterName, Immediate
-from netqasm.util.log import HostLine
 from netqasm.runtime.settings import get_is_using_hardware
+from netqasm.util.log import HostLine
 
 
 class SubroutineCompiler(abc.ABC):

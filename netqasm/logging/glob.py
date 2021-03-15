@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Optional
+from typing import Optional, Union
 
 NETQASM_LOGGER = "NetQASM"
 

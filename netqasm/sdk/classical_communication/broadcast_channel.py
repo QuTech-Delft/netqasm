@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import Type, Optional, List, Tuple
-from typing import TYPE_CHECKING
+
 import abc
 from timeit import default_timer as timer
-
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type
 
 if TYPE_CHECKING:
     from .socket import Socket

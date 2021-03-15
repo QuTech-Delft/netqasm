@@ -1,10 +1,10 @@
 """TODO write about qubits"""
 from __future__ import annotations
-from typing import Optional, Union
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Optional, Union
 
 from netqasm.lang.instr.instr_enum import Instruction
-from netqasm.sdk.futures import RegFuture, Future
+from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection

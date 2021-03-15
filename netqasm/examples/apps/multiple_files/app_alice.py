@@ -1,8 +1,7 @@
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import Qubit
 from netqasm.sdk.external import NetQASMConnection, Socket
-from netqasm.logging.glob import get_netqasm_logger
-
-from shared.myfuncs import custom_send, custom_measure
+from shared.myfuncs import custom_measure, custom_send
 
 logger = get_netqasm_logger()
 

@@ -1,20 +1,21 @@
+import importlib
 import json
 import logging
 import os
+
 import click
-import importlib
 import requests
+
 import netqasm
+from netqasm.logging.glob import get_netqasm_logger, set_log_level
+from netqasm.runtime.env import get_example_apps, init_folder, new_folder
 from netqasm.runtime.settings import (
-    Simulator,
     Formalism,
-    set_simulator,
+    Simulator,
     set_is_using_hardware,
+    set_simulator,
 )
-from netqasm.runtime.env import new_folder, init_folder, get_example_apps
-from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.config import LogConfig
-from netqasm.logging.glob import set_log_level
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])

@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import Dict, Tuple, Optional, List, Any, Union
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
+from netqasm.lang.instr import operand
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.lang.subroutine import Symbols
-from netqasm.lang.instr import operand
 
 if TYPE_CHECKING:
     from netqasm.lang.instr.operand import ArrayEntry

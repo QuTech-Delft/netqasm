@@ -1,35 +1,38 @@
 import os
 import traceback
-import numpy as np
+from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from itertools import count
 from types import GeneratorType
-from dataclasses import dataclass
-from collections import defaultdict
-from typing import Union, Optional, Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 from qlink_interface import (
+    LinkLayerCreate,
     RequestType,
     ReturnType,
-    LinkLayerCreate,
     get_creator_node_id,
 )
 
+from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
+from netqasm.backend.network_stack import BaseNetworkStack
+from netqasm.lang import instr as instructions
+from netqasm.lang.encoding import RegisterName
+from netqasm.lang.instr import operand
+from netqasm.lang.instr.base import NetQASMInstruction
+from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice
+from netqasm.lang.parsing import parse_address
+from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
-from netqasm.lang.instr.operand import ArrayEntry, ArraySlice, Address
-from netqasm.lang.instr import operand
-from netqasm.lang.encoding import RegisterName
-from netqasm.lang.subroutine import Subroutine
-from netqasm.sdk.shared_memory import get_shared_memory, setup_registers, Arrays
 from netqasm.sdk import shared_memory
-from netqasm.backend.network_stack import BaseNetworkStack
-from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
-from netqasm.lang.parsing import parse_address
+from netqasm.sdk.shared_memory import (
+    Arrays,
+    get_shared_memory,
+    setup_registers,
+)
 from netqasm.util.error import NotAllocatedError
-
-from netqasm.lang.instr.base import NetQASMInstruction
-from netqasm.lang import instr as instructions
 
 
 @dataclass

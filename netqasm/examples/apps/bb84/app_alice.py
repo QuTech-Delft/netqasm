@@ -1,13 +1,13 @@
 import json
-import random
 import math
-from typing import Optional
+import random
 from dataclasses import dataclass
+from typing import Optional
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.classical_communication.message import StructuredMessage
+from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 

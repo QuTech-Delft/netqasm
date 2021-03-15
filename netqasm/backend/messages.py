@@ -2,7 +2,7 @@ import ctypes
 from enum import Enum
 from typing import Union
 
-from netqasm.lang.encoding import Address, Register, INTEGER, OptionalInt
+from netqasm.lang.encoding import INTEGER, Address, OptionalInt, Register
 from netqasm.lang.subroutine import Subroutine
 
 # This module defines the messages that the host can send to

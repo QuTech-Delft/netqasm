@@ -1,5 +1,5 @@
-from netqasm.sdk import EPRSocket
 from netqasm.logging.output import get_new_app_logger
+from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection
 
 

@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Optional
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from netqasm.sdk.classical_communication.message import StructuredMessage
 

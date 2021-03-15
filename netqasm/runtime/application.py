@@ -1,13 +1,16 @@
+import importlib
 import os
 import sys
-import importlib
 from dataclasses import dataclass
-from typing import Callable, List, Dict, Any, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from netqasm.runtime import env
+from netqasm.runtime.interface.config import (
+    NetworkConfig,
+    parse_network_config,
+)
 from netqasm.sdk.config import LogConfig
 from netqasm.util.yaml import load_yaml
-from netqasm.runtime.interface.config import parse_network_config, NetworkConfig
 
 
 @dataclass
