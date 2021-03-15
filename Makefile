@@ -36,7 +36,7 @@ clean:
 
 lint-isort:
 	$(info Running isort...)
-	@$(PYTHON3) -m isort ${SOURCEDIR} ${TESTDIR}
+	@$(PYTHON3) -m isort -c -rc ${SOURCEDIR} ${TESTDIR}
 
 lint-black:
 	$(info Running black...)
@@ -50,7 +50,7 @@ lint-mypy:
 	$(info Running mypy...)
 	@$(PYTHON3) -m mypy ${SOURCEDIR} ${TESTDIR}
 
-lint: lint-black lint-flake8 lint-mypy
+lint: lint-isort lint-black lint-flake8 lint-mypy
 
 tests:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-fail-under=${MINCOV} --ignore=${TESTDIR}/${EXT_TEST} ${TESTDIR}
