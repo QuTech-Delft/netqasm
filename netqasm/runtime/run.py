@@ -3,19 +3,11 @@ import os
 import sys
 from typing import List
 
-from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
+from netqasm.lang.instr import NVFlavour, VanillaFlavour
 from netqasm.logging.glob import get_netqasm_logger, set_log_level
 from netqasm.runtime import env
 from netqasm.runtime.settings import Flavour, Formalism
 from netqasm.sdk.config import LogConfig
-from netqasm.logging.glob import (
-    set_log_level,
-    get_netqasm_logger,
-)
-from netqasm.util.yaml import load_yaml
-from netqasm.sdk.config import LogConfig
-from netqasm.lang.instr import NVFlavour, VanillaFlavour
-from netqasm.runtime.settings import Formalism, Flavour
 from netqasm.sdk.external import run_applications
 from netqasm.util.yaml import load_yaml
 

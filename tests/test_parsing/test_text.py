@@ -2,18 +2,10 @@ import pytest
 
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
-from netqasm.lang.instr.operand import Address, ArrayEntry, Immediate, Register
+from netqasm.lang.operand import Address, ArrayEntry, Immediate, Register
 from netqasm.lang.parsing import parse_text_subroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
-
-from netqasm.lang import instr as instructions
-from netqasm.lang.operand import (
-    Register,
-    Immediate,
-    Address,
-    ArrayEntry,
-)
 
 
 @pytest.mark.parametrize(

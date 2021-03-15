@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Type
 
-from . import vanilla, core, nv, NetQASMInstruction
+from . import NetQASMInstruction, core, nv, vanilla
 
 
 @dataclass

@@ -1,22 +1,16 @@
 from __future__ import annotations
-from typing import List, Union, Optional
-from typing import TYPE_CHECKING
+
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING, List, Optional, Union
 
-from netqasm.util.string import rspaces
 from netqasm.lang.symbols import Symbols
+from netqasm.util.string import rspaces
 
 if TYPE_CHECKING:
     from netqasm.util.log import HostLine
 
-from netqasm.lang.operand import (
-    Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label
-)
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Register
 
 
 class GenericInstr(Enum):
@@ -148,11 +142,11 @@ class ICmd:
 
     def _build_str(self, show_lineno=False):
         if len(self.args) == 0:
-            args = ''
+            args = ""
         else:
             args = Symbols.ARGS_DELIM.join(str(arg) for arg in self.args)
             args = Symbols.ARGS_BRACKETS[0] + args + Symbols.ARGS_BRACKETS[1]
-        operands = ' '.join(str(operand) for operand in self.operands)
+        operands = " ".join(str(operand) for operand in self.operands)
         instr_name = instruction_to_string(self.instruction)
         if show_lineno:
             lineno_str = _get_lineo_str(self.lineno)
@@ -195,6 +189,7 @@ class PreSubroutine:
     :class:`~.PreSubroutine`s are currently only used by the sdk and the text parser (netqasm.parser.text).
     In both cases they are converted into :class:`~.Subroutine` objects before given to other package components.
     """
+
     netqasm_version: tuple
     app_id: int
     commands: List[Union[ICmd, BranchLabel]]

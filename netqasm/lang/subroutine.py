@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import List
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import List
 
 from netqasm.lang import encoding
+from netqasm.lang.instr import DebugInstruction, NetQASMInstruction
 from netqasm.util.string import rspaces
-
-from netqasm.lang.instr import NetQASMInstruction, DebugInstruction
 
 
 @dataclass

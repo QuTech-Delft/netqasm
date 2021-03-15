@@ -3,17 +3,19 @@ from itertools import count
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
-from netqasm.lang.operand import Label
+from netqasm.lang.instr import Flavour, VanillaFlavour
+from netqasm.lang.ir import (
+    BranchLabel,
+    GenericInstr,
+    ICmd,
+    PreSubroutine,
+    string_to_instruction,
+)
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Register
 from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.ir import ICmd, BranchLabel, PreSubroutine, GenericInstr, string_to_instruction
-from netqasm.lang.operand import Register, Address, ArrayEntry, ArraySlice
-from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
-from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice, Label, Register
-from netqasm.lang.subroutine import BranchLabel, Command, PreSubroutine, Subroutine
 from netqasm.lang.symbols import Symbols
 from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.util.string import group_by_word, is_number, is_variable_name
-from netqasm.lang.instr import Flavour, VanillaFlavour
 
 T_Cmd = Union[ICmd, BranchLabel]
 T_ParsedValue = Union[int, Register, Label]

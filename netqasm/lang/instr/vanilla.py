@@ -2,8 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from . import core
 from netqasm.util.quantum_gates import get_rotation_matrix
+
+from . import core
 
 # Explicit instruction types in the Vanilla flavour.
 

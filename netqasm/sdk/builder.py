@@ -3,74 +3,94 @@
 """TODO write about connections"""
 
 from __future__ import annotations
-from netqasm.lang.ir2 import *
+
+import abc
+import logging
+import math
+import os
+import pickle
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
-import abc
+from itertools import count
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
-from netqasm.sdk.network import NetworkInfo
-from netqasm.sdk.config import LogConfig
-from netqasm.backend.messages import (
-    Signal,
-    InitNewAppMessage,
-    StopAppMessage,
-    OpenEPRSocketMessage,
-    SubroutineMessage,
-    SignalMessage,
-    Message,
-)
-from netqasm.lang import operand
-from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.ir import (
-    PreSubroutine,
-    ICmd,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label,
-    BranchLabel,
-    Symbols,
-    T_OperandUnion
-)
-from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
-from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
-from netqasm.util.log import LineTracker
-from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
-from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.sdk.toolbox import get_angle_spec_from_float
-from netqasm.sdk.futures import Future, RegFuture, Array
-from netqasm.sdk.qubit import Qubit, _FutureQubit
-from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
-from netqasm.lang.ir import GenericInstr, flip_branch_instr
-from netqasm.lang.parsing.text import assemble_subroutine, parse_register, get_current_registers, parse_address
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm import NETQASM_VERSION
 from qlink_interface import (
     EPRType,
-    RandomBasis,
     LinkLayerCreate,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
+    RandomBasis,
 )
-from typing import TYPE_CHECKING
-import os
-import abc
-import math
-import pickle
-import logging
-from enum import Enum
-from itertools import count
-from contextlib import contextmanager
-from typing import List, Optional, Dict, Type, Union, Set, Tuple, Callable, Iterator
+
+from netqasm import NETQASM_VERSION
+from netqasm.backend.messages import (
+    InitNewAppMessage,
+    Message,
+    OpenEPRSocketMessage,
+    Signal,
+    SignalMessage,
+    StopAppMessage,
+    SubroutineMessage,
+)
+from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
+from netqasm.lang import operand
+from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
+from netqasm.lang.ir import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    BranchLabel,
+    GenericInstr,
+    ICmd,
+    Label,
+    PreSubroutine,
+    Symbols,
+    T_OperandUnion,
+    flip_branch_instr,
+)
+from netqasm.lang.ir2 import *
+from netqasm.lang.parsing.text import (
+    assemble_subroutine,
+    get_current_registers,
+    parse_address,
+    parse_register,
+)
+from netqasm.lang.subroutine import Subroutine
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
+from netqasm.sdk.config import LogConfig
+from netqasm.sdk.futures import Array, Future, RegFuture
+from netqasm.sdk.network import NetworkInfo
+from netqasm.sdk.progress_bar import ProgressBar
+from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
+from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.util.log import LineTracker
 
 T_Cmd = Union[ICmd, BranchLabel]
-T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
+T_LinkLayerOkList = Union[
+    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
+]
 T_Message = Union[Message, SubroutineMessage]
 T_CValue = Union[int, Future, RegFuture]
-T_PostRoutine = Callable[['BaseNetQASMConnection', Union[_FutureQubit, List[Future]], operand.Register], None]
-T_BranchRoutine = Callable[['BaseNetQASMConnection'], None]
-T_LoopRoutine = Callable[['BaseNetQASMConnection'], None]
+T_PostRoutine = Callable[
+    ["BaseNetQASMConnection", Union[_FutureQubit, List[Future]], operand.Register], None
+]
+T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
+T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
@@ -143,15 +163,15 @@ class QubitHandle:
 # Fixed IR Functions
 IR_new_array = IrFun(
     args={
-        'array': IrArr,
-        'length': int,
+        "array": IrArr,
+        "length": int,
     }
 )
 
 IR_epr_create_keep = IrFun(
     args={
-        'socket': IrEprSocket,
-        'number': int,
+        "socket": IrEprSocket,
+        "number": int,
     }
 )
 
@@ -184,26 +204,26 @@ class Builder:
 
         self._max_qubits: int = max_qubits
 
-    def new_array(self, length: int = 1, init_values: Optional[List[Optional[int]]] = None) -> ArrayHandle:
+    def new_array(
+        self, length: int = 1, init_values: Optional[List[Optional[int]]] = None
+    ) -> ArrayHandle:
         # Register new variable
         arr = IrArr()
         self._iarrays.add(arr)
 
         # Generate IR code
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.ARRAY,
-            operands=[arr, length],
-        ))
+        self._iinstrs.append(
+            IrInstr(
+                typ=IrInstrType.ARRAY,
+                operands=[arr, length],
+            )
+        )
 
         if init_values:
-            self._iinstrs.append(IrInstr(
-                typ=IrInstrType.PARAM,
-                operands=[length]
-            ))
-            self._iinstrs.append(IrInstr(
-                typ=IrInstrType.CALL,
-                operands=["IR_new_array", 1]
-            ))
+            self._iinstrs.append(IrInstr(typ=IrInstrType.PARAM, operands=[length]))
+            self._iinstrs.append(
+                IrInstr(typ=IrInstrType.CALL, operands=["IR_new_array", 1])
+            )
 
         # Return handle to variable for use in SDK
         return ArrayHandle(arr)
@@ -219,10 +239,9 @@ class Builder:
 
         # Generate IR code
         if init_value:
-            self._iinstrs.append(IrInstr(
-                typ=IrInstrType.ASSIGN,
-                operands=[reg, init_value]
-            ))
+            self._iinstrs.append(
+                IrInstr(typ=IrInstrType.ASSIGN, operands=[reg, init_value])
+            )
 
         # Return handle to variable for use in SDK
         return RegisterHandle(reg)
@@ -237,17 +256,12 @@ class Builder:
         qbt = self._new_qubit()
 
         # Generate IR code
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.NEW_QUBIT,
-            operands=[qbt]
-        ))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.NEW_QUBIT, operands=[qbt]))
 
         # Return handle to variable for use in SDK
         return QubitHandle(qbt)
 
-    def q_rotate(
-        self, axis: IrRotAxis, qubit: QubitHandle, angle: float
-    ) -> None:
+    def q_rotate(self, axis: IrRotAxis, qubit: QubitHandle, angle: float) -> None:
         # Find qubit
         qbt = qubit._iqbt
 
@@ -259,14 +273,9 @@ class Builder:
         }
 
         instr_type = rot_map[axis.name]
-        self._iinstrs.append(IrInstr(
-            typ=instr_type,
-            operands=[qbt, angle]
-        ))
+        self._iinstrs.append(IrInstr(typ=instr_type, operands=[qbt, angle]))
 
-    def q_gate(
-        self, gate: IrSingleGate, qubit: QubitHandle
-    ) -> None:
+    def q_gate(self, gate: IrSingleGate, qubit: QubitHandle) -> None:
         # Find qubit
         qbt = qubit._iqbt
 
@@ -280,13 +289,13 @@ class Builder:
         }
 
         instr_type = gate_map[gate.name]
-        self._iinstrs.append(IrInstr(
-            typ=instr_type,
-            operands=[qbt]
-        ))
+        self._iinstrs.append(IrInstr(typ=instr_type, operands=[qbt]))
 
     def q_two_gate(
-        self, gate: IrTwoGate, qubit1: QubitHandle, qubit2: QubitHandle,
+        self,
+        gate: IrTwoGate,
+        qubit1: QubitHandle,
+        qubit2: QubitHandle,
     ) -> None:
         # Find qubit
         qbt1 = qubit1._iqbt
@@ -300,29 +309,16 @@ class Builder:
         }
 
         instr_type = gate_map[gate.name]
-        self._iinstrs.append(IrInstr(
-            typ=instr_type,
-            operands=[qbt1, qbt2]
-        ))
+        self._iinstrs.append(IrInstr(typ=instr_type, operands=[qbt1, qbt2]))
 
-    def measure(
-        self,
-        qubit: QubitHandle,
-        inplace: bool
-    ) -> RegisterHandle:
+    def measure(self, qubit: QubitHandle, inplace: bool) -> RegisterHandle:
         qbt: IrQbt = qubit._iqbt
         reg: IrReg = self._new_register()
 
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.MEAS,
-            operands=[qbt, reg]
-        ))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.MEAS, operands=[qbt, reg]))
 
         if not inplace:
-            self._iinstrs.append(IrInstr(
-                typ=IrInstrType.Q_FREE,
-                operands=[qbt]
-            ))
+            self._iinstrs.append(IrInstr(typ=IrInstrType.Q_FREE, operands=[qbt]))
 
         return RegisterHandle(reg)
 
@@ -336,18 +332,11 @@ class Builder:
         qubits: List[IrQbt] = [self._new_qubit() for _ in range(number)]
 
         # Generate IR code
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.PARAM,
-            operands=[number]
-        ))
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.PARAM,
-            operands=[socket]
-        ))
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.CALL,
-            operands=["IR_epr_create_keep", 2]
-        ))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.PARAM, operands=[number]))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.PARAM, operands=[socket]))
+        self._iinstrs.append(
+            IrInstr(typ=IrInstrType.CALL, operands=["IR_epr_create_keep", 2])
+        )
 
         # Return handle to variable for use in SDK
         return [QubitHandle(qbt) for qbt in qubits]
@@ -362,18 +351,11 @@ class Builder:
         qubits: List[IrQbt] = [self._new_qubit() for _ in range(number)]
 
         # Generate IR code
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.PARAM,
-            operands=[number]
-        ))
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.PARAM,
-            operands=[socket]
-        ))
-        self._iinstrs.append(IrInstr(
-            typ=IrInstrType.CALL,
-            operands=["IR_epr_recv_keep", 2]
-        ))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.PARAM, operands=[number]))
+        self._iinstrs.append(IrInstr(typ=IrInstrType.PARAM, operands=[socket]))
+        self._iinstrs.append(
+            IrInstr(typ=IrInstrType.CALL, operands=["IR_epr_recv_keep", 2])
+        )
 
         # Return handle to variable for use in SDK
         return [QubitHandle(qbt) for qbt in qubits]
@@ -404,11 +386,17 @@ class Builder:
 
     @contextmanager
     def loop(
-        self, stop: int, start: int = 0, step: int = 1, loop_register: Optional[operand.Register] = None
+        self,
+        stop: int,
+        start: int = 0,
+        step: int = 1,
+        loop_register: Optional[operand.Register] = None,
     ) -> Iterator[operand.Register]:
         try:
             pre_commands = self._pop_pending_commands()
-            loop_register_result = self._handle_loop_register(loop_register, activate=True)
+            loop_register_result = self._handle_loop_register(
+                loop_register, activate=True
+            )
             yield loop_register_result
         finally:
             body_commands = self._pop_pending_commands()
@@ -428,7 +416,7 @@ class Builder:
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[operand.Register] = None
+        loop_register: Optional[operand.Register] = None,
     ) -> None:
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.

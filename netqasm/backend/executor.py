@@ -18,21 +18,16 @@ from qlink_interface import (
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.backend.network_stack import BaseNetworkStack
 from netqasm.lang import instr as instructions
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.logging.output import InstrLogger
-from netqasm.lang.operand import ArrayEntry, ArraySlice, Address
 from netqasm.lang import operand
 from netqasm.lang.encoding import RegisterName
-from netqasm.lang.instr import operand
 from netqasm.lang.instr.base import NetQASMInstruction
-from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
 from netqasm.lang.parsing import parse_address
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
-from netqasm.sdk.shared_memory import setup_registers, Arrays, SharedMemoryManager
 from netqasm.sdk import shared_memory
-from netqasm.sdk.shared_memory import Arrays, get_shared_memory, setup_registers
+from netqasm.sdk.shared_memory import Arrays, SharedMemoryManager, setup_registers
 from netqasm.util.error import NotAllocatedError
 
 
@@ -202,7 +197,9 @@ class Executor:
 
     def new_shared_memory(self, app_id):
         """Instantiate a new shared memory with an application"""
-        self._shared_memories[app_id] = SharedMemoryManager.create_shared_memory(node_name=self._name, key=app_id)
+        self._shared_memories[app_id] = SharedMemoryManager.create_shared_memory(
+            node_name=self._name, key=app_id
+        )
 
     def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id):
         if self.network_stack is None:

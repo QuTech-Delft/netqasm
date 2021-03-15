@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Union
 
 from netqasm.lang.ir import GenericInstr
-from netqasm.sdk.futures import RegFuture, Future
+from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
     from qlink_interface import LinkLayerOKTypeK
@@ -160,43 +160,57 @@ class Qubit:
         """
         Performs a X on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.X, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.X, qubit_id=self.qubit_id
+        )
 
     def Y(self) -> None:
         """
         Performs a Y on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.Y, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.Y, qubit_id=self.qubit_id
+        )
 
     def Z(self) -> None:
         """
         Performs a Z on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.Z, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.Z, qubit_id=self.qubit_id
+        )
 
     def T(self) -> None:
         """
         Performs a T gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.T, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.T, qubit_id=self.qubit_id
+        )
 
     def H(self) -> None:
         """
         Performs a Hadamard on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.H, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.H, qubit_id=self.qubit_id
+        )
 
     def K(self) -> None:
         """
         Performs a K gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.K, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.K, qubit_id=self.qubit_id
+        )
 
     def S(self) -> None:
         """
         Performs a S gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=GenericInstr.S, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=GenericInstr.S, qubit_id=self.qubit_id
+        )
 
     def rot_X(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
         """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`

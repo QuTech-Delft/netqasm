@@ -1,16 +1,16 @@
 from __future__ import annotations
-from typing import List, Union, Optional, Dict, Tuple
-from typing import TYPE_CHECKING
+
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from qlink_interface import (
     EPRType,
-    RandomBasis,
     LinkLayerCreate,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
+    RandomBasis,
 )
 
 

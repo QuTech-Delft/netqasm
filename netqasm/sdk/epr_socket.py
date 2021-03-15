@@ -14,12 +14,9 @@ from qlink_interface import (
     RandomBasis,
 )
 
-from .qubit import Qubit
-
-"""TODO write about epr sockets"""
-from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.ir import GenericInstr
-
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk import Qubit
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection

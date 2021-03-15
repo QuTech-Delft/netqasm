@@ -1,8 +1,8 @@
 import ctypes
 
 from netqasm.lang import encoding
+from netqasm.lang.instr import Flavour, NetQASMInstruction, VanillaFlavour
 from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.instr import Flavour, VanillaFlavour, NetQASMInstruction
 
 INSTR_ID = ctypes.c_uint8
 

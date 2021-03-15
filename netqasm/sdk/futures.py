@@ -4,19 +4,17 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from netqasm.lang.instr import operand
-from netqasm.lang.parsing import parse_register, parse_address
-from netqasm.lang.ir import Symbols, ICmd, BranchLabel, GenericInstr
+from netqasm.lang import operand
+from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, Symbols
+from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.util.log import HostLine
 
-from netqasm.lang import operand
-
 if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
     from netqasm.lang.ir import T_OperandUnion
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 T_Cmd = Union[ICmd, BranchLabel]
-T_CValue = Union[int, 'Future', 'RegFuture']
+T_CValue = Union[int, "Future", "RegFuture"]
 
 
 class NoValueError(RuntimeError):
@@ -276,12 +274,14 @@ class Future(BaseFuture):
             add_operands.append(mod)
 
         commands = (
-            load_commands +
-            [ICmd(
-                instruction=add_instr,
-                operands=add_operands,
-            )] +
-            store_commands
+            load_commands
+            + [
+                ICmd(
+                    instruction=add_instr,
+                    operands=add_operands,
+                )
+            ]
+            + store_commands
         )
 
         self._connection._remove_active_register(tmp_register)
@@ -296,8 +296,12 @@ class Future(BaseFuture):
     def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(GenericInstr.STORE, register)
 
-    def _get_access_commands(self, instruction: GenericInstr, register: operand.Register) -> List[T_Cmd]:
-        assert instruction == GenericInstr.LOAD or instruction == GenericInstr.STORE, "Not an access instruction"
+    def _get_access_commands(
+        self, instruction: GenericInstr, register: operand.Register
+    ) -> List[T_Cmd]:
+        assert (
+            instruction == GenericInstr.LOAD or instruction == GenericInstr.STORE
+        ), "Not an access instruction"
         commands = []
         if isinstance(self._index, Future):
             if self._connection is not self._index._connection:
@@ -316,8 +320,12 @@ class Future(BaseFuture):
         elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
-            raise TypeError(f"Cannot use type {type(self._index)} as index to load future")
-        address_entry = parse_address(f"{Symbols.ADDRESS_START}{self._address}[{index}]")
+            raise TypeError(
+                f"Cannot use type {type(self._index)} as index to load future"
+            )
+        address_entry = parse_address(
+            f"{Symbols.ADDRESS_START}{self._address}[{index}]"
+        )
         access_cmd = ICmd(
             instruction=instruction,
             operands=[
@@ -408,12 +416,14 @@ class RegFuture(BaseFuture):
             add_operands.append(mod)
 
         commands = (
-            load_commands +
-            [ICmd(
-                instruction=add_instr,
-                operands=add_operands,
-            )] +
-            store_commands
+            load_commands
+            + [
+                ICmd(
+                    instruction=add_instr,
+                    operands=add_operands,
+                )
+            ]
+            + store_commands
         )
 
         if other_tmp_register is not None:
@@ -547,7 +557,11 @@ class _IfContext(_Context):
     EXIT_METH = "_exit_if_context"
 
     def __init__(
-        self, connection: BaseNetQASMConnection, condition: GenericInstr, a: Optional[T_CValue], b: Optional[T_CValue]
+        self,
+        connection: BaseNetQASMConnection,
+        condition: GenericInstr,
+        a: Optional[T_CValue],
+        b: Optional[T_CValue],
     ):
         super().__init__(
             connection=connection,

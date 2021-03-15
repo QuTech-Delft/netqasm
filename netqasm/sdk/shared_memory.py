@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
-from netqasm.lang.instr import operand
-from netqasm.lang.parsing import parse_address, parse_register
-from netqasm.lang.subroutine import Symbols
-from netqasm.lang.ir import Symbols
 from netqasm.lang import operand
+from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
+from netqasm.lang.ir import Symbols
+from netqasm.lang.parsing import parse_address, parse_register
 
 if TYPE_CHECKING:
     from netqasm.lang.operand import ArrayEntry
@@ -240,16 +238,22 @@ class SharedMemoryManager:
     _MEMORIES: Dict[Tuple[str, Optional[int]], Optional[SharedMemory]] = {}
 
     @classmethod
-    def create_shared_memory(cls, node_name: str, key: Optional[int] = None) -> SharedMemory:
+    def create_shared_memory(
+        cls, node_name: str, key: Optional[int] = None
+    ) -> SharedMemory:
         absolute_key = (node_name, key)
         if cls._MEMORIES.get(absolute_key) is not None:
-            raise RuntimeError(f"Shared memory for (node, key): ({node_name}, {key}) already exists.")
+            raise RuntimeError(
+                f"Shared memory for (node, key): ({node_name}, {key}) already exists."
+            )
         memory = SharedMemory()
         cls._MEMORIES[absolute_key] = memory
         return memory
 
     @classmethod
-    def get_shared_memory(cls, node_name: str, key: Optional[int] = None) -> Optional[SharedMemory]:
+    def get_shared_memory(
+        cls, node_name: str, key: Optional[int] = None
+    ) -> Optional[SharedMemory]:
         absolute_key = (node_name, key)
         memory = cls._MEMORIES.get(absolute_key)
         return memory
