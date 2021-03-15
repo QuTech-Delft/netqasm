@@ -34,9 +34,19 @@ requirements python-deps:
 clean:
 	@/usr/bin/find . -name '*.pyc' -delete
 
-lint:
+lint-black:
+	$(info Running black...)
+	@$(PYTHON3) -m black --check ${SOURCEDIR} ${TESTDIR}
+
+lint-flake8:
+	$(info Running flake8...)
 	@$(PYTHON3) -m flake8 ${SOURCEDIR} ${TESTDIR}
+
+lint-mypy:
+	$(info Running mypy...)
 	@$(PYTHON3) -m mypy ${SOURCEDIR} ${TESTDIR}
+
+lint: lint-black lint-flake8 lint-mypy
 
 tests:
 	@$(PYTHON3) -m pytest --cov=${SOURCEDIR} --cov-fail-under=${MINCOV} --ignore=${TESTDIR}/${EXT_TEST} ${TESTDIR}
