@@ -1,12 +1,10 @@
-import pytest
 import numpy as np
-
-from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import Socket, NetQASMConnection, simulate_application
-from netqasm.sdk.toolbox import create_ghz
-from netqasm.sdk.toolbox import get_angle_spec_from_float
+import pytest
 
 from netqasm.runtime.application import Program, default_app_instance
+from netqasm.sdk import EPRSocket
+from netqasm.sdk.external import NetQASMConnection, Socket, simulate_application
+from netqasm.sdk.toolbox import create_ghz, get_angle_spec_from_float
 
 
 @pytest.mark.parametrize(

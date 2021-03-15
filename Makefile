@@ -34,6 +34,10 @@ requirements python-deps:
 clean:
 	@/usr/bin/find . -name '*.pyc' -delete
 
+lint-isort:
+	$(info Running isort...)
+	@$(PYTHON3) -m isort ${SOURCEDIR} ${TESTDIR}
+
 lint-black:
 	$(info Running black...)
 	@$(PYTHON3) -m black --check ${SOURCEDIR} ${TESTDIR}

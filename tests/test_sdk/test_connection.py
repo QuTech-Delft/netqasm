@@ -2,25 +2,24 @@ import logging
 
 from qlink_interface import EPRType
 
-from netqasm.sdk.connection import DebugConnection
-from netqasm.sdk.qubit import Qubit
-from netqasm.sdk.epr_socket import EPRSocket
-from netqasm.logging.glob import set_log_level
-from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.encoding import RegisterName
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
-from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.backend.network_stack import CREATE_FIELDS
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
-
 from netqasm.lang import instr as instructions
+from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr.operand import (
-    Register,
-    Immediate,
     Address,
     ArrayEntry,
     ArraySlice,
+    Immediate,
+    Register,
 )
+from netqasm.lang.parsing import deserialize as deserialize_subroutine
+from netqasm.lang.subroutine import Subroutine
+from netqasm.logging.glob import set_log_level
+from netqasm.sdk.connection import DebugConnection
+from netqasm.sdk.epr_socket import EPRSocket
+from netqasm.sdk.qubit import Qubit
 
 DebugConnection.node_ids = {
     "Alice": 0,

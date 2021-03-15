@@ -1,6 +1,6 @@
 import pytest
 
-from netqasm.util.string import group_by_word, is_variable_name, is_number, is_float
+from netqasm.util.string import group_by_word, is_float, is_number, is_variable_name
 
 
 @pytest.mark.parametrize(

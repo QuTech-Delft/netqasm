@@ -1,10 +1,11 @@
-import pytest
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from timeit import default_timer as timer
 
-from netqasm.sdk import ThreadSocket
+import pytest
+
 from netqasm.logging.glob import set_log_level
+from netqasm.sdk import ThreadSocket
 
 
 def execute_functions(functions):

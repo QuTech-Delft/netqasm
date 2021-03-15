@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 
 from netqasm.util.states import bloch_sphere_rep
 

@@ -1,19 +1,19 @@
-import pytest
-import numpy as np
 from typing import Dict, Set
 
-from netqasm.logging.glob import set_log_level
-from netqasm.lang.parsing import parse_text_subroutine
+import numpy as np
+import pytest
+
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
+from netqasm.lang.instr import core
+from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
+from netqasm.lang.instr.operand import Register
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
+from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.lang.subroutine import Subroutine
+from netqasm.logging.glob import set_log_level
+from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
-from netqasm.sdk.compiling import NVSubroutineCompiler
-
-from netqasm.lang.instr.flavour import VanillaFlavour, NVFlavour
-from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.instr import core
-from netqasm.lang.instr.operand import Register
 
 
 def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:

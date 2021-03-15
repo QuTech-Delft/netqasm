@@ -1,6 +1,5 @@
-from netqasm.lang.parsing import parse_text_subroutine, deserialize
-
 from netqasm.lang.instr.vanilla import CphaseInstruction
+from netqasm.lang.parsing import deserialize, parse_text_subroutine
 
 
 def test():

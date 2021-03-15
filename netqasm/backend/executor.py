@@ -27,11 +27,7 @@ from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
 from netqasm.sdk import shared_memory
-from netqasm.sdk.shared_memory import (
-    Arrays,
-    get_shared_memory,
-    setup_registers,
-)
+from netqasm.sdk.shared_memory import Arrays, get_shared_memory, setup_registers
 from netqasm.util.error import NotAllocatedError
 
 

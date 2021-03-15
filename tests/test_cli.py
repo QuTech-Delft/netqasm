@@ -1,12 +1,14 @@
 import json
 import os
-from click.testing import CliRunner
+import re
 import unittest
 from unittest.mock import patch
-import re
+
 import requests
+from click.testing import CliRunner
+
 import netqasm
-from netqasm.runtime.cli import cli, _login
+from netqasm.runtime.cli import _login, cli
 from netqasm.runtime.env import EXAMPLE_APPS_DIR
 from netqasm.util.yaml import load_yaml
 

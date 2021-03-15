@@ -6,13 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from netqasm.lang import encoding
 from netqasm.lang.instr.base import DebugInstruction, NetQASMInstruction
 from netqasm.lang.instr.instr_enum import Instruction, instruction_to_string
-from netqasm.lang.instr.operand import (
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label,
-    Register,
-)
+from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice, Label, Register
 from netqasm.lang.symbols import Symbols
 from netqasm.util.string import rspaces
 

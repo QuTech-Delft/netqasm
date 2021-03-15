@@ -1,10 +1,6 @@
 import numpy as np
 
-from netqasm.examples.lib.bqc import (
-    recv_meas_outcome,
-    send_meas_cmd,
-    teleport_state,
-)
+from netqasm.examples.lib.bqc import recv_meas_outcome, send_meas_cmd, teleport_state
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket

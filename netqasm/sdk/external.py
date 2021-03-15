@@ -1,8 +1,4 @@
-from netqasm.runtime.settings import (
-    Simulator,
-    get_is_using_hardware,
-    get_simulator,
-)
+from netqasm.runtime.settings import Simulator, get_is_using_hardware, get_simulator
 
 simulator = get_simulator()
 is_using_hardware = get_is_using_hardware()

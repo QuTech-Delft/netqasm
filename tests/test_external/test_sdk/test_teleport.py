@@ -1,11 +1,11 @@
-import pytest
 import numpy as np
+import pytest
 
-from netqasm.sdk import Qubit, EPRSocket
-from netqasm.sdk.external import NetQASMConnection, Socket, simulate_application
-from netqasm.runtime.application import default_app_instance
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.runtime.settings import get_simulator, Simulator
+from netqasm.runtime.application import default_app_instance
+from netqasm.runtime.settings import Simulator, get_simulator
+from netqasm.sdk import EPRSocket, Qubit
+from netqasm.sdk.external import NetQASMConnection, Socket, simulate_application
 
 logger = get_netqasm_logger()
 
