@@ -2,5 +2,5 @@ pytest
 pytest-cov
 flake8
 mypy
-black
-isort
+black>=20.8b1
+isort>=5.7.0

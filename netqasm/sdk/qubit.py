@@ -7,8 +7,9 @@ from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
     from qlink_interface import LinkLayerOKTypeK
+
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 
 class QubitNotActiveError(MemoryError):

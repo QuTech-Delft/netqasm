@@ -11,11 +11,12 @@ from netqasm.logging.glob import get_netqasm_logger
 
 if TYPE_CHECKING:
     import logging
+
+    from netqasm.sdk.classical_communication.message import StructuredMessage
     from netqasm.sdk.classical_communication.thread_socket import ThreadSocket
     from netqasm.sdk.classical_communication.thread_socket.socket import (
         T_ThreadSocketKey,
     )
-    from netqasm.sdk.classical_communication.message import StructuredMessage
 
 
 class _SocketHub:

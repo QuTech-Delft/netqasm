@@ -3,8 +3,8 @@ from __future__ import annotations
 from netqasm.runtime.settings import Simulator, get_simulator
 
 if get_simulator() == Simulator.NETSQUID:
-    import numpy as np
     import netsquid as ns
+    import numpy as np
     from netsquid.qubits import operators
     from netsquid.qubits.qubit import Qubit as NetSquidQubit
 

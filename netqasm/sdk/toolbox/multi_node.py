@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 from netqasm.sdk.qubit import Qubit
 
 if TYPE_CHECKING:
-    from netqasm.sdk.epr_socket import EPRSocket
     from netqasm.sdk.classical_communication.socket import Socket
+    from netqasm.sdk.epr_socket import EPRSocket
     from netqasm.sdk.futures import Future, RegFuture
 
 

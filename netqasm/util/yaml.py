@@ -1,11 +1,11 @@
 from yaml import dump, load
 
 try:
-    from yaml import CLoader as Loader
     from yaml import CDumper as Dumper
+    from yaml import CLoader as Loader
 except ImportError:
-    from yaml import Loader  # type: ignore
     from yaml import Dumper  # type: ignore
+    from yaml import Loader  # type: ignore
 
 
 def load_yaml(file_path):

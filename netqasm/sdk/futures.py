@@ -11,8 +11,8 @@ from netqasm.lang.subroutine import BranchLabel, Command, Symbols
 from netqasm.util.log import HostLine
 
 if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
     from netqasm.lang.subroutine import T_OperandUnion
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 T_Cmd = Union[Command, BranchLabel]
 T_CValue = Union[int, "Future", "RegFuture"]
