@@ -415,7 +415,7 @@ def _assign_branch_labels(subroutine):
         # Assign the label to the line/command number
         branch_labels[branch_label] = command_number
         # Remove the line
-        commands = commands[:command_number] + commands[command_number + 1:]
+        commands = commands[:command_number] + commands[command_number + 1 :]
     subroutine.commands = commands
     _update_labels(subroutine, branch_labels)
 

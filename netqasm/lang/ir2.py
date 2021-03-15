@@ -2,16 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from qlink_interface import (
-    EPRType,
-    LinkLayerCreate,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-    RandomBasis,
-)
+from qlink_interface import RandomBasis
 
 
 class IrInstrType(Enum):
@@ -124,6 +117,7 @@ class IrTwoGate:
 
 class IrReg:
     """A register variable"""
+
     _COUNT: int = 0
 
     def __init__(self):
@@ -133,6 +127,7 @@ class IrReg:
 
 class IrArr:
     """An array variable"""
+
     _COUNT: int = 0
 
     def __init__(self):
@@ -142,6 +137,7 @@ class IrArr:
 
 class IrQbt:
     """A qubit variable"""
+
     _COUNT: int = 0
 
     def __init__(self):
@@ -151,6 +147,7 @@ class IrQbt:
 
 class IrBlk:
     """A basic block"""
+
     _COUNT: int = 0
 
     def __init__(self):
@@ -160,6 +157,7 @@ class IrBlk:
 
 class IrFun:
     """A function"""
+
     _COUNT: int = 0
 
     def __init__(self, args: Dict[str, T_IrType]):
@@ -194,10 +192,10 @@ class IrEprSocket:
 class IrEprMeasConfig:
     """Configuration of Measure-Directly EPR generation requests"""
 
-    random_basis_local: Optional[RandomBasis] = None,
-    random_basis_remote: Optional[RandomBasis] = None,
-    rotations_local: Tuple[int, int, int] = (0, 0, 0),
-    rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+    random_basis_local: Optional[RandomBasis] = None
+    random_basis_remote: Optional[RandomBasis] = None
+    rotations_local: Tuple[int, int, int] = (0, 0, 0)
+    rotations_remote: Tuple[int, int, int] = (0, 0, 0)
 
 
 class IrInstr:

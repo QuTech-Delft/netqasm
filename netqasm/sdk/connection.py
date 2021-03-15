@@ -43,20 +43,6 @@ from netqasm.backend.messages import (
     SubroutineMessage,
 )
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
-from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
-from netqasm.lang.instr import operand
-from netqasm.lang.instr.instr_enum import Instruction, flip_branch_instr
-from netqasm.lang.parsing.text import (
-    assemble_subroutine,
-    get_current_registers,
-    parse_address,
-    parse_register,
-)
-from netqasm.lang.subroutine import (
-    PreSubroutine,
-    Subroutine,
-)
-from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.ir import (
@@ -64,18 +50,6 @@ from netqasm.lang.ir import (
     ArrayEntry,
     ArraySlice,
     BranchLabel,
-    Command,
-    Label,
-    PreSubroutine,
-    Subroutine,
-    Symbols,
-    T_OperandUnion,
-)
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.lang.ir import PreSubroutine
-from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
-from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
-from netqasm.util.log import LineTracker
     GenericInstr,
     ICmd,
     Label,
@@ -98,15 +72,12 @@ from netqasm.sdk.futures import Array, Future, RegFuture
 from netqasm.sdk.network import NetworkInfo
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.sdk.qubit import Qubit, _FutureQubit
-from netqasm.sdk.shared_memory import SharedMemory, get_shared_memory
-from netqasm.sdk.toolbox import get_angle_spec_from_float
-from netqasm.util.log import LineTracker
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.util.log import LineTracker
 
-T_Cmd=Union[ICmd, BranchLabel]
-T_LinkLayerOkList=Union[
+T_Cmd = Union[ICmd, BranchLabel]
+T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
 ]
 T_Message = Union[Message, SubroutineMessage]
@@ -123,7 +94,7 @@ if TYPE_CHECKING:
 
 # NOTE this is needed to be able to instanciate tuples the same way as namedtuples
 class _Tuple(tuple):
-    @ classmethod
+    @classmethod
     def __new__(cls, *args, **kwargs):
         return tuple.__new__(cls, args[1:])
 
@@ -131,10 +102,10 @@ class _Tuple(tuple):
 class BaseNetQASMConnection(abc.ABC):
 
     # Global dict to track all used app IDs for each program
-    _app_ids: Dict[str, List[int]]= {}  # <party> -> [<app_id1>, <app_id2>, ...]
+    _app_ids: Dict[str, List[int]] = {}  # <party> -> [<app_id1>, <app_id2>, ...]
 
     # Dict[node_name, Dict[app_id, app_name]]
-    _app_names: Dict[str, Dict[int, str]]= {}
+    _app_names: Dict[str, Dict[int, str]] = {}
 
     # Class to use to pack entanglement information
     ENT_INFO = {
@@ -146,39 +117,39 @@ class BaseNetQASMConnection(abc.ABC):
     def __init__(
         self,
         app_name: str,
-        node_name: Optional[str]=None,
-        app_id: Optional[int]=None,
-        max_qubits: int=5,
-        log_config: LogConfig=None,
-        epr_sockets: Optional[List[EPRSocket]]=None,
-        compiler: Optional[Type[SubroutineCompiler]]=None,
-        return_arrays: bool=True,
-        _init_app: bool=True,
-        _setup_epr_sockets: bool=True,
+        node_name: Optional[str] = None,
+        app_id: Optional[int] = None,
+        max_qubits: int = 5,
+        log_config: LogConfig = None,
+        epr_sockets: Optional[List[EPRSocket]] = None,
+        compiler: Optional[Type[SubroutineCompiler]] = None,
+        return_arrays: bool = True,
+        _init_app: bool = True,
+        _setup_epr_sockets: bool = True,
     ):
-        self._app_name: str=app_name
+        self._app_name: str = app_name
 
         # Set an app ID
-        self._app_id: int=self._get_new_app_id(app_id)
+        self._app_id: int = self._get_new_app_id(app_id)
 
         if node_name is None:
-            node_name=self.network_info.get_node_name_for_app(app_name)
-        self._node_name: str=node_name
+            node_name = self.network_info.get_node_name_for_app(app_name)
+        self._node_name: str = node_name
 
         if node_name not in self._app_names:
-            self._app_names[node_name]={}
-        self._app_names[node_name][self._app_id]=app_name
+            self._app_names[node_name] = {}
+        self._app_names[node_name][self._app_id] = app_name
 
         # All qubits active for this connection
-        self.active_qubits: List[Qubit]=[]
+        self.active_qubits: List[Qubit] = []
 
-        self._used_array_addresses: List[int]=[]
+        self._used_array_addresses: List[int] = []
 
-        self._used_meas_registers: List[int]=[]
+        self._used_meas_registers: List[int] = []
 
-        self._pending_commands: List[T_Cmd]=[]
+        self._pending_commands: List[T_Cmd] = []
 
-        self._max_qubits: int=max_qubits
+        self._max_qubits: int = max_qubits
 
         self._shared_memory: Optional[
             SharedMemory
@@ -188,39 +159,39 @@ class BaseNetQASMConnection(abc.ABC):
         # These are registers that are for example currently hold data and should
         # not be used for something else.
         # For example a register used for looping.
-        self._active_registers: Set[operand.Register]=set()
+        self._active_registers: Set[operand.Register] = set()
 
         # Arrays to return
-        self._arrays_to_return: List[Array]=[]
+        self._arrays_to_return: List[Array] = []
 
         # If False, don't return arrays even if they are used in a subroutine
-        self._return_arrays: bool=return_arrays
+        self._return_arrays: bool = return_arrays
 
         # Registers to return
-        self._registers_to_return: List[operand.Register]=[]
+        self._registers_to_return: List[operand.Register] = []
 
         # Storing commands before an conditional statement
-        self._pre_context_commands: Dict[int, List[T_Cmd]]={}
+        self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
 
-        self._used_branch_variables: List[str]=[]
+        self._used_branch_variables: List[str] = []
 
         # Can be set to false for e.g. debugging, not exposed to user atm
-        self._clear_app_on_exit: bool=True
-        self._stop_backend_on_exit: bool=True
+        self._clear_app_on_exit: bool = True
+        self._stop_backend_on_exit: bool = True
 
         if log_config is None:
-            log_config=LogConfig()
+            log_config = LogConfig()
 
-        self._line_tracker: LineTracker=LineTracker(log_config=log_config)
-        self._track_lines: bool=log_config.track_lines
+        self._line_tracker: LineTracker = LineTracker(log_config=log_config)
+        self._track_lines: bool = log_config.track_lines
 
         # Should subroutines commited be saved for logging/debugging
-        self._log_subroutines_dir: Optional[str]=log_config.log_subroutines_dir
+        self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
-        self._commited_subroutines: List[Subroutine]=[]
+        self._commited_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
-        self._compiler: Optional[Type[SubroutineCompiler]]=compiler
+        self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
         self._logger: logging.Logger = get_netqasm_logger(
             f"{self.__class__.__name__}({self.app_name})"
@@ -233,34 +204,34 @@ class BaseNetQASMConnection(abc.ABC):
             # Setup epr sockets
             self._setup_epr_sockets(epr_sockets=epr_sockets)
 
-    @ property
+    @property
     def app_name(self) -> str:
         """Get the application name"""
         return self._app_name
 
-    @ property
+    @property
     def node_name(self) -> str:
         """Get the node name"""
         return self._node_name
 
-    @ property
+    @property
     def app_id(self) -> int:
         """Get the application ID"""
         return self._app_id
 
-    @ abc.abstractmethod
+    @abc.abstractmethod
     def _get_network_info(self) -> Type[NetworkInfo]:
         raise NotImplementedError
 
-    @ property
+    @property
     def network_info(self) -> Type[NetworkInfo]:
         return self._get_network_info()
 
-    @ classmethod
+    @classmethod
     def get_app_ids(cls) -> Dict[str, List[int]]:
         return cls._app_ids
 
-    @ classmethod
+    @classmethod
     def get_app_names(cls) -> Dict[str, Dict[int, str]]:
         return cls._app_names
 
@@ -305,9 +276,9 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _get_new_app_id(self, app_id: Optional[int]) -> int:
         """Finds a new app ID if not specific"""
-        name=self.app_name
+        name = self.app_name
         if name not in self._app_ids:
-            self._app_ids[name]=[]
+            self._app_ids[name] = []
 
         # Which app_id
         if app_id is None:
@@ -334,7 +305,7 @@ class BaseNetQASMConnection(abc.ABC):
     def clear(self) -> None:
         self._pop_app_id()
 
-    def close(self, clear_app: bool=True, stop_backend: bool=False) -> None:
+    def close(self, clear_app: bool = True, stop_backend: bool = False) -> None:
         """Handle exiting of context."""
         # Flush all pending commands
         self.flush()
@@ -356,9 +327,9 @@ class BaseNetQASMConnection(abc.ABC):
             raw_msg=bytes(msg), block=block, callback=callback
         )
 
-    @ abc.abstractmethod
+    @abc.abstractmethod
     def _commit_serialized_message(
-        self, raw_msg: bytes, block: bool=True, callback: Optional[Callable]=None
+        self, raw_msg: bytes, block: bool = True, callback: Optional[Callable] = None
     ) -> None:
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
@@ -366,10 +337,10 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _inactivate_qubits(self) -> None:
         while len(self.active_qubits) > 0:
-            q=self.active_qubits.pop()
-            q.active=False
+            q = self.active_qubits.pop()
+            q.active = False
 
-    def _signal_stop(self, clear_app: bool=True, stop_backend: bool=True) -> None:
+    def _signal_stop(self, clear_app: bool = True, stop_backend: bool = True) -> None:
         if clear_app:
             self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
@@ -382,7 +353,7 @@ class BaseNetQASMConnection(abc.ABC):
         with open(filepath, "wb") as f:
             pickle.dump(self._commited_subroutines, f)
 
-    @ property
+    @property
     def shared_memory(self) -> SharedMemory:
         if self._shared_memory is None:
             mem = SharedMemoryManager.get_shared_memory(
@@ -415,7 +386,7 @@ class BaseNetQASMConnection(abc.ABC):
         for epr_socket in epr_sockets:
             if epr_socket._remote_app_name == self.app_name:
                 raise ValueError("A node cannot setup an EPR socket with itself")
-            epr_socket.conn=self
+            epr_socket.conn = self
             self._setup_epr_socket(
                 epr_socket_id=epr_socket.epr_socket_id,
                 remote_node_id=epr_socket.remote_node_id,
@@ -465,20 +436,20 @@ class BaseNetQASMConnection(abc.ABC):
         return RegFuture(connection=self, reg=reg)
 
     def add_pending_commands(self, commands: List[T_Cmd]) -> None:
-        calling_lineno=self._line_tracker.get_line()
+        calling_lineno = self._line_tracker.get_line()
         for command in commands:
             if command.lineno is None:
-                command.lineno=calling_lineno
+                command.lineno = calling_lineno
             self.add_pending_command(command)
 
     def add_pending_command(self, command: T_Cmd) -> None:
         assert isinstance(command, ICmd) or isinstance(command, BranchLabel)
         if command.lineno is None:
-            command.lineno=self._line_tracker.get_line()
+            command.lineno = self._line_tracker.get_line()
         self._pending_commands.append(command)
 
-    def flush(self, block: bool=True, callback: Optional[Callable]=None) -> None:
-        subroutine=self._pop_pending_subroutine()
+    def flush(self, block: bool = True, callback: Optional[Callable] = None) -> None:
+        subroutine = self._pop_pending_subroutine()
         if subroutine is None:
             return
 
@@ -497,7 +468,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        subroutine=self._pre_process_subroutine(presubroutine)
+        subroutine = self._pre_process_subroutine(presubroutine)
         self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
         # Commit the subroutine to the quantum device
@@ -513,14 +484,14 @@ class BaseNetQASMConnection(abc.ABC):
         # Add commands for initialising and returning arrays
         self._add_array_commands()
         self._add_ret_reg_commands()
-        subroutine=None
+        subroutine = None
         if len(self._pending_commands) > 0:
-            commands=self._pop_pending_commands()
-            subroutine=self._subroutine_from_commands(commands)
+            commands = self._pop_pending_commands()
+            subroutine = self._subroutine_from_commands(commands)
         return subroutine
 
     def _add_ret_reg_commands(self) -> None:
-        ret_reg_instrs: List[T_Cmd]=[]
+        ret_reg_instrs: List[T_Cmd] = []
         for reg in self._registers_to_return:
             ret_reg_instrs.append(
                 ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
@@ -528,15 +499,15 @@ class BaseNetQASMConnection(abc.ABC):
         self.add_pending_commands(commands=ret_reg_instrs)
 
     def _add_array_commands(self) -> None:
-        current_commands=self._pop_pending_commands()
-        array_commands=self._get_array_commands()
-        init_arrays, return_arrays=array_commands
-        commands: List[T_Cmd]=init_arrays + current_commands + return_arrays  # type: ignore
+        current_commands = self._pop_pending_commands()
+        array_commands = self._get_array_commands()
+        init_arrays, return_arrays = array_commands
+        commands: List[T_Cmd] = init_arrays + current_commands + return_arrays  # type: ignore
         self.add_pending_commands(commands=commands)
 
     def _get_array_commands(self) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        init_arrays: List[T_Cmd]=[]
-        return_arrays: List[T_Cmd]=[]
+        init_arrays: List[T_Cmd] = []
+        return_arrays: List[T_Cmd] = []
         for array in self._arrays_to_return:
             # ICmd for initialising the array
             init_arrays.append(
@@ -550,12 +521,12 @@ class BaseNetQASMConnection(abc.ABC):
                 )
             )
             # Populate the array if needed
-            init_vals=array._init_values
+            init_vals = array._init_values
             if init_vals is not None:
-                length=len(init_vals)
+                length = len(init_vals)
                 if length > 1 and init_vals.count(init_vals[0]) == length:
                     # Ad-hoc optimization: if all values are the same, put the initialization commands in a loop
-                    loop_register=self._get_inactive_register()
+                    loop_register = self._get_inactive_register()
 
                     def init_array_elt(conn):
                         conn.add_pending_command(
@@ -603,7 +574,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _subroutine_from_commands(self, commands: List[T_Cmd]) -> PreSubroutine:
         # Build sub-routine
-        metadata=self._get_metadata()
+        metadata = self._get_metadata()
         return PreSubroutine(**metadata, commands=commands)  # type: ignore
 
     def _get_metadata(self) -> Dict:
@@ -613,8 +584,8 @@ class BaseNetQASMConnection(abc.ABC):
         }
 
     def _pop_pending_commands(self) -> List[T_Cmd]:
-        commands=self._pending_commands
-        self._pending_commands=[]
+        commands = self._pending_commands
+        self._pending_commands = []
         return commands
 
     def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
@@ -622,9 +593,9 @@ class BaseNetQASMConnection(abc.ABC):
 
         Can be subclassed and overried for more elaborate compiling.
         """
-        subroutine: Subroutine=assemble_subroutine(pre_subroutine)
+        subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
-            subroutine=self._compiler(subroutine=subroutine).compile()
+            subroutine = self._compiler(subroutine=subroutine).compile()
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return subroutine
@@ -645,7 +616,7 @@ class BaseNetQASMConnection(abc.ABC):
         angle: Optional[float] = None,
     ) -> None:
         if angle is not None:
-            nds=get_angle_spec_from_float(angle=angle)
+            nds = get_angle_spec_from_float(angle=angle)
             for n, d in nds:
                 self.add_single_qubit_rotation_commands(
                     instruction=instruction,
@@ -661,26 +632,26 @@ class BaseNetQASMConnection(abc.ABC):
             instruction=instruction,
             operands=[register, n, d],
         )
-        commands: List[T_Cmd]=set_commands + [rot_command]
+        commands: List[T_Cmd] = set_commands + [rot_command]
         self.add_pending_commands(commands)
 
     def add_single_qubit_commands(self, instr: GenericInstr, qubit_id: int) -> None:
-        register, set_commands=self._get_set_qubit_reg_commands(qubit_id)
+        register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
-        qubit_command=ICmd(
+        qubit_command = ICmd(
             instruction=instr,
             operands=[register],
         )
-        commands: List[T_Cmd]=set_commands + [qubit_command]
+        commands: List[T_Cmd] = set_commands + [qubit_command]
         self.add_pending_commands(commands)
 
     def _get_set_qubit_reg_commands(
-        self, q_address: Union[Future, int], reg_index: int=0
+        self, q_address: Union[Future, int], reg_index: int = 0
     ) -> Tuple[operand.Register, List[T_Cmd]]:
         # Set the register with the qubit address
-        register=operand.Register(RegisterName.Q, reg_index)
+        register = operand.Register(RegisterName.Q, reg_index)
         if isinstance(q_address, Future):
-            set_reg_cmds=q_address._get_load_commands(register)
+            set_reg_cmds = q_address._get_load_commands(register)
         elif isinstance(q_address, int):
             set_reg_cmds = [
                 ICmd(
@@ -710,7 +681,7 @@ class BaseNetQASMConnection(abc.ABC):
             instruction=instr,
             operands=[register1, register2],
         )
-        commands=set_commands1 + set_commands2 + [qubit_command]
+        commands = set_commands1 + set_commands2 + [qubit_command]
         self.add_pending_commands(commands=commands)
 
     def _add_move_qubit_commands(self, source: int, target: int) -> None:
@@ -724,7 +695,7 @@ class BaseNetQASMConnection(abc.ABC):
         if self._compiler == NVSubroutineCompiler:
             for q in self.active_qubits:
                 # Find a free qubit
-                new_virtual_address=self._get_new_qubit_address()
+                new_virtual_address = self._get_new_qubit_address()
                 if q.qubit_id == virtual_address:
                     # Virtual address is already used. Move it to the new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
@@ -732,7 +703,7 @@ class BaseNetQASMConnection(abc.ABC):
                         source=virtual_address, target=new_virtual_address
                     )
                     # From now on, the original qubit should be referred to with the new virtual address.
-                    q.qubit_id=new_virtual_address
+                    q.qubit_id = new_virtual_address
 
     def add_measure_commands(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
@@ -743,9 +714,9 @@ class BaseNetQASMConnection(abc.ABC):
             if not isinstance(qubit_id, Future):
                 if qubit_id != 0:
                     self._free_up_qubit(virtual_address=0)
-        outcome_reg=self._get_new_meas_outcome_reg()
-        qubit_reg, set_commands=self._get_set_qubit_reg_commands(qubit_id)
-        meas_command=ICmd(
+        outcome_reg = self._get_new_meas_outcome_reg()
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        meas_command = ICmd(
             instruction=GenericInstr.MEAS,
             operands=[qubit_reg, outcome_reg],
         )
@@ -757,17 +728,17 @@ class BaseNetQASMConnection(abc.ABC):
                 )
             ]
         else:
-            free_commands=[]
+            free_commands = []
         if future is not None:
             if isinstance(future, Future):
-                outcome_commands=future._get_store_commands(outcome_reg)
+                outcome_commands = future._get_store_commands(outcome_reg)
             elif isinstance(future, RegFuture):
-                future.reg=outcome_reg
+                future.reg = outcome_reg
                 self._registers_to_return.append(outcome_reg)
-                outcome_commands=[]
+                outcome_commands = []
             else:
-                outcome_commands=[]
-        commands=set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
+                outcome_commands = []
+        commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
         self.add_pending_commands(commands)
 
     def _get_new_meas_outcome_reg(self) -> operand.Register:
@@ -779,34 +750,34 @@ class BaseNetQASMConnection(abc.ABC):
         raise RuntimeError("Ran out of M-registers")
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands=self._get_set_qubit_reg_commands(qubit_id)
-        qalloc_command=ICmd(
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qalloc_command = ICmd(
             instruction=GenericInstr.QALLOC,
             operands=[qubit_reg],
         )
-        init_command=ICmd(
+        init_command = ICmd(
             instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
-        commands=set_commands + [qalloc_command, init_command]
+        commands = set_commands + [qalloc_command, init_command]
         self.add_pending_commands(commands)
 
     def add_init_qubit_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands=self._get_set_qubit_reg_commands(qubit_id)
-        init_command=ICmd(
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        init_command = ICmd(
             instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
-        commands=set_commands + [init_command]
+        commands = set_commands + [init_command]
         self.add_pending_commands(commands)
 
     def add_qfree_commands(self, qubit_id: int) -> None:
-        qubit_reg, set_commands=self._get_set_qubit_reg_commands(qubit_id)
-        qfree_command=ICmd(
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qfree_command = ICmd(
             instruction=GenericInstr.QFREE,
             operands=[qubit_reg],
         )
-        commands=set_commands + [qfree_command]
+        commands = set_commands + [qfree_command]
         self.add_pending_commands(commands)
 
     def _add_epr_commands(
@@ -819,10 +790,10 @@ class BaseNetQASMConnection(abc.ABC):
         ent_info_array: Array,
         wait_all: bool,
         tp: EPRType,
-        random_basis_local: Optional[RandomBasis]=None,
-        random_basis_remote: Optional[RandomBasis]=None,
-        rotations_local: Tuple[int, int, int]=(0, 0, 0),
-        rotations_remote: Tuple[int, int, int]=(0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+        random_basis_remote: Optional[RandomBasis] = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         **kwargs,
     ) -> Optional[Array]:
         # qubit addresses
@@ -831,13 +802,13 @@ class BaseNetQASMConnection(abc.ABC):
         epr_cmd_operands: List[T_OperandUnion]
 
         if tp == EPRType.K:
-            qubit_ids_array=self.new_array(init_values=virtual_qubit_ids)  # type: ignore
-            qubit_ids_array_address=qubit_ids_array.address
+            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+            qubit_ids_array_address = qubit_ids_array.address
         else:
-            qubit_ids_array=None  # type: ignore
+            qubit_ids_array = None  # type: ignore
             # NOTE since this argument won't be used just set it to some
             # constant register for now
-            qubit_ids_array_address=operand.Register(RegisterName.C, 0)
+            qubit_ids_array_address = operand.Register(RegisterName.C, 0)
 
         if instruction == GenericInstr.CREATE_EPR:
             # request arguments
@@ -891,20 +862,20 @@ class BaseNetQASMConnection(abc.ABC):
             # NOTE we don't include the two first args since these are remote_node_id
             # and epr_socket_id which come as registers
             for field in LinkLayerCreate._fields[2:]:
-                arg=create_kwargs.get(field)
+                arg = create_kwargs.get(field)
                 # If Enum, use its value
                 if isinstance(arg, Enum):
-                    arg=arg.value
+                    arg = arg.value
                 create_args.append(arg)
             # TODO don't create a new array if already created from previous command
-            create_args_array=self.new_array(init_values=create_args)
-            epr_cmd_operands=[
+            create_args_array = self.new_array(init_values=create_args)
+            epr_cmd_operands = [
                 qubit_ids_array_address,
                 create_args_array.address,
                 ent_info_array.address,
             ]
         elif instruction == GenericInstr.RECV_EPR:
-            epr_cmd_operands=[
+            epr_cmd_operands = [
                 qubit_ids_array_address,
                 ent_info_array.address,
             ]
@@ -912,7 +883,7 @@ class BaseNetQASMConnection(abc.ABC):
             raise ValueError(f"Not an epr instruction {instruction}")
 
         # epr command
-        epr_cmd=ICmd(
+        epr_cmd = ICmd(
             instruction=instruction,
             args=[remote_node_id, epr_socket_id],
             operands=epr_cmd_operands,
@@ -927,9 +898,9 @@ class BaseNetQASMConnection(abc.ABC):
                 )
             ]
         else:
-            wait_cmds=[]
+            wait_cmds = []
 
-        commands: List[T_Cmd]=[epr_cmd] + wait_cmds  # type: ignore
+        commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
         self.add_pending_commands(commands)
 
         return qubit_ids_array
@@ -945,22 +916,22 @@ class BaseNetQASMConnection(abc.ABC):
         if post_routine is None:
             return
 
-        loop_register=self._get_inactive_register()
+        loop_register = self._get_inactive_register()
 
         def post_loop(conn):
             # Wait for each pair individually
-            pair=loop_register
+            pair = loop_register
             conn._add_wait_for_ent_info_cmd(
                 ent_info_array=ent_info_array,
                 pair=pair,
             )
             if tp == EPRType.K:
-                q_id=qubit_ids.get_future_index(pair)
-                q=_FutureQubit(conn=conn, future_id=q_id)
+                q_id = qubit_ids.get_future_index(pair)
+                q = _FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
             elif tp == EPRType.M:
-                slc=slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
-                ent_info_slice=ent_info_array.get_future_slice(slc)
+                slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
+                ent_info_slice = ent_info_array.get_future_slice(slc)
                 post_routine(self, ent_info_slice, pair)
             else:
                 raise NotImplementedError
@@ -974,10 +945,10 @@ class BaseNetQASMConnection(abc.ABC):
         """Wait for the correct slice of the entanglement info array for the given pair"""
         # NOTE arr_start should be pair * OK_FIELDS and
         # arr_stop should be (pair + 1) * OK_FIELDS
-        arr_start=self._get_inactive_register(activate=True)
-        tmp=self._get_inactive_register(activate=True)
-        arr_stop=self._get_inactive_register(activate=True)
-        created_regs=[arr_start, tmp, arr_stop]
+        arr_start = self._get_inactive_register(activate=True)
+        tmp = self._get_inactive_register(activate=True)
+        arr_stop = self._get_inactive_register(activate=True)
+        created_regs = [arr_start, tmp, arr_stop]
 
         for reg in created_regs:
             self.add_pending_command(
@@ -1019,7 +990,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         self.loop_body(add_arr_stop, stop=OK_FIELDS_K)
 
-        wait_cmd=ICmd(
+        wait_cmd = ICmd(
             instruction=GenericInstr.WAIT_ALL,
             operands=[
                 ArraySlice(
@@ -1041,25 +1012,25 @@ class BaseNetQASMConnection(abc.ABC):
         post_routine: Optional[T_PostRoutine],
         sequential: bool,
         tp: EPRType,
-        random_basis_local: Optional[RandomBasis]=None,
-        random_basis_remote: Optional[RandomBasis]=None,
-        rotations_local: Tuple[int, int, int]=(0, 0, 0),
-        rotations_remote: Tuple[int, int, int]=(0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+        random_basis_remote: Optional[RandomBasis] = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         self._assert_epr_args(
             number=number, post_routine=post_routine, sequential=sequential, tp=tp
         )
         # NOTE the `output` is either a list of qubits or a list of entanglement information
         # depending on the type of the request.
-        ent_info_array=self._create_ent_info_array(number=number, tp=tp)
-        result_futures=self._get_futures_array(tp, number, sequential, ent_info_array)
+        ent_info_array = self._create_ent_info_array(number=number, tp=tp)
+        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
         if tp == EPRType.K:
-            virtual_qubit_ids=[q.qubit_id for q in result_futures]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
         else:
-            virtual_qubit_ids=None  # type: ignore
-        wait_all=post_routine is None
+            virtual_qubit_ids = None  # type: ignore
+        wait_all = post_routine is None
 
-        qubit_ids_array=self._add_epr_commands(
+        qubit_ids_array = self._add_epr_commands(
             instruction=instruction,
             virtual_qubit_ids=virtual_qubit_ids,
             remote_node_id=remote_node_id,
@@ -1101,14 +1072,14 @@ class BaseNetQASMConnection(abc.ABC):
             pass
 
         self._assert_epr_args(number=number, post_routine=dummy, sequential=sequential, tp=tp)  # type: ignore
-        ent_info_array=self._create_ent_info_array(
+        ent_info_array = self._create_ent_info_array(
             number=number,
             tp=tp,
         )
-        result_futures=self._get_futures_array(tp, number, sequential, ent_info_array)
-        output: Union[List[Qubit], T_LinkLayerOkList, _FutureQubit]=result_futures
+        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
+        output: Union[List[Qubit], T_LinkLayerOkList, _FutureQubit] = result_futures
         if tp == EPRType.K:
-            virtual_qubit_ids=[q.qubit_id for q in result_futures]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
         else:
             raise ValueError(
                 "EPR generation as a context is only allowed for K type requests"
@@ -1125,13 +1096,13 @@ class BaseNetQASMConnection(abc.ABC):
         )
         if qubit_ids_array is None:
             raise RuntimeError("qubit_ids_array is None")
-        pre_commands=self._pop_pending_commands()
-        loop_register=self._get_inactive_register(activate=True)
-        pair=loop_register
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
+        pair = loop_register
         if tp == EPRType.K:
-            q_id=qubit_ids_array.get_future_index(pair)
-            q=_FutureQubit(conn=self, future_id=q_id)
-            output=q
+            q_id = qubit_ids_array.get_future_index(pair)
+            q = _FutureQubit(conn=self, future_id=q_id)
+            output = q
         # elif tp == EPRType.M:
         #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
         #     ent_info_slice = ent_info_array.get_future_slice(slc)
@@ -1148,13 +1119,13 @@ class BaseNetQASMConnection(abc.ABC):
         ent_info_array: Array,
         pair: operand.Register,
     ) -> None:
-        body_commands=self._pop_pending_commands()
+        body_commands = self._pop_pending_commands()
         self._add_wait_for_ent_info_cmd(
             ent_info_array=ent_info_array,
             pair=pair,
         )
-        wait_cmds=self._pop_pending_commands()
-        body_commands=wait_cmds + body_commands
+        wait_cmds = self._pop_pending_commands()
+        body_commands = wait_cmds + body_commands
         self._add_loop_commands(
             pre_commands=pre_commands,
             body_commands=body_commands,
@@ -1188,9 +1159,9 @@ class BaseNetQASMConnection(abc.ABC):
 
     def _create_ent_info_array(self, number: int, tp: EPRType) -> Array:
         if tp == EPRType.K:
-            ent_info_array=self.new_array(length=OK_FIELDS_K * number)
+            ent_info_array = self.new_array(length=OK_FIELDS_K * number)
         elif tp == EPRType.M:
-            ent_info_array=self.new_array(length=OK_FIELDS_M * number)
+            ent_info_array = self.new_array(length=OK_FIELDS_M * number)
         else:
             raise ValueError(f"Unsupported Create type: {tp}")
         return ent_info_array
@@ -1198,13 +1169,13 @@ class BaseNetQASMConnection(abc.ABC):
     def _get_futures_array(
         self, tp: EPRType, number: int, sequential: bool, ent_info_array: Array
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        ent_info_slices=self._create_ent_info_slices(
+        ent_info_slices = self._create_ent_info_slices(
             num_pairs=number,
             ent_info_array=ent_info_array,
             tp=tp,
         )
         if tp == EPRType.K:
-            qubits=self._create_ent_qubits(
+            qubits = self._create_ent_qubits(
                 ent_info_slices=ent_info_slices,
                 sequential=sequential,
             )
@@ -1220,8 +1191,8 @@ class BaseNetQASMConnection(abc.ABC):
         ent_info_array: Array,
         tp: EPRType,
     ) -> T_LinkLayerOkList:
-        ent_info_slices=[]
-        num_fields=OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
+        ent_info_slices = []
+        num_fields = OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
         for i in range(num_pairs):
             ent_info_slice_futures: List[Future] = ent_info_array.get_future_slice(
                 slice(i * num_fields, (i + 1) * num_fields)
@@ -1237,14 +1208,14 @@ class BaseNetQASMConnection(abc.ABC):
         ent_info_slices: T_LinkLayerOkList,
         sequential: bool,
     ) -> List[Qubit]:
-        qubits=[]
-        virtual_address=None
+        qubits = []
+        virtual_address = None
         for i, ent_info_slice in enumerate(ent_info_slices):
             # If sequential we want all qubits to have the same ID
             if sequential:
                 if i == 0:
-                    qubit=Qubit(self, add_new_command=False, ent_info=ent_info_slice)
-                    virtual_address=qubit.qubit_id
+                    qubit = Qubit(self, add_new_command=False, ent_info=ent_info_slice)
+                    virtual_address = qubit.qubit_id
                 else:
                     qubit = Qubit(
                         self,
@@ -1253,11 +1224,11 @@ class BaseNetQASMConnection(abc.ABC):
                         virtual_address=virtual_address,
                     )
             else:
-                virtual_address=None
+                virtual_address = None
                 if self._compiler == NVSubroutineCompiler:
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
-                    virtual_address=0
+                    virtual_address = 0
                     self._free_up_qubit(virtual_address=virtual_address)
                 qubit = Qubit(
                     self,
@@ -1273,14 +1244,14 @@ class BaseNetQASMConnection(abc.ABC):
         self,
         remote_node_id: int,
         epr_socket_id: int,
-        number: int=1,
-        post_routine: Optional[T_PostRoutine]=None,
-        sequential: bool=False,
-        tp: EPRType=EPRType.K,
-        random_basis_local: Optional[RandomBasis]=None,
-        random_basis_remote: Optional[RandomBasis]=None,
-        rotations_local: Tuple[int, int, int]=(0, 0, 0),
-        rotations_remote: Tuple[int, int, int]=(0, 0, 0),
+        number: int = 1,
+        post_routine: Optional[T_PostRoutine] = None,
+        sequential: bool = False,
+        tp: EPRType = EPRType.K,
+        random_basis_local: Optional[RandomBasis] = None,
+        random_basis_remote: Optional[RandomBasis] = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
         if not isinstance(remote_node_id, int):
@@ -1306,10 +1277,10 @@ class BaseNetQASMConnection(abc.ABC):
         self,
         remote_node_id: int,
         epr_socket_id: int,
-        number: int=1,
-        post_routine: Optional[T_PostRoutine]=None,
-        sequential: bool=False,
-        tp: EPRType=EPRType.K,
+        number: int = 1,
+        post_routine: Optional[T_PostRoutine] = None,
+        sequential: bool = False,
+        tp: EPRType = EPRType.K,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
         return self._handle_request(
@@ -1323,14 +1294,14 @@ class BaseNetQASMConnection(abc.ABC):
         )
 
     def _get_new_qubit_address(self) -> int:
-        qubit_addresses_in_use=[q.qubit_id for q in self.active_qubits]
+        qubit_addresses_in_use = [q.qubit_id for q in self.active_qubits]
         for address in count(0):
             if address not in qubit_addresses_in_use:
                 return address
         raise RuntimeError("Could not get new qubit address")
 
     def _get_new_array_address(self) -> int:
-        used_addresses=self._used_array_addresses
+        used_addresses = self._used_array_addresses
         for address in count(0):
             if address not in used_addresses:
                 used_addresses.append(address)
@@ -1340,10 +1311,10 @@ class BaseNetQASMConnection(abc.ABC):
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
         #     raise RuntimeError("Should not have active registers left when flushing")
-        self._arrays_to_return=[]
-        self._registers_to_return=[]
-        self._used_meas_registers=[]
-        self._pre_context_commands={}
+        self._arrays_to_return = []
+        self._registers_to_return = []
+        self._used_meas_registers = []
+        self._pre_context_commands = {}
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
@@ -1377,9 +1348,9 @@ class BaseNetQASMConnection(abc.ABC):
         body: T_BranchRoutine,
     ) -> None:
         """Used to build effective if-statements"""
-        current_commands=self._pop_pending_commands()
+        current_commands = self._pop_pending_commands()
         body(self)
-        body_commands=self._pop_pending_commands()
+        body_commands = self._pop_pending_commands()
         self._add_if_statement_commands(
             pre_commands=current_commands,
             body_commands=body_commands,
@@ -1399,19 +1370,19 @@ class BaseNetQASMConnection(abc.ABC):
         if len(body_commands) == 0:
             self.add_pending_commands(commands=pre_commands)
             return
-        branch_instruction=flip_branch_instr(condition)
+        branch_instruction = flip_branch_instr(condition)
         # Construct a list of all commands to see what branch labels are already used
-        all_commands=pre_commands + body_commands
+        all_commands = pre_commands + body_commands
         # We also need to check any existing other pre context commands if they are nested
         for pre_context_cmds in self._pre_context_commands.values():
             all_commands += pre_context_cmds
-        if_start, if_end=self._get_branch_commands(
+        if_start, if_end = self._get_branch_commands(
             branch_instruction=branch_instruction,
             a=a,
             b=b,
             current_branch_variables=self._used_branch_variables,
         )
-        commands: List[T_Cmd]=pre_commands + if_start + body_commands + if_end  # type: ignore
+        commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
         self.add_pending_commands(commands=commands)
 
@@ -1427,12 +1398,12 @@ class BaseNetQASMConnection(abc.ABC):
             start_with="IF_EXIT", current_variables=current_branch_variables
         )
         self._used_branch_variables.append(exit_label)
-        cond_values: List[T_OperandUnion]=[]
-        if_start=[]
+        cond_values: List[T_OperandUnion] = []
+        if_start = []
         for x in [a, b]:
             if isinstance(x, Future):
                 # Register for checking branching based on condition
-                reg=self._get_inactive_register(activate=True)
+                reg = self._get_inactive_register(activate=True)
                 # Load values
                 address_entry = parse_address(
                     f"{Symbols.ADDRESS_START}{x._address}[{x._index}]"
@@ -1453,7 +1424,7 @@ class BaseNetQASMConnection(abc.ABC):
                 cond_values.append(x)
             else:
                 raise TypeError(f"Cannot do conditional statement with type {type(x)}")
-        branch=ICmd(
+        branch = ICmd(
             instruction=branch_instruction,
             operands=[
                 cond_values[0],
@@ -1469,12 +1440,12 @@ class BaseNetQASMConnection(abc.ABC):
                 if not val.name == RegisterName.M:  # M-registers are never temporary
                     self._remove_active_register(register=val)
 
-        exit=BranchLabel(exit_label)
-        if_end=[exit]
+        exit = BranchLabel(exit_label)
+        if_end = [exit]
 
         return if_start, if_end
 
-    @ contextmanager
+    @contextmanager
     def loop(
         self,
         stop: int,
@@ -1489,7 +1460,7 @@ class BaseNetQASMConnection(abc.ABC):
             )
             yield loop_register_result
         finally:
-            body_commands=self._pop_pending_commands()
+            body_commands = self._pop_pending_commands()
             self._add_loop_commands(
                 pre_commands=pre_commands,
                 body_commands=body_commands,
@@ -1511,12 +1482,12 @@ class BaseNetQASMConnection(abc.ABC):
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
         """
-        loop_register=self._handle_loop_register(loop_register)
+        loop_register = self._handle_loop_register(loop_register)
 
-        pre_commands=self._pop_pending_commands()
+        pre_commands = self._pop_pending_commands()
         with self._activate_register(loop_register):
             body(self)
-        body_commands=self._pop_pending_commands()
+        body_commands = self._pop_pending_commands()
         self._add_loop_commands(
             pre_commands=pre_commands,
             body_commands=body_commands,
@@ -1538,15 +1509,15 @@ class BaseNetQASMConnection(abc.ABC):
         if len(body_commands) == 0:
             self.add_pending_commands(commands=pre_commands)
             return
-        current_registers=get_current_registers(body_commands)
-        loop_start, loop_end=self._get_loop_commands(
+        current_registers = get_current_registers(body_commands)
+        loop_start, loop_end = self._get_loop_commands(
             start=start,
             stop=stop,
             step=step,
             current_registers=current_registers,
             loop_register=loop_register,
         )
-        commands=pre_commands + loop_start + body_commands + loop_end
+        commands = pre_commands + loop_start + body_commands + loop_end
 
         self.add_pending_commands(commands=commands)
 
@@ -1554,12 +1525,12 @@ class BaseNetQASMConnection(abc.ABC):
         self, loop_register: Optional[operand.Register], activate: bool = False
     ) -> operand.Register:
         if loop_register is None:
-            loop_register=self._get_inactive_register(activate=activate)
+            loop_register = self._get_inactive_register(activate=activate)
         else:
             if isinstance(loop_register, operand.Register):
                 pass
             elif isinstance(loop_register, str):
-                loop_register=parse_register(loop_register)
+                loop_register = parse_register(loop_register)
             else:
                 raise ValueError(
                     f"not a valid loop_register with type {type(loop_register)}"
@@ -1571,16 +1542,16 @@ class BaseNetQASMConnection(abc.ABC):
         # self._add_active_register(loop_register)
         return loop_register
 
-    def _get_inactive_register(self, activate: bool=False) -> operand.Register:
+    def _get_inactive_register(self, activate: bool = False) -> operand.Register:
         for i in range(2 ** REG_INDEX_BITS):
-            register=parse_register(f"R{i}")
+            register = parse_register(f"R{i}")
             if register not in self._active_registers:
                 if activate:
                     self._add_active_register(register=register)
                 return register
         raise RuntimeError("could not find an available loop register")
 
-    @ contextmanager
+    @contextmanager
     def _activate_register(self, register: operand.Register) -> Iterator[None]:
         try:
             self._add_active_register(register=register)
@@ -1615,7 +1586,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._used_branch_variables.append(entry_label)
         self._used_branch_variables.append(exit_label)
 
-        entry_loop, exit_loop=self._get_entry_exit_loop_cmds(
+        entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
             start=start,
             stop=stop,
             step=step,
@@ -1626,7 +1597,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         return entry_loop, exit_loop
 
-    @ staticmethod
+    @staticmethod
     def _get_entry_exit_loop_cmds(
         start: int,
         stop: int,
@@ -1635,7 +1606,7 @@ class BaseNetQASMConnection(abc.ABC):
         exit_label: str,
         loop_register: operand.Register,
     ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        entry_loop: List[T_Cmd]=[
+        entry_loop: List[T_Cmd] = [
             ICmd(
                 instruction=GenericInstr.SET,
                 operands=[loop_register, start],
@@ -1650,7 +1621,7 @@ class BaseNetQASMConnection(abc.ABC):
                 ],
             ),
         ]
-        exit_loop: List[T_Cmd]=[
+        exit_loop: List[T_Cmd] = [
             ICmd(
                 instruction=GenericInstr.ADD,
                 operands=[
@@ -1673,12 +1644,12 @@ class BaseNetQASMConnection(abc.ABC):
     ) -> str:
         current_variables_set: Set[str] = set([])
         if current_variables is not None:
-            current_variables_set=set(current_variables)
+            current_variables_set = set(current_variables)
         if start_with not in current_variables_set:
             return start_with
         else:
             for i in count(1):
-                var_name=f"{start_with}{i}"
+                var_name = f"{start_with}{i}"
                 if var_name not in current_variables_set:
                     return var_name
             raise RuntimeError("Could not find unused variable")
@@ -1690,8 +1661,8 @@ class BaseNetQASMConnection(abc.ABC):
         a: Optional[T_CValue],
         b: Optional[T_CValue],
     ) -> None:
-        pre_commands=self._pop_pending_commands()
-        self._pre_context_commands[context_id]=pre_commands
+        pre_commands = self._pop_pending_commands()
+        self._pre_context_commands[context_id] = pre_commands
 
     def _exit_if_context(
         self,
@@ -1700,8 +1671,8 @@ class BaseNetQASMConnection(abc.ABC):
         a: Optional[T_CValue],
         b: Optional[T_CValue],
     ) -> None:
-        body_commands=self._pop_pending_commands()
-        pre_context_commands=self._pre_context_commands.pop(context_id, None)
+        body_commands = self._pop_pending_commands()
+        pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
         self._add_if_statement_commands(
@@ -1715,12 +1686,12 @@ class BaseNetQASMConnection(abc.ABC):
     def _enter_foreach_context(
         self, context_id: int, array: Array, return_index: bool
     ) -> Union[Tuple[operand.Register, Future], Future]:
-        pre_commands=self._pop_pending_commands()
-        loop_register=self._get_inactive_register(activate=True)
+        pre_commands = self._pop_pending_commands()
+        loop_register = self._get_inactive_register(activate=True)
 
         # NOTE (BUG): the below assignment is NOT consistent with the type of _pre_context_commands
         # It works (maybe?) because the values are pushed only temporarily
-        self._pre_context_commands[context_id]=pre_commands, loop_register  # type: ignore
+        self._pre_context_commands[context_id] = pre_commands, loop_register  # type: ignore
         if return_index:
             return loop_register, array.get_future_index(loop_register)
         else:
@@ -1731,13 +1702,13 @@ class BaseNetQASMConnection(abc.ABC):
     ) -> None:
         body_commands = self._pop_pending_commands()
         pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
-            context_id, None
-        )  # type: ignore
+            context_id, None  # type: ignore
+        )
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
 
         # NOTE (BUG): see NOTE (BUG) in _enter_foreach_context
-        pre_commands, loop_register=pre_context_commands  # type: ignore
+        pre_commands, loop_register = pre_context_commands  # type: ignore
         self._add_loop_commands(
             pre_commands=pre_commands,
             body_commands=body_commands,
@@ -1770,7 +1741,7 @@ class BaseNetQASMConnection(abc.ABC):
             "Z": [],
         }
         if progress:
-            bar=ProgressBar(3 * iterations)
+            bar = ProgressBar(3 * iterations)
 
         # Measure in X
         for _ in range(iterations):
@@ -1779,9 +1750,9 @@ class BaseNetQASMConnection(abc.ABC):
                 bar.increase()
 
             # prepare and measure
-            q=preparation(self)
+            q = preparation(self)
             q.H()
-            m=q.measure()
+            m = q.measure()
             outcomes["X"].append(m)
 
         # Measure in Y
@@ -1791,9 +1762,9 @@ class BaseNetQASMConnection(abc.ABC):
                 bar.increase()
 
             # prepare and measure
-            q=preparation(self)
+            q = preparation(self)
             q.K()
-            m=q.measure()
+            m = q.measure()
             outcomes["Y"].append(m)
 
         # Measure in Z
@@ -1803,8 +1774,8 @@ class BaseNetQASMConnection(abc.ABC):
                 bar.increase()
 
             # prepare and measure
-            q=preparation(self)
-            m=q.measure()
+            q = preparation(self)
+            m = q.measure()
             outcomes["Z"].append(m)
 
         if progress:
@@ -1813,7 +1784,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         self.flush()
 
-        freqs={key: sum(value) / iterations for key, value in outcomes.items()}
+        freqs = {key: sum(value) / iterations for key, value in outcomes.items()}
         return freqs
 
     def test_preparation(
@@ -1836,11 +1807,11 @@ class BaseNetQASMConnection(abc.ABC):
             :iterations:     Number of measurements in each basis.
             :progress_bar:     Displays a progress bar
         """
-        epsilon=conf / math.sqrt(iterations)
+        epsilon = conf / math.sqrt(iterations)
 
-        freqs=self.tomography(preparation, iterations, progress=progress)
+        freqs = self.tomography(preparation, iterations, progress=progress)
         for basis, exp_value in zip(["X", "Y", "Z"], exp_values):
-            f=freqs[basis]
+            f = freqs[basis]
             if abs(f - exp_value) > epsilon:
                 print(freqs, exp_values, epsilon)
                 return False
@@ -1849,19 +1820,19 @@ class BaseNetQASMConnection(abc.ABC):
 
 class DebugConnection(BaseNetQASMConnection):
 
-    node_ids: Dict[str, int]={}
+    node_ids: Dict[str, int] = {}
 
     def __init__(self, *args, **kwargs):
         """A connection that simply stores the subroutine it commits"""
-        self.storage=[]
+        self.storage = []
         super().__init__(*args, **kwargs)
 
-    @ property
+    @property
     def shared_memory(self) -> SharedMemory:
         return SharedMemory()
 
     def _commit_serialized_message(
-        self, raw_msg: bytes, block: bool=True, callback: Optional[Callable]=None
+        self, raw_msg: bytes, block: bool = True, callback: Optional[Callable] = None
     ) -> None:
         """Commit a message to the backend/qnodeos"""
         self.storage.append(raw_msg)
@@ -1871,15 +1842,15 @@ class DebugConnection(BaseNetQASMConnection):
 
 
 class DebugNetworkInfo(NetworkInfo):
-    @ classmethod
+    @classmethod
     def _get_node_id(cls, node_name: str) -> int:
         """Returns the node id for the node with the given name"""
-        node_id=DebugConnection.node_ids.get(node_name)
+        node_id = DebugConnection.node_ids.get(node_name)
         if node_id is None:
             raise ValueError(f"{node_name} is not a known node name")
         return node_id
 
-    @ classmethod
+    @classmethod
     def _get_node_name(cls, node_id: int) -> str:
         """Returns the node name for the node with the given ID"""
         for n_name, n_id in DebugConnection.node_ids.items():
@@ -1887,12 +1858,12 @@ class DebugNetworkInfo(NetworkInfo):
                 return n_name
         raise ValueError(f"{node_id} is not a known node ID")
 
-    @ classmethod
+    @classmethod
     def get_node_id_for_app(cls, app_name: str) -> int:
         """Returns the node id for the app with the given name"""
         return cls._get_node_id(node_name=app_name)
 
-    @ classmethod
+    @classmethod
     def get_node_name_for_app(cls, app_name: str) -> str:
         """Returns the node name for the app with the given name"""
         return app_name

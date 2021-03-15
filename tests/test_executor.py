@@ -6,7 +6,6 @@ from netqasm.backend.executor import Executor
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.operand import Register
 from netqasm.lang.parsing import parse_text_subroutine
-from netqasm.lang.subroutine import Register
 from netqasm.logging.glob import set_log_level
 from netqasm.sdk.shared_memory import SharedMemoryManager
 
