@@ -30,7 +30,12 @@ class Socket(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def recv(self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None) -> str:
+    def recv(
+        self,
+        block: bool = True,
+        timeout: Optional[float] = None,
+        maxsize: Optional[int] = None,
+    ) -> str:
         """Receive a message from the remote node."""
         pass
 
@@ -39,7 +44,10 @@ class Socket(abc.ABC):
         raise NotImplementedError
 
     def recv_structured(
-        self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None
+        self,
+        block: bool = True,
+        timeout: Optional[float] = None,
+        maxsize: Optional[int] = None,
     ) -> StructuredMessage:
         """Receive a message (with header and payload) from the remote node."""
         raise NotImplementedError
@@ -48,7 +56,9 @@ class Socket(abc.ABC):
         """Sends a message without logging"""
         raise NotImplementedError
 
-    def recv_silent(self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None) -> str:
+    def recv_silent(
+        self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None
+    ) -> str:
         """Receive a message without logging"""
         raise NotImplementedError
 

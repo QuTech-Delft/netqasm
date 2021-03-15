@@ -7,15 +7,14 @@ from netqasm.util.quantum_gates import get_rotation_matrix
 
 # Explicit instruction types in the Vanilla flavour.
 
+
 @dataclass
 class GateXInstruction(core.SingleQubitInstruction):
     id: int = 20
     mnemonic: str = "x"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [0, 1],
-            [1, 0]])
+        return np.array([[0, 1], [1, 0]])
 
 
 @dataclass
@@ -24,9 +23,7 @@ class GateYInstruction(core.SingleQubitInstruction):
     mnemonic: str = "y"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [0, -1j],
-            [1j, 0]])
+        return np.array([[0, -1j], [1j, 0]])
 
 
 @dataclass
@@ -35,9 +32,7 @@ class GateZInstruction(core.SingleQubitInstruction):
     mnemonic: str = "z"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0],
-            [0, -1]])
+        return np.array([[1, 0], [0, -1]])
 
 
 @dataclass
@@ -57,9 +52,7 @@ class GateSInstruction(core.SingleQubitInstruction):
     mnemonic: str = "s"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0],
-            [0, 1j]])
+        return np.array([[1, 0], [0, 1j]])
 
 
 @dataclass
@@ -79,9 +72,7 @@ class GateTInstruction(core.SingleQubitInstruction):
     mnemonic: str = "t"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0],
-            [0, (1 + 1j) / np.sqrt(2)]])
+        return np.array([[1, 0], [0, (1 + 1j) / np.sqrt(2)]])
 
 
 @dataclass
@@ -123,17 +114,10 @@ class CnotInstruction(core.TwoQubitInstruction):
     mnemonic: str = "cnot"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0]])
+        return np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
 
     def to_matrix_target_only(self) -> np.array:
-        return np.array([
-            [0, 1],
-            [1, 0]
-        ])
+        return np.array([[0, 1], [1, 0]])
 
 
 @dataclass
@@ -142,32 +126,22 @@ class CphaseInstruction(core.TwoQubitInstruction):
     mnemonic: str = "cphase"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, -1]])
+        return np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
 
     def to_matrix_target_only(self) -> np.array:
-        return np.array([
-            [1, 0],
-            [0, -1]
-        ])
+        return np.array([[1, 0], [0, -1]])
 
 
 @dataclass
 class MovInstruction(core.TwoQubitInstruction):
     """Move source qubit to target qubit (target is overwritten)"""
+
     id: int = 41
     mnemonic: str = "mov"
 
     def to_matrix(self) -> np.array:
         # NOTE: Currently this is represented as a full SWAP.
-        return np.array([
-            [1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 1]])
+        return np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
     def to_matrix_target_only(self) -> np.array:  # type: ignore
         # NOTE: The mov instruction is not meant to be viewed as control-target gate.

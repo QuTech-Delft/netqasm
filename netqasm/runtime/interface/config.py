@@ -50,18 +50,15 @@ class NetworkConfig:
 _DEFAULT_NUM_QUBITS = 5
 
 
-def default_network_config(node_names: List[str], hardware: QuantumHardware = QuantumHardware.Generic) -> NetworkConfig:
+def default_network_config(
+    node_names: List[str], hardware: QuantumHardware = QuantumHardware.Generic
+) -> NetworkConfig:
     """Create a config for a fully connected network of nodes with the given names"""
     nodes = []
     links = []
     for name in node_names:
         qubits = [Qubit(id=i, t1=0, t2=0) for i in range(_DEFAULT_NUM_QUBITS)]
-        node = Node(
-            name=name,
-            hardware=hardware,
-            qubits=qubits,
-            gate_fidelity=1
-        )
+        node = Node(name=name, hardware=hardware, qubits=qubits, gate_fidelity=1)
         nodes += [node]
 
         for other_name in node_names:
@@ -72,7 +69,7 @@ def default_network_config(node_names: List[str], hardware: QuantumHardware = Qu
                 node_name1=name,
                 node_name2=other_name,
                 noise_type=NoiseType.NoNoise,
-                fidelity=1
+                fidelity=1,
             )
             links += [link]
 
@@ -82,38 +79,38 @@ def default_network_config(node_names: List[str], hardware: QuantumHardware = Qu
 # Build a NetworkConfig object from a dict that is created by reading a yaml file.
 def parse_network_config(cfg) -> NetworkConfig:
     try:
-        node_cfgs = cfg['nodes']
-        link_cfgs = cfg['links']
+        node_cfgs = cfg["nodes"]
+        link_cfgs = cfg["links"]
 
         nodes = []
         for node_cfg in node_cfgs:
-            qubit_cfgs = node_cfg['qubits']
+            qubit_cfgs = node_cfg["qubits"]
             qubits = []
             for qubit_cfg in qubit_cfgs:
                 qubit = Qubit(
-                    id=qubit_cfg['id'],
-                    t1=qubit_cfg['t1'],
-                    t2=qubit_cfg['t2'],
+                    id=qubit_cfg["id"],
+                    t1=qubit_cfg["t1"],
+                    t2=qubit_cfg["t2"],
                 )
                 qubits += [qubit]
-            hardware = node_cfg.get('hardware', QuantumHardware.Generic)
+            hardware = node_cfg.get("hardware", QuantumHardware.Generic)
 
             node = Node(
-                name=node_cfg['name'],
+                name=node_cfg["name"],
                 hardware=hardware,
                 qubits=qubits,
-                gate_fidelity=node_cfg['gate_fidelity']
+                gate_fidelity=node_cfg["gate_fidelity"],
             )
             nodes += [node]
 
         links = []
         for link_cfg in link_cfgs:
             link = Link(
-                name=link_cfg['name'],
-                node_name1=link_cfg['node_name1'],
-                node_name2=link_cfg['node_name2'],
-                noise_type=link_cfg['noise_type'],
-                fidelity=link_cfg['fidelity']
+                name=link_cfg["name"],
+                node_name1=link_cfg["node_name1"],
+                node_name2=link_cfg["node_name2"],
+                noise_type=link_cfg["noise_type"],
+                fidelity=link_cfg["fidelity"],
             )
             links += [link]
     except KeyError as e:

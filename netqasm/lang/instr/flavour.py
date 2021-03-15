@@ -40,7 +40,7 @@ CORE_INSTRUCTIONS: List[Type[NetQASMInstruction]] = [
     core.WaitSingleInstruction,
     core.QFreeInstruction,
     core.RetRegInstruction,
-    core.RetArrInstruction
+    core.RetArrInstruction,
 ]
 
 
@@ -76,7 +76,6 @@ class Flavour(ABC):
 
 
 class VanillaFlavour(Flavour):
-
     @property
     def instrs(self):
         return [
@@ -100,7 +99,6 @@ class VanillaFlavour(Flavour):
 
 
 class NVFlavour(Flavour):
-
     @property
     def instrs(self):
         return [

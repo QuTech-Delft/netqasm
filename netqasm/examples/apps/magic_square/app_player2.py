@@ -8,9 +8,9 @@ logger = get_netqasm_logger()
 
 def _get_default_strategy():
     return [
-        ['XI', '-XZ', 'IZ'],  # col 0
-        ['XX', 'YY', 'ZZ'],  # col 1
-        ['IX', '-ZX', 'ZI'],  # col 2
+        ["XI", "-XZ", "IZ"],  # col 0
+        ["XX", "YY", "ZZ"],  # col 1
+        ["IX", "-ZX", "ZI"],  # col 2
     ]
 
 
@@ -56,15 +56,15 @@ def main(app_config=None, col=0, strategy=None):
     to_print = "\n\n"
     to_print += "==========================\n"
     to_print += "App player2: column is:\n"
-    to_print += "(" + "_"*col + str(m0) + "_"*(2-col) + ")\n"
-    to_print += "(" + "_"*col + str(m1) + "_"*(2-col) + ")\n"
-    to_print += "(" + "_"*col + str(m2) + "_"*(2-col) + ")\n"
+    to_print += "(" + "_" * col + str(m0) + "_" * (2 - col) + ")\n"
+    to_print += "(" + "_" * col + str(m1) + "_" * (2 - col) + ")\n"
+    to_print += "(" + "_" * col + str(m2) + "_" * (2 - col) + ")\n"
     to_print += "==========================\n"
     to_print += "\n\n"
     logger.info(to_print)
 
     return {
-        'col': [int(m0), int(m1), int(m2)],
+        "col": [int(m0), int(m1), int(m2)],
     }
 
 

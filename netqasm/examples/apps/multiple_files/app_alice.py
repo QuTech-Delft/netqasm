@@ -12,8 +12,7 @@ def main(app_config=None):
 
     # Initialize the connection to the backend
     alice = NetQASMConnection(
-        app_name=app_config.app_name,
-        log_config=app_config.log_config
+        app_name=app_config.app_name, log_config=app_config.log_config
     )
 
     with alice:

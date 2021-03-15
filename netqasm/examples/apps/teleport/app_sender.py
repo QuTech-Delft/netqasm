@@ -5,7 +5,7 @@ from netqasm.logging.output import get_new_app_logger
 from netqasm.sdk.classical_communication.message import StructuredMessage
 
 
-def main(app_config=None, phi=0., theta=0.):
+def main(app_config=None, phi=0.0, theta=0.0):
     log_config = app_config.log_config
     app_logger = get_new_app_logger(app_name="sender", log_config=log_config)
 
@@ -19,9 +19,7 @@ def main(app_config=None, phi=0., theta=0.):
 
     # Initialize the connection to the backend
     sender = NetQASMConnection(
-        app_name=app_config.app_name,
-        log_config=log_config,
-        epr_sockets=[epr_socket]
+        app_name=app_config.app_name, log_config=log_config, epr_sockets=[epr_socket]
     )
     with sender:
         # Create a qubit to teleport
@@ -42,17 +40,16 @@ def main(app_config=None, phi=0., theta=0.):
 
     app_logger.log(f"m1 = {m1}")
     app_logger.log(f"m2 = {m2}")
-    print(f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}")
+    print(
+        f"`sender` measured the following teleportation corrections: m1 = {m1}, m2 = {m2}"
+    )
     print("`sender` will send the corrections to `receiver`")
 
     socket.send_structured(StructuredMessage("Corrections", (m1, m2)))
 
     socket.send_silent(str((phi, theta)))
 
-    return {
-        "m1": m1,
-        "m2": m2
-    }
+    return {"m1": m1, "m2": m2}
 
 
 if __name__ == "__main__":

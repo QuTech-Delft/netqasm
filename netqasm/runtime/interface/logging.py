@@ -18,8 +18,8 @@ QubitGroups = Dict[int, QubitGroup]  # group_id -> qubit_group
 
 
 class EntanglementType(Enum):
-    CK = "CK"   # Create and Keep
-    MD = "MD"   # Measure Directly
+    CK = "CK"  # Create and Keep
+    MD = "MD"  # Measure Directly
 
 
 class EntanglementStage(Enum):

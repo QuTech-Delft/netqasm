@@ -10,7 +10,13 @@ import abc
 from contextlib import contextmanager
 from enum import Enum, auto
 
-from qlink_interface import EPRType, LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR, RandomBasis
+from qlink_interface import (
+    EPRType,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+    RandomBasis,
+)
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.lang.instr.instr_enum import Instruction
@@ -20,7 +26,9 @@ from netqasm.sdk import Qubit
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
 
-T_LinkLayerOkList = Union[List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]
+T_LinkLayerOkList = Union[
+    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
+]
 
 
 class EPRMeasBasis(Enum):
@@ -36,8 +44,11 @@ class NoCircuitError(RuntimeError):
 def _assert_has_conn(method):
     def new_method(self, *args, **kwargs):
         if self._conn is None:
-            raise NoCircuitError("To use the socket it first needs to be setup by giving it to a `NetQASMConnection`")
+            raise NoCircuitError(
+                "To use the socket it first needs to be setup by giving it to a `NetQASMConnection`"
+            )
         return method(self, *args, **kwargs)
+
     new_method.__doc__ = method.__doc__
     return new_method
 
@@ -48,7 +59,7 @@ class EPRSocket(abc.ABC):
         remote_app_name: str,
         epr_socket_id: int = 0,
         remote_epr_socket_id: int = 0,
-        min_fidelity: int = 100
+        min_fidelity: int = 100,
     ):
         """Encapsulates the notion of an EPR socket which sets up a virtual circuit in the network
         when instantiated and can then be used for entanglement generation.
@@ -67,16 +78,25 @@ class EPRSocket(abc.ABC):
         """
         self._conn: Optional[BaseNetQASMConnection] = None
         self._remote_app_name: str = remote_app_name
-        self._remote_node_id: Optional[int] = None  # Gets set when the connection is set
+        self._remote_node_id: Optional[
+            int
+        ] = None  # Gets set when the connection is set
         self._epr_socket_id: int = epr_socket_id
         self._remote_epr_socket_id: int = remote_epr_socket_id
 
-        if not isinstance(min_fidelity, int) or (min_fidelity < 0) or min_fidelity > 100:
-            raise ValueError(f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}")
+        if (
+            not isinstance(min_fidelity, int)
+            or (min_fidelity < 0)
+            or min_fidelity > 100
+        ):
+            raise ValueError(
+                f"min_fidelity must be an integer in the range [0, 100], not {min_fidelity}"
+            )
         self._min_fidelity: int = min_fidelity
 
         self._logger: logging.Logger = get_netqasm_logger(
-            f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})")
+            f"{self.__class__.__name__}({self._remote_app_name}, {self._epr_socket_id})"
+        )
 
     @property
     def conn(self) -> BaseNetQASMConnection:
@@ -131,7 +151,12 @@ class EPRSocket(abc.ABC):
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
-    ) -> Union[List[Qubit], List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]]:
+    ) -> Union[
+        List[Qubit],
+        List[LinkLayerOKTypeK],
+        List[LinkLayerOKTypeM],
+        List[LinkLayerOKTypeR],
+    ]:
         # First line is to have the correct signature after decorating
         """
         create(self, number=1, post_routine=None, sequential=False, tp=EPRType.K, \
@@ -289,7 +314,13 @@ class EPRSocket(abc.ABC):
         try:
             instruction = Instruction.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, output, pair = self.conn._pre_epr_context(
+            (
+                pre_commands,
+                loop_register,
+                ent_info_array,
+                output,
+                pair,
+            ) = self.conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -313,7 +344,7 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
-        tp: EPRType = EPRType.K
+        tp: EPRType = EPRType.K,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         # First line is to have the correct signature after decorating
         """
@@ -340,7 +371,13 @@ class EPRSocket(abc.ABC):
         try:
             instruction = Instruction.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
-            pre_commands, loop_register, ent_info_array, output, pair = self.conn._pre_epr_context(
+            (
+                pre_commands,
+                loop_register,
+                ent_info_array,
+                output,
+                pair,
+            ) = self.conn._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,

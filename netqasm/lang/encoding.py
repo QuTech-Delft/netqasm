@@ -10,8 +10,8 @@ APP_ID = ctypes.c_uint16
 
 class Metadata(ctypes.Structure):
     _fields_ = [
-        ('netqasm_version', NETQASM_VERSION),
-        ('app_id', APP_ID),
+        ("netqasm_version", NETQASM_VERSION),
+        ("app_id", APP_ID),
     ]
 
 
@@ -40,13 +40,13 @@ REG_INDEX_BITS = 4
 
 COMMAND_BYTES = 7
 
-PADDING_FIELD = 'padding'
+PADDING_FIELD = "padding"
 
 
 class OptionalInt(ctypes.Structure):
     _fields_ = [
-        ('type', ctypes.c_uint8),
-        ('value', INTEGER),
+        ("type", ctypes.c_uint8),
+        ("value", INTEGER),
     ]
 
     _NULL_TYPE = 0x00
@@ -82,46 +82,48 @@ class RegisterName(Enum):
 
 class Register(ctypes.Structure):
     _fields_ = [
-        ('register_name', REG_TYPE, REG_NAME_BITS),
-        ('register_index', REG_TYPE, REG_INDEX_BITS),
+        ("register_name", REG_TYPE, REG_NAME_BITS),
+        ("register_index", REG_TYPE, REG_INDEX_BITS),
         (PADDING_FIELD, REG_TYPE, REG_BITS - REG_NAME_BITS - REG_INDEX_BITS),
     ]
 
 
 class Address(ctypes.Structure):
     _fields_ = [
-        ('address', ADDRESS),
+        ("address", ADDRESS),
     ]
 
 
 class ArrayEntry(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ('address', Address),
-        ('index', Register),
+        ("address", Address),
+        ("index", Register),
     ]
 
 
 class ArraySlice(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ('address', Address),
-        ('start', Register),
-        ('stop', Register),
+        ("address", Address),
+        ("start", Register),
+        ("stop", Register),
     ]
 
 
 class Command(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ('id', INSTR_ID),
+        ("id", INSTR_ID),
     ]
 
     def __init__(self, *args, **kwargs):
         try:
             super().__init__(*args, **kwargs)
         except TypeError as err:
-            raise TypeError(f"command {self.__class__.__name__} could not be created, since: {err}")
+            raise TypeError(
+                f"command {self.__class__.__name__} could not be created, since: {err}"
+            )
 
 
 def add_padding(fields):
@@ -129,154 +131,191 @@ def add_padding(fields):
     # TODO better way?
     class TmpCommand(Command):
         pass
+
     TmpCommand._fields_ = fields
     current_num_bytes = len(bytes(TmpCommand()))
     total_num_bytes = COMMAND_BYTES
     pad_num_bytes = total_num_bytes - current_num_bytes
     assert pad_num_bytes >= 0
-    new_fields = fields + [
-        (PADDING_FIELD, ctypes.c_uint8 * pad_num_bytes)
-    ]
+    new_fields = fields + [(PADDING_FIELD, ctypes.c_uint8 * pad_num_bytes)]
     return new_fields
 
 
 class RegCommand(Command):
-    _fields_ = add_padding([
-        ('reg', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg", Register),
+        ]
+    )
 
 
 class RegRegCommand(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+        ]
+    )
 
 
 class MeasCommand(Command):
-    _fields_ = add_padding([
-        ('qubit', Register),
-        ('outcome', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("qubit", Register),
+            ("outcome", Register),
+        ]
+    )
 
 
 class RegImmImmCommand(Command):
-    _fields_ = add_padding([
-        ('reg', Register),
-        ('imm0', IMMEDIATE),
-        ('imm1', IMMEDIATE),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg", Register),
+            ("imm0", IMMEDIATE),
+            ("imm1", IMMEDIATE),
+        ]
+    )
 
 
 class RegRegImmImmCommand(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-        ('imm0', IMMEDIATE),
-        ('imm1', IMMEDIATE),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("imm0", IMMEDIATE),
+            ("imm1", IMMEDIATE),
+        ]
+    )
 
 
 class RegRegRegCommand(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-        ('reg2', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("reg2", Register),
+        ]
+    )
 
 
 class RegRegRegRegCommand(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-        ('reg2', Register),
-        ('reg3', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("reg2", Register),
+            ("reg3", Register),
+        ]
+    )
 
 
 class ImmCommand(Command):
-    _fields_ = add_padding([
-        ('imm', INTEGER),
-    ])
+    _fields_ = add_padding(
+        [
+            ("imm", INTEGER),
+        ]
+    )
 
 
 class RegRegImmCommand(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-        ('imm', INTEGER),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("imm", INTEGER),
+        ]
+    )
 
 
 class RegImmCommand(Command):
-    _fields_ = add_padding([
-        ('reg', Register),
-        ('imm', INTEGER),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg", Register),
+            ("imm", INTEGER),
+        ]
+    )
 
 
 class RegEntryCommand(Command):
-    _fields_ = add_padding([
-        ('reg', Register),
-        ('entry', ArrayEntry),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg", Register),
+            ("entry", ArrayEntry),
+        ]
+    )
 
 
 class RegAddrCommand(Command):
-    _fields_ = add_padding([
-        ('reg', Register),
-        ('addr', Address),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg", Register),
+            ("addr", Address),
+        ]
+    )
 
 
 class ArrayEntryCommand(Command):
-    _fields_ = add_padding([
-        ('entry', ArrayEntry),
-    ])
+    _fields_ = add_padding(
+        [
+            ("entry", ArrayEntry),
+        ]
+    )
 
 
 class ArraySliceCommand(Command):
-    _fields_ = add_padding([
-        ('slice', ArraySlice),
-    ])
+    _fields_ = add_padding(
+        [
+            ("slice", ArraySlice),
+        ]
+    )
 
 
 class SingleRegisterCommand(Command):
-    _fields_ = add_padding([
-        ('register', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("register", Register),
+        ]
+    )
 
 
 class ArrayCommand(Command):
-    _fields_ = add_padding([
-        ('size', Register),
-        ('address', Address),
-    ])
+    _fields_ = add_padding(
+        [
+            ("size", Register),
+            ("address", Address),
+        ]
+    )
 
 
 class AddrCommand(Command):
-    _fields_ = add_padding([
-        ('addr', Address),
-    ])
+    _fields_ = add_padding(
+        [
+            ("addr", Address),
+        ]
+    )
 
 
 class Reg5Command(Command):
-    _fields_ = add_padding([
-        ('reg0', Register),
-        ('reg1', Register),
-        ('reg2', Register),
-        ('reg3', Register),
-        ('reg4', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("reg2", Register),
+            ("reg3", Register),
+            ("reg4", Register),
+        ]
+    )
 
 
 class RecvEPRCommand(Command):
-    _fields_ = add_padding([
-        ('remote_node_id', Register),
-        ('epr_socket_id', Register),
-        ('qubit_address_array', Register),
-        ('ent_info_array', Register),
-    ])
+    _fields_ = add_padding(
+        [
+            ("remote_node_id", Register),
+            ("epr_socket_id", Register),
+            ("qubit_address_array", Register),
+            ("ent_info_array", Register),
+        ]
+    )
 
 
 COMMANDS = [

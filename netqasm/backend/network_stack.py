@@ -24,6 +24,8 @@ class BaseNetworkStack(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id, timeout=1):
+    def setup_epr_socket(
+        self, epr_socket_id, remote_node_id, remote_epr_socket_id, timeout=1
+    ):
         """Asks the network stack to setup circuits to be used"""
         pass

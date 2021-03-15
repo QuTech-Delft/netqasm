@@ -38,7 +38,7 @@ def should_ignore_instr(instr):
 
 # Keep track of all structured loggers
 # to be able to save them while finished applications
-_STRUCT_LOGGERS: List['StructuredLogger'] = []
+_STRUCT_LOGGERS: List["StructuredLogger"] = []
 
 
 def reset_struct_loggers():
@@ -105,13 +105,13 @@ class InstrLogger(StructuredLogger):
         self._executor = executor
 
     def _construct_entry(self, *args, **kwargs):
-        command = kwargs['command']
-        app_id = kwargs['app_id']
-        subroutine_id = kwargs['subroutine_id']
-        output = kwargs['output']
+        command = kwargs["command"]
+        app_id = kwargs["app_id"]
+        subroutine_id = kwargs["subroutine_id"]
+        output = kwargs["output"]
         wall_time = str(datetime.now())
         sim_time = self._executor._get_simulated_time()
-        program_counter = kwargs['program_counter']
+        program_counter = kwargs["program_counter"]
         instr_name = command.mnemonic
         operands = command.operands
         op_values = self._get_op_values(subroutine_id=subroutine_id, operands=operands)
@@ -137,22 +137,24 @@ class InstrLogger(StructuredLogger):
             outcome = None
 
         qubit_groups = self._get_qubit_groups()
-        return asdict(InstrLogEntry(
-            WCT=wall_time,
-            SIT=sim_time,
-            AID=app_id,
-            SID=subroutine_id,
-            PRC=program_counter,
-            HLN=None,
-            HFL=None,
-            INS=instr_name,
-            OPR=ops_str,
-            QID=virtual_qubit_ids,
-            VID=physical_qubit_ids,
-            OUT=outcome,
-            QGR=qubit_groups,
-            LOG=log
-        ))
+        return asdict(
+            InstrLogEntry(
+                WCT=wall_time,
+                SIT=sim_time,
+                AID=app_id,
+                SID=subroutine_id,
+                PRC=program_counter,
+                HLN=None,
+                HFL=None,
+                INS=instr_name,
+                OPR=ops_str,
+                QID=virtual_qubit_ids,
+                VID=physical_qubit_ids,
+                OUT=outcome,
+                QGR=qubit_groups,
+                LOG=log,
+            )
+        )
 
     def _get_qubit_ids(
         self,
@@ -170,10 +172,12 @@ class InstrLogger(StructuredLogger):
             # Ignore a constant register since this indicates it's a measure directly request
             if command.qubit_addr_array.name == RegisterName.C:  # type: ignore
                 return [], []
-            qubit_id_array_address = Address(self._get_op_value(
-                subroutine_id=subroutine_id,
-                operand=command.qubit_addr_array,  # type: ignore
-            ))
+            qubit_id_array_address = Address(
+                self._get_op_value(
+                    subroutine_id=subroutine_id,
+                    operand=command.qubit_addr_array,  # type: ignore
+                )
+            )
             virtual_qubit_ids = self._executor._get_array(
                 app_id=app_id,
                 address=qubit_id_array_address,
@@ -269,34 +273,36 @@ class NetworkLogger(StructuredLogger):
 
     def _construct_entry(self, *args, **kwargs):
         wall_time = str(datetime.now())
-        sim_time = kwargs['sim_time']
-        ent_type = kwargs['ent_type']
+        sim_time = kwargs["sim_time"]
+        ent_type = kwargs["ent_type"]
         if ent_type == RequestType.M:
             ent_type = f"epr_{EntanglementType.MD}"
         elif ent_type == RequestType.K:
             ent_type = f"epr_{EntanglementType.CK}"
-        meas_bases = kwargs['meas_bases']
-        meas_outcomes = kwargs['meas_outcomes']
+        meas_bases = kwargs["meas_bases"]
+        meas_outcomes = kwargs["meas_outcomes"]
 
-        ent_stage = kwargs['ent_stage']
-        nodes = kwargs['nodes']
-        path = kwargs['path']
-        qubit_ids = kwargs['qubit_ids']
-        qubit_groups = kwargs['qubit_groups']
-        msg = kwargs['msg']
-        return asdict(NetworkLogEntry(
-            WCT=wall_time,
-            SIT=sim_time,
-            TYP=ent_type,
-            INS=f"epr_{ent_stage}",
-            BAS=meas_bases,
-            MSR=meas_outcomes,
-            NOD=nodes,
-            PTH=path,
-            QID=qubit_ids,
-            QGR=qubit_groups,
-            LOG=msg
-        ))
+        ent_stage = kwargs["ent_stage"]
+        nodes = kwargs["nodes"]
+        path = kwargs["path"]
+        qubit_ids = kwargs["qubit_ids"]
+        qubit_groups = kwargs["qubit_groups"]
+        msg = kwargs["msg"]
+        return asdict(
+            NetworkLogEntry(
+                WCT=wall_time,
+                SIT=sim_time,
+                TYP=ent_type,
+                INS=f"epr_{ent_stage}",
+                BAS=meas_bases,
+                MSR=meas_outcomes,
+                NOD=nodes,
+                PTH=path,
+                QID=qubit_ids,
+                QGR=qubit_groups,
+                LOG=msg,
+            )
+        )
 
 
 class SocketOperation(Enum):
@@ -307,26 +313,28 @@ class SocketOperation(Enum):
 
 class ClassCommLogger(StructuredLogger):
     def _construct_entry(self, *args, **kwargs):
-        socket_op = kwargs['socket_op']
-        msg = kwargs['msg']
-        sender = kwargs['sender']
-        receiver = kwargs['receiver']
-        socket_id = kwargs['socket_id']
-        hln = kwargs['hln']
-        hfl = kwargs['hfl']
-        log = kwargs['log']
+        socket_op = kwargs["socket_op"]
+        msg = kwargs["msg"]
+        sender = kwargs["sender"]
+        receiver = kwargs["receiver"]
+        socket_id = kwargs["socket_id"]
+        hln = kwargs["hln"]
+        hfl = kwargs["hfl"]
+        log = kwargs["log"]
         wall_time = str(datetime.now())
-        return asdict(ClassCommLogEntry(
-            WCT=wall_time,
-            HLN=hln,
-            HFL=hfl,
-            INS=socket_op.value,
-            MSG=msg,
-            SEN=sender,
-            REC=receiver,
-            SOD=socket_id,
-            LOG=log
-        ))
+        return asdict(
+            ClassCommLogEntry(
+                WCT=wall_time,
+                HLN=hln,
+                HFL=hfl,
+                INS=socket_op.value,
+                MSG=msg,
+                SEN=sender,
+                REC=receiver,
+                SOD=socket_id,
+                LOG=log,
+            )
+        )
 
 
 class AppLogger(StructuredLogger):
@@ -344,12 +352,7 @@ class AppLogger(StructuredLogger):
         hln = None  # TODO: fix
         hfl = None  # TODO: fix
         wall_time = str(datetime.now())
-        return asdict(AppLogEntry(
-            WCT=wall_time,
-            HLN=hln,
-            HFL=hfl,
-            LOG=log
-        ))
+        return asdict(AppLogEntry(WCT=wall_time, HLN=hln, HFL=hfl, LOG=log))
 
 
 def get_new_app_logger(app_name, log_config):

@@ -8,9 +8,9 @@ logger = get_netqasm_logger()
 
 def _get_default_strategy():
     return [
-        ['XI', 'XX', 'IX'],  # row 0
-        ['-XZ', 'YY', '-ZX'],  # row 1
-        ['IZ', 'ZZ', 'ZI'],  # row 2
+        ["XI", "XX", "IX"],  # row 0
+        ["-XZ", "YY", "-ZX"],  # row 1
+        ["IZ", "ZZ", "ZI"],  # row 2
     ]
 
 
@@ -59,14 +59,14 @@ def main(app_config=None, row=0, strategy=None):
     for _ in range(row):
         to_print += "(___)\n"
     to_print += f"({m0}{m1}{m2})\n"
-    for _ in range(2-row):
+    for _ in range(2 - row):
         to_print += "(___)\n"
     to_print += "==========================\n"
     to_print += "\n\n"
     logger.info(to_print)
 
     return {
-        'row': [int(m0), int(m1), int(m2)],
+        "row": [int(m0), int(m1), int(m2)],
     }
 
 

@@ -162,21 +162,28 @@ def quantum_anonymous_tranmission(
 ###################
 # Setup functions #
 ###################
-Sockets = namedtuple("Sockets", [
-    "broadcast_channel",
-    "down_epr_socket",
-    "down_socket",
-    "up_epr_socket",
-    "up_socket",
-    "epr_sockets",
-])
+Sockets = namedtuple(
+    "Sockets",
+    [
+        "broadcast_channel",
+        "down_epr_socket",
+        "down_socket",
+        "up_epr_socket",
+        "up_socket",
+        "epr_sockets",
+    ],
+)
 
 
 def setup_sockets(app_name, apps, log_config):
     broadcast_channel = _setup_broadcast_channel(app_name, apps, log_config)
     down_epr_socket, down_socket = _setup_down_sockets(app_name, apps, log_config)
     up_epr_socket, up_socket = _setup_up_sockets(app_name, apps, log_config)
-    epr_sockets = [epr_socket for epr_socket in [down_epr_socket, up_epr_socket] if epr_socket is not None]
+    epr_sockets = [
+        epr_socket
+        for epr_socket in [down_epr_socket, up_epr_socket]
+        if epr_socket is not None
+    ]
 
     return Sockets(
         broadcast_channel=broadcast_channel,

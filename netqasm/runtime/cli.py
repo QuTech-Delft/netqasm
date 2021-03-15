@@ -5,7 +5,12 @@ import click
 import importlib
 import requests
 import netqasm
-from netqasm.runtime.settings import Simulator, Formalism, set_simulator, set_is_using_hardware
+from netqasm.runtime.settings import (
+    Simulator,
+    Formalism,
+    set_simulator,
+    set_is_using_hardware,
+)
 from netqasm.runtime.env import new_folder, init_folder, get_example_apps
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.config import LogConfig
@@ -13,20 +18,25 @@ from netqasm.logging.glob import set_log_level
 
 EXAMPLE_APPS = get_example_apps()
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
-QNE_FOLDER_PATH = os.path.expanduser('~') + '/.qne'
+QNE_FOLDER_PATH = os.path.expanduser("~") + "/.qne"
 
-logger = get_netqasm_logger(sub_logger='cli')
+logger = get_netqasm_logger(sub_logger="cli")
 logger.setLevel(logging.INFO)
 logger.propagate = False
 logger.handlers = []  # Clear all handlers
-formatter = logging.Formatter('{message}', style='{')
+formatter = logging.Formatter("{message}", style="{")
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 logger.addHandler(sh)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.option('--verbose', '-v', is_flag=True, help='Print info and debug warnings to the console.')
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Print info and debug warnings to the console.",
+)
 def cli(verbose):
     """Command line interface for managing virtual python environments."""
     if verbose:
@@ -42,6 +52,7 @@ def qne():
 # version #
 ###########
 
+
 @cli.command()
 def version():
     """
@@ -51,60 +62,77 @@ def version():
 
 
 option_quiet = click.option(
-    "-q", "--quiet",
+    "-q",
+    "--quiet",
     is_flag=True,
     help="No output printed to stdout",
 )
 
 option_app_dir = click.option(
-    "--app-dir", type=str, default=None,
-    help="Path to app directory. "
-         "Defaults to CWD."
+    "--app-dir",
+    type=str,
+    default=None,
+    help="Path to app directory. " "Defaults to CWD.",
 )
 
 option_lib_dirs = click.option(
-    "--lib-dirs", type=str, default=None, multiple=True,
-    help="Path to additional library directory."
+    "--lib-dirs",
+    type=str,
+    default=None,
+    multiple=True,
+    help="Path to additional library directory.",
 )
 
 option_track_lines = click.option("--track-lines/--no-track-lines", default=True)
 
 option_app_config_dir = click.option(
-    "--app-config-dir", type=str, default=None,
-    help="Explicitly choose the app config directory, "
-         "default is `app-folder`."
+    "--app-config-dir",
+    type=str,
+    default=None,
+    help="Explicitly choose the app config directory, " "default is `app-folder`.",
 )
 
 option_log_dir = click.option(
-    "--log-dir", type=str, default=None,
-    help="Explicitly choose the log directory, "
-         "default is `app-folder/log`."
+    "--log-dir",
+    type=str,
+    default=None,
+    help="Explicitly choose the log directory, " "default is `app-folder/log`.",
 )
 
 option_post_func_file = click.option(
-    "--post-function-file", type=str, default=None,
-    help="Explicitly choose the file defining the post function."
+    "--post-function-file",
+    type=str,
+    default=None,
+    help="Explicitly choose the file defining the post function.",
 )
 
 option_results_file = click.option(
-    "--results-file", type=str, default=None,
-    help="Explicitly choose the file where the results of a post function should be stored."
+    "--results-file",
+    type=str,
+    default=None,
+    help="Explicitly choose the file where the results of a post function should be stored.",
 )
 
 option_log_level = click.option(
-    "--log-level", type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]), default="WARNING",
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+    default="WARNING",
     help="What log-level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)."
-         "Note, this affects logging to stderr, not logging instructions to file."
+    "Note, this affects logging to stderr, not logging instructions to file.",
 )
 
 option_log_to_files = click.option(
-    "--log-to-files", type=bool, default=True,
-    help="Set to false to completely disable logging to files."
+    "--log-to-files",
+    type=bool,
+    default=True,
+    help="Set to false to completely disable logging to files.",
 )
 
 option_specify_host = click.option(
-    "--host", type=str, default='qne-staging.quantum-inspire.com',
-    help="Specify the IP and port of the api router."
+    "--host",
+    type=str,
+    default="qne-staging.quantum-inspire.com",
+    help="Specify the IP and port of the api router.",
 )
 
 
@@ -112,19 +140,20 @@ option_specify_host = click.option(
 # login #
 #########
 
+
 @qne.command()
 @option_specify_host
 def login(host):
     """Generate an API token by logging in."""
-    username = click.prompt('Username')
-    password = click.prompt('Password', hide_input=True)
+    username = click.prompt("Username")
+    password = click.prompt("Password", hide_input=True)
     try:
         return _login(username, password, host)
     except (ValueError, TypeError, AssertionError) as e:
         logger.error(e)
 
 
-def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspire.com'):
+def _login(username: str, password: str, host: str = "qne-staging.quantum-inspire.com"):
     # All the login logic except the user input.
     if not isinstance(username, str):
         raise TypeError("The username must be a string.")
@@ -137,36 +166,43 @@ def _login(username: str, password: str, host: str = 'qne-staging.quantum-inspir
     if not isinstance(host, str):
         raise TypeError("The host address must be a string.")
     logger.debug(f"Logging in to {host}.")
-    jwt_req = requests.post(f'http://{host}/jwt/',
-                            {'username': [username],
-                             'password': [password]}
-                            )
+    jwt_req = requests.post(
+        f"http://{host}/jwt/", {"username": [username], "password": [password]}
+    )
     if jwt_req.status_code == 401:
         raise ValueError("Invalid credentials supplied.")
     if jwt_req.status_code != 200:
-        raise AssertionError(f'Received invalid response code ({jwt_req.status_code}) from the host.')
+        raise AssertionError(
+            f"Received invalid response code ({jwt_req.status_code}) from the host."
+        )
     try:
-        jwt_token = jwt_req.json().get('access')
+        jwt_token = jwt_req.json().get("access")
     except json.JSONDecodeError:
-        raise AssertionError('Received invalid response from the host.')
+        raise AssertionError("Received invalid response from the host.")
     logger.debug("Logged in successfully.")
-    jwt_header = {'Authorization': f"JWT {jwt_token}"}
+    jwt_header = {"Authorization": f"JWT {jwt_token}"}
     # NOTE: Since we get a JWT token, do we need to be cautious the token will fail also?
     logger.debug("Generating new API token.")
-    rm_req = requests.post(f'http://{host}/auth/token/destroy/',
-                           data={'user': username},
-                           headers=jwt_header)
+    rm_req = requests.post(
+        f"http://{host}/auth/token/destroy/",
+        data={"user": username},
+        headers=jwt_header,
+    )
     if rm_req.status_code != 204:
-        raise AssertionError(f'Received invalid response code ({rm_req.status_code}) from the host.')
-    api_req = requests.post(f'http://{host}/auth/token/create/',
-                            data={'user': username},
-                            headers=jwt_header)
+        raise AssertionError(
+            f"Received invalid response code ({rm_req.status_code}) from the host."
+        )
+    api_req = requests.post(
+        f"http://{host}/auth/token/create/", data={"user": username}, headers=jwt_header
+    )
     if api_req.status_code != 200:
-        raise AssertionError(f'Received invalid response code ({api_req.status_code}) from the host.')
-    api_token = api_req.json()['access']
+        raise AssertionError(
+            f"Received invalid response code ({api_req.status_code}) from the host."
+        )
+    api_token = api_req.json()["access"]
     if not os.path.exists(QNE_FOLDER_PATH):
         os.mkdir(QNE_FOLDER_PATH)
-    with open(f'{QNE_FOLDER_PATH}/api_token', 'w') as f:
+    with open(f"{QNE_FOLDER_PATH}/api_token", "w") as f:
         json.dump({host: (username, api_token)}, f)
     logger.info("Generated API token successfully.")
     logger.debug(f"The path to the token is {QNE_FOLDER_PATH}/api_token")
@@ -177,27 +213,31 @@ def logout():
     try:
         host, username, token_header = _get_token_header()
     except FileNotFoundError:
-        logger.info('User is not logged in.')
+        logger.info("User is not logged in.")
         return
-    rm_req = requests.post(f'http://{host}/auth/token/destroy/',
-                           data={'user': username},
-                           headers=token_header)
+    rm_req = requests.post(
+        f"http://{host}/auth/token/destroy/",
+        data={"user": username},
+        headers=token_header,
+    )
     if rm_req.status_code == 401:
-        logger.debug('API token was already invalid.')
+        logger.debug("API token was already invalid.")
     elif rm_req.status_code != 204:
-        raise AssertionError(f'Received invalid response code ({rm_req.status_code}) from the host.')
-    logger.debug('API token successfully removed from host.')
-    os.remove(f'{QNE_FOLDER_PATH}/api_token')
-    logger.info('User logged out successfully.')
+        raise AssertionError(
+            f"Received invalid response code ({rm_req.status_code}) from the host."
+        )
+    logger.debug("API token successfully removed from host.")
+    os.remove(f"{QNE_FOLDER_PATH}/api_token")
+    logger.info("User logged out successfully.")
 
 
 def _get_token_header():
     # Extract username and token header from API token file.
-    with open(f'{QNE_FOLDER_PATH}/api_token', 'r') as f:
+    with open(f"{QNE_FOLDER_PATH}/api_token", "r") as f:
         api_token = json.load(f)
     assert len(api_token) == 1
     host, (username, token_value) = list(api_token.items())[0]
-    token_header = {'Authorization': f'TOKEN {token_value}'}
+    token_header = {"Authorization": f"TOKEN {token_value}"}
     return host, username, token_header
 
 
@@ -208,26 +248,41 @@ def _get_token_header():
 @option_post_func_file
 @option_log_level
 @option_log_to_files
-@click.option("--network-config-file", type=str, default=None,
-              help="Explicitly choose the network config file, "
-                   "default is `app-folder/network.yaml`."
-              )
-@click.option("--simulator", type=click.Choice([sim.value for sim in Simulator]), default=None,
-              help="Choose with simulator to use, "
-                   "default uses what environment variable 'NETQASM_SIMULATOR' is set to, otherwise 'netsquid'"
-              )
-@click.option("--formalism", type=click.Choice([f.value for f in Formalism]), default=Formalism.KET.value,
-              help="Choose which quantum state formalism is used by the simulator. Default is 'ket'."
-              )
-@click.option("--num", type=int, default=1,
-              help="Number of times to run this application."
-              )
-@click.option("--sim-context/--no-sim-context", type=bool, default=True,
-              help="Whether to pass an AppConfig object containing simulation context to a program's main function."
-              )
-@click.option("--hardware", type=click.Choice(["generic", "nv"]), default="generic",
-              help="What quantum hardware to use in nodes if no explicit network config is specified"
-              )
+@click.option(
+    "--network-config-file",
+    type=str,
+    default=None,
+    help="Explicitly choose the network config file, "
+    "default is `app-folder/network.yaml`.",
+)
+@click.option(
+    "--simulator",
+    type=click.Choice([sim.value for sim in Simulator]),
+    default=None,
+    help="Choose with simulator to use, "
+    "default uses what environment variable 'NETQASM_SIMULATOR' is set to, otherwise 'netsquid'",
+)
+@click.option(
+    "--formalism",
+    type=click.Choice([f.value for f in Formalism]),
+    default=Formalism.KET.value,
+    help="Choose which quantum state formalism is used by the simulator. Default is 'ket'.",
+)
+@click.option(
+    "--num", type=int, default=1, help="Number of times to run this application."
+)
+@click.option(
+    "--sim-context/--no-sim-context",
+    type=bool,
+    default=True,
+    help="Whether to pass an AppConfig object containing simulation context to a program's main function.",
+)
+@click.option(
+    "--hardware",
+    type=click.Choice(["generic", "nv"]),
+    default="generic",
+    help="What quantum hardware to use in nodes if no explicit network config is specified",
+)
 def simulate(
     app_dir,
     track_lines,
@@ -254,12 +309,18 @@ def simulate(
     formalism = Formalism(formalism)
     set_simulator(simulator=simulator)
 
-    simulate_application = importlib.import_module("netqasm.sdk.external").simulate_application
+    simulate_application = importlib.import_module(
+        "netqasm.sdk.external"
+    ).simulate_application
     if app_dir is None:
         app_dir = "."
     app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
-    network_cfg = netqasm.runtime.application.network_cfg_from_path(app_dir, network_config_file)
-    post_function = netqasm.runtime.application.post_function_from_path(app_dir, post_function_file)
+    network_cfg = netqasm.runtime.application.network_cfg_from_path(
+        app_dir, network_config_file
+    )
+    post_function = netqasm.runtime.application.post_function_from_path(
+        app_dir, post_function_file
+    )
     if log_dir is None:
         log_dir = os.path.join(app_dir, "log")
     log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
@@ -279,6 +340,7 @@ def simulate(
 ##################
 # Run on QNodeOS #
 ##################
+
 
 @cli.command()
 @option_app_dir
@@ -323,7 +385,7 @@ def run(
 #######
 @cli.command()
 @click.argument(
-    'path',
+    "path",
     type=click.Path(exists=False),
 )
 @click.option(
@@ -350,10 +412,11 @@ def new(path, template, quiet):
 ########
 @cli.command()
 @click.option(
-    '-p', '--path',
+    "-p",
+    "--path",
     type=click.Path(exists=True),
-    default='.',
-    help='Destination to initialize, defaults to current working directory'
+    default=".",
+    help="Destination to initialize, defaults to current working directory",
 )
 @option_quiet
 def init(path, quiet):
@@ -369,5 +432,5 @@ def init(path, quiet):
     init_folder(path, quiet=quiet)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

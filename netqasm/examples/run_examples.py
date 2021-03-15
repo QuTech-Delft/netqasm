@@ -36,7 +36,7 @@ def main(external):
         apps = os.listdir(apps_path)
         for app in apps:
             app_path = os.path.join(apps_path, app)
-            if not os.path.isdir(app_path) or app == '__pycache__':
+            if not os.path.isdir(app_path) or app == "__pycache__":
                 continue
             skip_if = skip_ifs.get(app)
             if skip_if is not None and skip_if.skip:

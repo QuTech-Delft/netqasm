@@ -22,7 +22,7 @@ def create_ghz(
     up_epr_socket: Optional[EPRSocket] = None,
     down_socket: Optional[Socket] = None,
     up_socket: Optional[Socket] = None,
-    do_corrections: bool = False
+    do_corrections: bool = False,
 ) -> Tuple[Qubit, Union[Future, RegFuture, int]]:
     r"""Local protocol to create a GHZ state between mutliples nodes.
 

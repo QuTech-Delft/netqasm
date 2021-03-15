@@ -14,9 +14,7 @@ def main(app_config=None):
 
     # Initialize the connection
     receiver = NetQASMConnection(
-        app_name=app_config.app_name,
-        log_config=log_config,
-        epr_sockets=[epr_socket]
+        app_name=app_config.app_name, log_config=log_config, epr_sockets=[epr_socket]
     )
     with receiver:
         epr = epr_socket.recv()[0]
@@ -53,7 +51,7 @@ def main(app_config=None):
             "correction1": "Z" if m1 == 1 else "None",
             "correction2": "X" if m2 == 1 else "None",
             "received_state": dm.tolist(),
-            "fidelity": fidelity
+            "fidelity": fidelity,
         }
 
 

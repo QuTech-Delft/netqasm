@@ -6,12 +6,12 @@ from netqasm.sdk.external import NetQASMConnection, Socket
 
 
 def measure_basis_0(bob, q):
-    q.rot_Y(angle=-np.pi/4)
+    q.rot_Y(angle=-np.pi / 4)
     return q.measure()
 
 
 def measure_basis_1(bob, q):
-    q.rot_Y(angle=np.pi/4)
+    q.rot_Y(angle=np.pi / 4)
     return q.measure()
 
 
@@ -20,8 +20,7 @@ def main(app_config=None, y=0):
         raise ValueError(f"y should be 0 or 1, not {y}")
 
     app_logger = get_new_app_logger(
-        app_name=app_config.app_name,
-        log_config=app_config.log_config
+        app_name=app_config.app_name, log_config=app_config.log_config
     )
     app_logger.log(f"Bob received input bit y = {y}")
 
@@ -31,7 +30,7 @@ def main(app_config=None, y=0):
     bob = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[epr_socket]
+        epr_sockets=[epr_socket],
     )
 
     with bob:
@@ -55,7 +54,7 @@ def main(app_config=None, y=0):
             b = measure_basis_1(bob, epr)
 
     app_logger.log(f"Bob outputs b = {b}")
-    return {'b': int(b)}
+    return {"b": int(b)}
 
 
 if __name__ == "__main__":

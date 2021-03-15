@@ -21,14 +21,14 @@ logger = get_netqasm_logger()
 
 
 def get_network_config_path(app_dir):
-    ext = '.yaml'
-    file_path = os.path.join(app_dir, f'network{ext}')
+    ext = ".yaml"
+    file_path = os.path.join(app_dir, f"network{ext}")
     return file_path
 
 
 def get_nv_config_path(app_dir):
-    ext = '.yaml'
-    file_path = os.path.join(app_dir, f'nv{ext}')
+    ext = ".yaml"
+    file_path = os.path.join(app_dir, f"nv{ext}")
     return file_path
 
 
@@ -61,14 +61,14 @@ def setup_apps(
     post_function_file=None,
     results_file=None,
     formalism=Formalism.KET,
-    flavour=None
+    flavour=None,
 ):
 
     set_log_level(log_level)
 
     # Setup paths to directories
     if app_dir is None:
-        app_dir = os.path.abspath('.')
+        app_dir = os.path.abspath(".")
     else:
         app_dir = os.path.expanduser(app_dir)
 
@@ -128,7 +128,7 @@ def setup_apps(
     sys.path.append(app_dir)
     app_cfgs: List[AppConfig] = []
     for app_name, app_file in app_files.items():
-        app_module = importlib.import_module(app_file[:-len('.py')])
+        app_module = importlib.import_module(app_file[: -len(".py")])
         main_func = getattr(app_module, "main")
 
         inputs = env.load_app_config_file(app_config_dir, app_name)
@@ -143,7 +143,7 @@ def setup_apps(
             node_name=node_name,
             main_func=main_func,
             log_config=log_config,
-            inputs=inputs
+            inputs=inputs,
         )
 
         app_cfgs += [app_config]
@@ -183,7 +183,7 @@ def setup_apps(
         post_function=post_function,
         results_file=results_file,
         formalism=formalism,
-        flavour=flavour
+        flavour=flavour,
     )
 
     if log_to_files:

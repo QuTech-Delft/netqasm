@@ -10,7 +10,9 @@ from netqasm.lang.instr import operand
 if TYPE_CHECKING:
     from netqasm.lang.instr.operand import ArrayEntry
 
-_MEMORIES: Dict[Tuple[str, Optional[int]], Optional['SharedMemory']] = {}  # string literal to fwd declare
+_MEMORIES: Dict[
+    Tuple[str, Optional[int]], Optional["SharedMemory"]
+] = {}  # string literal to fwd declare
 
 
 def reset_memories() -> None:
@@ -18,7 +20,7 @@ def reset_memories() -> None:
         _MEMORIES.pop(key)
 
 
-def get_shared_memory(node_name: str, key: Optional[int] = None) -> 'SharedMemory':
+def get_shared_memory(node_name: str, key: Optional[int] = None) -> "SharedMemory":
     absolute_key = (node_name, key)
     memory = _MEMORIES.get(absolute_key)
     if memory is None:
@@ -28,8 +30,8 @@ def get_shared_memory(node_name: str, key: Optional[int] = None) -> 'SharedMemor
 
 
 def _assert_within_width(value: int, width: int) -> None:
-    min_value = -(2**(width - 1))
-    max_value = 2**(width - 1) - 1
+    min_value = -(2 ** (width - 1))
+    max_value = 2 ** (width - 1) - 1
     if not min_value <= value <= max_value:
         raise OverflowError("value {value} does not fit into {width} bits")
 
@@ -59,7 +61,11 @@ class Register:
             raise IndexError(f"index {index} is not within 0 and {len(self)}")
 
     def _get_active_values(self) -> List[Tuple[int, int]]:
-        return [(index, value) for index, value in self._register.items() if value is not None]
+        return [
+            (index, value)
+            for index, value in self._register.items()
+            if value is not None
+        ]
 
 
 def setup_registers() -> Dict[RegisterName, Register]:
@@ -83,14 +89,19 @@ class Arrays:
                 )
                 if not isinstance(address_entry, ArrayEntry):
                     raise RuntimeError(
-                        f"Something went wrong: address_entry should be ArrayEntry but it is {type(address_entry)}")
+                        f"Something went wrong: address_entry should be ArrayEntry but it is {type(address_entry)}"
+                    )
                 values.append((address_entry, value))
         return values
 
     def __str__(self) -> str:
         return str(self._arrays)
 
-    def __setitem__(self, key: Tuple[int, Union[int, slice]], value: Union[None, int, List[Optional[int]]]) -> None:
+    def __setitem__(
+        self,
+        key: Tuple[int, Union[int, slice]],
+        value: Union[None, int, List[Optional[int]]],
+    ) -> None:
         address, index = self._extract_key(key)
         if isinstance(index, int):
             assert isinstance(value, int)
@@ -111,9 +122,13 @@ class Arrays:
                 assert len(array[index]) == len(value), "value not of correct length"
             array[index] = value  # type: ignore
         except IndexError:
-            raise IndexError(f"index {index} is out of range for array with address {address}")
+            raise IndexError(
+                f"index {index} is out of range for array with address {address}"
+            )
 
-    def __getitem__(self, key: Tuple[int, Union[int, slice]]) -> Union[None, int, List[Optional[int]]]:
+    def __getitem__(
+        self, key: Tuple[int, Union[int, slice]]
+    ) -> Union[None, int, List[Optional[int]]]:
         address, index = self._extract_key(key)
         try:
             array = self._get_array(address)
@@ -123,7 +138,9 @@ class Arrays:
         try:
             value = array[index]
         except IndexError:
-            raise IndexError(f"index {index} is out of range for array with address {address}")
+            raise IndexError(
+                f"index {index} is out of range for array with address {address}"
+            )
         return value
 
     def _get_array(self, address: int) -> List[Optional[int]]:
@@ -141,11 +158,15 @@ class Arrays:
         return address in self._arrays
 
     @staticmethod
-    def _extract_key(key: Tuple[int, Union[int, slice]]) -> Tuple[int, Union[int, slice]]:
+    def _extract_key(
+        key: Tuple[int, Union[int, slice]]
+    ) -> Tuple[int, Union[int, slice]]:
         try:
             address, index = key
         except (TypeError, ValueError):
-            raise ValueError("Can only access entries and slices of arrays, not the full array")
+            raise ValueError(
+                "Can only access entries and slices of arrays, not the full array"
+            )
         _assert_within_width(address, ADDRESS_BITS)
         return address, index
 
@@ -165,7 +186,6 @@ class Arrays:
 
 
 class SharedMemory:
-
     def __init__(self):
         self._registers: Dict[RegisterName, Register] = setup_registers()
         self._arrays: Arrays = Arrays()
@@ -187,27 +207,46 @@ class SharedMemory:
     def set_register(self, register: operand.Register, value: int) -> None:
         self._registers[register.name][register.index] = value
 
-    def get_array_part(self, address: int, index: Union[int, slice]) -> Union[None, int, List[Optional[int]]]:
+    def get_array_part(
+        self, address: int, index: Union[int, slice]
+    ) -> Union[None, int, List[Optional[int]]]:
         return self._arrays[address, index]
 
-    def set_array_part(self, address: int, index: Union[int, slice], value: Union[None, int, List[Optional[int]]]):
+    def set_array_part(
+        self,
+        address: int,
+        index: Union[int, slice],
+        value: Union[None, int, List[Optional[int]]],
+    ):
         self._arrays[address, index] = value
 
     def _get_array(self, address: int) -> List[Optional[int]]:
         return self._arrays._get_array(address)
 
-    def init_new_array(self, address: int, length: int = 1, new_array: Optional[List[Optional[int]]] = None) -> None:
+    def init_new_array(
+        self,
+        address: int,
+        length: int = 1,
+        new_array: Optional[List[Optional[int]]] = None,
+    ) -> None:
         if new_array is not None:
             length = len(new_array)
         self._arrays.init_new_array(address, length)
         if new_array is not None:
             self._arrays._set_array(address, new_array)
 
-    def _get_active_values(self) -> List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]]:
-        all_values: List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]] = []
+    def _get_active_values(
+        self,
+    ) -> List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]]:
+        all_values: List[
+            Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]
+        ] = []
         for reg_name, reg in self._registers.items():
             act_reg_values = reg._get_active_values()
-            reg_values = [(parse_register(f"{reg_name.name}{index}"), value) for index, value in act_reg_values]
+            reg_values = [
+                (parse_register(f"{reg_name.name}{index}"), value)
+                for index, value in act_reg_values
+            ]
             all_values += reg_values
         all_values += self._arrays._get_active_values()
         return all_values

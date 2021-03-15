@@ -14,7 +14,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
     target = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[controller_epr]
+        epr_sockets=[controller_epr],
     )
 
     with target:
@@ -51,6 +51,4 @@ def main(app_config=None, phi=0.0, theta=0.0):
         # Wait for an ack before exiting
         assert class_socket.recv() == "ACK"
 
-    return {
-        'epr_meas': int(epr_meas)
-    }
+    return {"epr_meas": int(epr_meas)}

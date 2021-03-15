@@ -19,9 +19,9 @@ def main(no_output=False):
             even.add(1, mod=2)
 
     if no_output:
-        print(f'binary:\n{alice.storage[0]}')
+        print(f"binary:\n{alice.storage[0]}")
 
 
 if __name__ == "__main__":
-    set_log_level('INFO')
+    set_log_level("INFO")
     main()

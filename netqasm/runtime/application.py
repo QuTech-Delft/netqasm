@@ -64,16 +64,22 @@ def app_instance_from_path(app_dir: str = None) -> ApplicationInstance:
     programs = []
     program_inputs = {}
     for party, prog_file in program_files.items():
-        prog_module = importlib.import_module(prog_file[:-len('.py')])
+        prog_module = importlib.import_module(prog_file[: -len(".py")])
         main_func = getattr(prog_module, "main")
         prog = Program(party=party, entry=main_func, args=[], results=[])
         programs += [prog]
         prog_inputs = env.load_app_config_file(app_dir, party)
         program_inputs[party] = prog_inputs
 
-    roles_cfg_path = os.path.abspath(".") if app_dir is None else os.path.join(app_dir, "roles.yaml")
+    roles_cfg_path = (
+        os.path.abspath(".") if app_dir is None else os.path.join(app_dir, "roles.yaml")
+    )
     party_alloc = env.load_roles_config(roles_cfg_path)
-    party_alloc = {prog.party: prog.party for prog in programs} if party_alloc is None else party_alloc
+    party_alloc = (
+        {prog.party: prog.party for prog in programs}
+        if party_alloc is None
+        else party_alloc
+    )
 
     app = Application(programs=programs, metadata=None)
     app_instance = ApplicationInstance(
@@ -91,19 +97,24 @@ def default_app_instance(programs: List[Tuple[str, Callable]]) -> ApplicationIns
     """
     Create an Application Instance with programs that take no arguments.
     """
-    program_objects = [Program(party=party, entry=entry, args=[], results=[]) for (party, entry) in programs]
+    program_objects = [
+        Program(party=party, entry=entry, args=[], results=[])
+        for (party, entry) in programs
+    ]
     app = Application(programs=program_objects, metadata=None)
     app_instance = ApplicationInstance(
         app=app,
         program_inputs={party: {} for (party, _) in programs},
         network=None,
         party_alloc={party: party for (party, _) in programs},
-        logging_cfg=None
+        logging_cfg=None,
     )
     return app_instance
 
 
-def network_cfg_from_path(app_dir: str = None, network_config_file: str = None) -> Optional[NetworkConfig]:
+def network_cfg_from_path(
+    app_dir: str = None, network_config_file: str = None
+) -> Optional[NetworkConfig]:
     if network_config_file is None:
         network_config_file = "network.yaml"
     if app_dir is not None:
@@ -117,7 +128,9 @@ def network_cfg_from_path(app_dir: str = None, network_config_file: str = None) 
         return network_cfg
 
 
-def post_function_from_path(app_dir: str = None, post_function_file: str = None) -> Optional[Callable]:
+def post_function_from_path(
+    app_dir: str = None, post_function_file: str = None
+) -> Optional[Callable]:
     if post_function_file is None:
         post_function_file = "post_function.yaml"
     if app_dir is not None:

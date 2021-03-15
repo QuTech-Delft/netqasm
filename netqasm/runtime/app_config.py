@@ -19,5 +19,5 @@ def default_app_config(app_name: str, main_func: Callable) -> AppConfig:
         node_name=app_name,
         main_func=main_func,
         log_config=None,
-        inputs={}
+        inputs={},
     )

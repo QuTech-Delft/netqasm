@@ -8,20 +8,16 @@ logger = get_netqasm_logger()
 
 def main(app_config=None):
     epr_socket_alice = EPRSocket(
-        remote_app_name="alice",
-        epr_socket_id=0,
-        remote_epr_socket_id=0
+        remote_app_name="alice", epr_socket_id=0, remote_epr_socket_id=0
     )
     epr_socket_charlie = EPRSocket(
-        remote_app_name="charlie",
-        epr_socket_id=1,
-        remote_epr_socket_id=1
+        remote_app_name="charlie", epr_socket_id=1, remote_epr_socket_id=1
     )
 
     bob = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[epr_socket_alice, epr_socket_charlie]
+        epr_sockets=[epr_socket_alice, epr_socket_charlie],
     )
     with bob:
         epr_alice = epr_socket_alice.recv()[0]

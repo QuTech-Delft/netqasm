@@ -59,7 +59,9 @@ def gate_to_matrix(instr, angle=None):
         return STATIC_QUBIT_GATE_TO_MATRIX[instr]
     elif instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
         if angle is None:
-            raise TypeError('To get the matrix of a rotation an angle needs to be specified')
+            raise TypeError(
+                "To get the matrix of a rotation an angle needs to be specified"
+            )
         axis = {
             Instruction.ROT_X: [1, 0, 0],
             Instruction.ROT_Y: [0, 1, 0],
