@@ -16,7 +16,8 @@ from qlink_interface import (
 
 from netqasm.lang.instr.instr_enum import Instruction
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.sdk import Qubit
+
+from .qubit import Qubit
 
 """TODO write about epr sockets"""
 
