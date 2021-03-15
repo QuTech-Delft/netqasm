@@ -1,24 +1,25 @@
+import ctypes
 from enum import Enum
 from typing import Dict
-import ctypes
+
 from netqasm.lang.encoding import (
-    RegCommand,
-    RegRegCommand,
-    MeasCommand,
-    RegImmImmCommand,
-    RegRegRegCommand,
-    RegRegRegRegCommand,
-    ImmCommand,
-    RegImmCommand,
-    RegRegImmCommand,
-    RegEntryCommand,
+    AddrCommand,
+    ArrayCommand,
     ArrayEntryCommand,
     ArraySliceCommand,
-    RegAddrCommand,
-    SingleRegisterCommand,
-    ArrayCommand,
-    AddrCommand,
+    ImmCommand,
+    MeasCommand,
     Reg5Command,
+    RegAddrCommand,
+    RegCommand,
+    RegEntryCommand,
+    RegImmCommand,
+    RegImmImmCommand,
+    RegRegCommand,
+    RegRegImmCommand,
+    RegRegRegCommand,
+    RegRegRegRegCommand,
+    SingleRegisterCommand,
 )
 
 

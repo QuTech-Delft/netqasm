@@ -1,21 +1,14 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from typing import List, Union, Optional
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import encoding
-from netqasm.util.string import rspaces
+from netqasm.lang.instr.base import DebugInstruction, NetQASMInstruction
 from netqasm.lang.instr.instr_enum import Instruction, instruction_to_string
+from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice, Label, Register
 from netqasm.lang.symbols import Symbols
-
-from netqasm.lang.instr.base import NetQASMInstruction, DebugInstruction
-from netqasm.lang.instr.operand import (
-    Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label
-)
+from netqasm.util.string import rspaces
 
 T_OperandUnion = Union[
     int,
@@ -60,11 +53,11 @@ class Command:
 
     def _build_str(self, show_lineno=False):
         if len(self.args) == 0:
-            args = ''
+            args = ""
         else:
             args = Symbols.ARGS_DELIM.join(str(arg) for arg in self.args)
             args = Symbols.ARGS_BRACKETS[0] + args + Symbols.ARGS_BRACKETS[1]
-        operands = ' '.join(str(operand) for operand in self.operands)
+        operands = " ".join(str(operand) for operand in self.operands)
         instr_name = instruction_to_string(self.instruction)
         if show_lineno:
             lineno_str = _get_lineo_str(self.lineno)
@@ -107,6 +100,7 @@ class PreSubroutine:
     :class:`~.PreSubroutine`s are currently only used by the sdk and the text parser (netqasm.parser.text).
     In both cases they are converted into :class:`~.Subroutine` objects before given to other package components.
     """
+
     netqasm_version: tuple
     app_id: int
     commands: List[Union[Command, BranchLabel]]
@@ -127,6 +121,7 @@ class Subroutine:
 
     :class:`~.Subroutine` s are executed by :class:`~.Executor` s.
     """
+
     netqasm_version: tuple
     app_id: int
     commands: List[NetQASMInstruction]
@@ -153,4 +148,4 @@ class Subroutine:
         return [metadata] + [command.serialize() for command in self.commands]
 
     def __bytes__(self):
-        return b''.join(bytes(cstruct) for cstruct in self.cstructs)
+        return b"".join(bytes(cstruct) for cstruct in self.cstructs)

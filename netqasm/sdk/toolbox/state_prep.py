@@ -1,14 +1,16 @@
 from __future__ import annotations
-from typing import List, Tuple
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, List, Tuple
+
 import numpy as np
+
 from netqasm.lang.encoding import IMMEDIATE_BITS
 
 if TYPE_CHECKING:
     from netqasm.sdk.qubit import Qubit
 
 
-def set_qubit_state(qubit: Qubit, phi: float = 0., theta: float = 0.) -> None:
+def set_qubit_state(qubit: Qubit, phi: float = 0.0, theta: float = 0.0) -> None:
     r"""Assuming that the qubit is in the state :math:`|0\rangle`, this function
     rotates the state to :math:`\cos(\theta / 2)|0\rangle + e^{i\phi}\sin(\theta / 2)|1\rangle`.
 

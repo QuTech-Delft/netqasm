@@ -1,18 +1,15 @@
-from itertools import count
 from collections import defaultdict
-from typing import List, Dict, Union, Tuple, Set, Optional
+from itertools import count
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.util.string import group_by_word, is_variable_name, is_number
-from netqasm.util.error import NetQASMSyntaxError, NetQASMInstrError
-from netqasm.lang.encoding import RegisterName, REG_INDEX_BITS
-
-from netqasm.lang.symbols import Symbols
-
-from netqasm.lang.instr.operand import Label
-from netqasm.lang.subroutine import Command, BranchLabel, Subroutine, PreSubroutine
-from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
-from netqasm.lang.instr.operand import Register, Address, ArrayEntry, ArraySlice
+from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
+from netqasm.lang.instr.instr_enum import Instruction, string_to_instruction
+from netqasm.lang.instr.operand import Address, ArrayEntry, ArraySlice, Label, Register
+from netqasm.lang.subroutine import BranchLabel, Command, PreSubroutine, Subroutine
+from netqasm.lang.symbols import Symbols
+from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
+from netqasm.util.string import group_by_word, is_number, is_variable_name
 
 T_Cmd = Union[Command, BranchLabel]
 T_ParsedValue = Union[int, Register, Label]
@@ -23,7 +20,7 @@ def parse_text_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    flavour: Flavour = None
+    flavour: Flavour = None,
 ) -> Subroutine:
     """
     Convert a text representation of a subroutine into a Subroutine object.
@@ -33,14 +30,16 @@ def parse_text_subroutine(
     """
     preamble_lines, body_lines_with_macros = _split_preamble_body(subroutine)
     preamble_data = _parse_preamble(preamble_lines)
-    body_lines = _apply_macros(body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE])
+    body_lines = _apply_macros(
+        body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE]
+    )
     pre_subroutine = _create_subroutine(preamble_data, body_lines)
     assembled_subroutine = assemble_subroutine(
         pre_subroutine=pre_subroutine,
         assign_branch_labels=assign_branch_labels,
         make_args_operands=make_args_operands,
         replace_constants=replace_constants,
-        flavour=flavour
+        flavour=flavour,
     )
     return assembled_subroutine
 
@@ -50,7 +49,7 @@ def assemble_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    flavour: Flavour = None
+    flavour: Flavour = None,
 ) -> Subroutine:
     """
     Convert a `PreSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).
@@ -73,7 +72,7 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subrou
     subroutine = Subroutine(
         netqasm_version=pre_subroutine.netqasm_version,
         app_id=pre_subroutine.app_id,
-        commands=[]
+        commands=[],
     )
 
     for command in pre_subroutine.commands:
@@ -94,7 +93,9 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
             # A command defining a branch label should end with BRANCH_END
             branch_label = line.rstrip(Symbols.BRANCH_END)
             if not is_variable_name(branch_label):
-                raise NetQASMSyntaxError(f"The branch label {branch_label} is not a valid label")
+                raise NetQASMSyntaxError(
+                    f"The branch label {branch_label} is not a valid label"
+                )
             commands.append(BranchLabel(branch_label))
         else:
             words: List[str] = group_by_word(line, brackets=Symbols.ARGS_BRACKETS)
@@ -110,7 +111,9 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
             commands.append(command)
 
     return PreSubroutine(
-        netqasm_version=_parse_netqasm_version(preamble_data[Symbols.PREAMBLE_NETQASM][0][0]),
+        netqasm_version=_parse_netqasm_version(
+            preamble_data[Symbols.PREAMBLE_NETQASM][0][0]
+        ),
         app_id=int(preamble_data[Symbols.PREAMBLE_APPID][0][0]),
         commands=commands,
     )
@@ -118,10 +121,12 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
 
 def _parse_netqasm_version(netqasm_version):
     try:
-        major, minor = netqasm_version.strip().split('.')
+        major, minor = netqasm_version.strip().split(".")
         return int(major), int(minor)
     except Exception as err:
-        raise ValueError(f"Could not parse netqasm version {netqasm_version} since: {err}")
+        raise ValueError(
+            f"Could not parse netqasm version {netqasm_version} since: {err}"
+        )
 
 
 def _split_instr_and_args(word):
@@ -133,9 +138,10 @@ def _parse_args(args):
     if args == "":
         return []
     else:
-        return [_parse_constant(arg.strip())
-                for arg in args.strip(Symbols.ARGS_BRACKETS)
-                .split(Symbols.ARGS_DELIM)]
+        return [
+            _parse_constant(arg.strip())
+            for arg in args.strip(Symbols.ARGS_BRACKETS).split(Symbols.ARGS_DELIM)
+        ]
 
 
 def _parse_constant(constant: str) -> int:
@@ -184,7 +190,7 @@ def _parse_value(value: str, allow_label: bool = False) -> T_ParsedValue:
 
 
 def _is_byte(value):
-    if not value.startswith('0x'):
+    if not value.startswith("0x"):
         return False
     if not len(value) == 4:
         return False
@@ -219,7 +225,8 @@ def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
     elif isinstance(index, tuple):
         if not isinstance(index[0], Register) or not isinstance(index[1], Register):
             raise TypeError(
-                f"indices {index[0]} and {index[1]} should be Registers, not {type(index[0])} and {type(index[1])}")
+                f"indices {index[0]} and {index[1]} should be Registers, not {type(index[0])} and {type(index[1])}"
+            )
         return ArraySlice(address_parsed, start=index[0], stop=index[1])
     elif isinstance(index, int) or isinstance(index, Register):
         return ArrayEntry(address_parsed, index)
@@ -236,7 +243,9 @@ def _parse_base_address(base_address: str) -> int:
     return value
 
 
-def _parse_index(index: str) -> Optional[Union[T_ParsedValue, Tuple[T_ParsedValue, T_ParsedValue]]]:
+def _parse_index(
+    index: str,
+) -> Optional[Union[T_ParsedValue, Tuple[T_ParsedValue, T_ParsedValue]]]:
     if index == "":
         return None
     index = index.strip(Symbols.INDEX_BRACKETS).strip()
@@ -267,21 +276,25 @@ def _split_preamble_body(subroutine_text: str) -> Tuple[List[str], List[str]]:
     is_preamble = True
     preamble_lines = []
     body_lines = []
-    for line in subroutine_text.split('\n'):
+    for line in subroutine_text.split("\n"):
         # Remove surrounding whitespace and comments
         line = line.strip()
         line = _remove_comments_from_line(line)
-        if line == '':  # Ignore empty lines
+        if line == "":  # Ignore empty lines
             continue
         if line.startswith(Symbols.PREAMBLE_START):
             if not is_preamble:  # Should not go out of preamble and in again
-                raise NetQASMSyntaxError("Cannot have a preamble line after instructions")
+                raise NetQASMSyntaxError(
+                    "Cannot have a preamble line after instructions"
+                )
             line = line.lstrip(Symbols.PREAMBLE_START).strip()
             if line == Symbols.PREAMBLE_START:  # Ignore lines with only a '#' character
                 continue
             preamble_lines.append(line)
         else:
-            is_preamble = False  # From now on the lines should not be part of the preamble
+            is_preamble = (
+                False  # From now on the lines should not be part of the preamble
+            )
             body_lines.append(line)
     return preamble_lines, body_lines
 
@@ -294,7 +307,7 @@ def _apply_macros(body_lines, macros) -> List[str]:
     for macro_key, macro_value in macros:
         macro_value = macro_value.strip(Symbols.PREAMBLE_DEFINE_BRACKETS)
         body = body.replace(f"{macro_key}{Symbols.MACRO_END}", macro_value)
-    return list(body.split('\n'))
+    return list(body.split("\n"))
 
 
 def _remove_comments_from_line(line):
@@ -308,9 +321,13 @@ def _parse_preamble(preamble_lines: List[str]) -> Dict[str, List[List[str]]]:
     preamble_instructions = defaultdict(list)
     for line in preamble_lines:
         try:
-            instr, *operands = group_by_word(line, brackets=Symbols.PREAMBLE_DEFINE_BRACKETS)
+            instr, *operands = group_by_word(
+                line, brackets=Symbols.PREAMBLE_DEFINE_BRACKETS
+            )
         except ValueError as err:
-            raise NetQASMSyntaxError(f"Could not parse preamble instruction, since: {err}")
+            raise NetQASMSyntaxError(
+                f"Could not parse preamble instruction, since: {err}"
+            )
         preamble_instructions[instr].append(operands)
     _assert_valid_preamble_instructions(preamble_instructions)
     return preamble_instructions
@@ -325,7 +342,9 @@ def _assert_valid_preamble_instructions(preamble_instructions):
     for instr, list_of_operands in preamble_instructions.items():
         preamble_assertion = preamble_assertions.get(instr)
         if preamble_assertion is None:
-            raise NetQASMInstrError(f"The instruction {instr} is not a valid preamble instruction")
+            raise NetQASMInstrError(
+                f"The instruction {instr} is not a valid preamble instruction"
+            )
         preamble_assertion(list_of_operands)
 
 
@@ -343,9 +362,11 @@ def _assert_valid_preamble_instr_define(list_of_operands):
     macro_keys = []
     for operands in list_of_operands:
         if len(operands) != 2:
-            raise NetQASMSyntaxError(f"Preamble instruction {Symbols.PREAMBLE_DEFINE} should contain "
-                                     "exactly two argument, "
-                                     f"not {len(operands)} as in '{operands}'")
+            raise NetQASMSyntaxError(
+                f"Preamble instruction {Symbols.PREAMBLE_DEFINE} should contain "
+                "exactly two argument, "
+                f"not {len(operands)} as in '{operands}'"
+            )
         macro_key, macro_value = operands
         if not is_variable_name(macro_key):
             raise NetQASMInstrError(f"{macro_key} is not a valid macro key")
@@ -356,14 +377,18 @@ def _assert_valid_preamble_instr_define(list_of_operands):
 
 def _assert_single_preamble_instr(list_of_operands, instr):
     if len(list_of_operands) != 1:
-        raise NetQASMInstrError(f"Preamble should contain exactly one f{instr} instruction")
+        raise NetQASMInstrError(
+            f"Preamble should contain exactly one f{instr} instruction"
+        )
 
 
 def _assert_single_preamble_arg(list_of_operands, instr):
     for operands in list_of_operands:
         if len(operands) != 1:
-            raise NetQASMSyntaxError(f"Preamble instruction {instr} should contain exactly one argument, "
-                                     f"not {len(operands)} as in '{operands}'")
+            raise NetQASMSyntaxError(
+                f"Preamble instruction {instr} should contain exactly one argument, "
+                f"not {len(operands)} as in '{operands}'"
+            )
 
 
 def _assign_branch_labels(subroutine):
@@ -378,11 +403,13 @@ def _assign_branch_labels(subroutine):
             continue
         branch_label = command.name
         if branch_label in branch_labels:
-            raise NetQASMSyntaxError(f"branch labels need to be unique, name {branch_label} already used")
+            raise NetQASMSyntaxError(
+                f"branch labels need to be unique, name {branch_label} already used"
+            )
         # Assign the label to the line/command number
         branch_labels[branch_label] = command_number
         # Remove the line
-        commands = commands[:command_number] + commands[command_number + 1:]
+        commands = commands[:command_number] + commands[command_number + 1 :]
     subroutine.commands = commands
     _update_labels(subroutine, branch_labels)
 
@@ -466,8 +493,13 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
             continue
         tmp_registers: List[Register] = []
         for j, operand in enumerate(command.operands):
-            if isinstance(operand, int) and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION:
-                register, set_command = reg_and_set_cmd(operand, tmp_registers, lineno=command.lineno)
+            if (
+                isinstance(operand, int)
+                and (command.instruction, j) not in _REPLACE_CONSTANTS_EXCEPTION
+            ):
+                register, set_command = reg_and_set_cmd(
+                    operand, tmp_registers, lineno=command.lineno
+                )
                 commands.insert(i, set_command)
                 command.operands[j] = register
 
@@ -482,7 +514,9 @@ def _replace_constants(commands: List[Union[Command, BranchLabel]]):
                 for attr in attrs:
                     value = getattr(operand, attr)
                     if isinstance(value, int):
-                        register, set_command = reg_and_set_cmd(value, tmp_registers, lineno=command.lineno)
+                        register, set_command = reg_and_set_cmd(
+                            value, tmp_registers, lineno=command.lineno
+                        )
                         commands.insert(i, set_command)
                         setattr(operand, attr, register)
 

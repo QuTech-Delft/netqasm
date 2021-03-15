@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union, Dict
 from enum import Enum
-
+from typing import Dict, List, Optional, Tuple, Union
 
 QubitState = Tuple[Tuple[complex, complex], Tuple[complex, complex]]  # 2x2 matrix
 AbsoluteQubitID = List[Union[str, int]]  # [app_name, qubit_id]
@@ -18,8 +17,8 @@ QubitGroups = Dict[int, QubitGroup]  # group_id -> qubit_group
 
 
 class EntanglementType(Enum):
-    CK = "CK"   # Create and Keep
-    MD = "MD"   # Measure Directly
+    CK = "CK"  # Create and Keep
+    MD = "MD"  # Measure Directly
 
 
 class EntanglementStage(Enum):

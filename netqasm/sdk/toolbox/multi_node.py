@@ -1,13 +1,13 @@
 from __future__ import annotations
+
 from enum import Enum, auto
-from typing import Optional, Union, Tuple
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.sdk.qubit import Qubit
 
 if TYPE_CHECKING:
-    from netqasm.sdk.epr_socket import EPRSocket
     from netqasm.sdk.classical_communication.socket import Socket
+    from netqasm.sdk.epr_socket import EPRSocket
     from netqasm.sdk.futures import Future, RegFuture
 
 
@@ -22,7 +22,7 @@ def create_ghz(
     up_epr_socket: Optional[EPRSocket] = None,
     down_socket: Optional[Socket] = None,
     up_socket: Optional[Socket] = None,
-    do_corrections: bool = False
+    do_corrections: bool = False,
 ) -> Tuple[Qubit, Union[Future, RegFuture, int]]:
     r"""Local protocol to create a GHZ state between mutliples nodes.
 

@@ -1,16 +1,17 @@
 from __future__ import annotations
-import os
-from typing import Dict, Optional, List, Tuple
-from typing import TYPE_CHECKING
+
 import json
+import os
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.logging.output import ClassCommLogger, SocketOperation
+from netqasm.sdk.classical_communication.message import StructuredMessage
+from netqasm.sdk.config import LogConfig
+from netqasm.util.log import LineTracker
+
 from ..socket import Socket
 from .socket_hub import _socket_hub, _SocketHub
-from netqasm.util.log import LineTracker
-from netqasm.logging.output import SocketOperation, ClassCommLogger
-from netqasm.sdk.config import LogConfig
-from netqasm.sdk.classical_communication.message import StructuredMessage
 
 if TYPE_CHECKING:
     import logging
@@ -20,8 +21,8 @@ T_ThreadSocketKey = Tuple[str, str, int]
 
 def trim_msg(msg: str) -> str:
     trimmed_msg = msg
-    if trimmed_msg.endswith('EOF'):
-        trimmed_msg = trimmed_msg.split('EOF')[0]
+    if trimmed_msg.endswith("EOF"):
+        trimmed_msg = trimmed_msg.split("EOF")[0]
     return trimmed_msg
 
 
@@ -154,7 +155,7 @@ def log_recv_structured(method):
 
         raw_msg = method(self, *args, **kwargs)
         msg_dict = json.loads(raw_msg)
-        msg = StructuredMessage(header=msg_dict['header'], payload=msg_dict['payload'])
+        msg = StructuredMessage(header=msg_dict["header"], payload=msg_dict["payload"])
         logged_msg = f"{msg.header}: {msg.payload}"
 
         if self._comm_logger is not None:
@@ -180,8 +181,15 @@ class ThreadSocket(Socket):
     _COMM_LOGGERS: Dict[str, Optional[ClassCommLogger]] = {}
     _SOCKET_HUB: _SocketHub = _socket_hub
 
-    def __init__(self, app_name: str, remote_app_name: str, socket_id: int = 0, timeout: Optional[float] = None,
-                 use_callbacks: bool = False, log_config: Optional[LogConfig] = None):
+    def __init__(
+        self,
+        app_name: str,
+        remote_app_name: str,
+        socket_id: int = 0,
+        timeout: Optional[float] = None,
+        use_callbacks: bool = False,
+        log_config: Optional[LogConfig] = None,
+    ):
         """Socket used when applications run under the same process in different threads.
 
         This connection is only a hack used in simulations to easily develop applications and protocols.
@@ -202,7 +210,9 @@ class ThreadSocket(Socket):
             Path to log classical communication to. File name will be "{node_name}_class_comm.log"
         """
         if app_name == remote_app_name:
-            raise ValueError(f"Cannot connect to itself app_name {app_name} = remote_app_name {remote_app_name}")
+            raise ValueError(
+                f"Cannot connect to itself app_name {app_name} = remote_app_name {remote_app_name}"
+            )
         self._app_name: str = app_name
         self._remote_app_name: str = remote_app_name
         self._id: int = socket_id
@@ -221,7 +231,9 @@ class ThreadSocket(Socket):
         self._received_messages: List[str] = []
 
         # Logger
-        self._logger: logging.Logger = get_netqasm_logger(f"{self.__class__.__name__}{self.key}")
+        self._logger: logging.Logger = get_netqasm_logger(
+            f"{self.__class__.__name__}{self.key}"
+        )
 
         self._logger.debug("Setting up connection")
 
@@ -308,7 +320,12 @@ class ThreadSocket(Socket):
         self._SOCKET_HUB.send(self, msg)
 
     @log_recv
-    def recv(self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None) -> str:
+    def recv(
+        self,
+        block: bool = True,
+        timeout: Optional[float] = None,
+        maxsize: Optional[int] = None,
+    ) -> str:
         """Receive a message form the remote node.
 
         If block is True the method will block until there is a message or a timeout is reached.
@@ -348,7 +365,10 @@ class ThreadSocket(Socket):
 
     @log_recv_structured
     def recv_structured(
-        self, block: bool = True, timeout: Optional[float] = None, maxsize: Optional[int] = None
+        self,
+        block: bool = True,
+        timeout: Optional[float] = None,
+        maxsize: Optional[int] = None,
     ) -> StructuredMessage:
         # TODO use maxsize?
         msg = self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
@@ -372,7 +392,9 @@ class ThreadSocket(Socket):
 
         self._SOCKET_HUB.send(self, msg)
 
-    def recv_silent(self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None) -> str:
+    def recv_silent(
+        self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None
+    ) -> str:
         """Receive a message without logging"""
         msg = self._SOCKET_HUB.recv(self, block=block, timeout=timeout)
         if not isinstance(msg, str):

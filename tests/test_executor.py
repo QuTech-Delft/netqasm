@@ -1,16 +1,19 @@
-import pytest
 import logging
 
-from netqasm.lang.encoding import RegisterName
-from netqasm.lang.subroutine import Register
+import pytest
+
 from netqasm.backend.executor import Executor
+from netqasm.lang.encoding import RegisterName
 from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.lang.subroutine import Register
 from netqasm.logging.glob import set_log_level
 
 
-@pytest.mark.parametrize("subroutine_str, expected_register, expected_output", [
-    (
-        """
+@pytest.mark.parametrize(
+    "subroutine_str, expected_register, expected_output",
+    [
+        (
+            """
         # NETQASM 1.0
         # APPID 0
         # DEFINE op h
@@ -27,11 +30,11 @@ from netqasm.logging.glob import set_log_level
         EXIT:
         qfree q!
         """,
-        Register(RegisterName.M, 0),
-        0,
-    ),
-    (
-        """
+            Register(RegisterName.M, 0),
+            0,
+        ),
+        (
+            """
         # NETQASM 1.0
         # APPID 0
         # DEFINE i R0
@@ -42,10 +45,11 @@ from netqasm.logging.glob import set_log_level
         beq 0 0 LOOP
         EXIT:
         """,
-        Register(RegisterName.R, 0),
-        10,
-    ),
-])
+            Register(RegisterName.R, 0),
+            10,
+        ),
+    ],
+)
 def test_executor(subroutine_str, expected_register, expected_output):
     set_log_level(logging.DEBUG)
     subroutine = parse_text_subroutine(subroutine_str)
@@ -61,9 +65,11 @@ def test_executor(subroutine_str, expected_register, expected_output):
         assert executor._get_register(app_id, expected_register) == expected_output
 
 
-@pytest.mark.parametrize("subroutine_str, error_type, error_line", [
-    (
-        """
+@pytest.mark.parametrize(
+    "subroutine_str, error_type, error_line",
+    [
+        (
+            """
         # NETQASM 0.0
         # APPID 0
         set R0 1
@@ -71,21 +77,22 @@ def test_executor(subroutine_str, expected_register, expected_output):
         set R1 0
         addm R0 R0 R0 R1
         """,
-        RuntimeError,
-        3
-    ),
-    (
-        """
+            RuntimeError,
+            3,
+        ),
+        (
+            """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
         qalloc Q0
         qalloc Q0
         """,
-        RuntimeError,
-        2
-    )
-])
+            RuntimeError,
+            2,
+        ),
+    ],
+)
 def test_failing_executor(subroutine_str, error_type, error_line):
     set_log_level(logging.DEBUG)
     subroutine = parse_text_subroutine(subroutine_str)
@@ -103,7 +110,7 @@ def test_failing_executor(subroutine_str, error_type, error_line):
     assert str(exc.value).startswith(f"At line {error_line}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     subroutine_str = """
         # NETQASM 1.0
         # APPID 0

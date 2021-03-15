@@ -1,14 +1,15 @@
 """TODO write about qubits"""
 from __future__ import annotations
-from typing import Optional, Union
-from typing import TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Optional, Union
 
 from netqasm.lang.instr.instr_enum import Instruction
-from netqasm.sdk.futures import RegFuture, Future
+from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
     from qlink_interface import LinkLayerOKTypeK
+
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 
 class QubitNotActiveError(MemoryError):
@@ -21,7 +22,7 @@ class Qubit:
         conn: BaseNetQASMConnection,
         add_new_command: bool = True,
         ent_info: Optional[LinkLayerOKTypeK] = None,
-        virtual_address: Optional[int] = None
+        virtual_address: Optional[int] = None,
     ):
         self._conn: BaseNetQASMConnection = conn
         if virtual_address is None:
@@ -105,7 +106,9 @@ class Qubit:
             return None
         # Lookup remote entangled node
         remote_node_id = self.entanglement_info.remote_node_id
-        remote_node_name = self._conn.network_info._get_node_name(node_id=remote_node_id)
+        remote_node_name = self._conn.network_info._get_node_name(
+            node_id=remote_node_id
+        )
         self._remote_ent_node = remote_node_name
         return remote_node_name
 
@@ -157,43 +160,57 @@ class Qubit:
         """
         Performs a X on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.X, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.X, qubit_id=self.qubit_id
+        )
 
     def Y(self) -> None:
         """
         Performs a Y on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.Y, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.Y, qubit_id=self.qubit_id
+        )
 
     def Z(self) -> None:
         """
         Performs a Z on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.Z, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.Z, qubit_id=self.qubit_id
+        )
 
     def T(self) -> None:
         """
         Performs a T gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.T, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.T, qubit_id=self.qubit_id
+        )
 
     def H(self) -> None:
         """
         Performs a Hadamard on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.H, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.H, qubit_id=self.qubit_id
+        )
 
     def K(self) -> None:
         """
         Performs a K gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.K, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.K, qubit_id=self.qubit_id
+        )
 
     def S(self) -> None:
         """
         Performs a S gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(instr=Instruction.S, qubit_id=self.qubit_id)
+        self._conn.add_single_qubit_commands(
+            instr=Instruction.S, qubit_id=self.qubit_id
+        )
 
     def rot_X(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
         """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
@@ -287,8 +304,12 @@ class _FutureQubit(Qubit):
 
     @property
     def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
-        raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
+        raise NotImplementedError(
+            "Cannot access entanglement info of a future qubit yet"
+        )
 
     @property
     def remote_entangled_node(self) -> Optional[str]:
-        raise NotImplementedError("Cannot access entanglement info of a future qubit yet")
+        raise NotImplementedError(
+            "Cannot access entanglement info of a future qubit yet"
+        )

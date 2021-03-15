@@ -1,5 +1,5 @@
 import logging
-from typing import Union, Optional
+from typing import Optional, Union
 
 NETQASM_LOGGER = "NetQASM"
 
@@ -30,7 +30,7 @@ def get_log_level(effective: bool = True) -> int:
 
 def _setup_netqasm_logger() -> None:
     logger = get_netqasm_logger()
-    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
     syslog = logging.StreamHandler()
     syslog.setFormatter(formatter)
     logger.addHandler(syslog)

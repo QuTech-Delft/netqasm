@@ -1,17 +1,21 @@
 from __future__ import annotations
-from typing import Type, Optional, List, Tuple
-from typing import TYPE_CHECKING
+
 import abc
 from timeit import default_timer as timer
-
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type
 
 if TYPE_CHECKING:
     from .socket import Socket
 
 
 class BroadcastChannel(abc.ABC):
-    def __init__(self, app_name: str, remote_app_names: List[str], timeout: Optional[float] = None,
-                 use_callbacks: bool = False):
+    def __init__(
+        self,
+        app_name: str,
+        remote_app_names: List[str],
+        timeout: Optional[float] = None,
+        use_callbacks: bool = False,
+    ):
         """Socket used to broadcast classical data between applications."""
         pass
 
@@ -67,10 +71,10 @@ class BroadcastChannelBySockets(BroadcastChannel):
         comm_log_dir : str, optional
             Path to log classical communication to. File name will be "{node_name}_class_comm.log"
         """
-        self._sockets = {remote_app_name: self._socket_class(
-            app_name=app_name,
-            remote_app_name=remote_app_name,
-            **kwargs)
+        self._sockets = {
+            remote_app_name: self._socket_class(
+                app_name=app_name, remote_app_name=remote_app_name, **kwargs
+            )
             for remote_app_name in remote_app_names
         }
 
@@ -84,7 +88,9 @@ class BroadcastChannelBySockets(BroadcastChannel):
         for socket in self._sockets.values():
             socket.send(msg=msg)
 
-    def recv(self, block: bool = True, timeout: Optional[float] = None) -> Tuple[str, str]:
+    def recv(
+        self, block: bool = True, timeout: Optional[float] = None
+    ) -> Tuple[str, str]:
         """Receive a message that was broadcast.
 
         Parameters
@@ -117,5 +123,7 @@ class BroadcastChannelBySockets(BroadcastChannel):
                 t_now = timer()
                 t_elapsed = t_now - t_start
                 if t_elapsed > timeout:
-                    raise TimeoutError("Timeout while trying to receive broadcasted message")
+                    raise TimeoutError(
+                        "Timeout while trying to receive broadcasted message"
+                    )
         raise RuntimeError("No message broadcasted")

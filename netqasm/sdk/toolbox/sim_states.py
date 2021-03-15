@@ -1,9 +1,10 @@
 from __future__ import annotations
-from netqasm.runtime.settings import get_simulator, Simulator
+
+from netqasm.runtime.settings import Simulator, get_simulator
 
 if get_simulator() == Simulator.NETSQUID:
-    import numpy as np
     import netsquid as ns
+    import numpy as np
     from netsquid.qubits import operators
     from netsquid.qubits.qubit import Qubit as NetSquidQubit
 
@@ -12,7 +13,9 @@ def qubit_from(phi: float, theta: float) -> NetSquidQubit:
     """Only used for simulation output purposes.
     Uses the phi and theta angles to construct a NetSquid qubit."""
     if get_simulator() != Simulator.NETSQUID:
-        raise RuntimeError("`qubit_from` function only possible with NetSquid simulator")
+        raise RuntimeError(
+            "`qubit_from` function only possible with NetSquid simulator"
+        )
 
     q = ns.qubits.create_qubits(1)[0]
     rot_y = operators.create_rotation_op(theta, (0, 1, 0))
@@ -34,6 +37,8 @@ def get_fidelity(q1: NetSquidQubit, q2: np.ndarray) -> float:
     """Only used for simulation output purposes.
     Gets the fidelity between the states q1 and q2"""
     if get_simulator() != Simulator.NETSQUID:
-        raise RuntimeError("`get_fidelity` function only possible with NetSquid simulator")
+        raise RuntimeError(
+            "`get_fidelity` function only possible with NetSquid simulator"
+        )
 
     return q1.qstate.fidelity(q2)  # type: ignore
