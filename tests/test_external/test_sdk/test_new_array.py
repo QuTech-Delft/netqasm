@@ -30,7 +30,9 @@ def run_alice():
 
 
 def test_new_array():
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-    ])
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+        ]
+    )
     simulate_application(app_instance, use_app_config=False, enable_logging=False)

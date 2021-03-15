@@ -134,7 +134,7 @@ qfree Q0
     print(bytes(subroutine))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_encode()
     test_encode_substitution()
     test_encode_rotations()

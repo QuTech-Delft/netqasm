@@ -9,15 +9,18 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.runtime.application import Program, default_app_instance
 
 
-@pytest.mark.parametrize('angle, tol, expected_nds', [
-    (np.pi, 1e-6, [(1, 0)]),
-    (np.pi / 2, 1e-6, [(1, 1)]),
-    (np.pi / 1024, 1e-6, [(1, 10)]),
-    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16), 1e-6, [(16 + 8 + 4 + 1, 4)]),
-    (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16 + 1 / 1024), 1e-6, [(29, 4), (1, 10)]),
-    (np.pi / 3, 1e-6, None),
-    (1.5, 1e-6, None),
-])
+@pytest.mark.parametrize(
+    "angle, tol, expected_nds",
+    [
+        (np.pi, 1e-6, [(1, 0)]),
+        (np.pi / 2, 1e-6, [(1, 1)]),
+        (np.pi / 1024, 1e-6, [(1, 10)]),
+        (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16), 1e-6, [(16 + 8 + 4 + 1, 4)]),
+        (np.pi * (1 + 1 / 2 + 1 / 4 + 1 / 16 + 1 / 1024), 1e-6, [(29, 4), (1, 10)]),
+        (np.pi / 3, 1e-6, None),
+        (1.5, 1e-6, None),
+    ],
+)
 def test(angle, tol, expected_nds):
     print(angle)
     nds = get_angle_spec_from_float(angle=angle, tol=tol)
@@ -66,28 +69,38 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
     # Setup the applications
     app_instance = default_app_instance(programs=[])
     for i in range(num_nodes):
-        node = f'node{i}'
+        node = f"node{i}"
         if i == 0:
             down_node = None
         else:
-            down_node = f'node{i - 1}'
+            down_node = f"node{i - 1}"
         if i == num_nodes - 1:
             up_node = None
         else:
-            up_node = f'node{i + 1}'
+            up_node = f"node{i + 1}"
         app_instance.app.programs += [
-            Program(party=node, entry=run_node, args=['node', 'down_node', 'up_node', 'do_corrections'], results=[])]
+            Program(
+                party=node,
+                entry=run_node,
+                args=["node", "down_node", "up_node", "do_corrections"],
+                results=[],
+            )
+        ]
         app_instance.program_inputs[node] = {
-            'node': node,
-            'down_node': down_node,
-            'up_node': up_node,
-            'do_corrections': do_corrections,
+            "node": node,
+            "down_node": down_node,
+            "up_node": up_node,
+            "do_corrections": do_corrections,
         }
         app_instance.party_alloc[node] = node
 
     # Run the applications
-    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
-    outcomes = {node: outcome for node, outcome in outcomes.items() if node != "backend"}
+    outcomes = simulate_application(
+        app_instance, use_app_config=False, enable_logging=False
+    )[0]
+    outcomes = {
+        node: outcome for node, outcome in outcomes.items() if node != "backend"
+    }
     print(outcomes)
 
     if do_corrections:
@@ -97,7 +110,7 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
         # Check the outcomes
         correction = 0
         for i in range(num_nodes):
-            node = f'app_node{i}'
+            node = f"app_node{i}"
             m, corr = outcomes[node]
             corrected_outcome = (m + correction) % 2
             corrected_outcomes.append(corrected_outcome)
@@ -110,8 +123,8 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
     assert len(set(corrected_outcomes)) == 1
 
 
-@pytest.mark.parametrize('do_corrections', [True, False])
-@pytest.mark.parametrize('num_nodes', range(2, 6))
-@pytest.mark.parametrize('i', range(5))  # Run 10 times
+@pytest.mark.parametrize("do_corrections", [True, False])
+@pytest.mark.parametrize("num_nodes", range(2, 6))
+@pytest.mark.parametrize("i", range(5))  # Run 10 times
 def test_create_ghz(do_corrections, num_nodes, i):
     _gen_create_ghz(num_nodes, do_corrections)

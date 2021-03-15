@@ -62,8 +62,15 @@ def post_function(backend):
     reason="SimulaQron does not yet support a post_function",
 )
 def test_teleport_without_corrections():
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-        ("Bob", run_bob),
-    ])
-    simulate_application(app_instance, use_app_config=False, post_function=post_function, enable_logging=False)
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+            ("Bob", run_bob),
+        ]
+    )
+    simulate_application(
+        app_instance,
+        use_app_config=False,
+        post_function=post_function,
+        enable_logging=False,
+    )

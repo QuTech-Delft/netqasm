@@ -31,15 +31,19 @@ def run_bob():
 
 
 def test_create_epr_m():
-    app_instance = default_app_instance([
-        ("alice", run_alice),
-        ("bob", run_bob),
-    ])
-    outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
+    app_instance = default_app_instance(
+        [
+            ("alice", run_alice),
+            ("bob", run_bob),
+        ]
+    )
+    outcomes = simulate_application(
+        app_instance, use_app_config=False, enable_logging=False
+    )[0]
 
     print(outcomes)
     for i in range(num):
-        assert int(outcomes['app_alice'][i]) == int(outcomes['app_bob'][i])
+        assert int(outcomes["app_alice"][i]) == int(outcomes["app_bob"][i])
 
 
 if __name__ == "__main__":

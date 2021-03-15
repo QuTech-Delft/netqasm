@@ -33,8 +33,10 @@ def run_bob():
 
 
 def test_two_nodes():
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-        ("Bob", run_bob),
-    ])
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+            ("Bob", run_bob),
+        ]
+    )
     simulate_application(app_instance, use_app_config=False, enable_logging=False)

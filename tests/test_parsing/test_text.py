@@ -14,19 +14,25 @@ from netqasm.lang.instr.operand import (
 )
 
 
-@pytest.mark.parametrize("subroutine, error", [
-    ("# WRONG", NetQASMInstrError),  # Wrong keyword
-    ("# APPID 0\nH 0\n#APPID 0", NetQASMSyntaxError),  # Preamble after body
-    ("# DEFINE args {0, 0", NetQASMSyntaxError),  # No end-bracket
-    ("# NETQASM", NetQASMSyntaxError),  # No argument
-    ("# NETQASM 1 2", NetQASMSyntaxError),  # Two arguments
-    ("# APPID", NetQASMSyntaxError),  # No argument
-    ("# APPID 1 2", NetQASMSyntaxError),  # Two arguments
-    ("# DEFINE args", NetQASMSyntaxError),  # One arguments
-    ("# DEFINE args 0 0", NetQASMSyntaxError),  # Three arguments
-    ("# DEFINE 1args 0", NetQASMInstrError),  # Not a valid macro key
-    ("# DEFINE args 0\n# DEFINE args 1", NetQASMInstrError),  # Not unique macro keys
-])
+@pytest.mark.parametrize(
+    "subroutine, error",
+    [
+        ("# WRONG", NetQASMInstrError),  # Wrong keyword
+        ("# APPID 0\nH 0\n#APPID 0", NetQASMSyntaxError),  # Preamble after body
+        ("# DEFINE args {0, 0", NetQASMSyntaxError),  # No end-bracket
+        ("# NETQASM", NetQASMSyntaxError),  # No argument
+        ("# NETQASM 1 2", NetQASMSyntaxError),  # Two arguments
+        ("# APPID", NetQASMSyntaxError),  # No argument
+        ("# APPID 1 2", NetQASMSyntaxError),  # Two arguments
+        ("# DEFINE args", NetQASMSyntaxError),  # One arguments
+        ("# DEFINE args 0 0", NetQASMSyntaxError),  # Three arguments
+        ("# DEFINE 1args 0", NetQASMInstrError),  # Not a valid macro key
+        (
+            "# DEFINE args 0\n# DEFINE args 1",
+            NetQASMInstrError,
+        ),  # Not unique macro keys
+    ],
+)
 def test_faulty_preamble(subroutine, error):
     with pytest.raises(error):
         parse_text_subroutine(subroutine)
@@ -103,7 +109,8 @@ ret_arr @0
             instructions.core.RetArrInstruction(
                 address=Address(0),
             ),
-        ])
+        ],
+    )
 
     subroutine = parse_text_subroutine(subroutine)
     print(subroutine)

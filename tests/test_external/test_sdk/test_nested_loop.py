@@ -22,16 +22,20 @@ def run_alice():
                 q = Qubit(alice)
                 q.free()
                 j.add(1)
+
             i.add(1)
 
             alice.loop_body(inner_body, inner_num, loop_register=inner_reg)
+
         alice.loop_body(outer_body, outer_num, loop_register=outer_reg)
     assert i == outer_num
     assert j == outer_num * inner_num
 
 
 def test_nested_loop():
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-    ])
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+        ]
+    )
     simulate_application(app_instance, use_app_config=False, enable_logging=False)

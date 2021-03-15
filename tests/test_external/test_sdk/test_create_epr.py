@@ -29,10 +29,8 @@ def post_function(backend):
     bob_state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate
     assert alice_state is bob_state
     expected_state = np.array(
-        [[0.5, 0, 0, 0.5],
-         [0, 0, 0, 0],
-         [0, 0, 0, 0],
-         [0.5, 0, 0, 0.5]])
+        [[0.5, 0, 0, 0.5], [0, 0, 0, 0], [0, 0, 0, 0], [0.5, 0, 0, 0.5]]
+    )
 
     logger.info(f"state = {alice_state.dm}")
     assert np.all(np.isclose(expected_state, alice_state.dm))
@@ -47,11 +45,18 @@ def test_create_epr():
     #     ("Alice", run_alice),
     #     ("Bob", run_bob),
     # ])
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-        ("Bob", run_bob),
-    ])
-    simulate_application(app_instance, use_app_config=False, post_function=post_function, enable_logging=False)
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+            ("Bob", run_bob),
+        ]
+    )
+    simulate_application(
+        app_instance,
+        use_app_config=False,
+        post_function=post_function,
+        enable_logging=False,
+    )
 
 
 if __name__ == "__main__":

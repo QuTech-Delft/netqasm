@@ -100,7 +100,7 @@ def test_deserialize_subroutine():
     print(subroutine2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test()
     test_rotations()
     test_deserialize_subroutine()
