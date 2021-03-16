@@ -22,13 +22,13 @@ class IrInstrType(Enum):
     UNDEF = auto()
     LEA = auto()
     # Classical logic
-    JMP = auto()
-    BEZ = auto()
-    BNZ = auto()
-    BEQ = auto()
-    BNE = auto()
-    BLT = auto()
-    BGE = auto()
+    # JMP = auto()
+    # BEZ = auto()
+    # BNZ = auto()
+    # BEQ = auto()
+    # BNE = auto()
+    # BLT = auto()
+    # BGE = auto()
     # Classical operations
     ADD = auto()
     SUB = auto()
@@ -68,7 +68,18 @@ class IrInstrType(Enum):
     MOV = auto()
 
     PARAM = auto()  # param x
-    CALL = auto()  # call x, n
+    CALL = auto()  # y = call p, n
+
+    JMP = auto()  # goto L
+    BEZ = auto()  # if x == 0 goto L
+    BNZ = auto()  # if x != 0 goto L
+    BEQ = auto()  # if x == y goto L
+    BNE = auto()  # if x != y goto L
+    BLT = auto()  # if x < y goto L
+    BGE = auto()  # if x > y goto L
+
+    BLK_START = auto()  # block B, n
+    BLK_END = auto()  # block B
 
     ASSIGN = auto()  # x = y
     NEW_ARRAY = auto()  # x = array y
@@ -124,6 +135,9 @@ class IrReg:
         self.id: int = self.__class__._COUNT
         self.__class__._COUNT += 1
 
+    def __str__(self):
+        return f"ireg_{self.id}"
+
 
 class IrArr:
     """An array variable"""
@@ -134,6 +148,48 @@ class IrArr:
         self.id: int = self.__class__._COUNT
         self.__class__._COUNT += 1
 
+    def __str__(self):
+        return f"iarr_{self.id}"
+
+
+class IrBit:
+    """A classical bit"""
+
+    _COUNT: int = 0
+
+    def __init__(self):
+        self.id: int = self.__class__._COUNT
+        self.__class__._COUNT += 1
+
+    def __str__(self):
+        return f"ibit_{self.id}"
+
+
+class IrInt:
+    """A classical bit"""
+
+    _COUNT: int = 0
+
+    def __init__(self):
+        self.id: int = self.__class__._COUNT
+        self.__class__._COUNT += 1
+
+    def __str__(self):
+        return f"iint_{self.id}"
+
+
+class IrEprResult:
+    """A classical record of information about EPR generation"""
+
+    _COUNT: int = 0
+
+    def __init__(self):
+        self.id: int = self.__class__._COUNT
+        self.__class__._COUNT += 1
+
+    def __str__(self):
+        return f"iepr_res_{self.id}"
+
 
 class IrQbt:
     """A qubit variable"""
@@ -143,6 +199,9 @@ class IrQbt:
     def __init__(self):
         self.id: int = self.__class__._COUNT
         self.__class__._COUNT += 1
+
+    def __str__(self):
+        return f"iqbt_{self.id}"
 
 
 class IrBlk:
@@ -168,6 +227,7 @@ class IrFun:
 
 
 IrImm = int
+T_IrInteger = Union[IrInt, IrBit]
 T_IrType = Union[IrReg, IrArr, IrQbt, IrImm]
 T_IrOperand = Union[IrReg, IrArr, IrQbt, IrImm]
 
@@ -208,3 +268,14 @@ class IrInstr:
         self._typ: IrInstrType = typ
         self._operands: List[T_IrOperand] = operands
         self._parent: Optional[IrBlk] = parent
+
+    def __str__(self):
+        if self._typ == IrInstrType.NEW_ARRAY:
+            return f"{self._operands[0]} = new_array"
+        elif self._typ == IrInstrType.NEW_QUBIT:
+            return f"{self._operands[0]} = new_qubit"
+        elif self._typ == IrInstrType.Q_MEAS:
+            return f"{self._operands[1]} = meas {self._operands[0]}"
+
+        operands = " ".join(str(operand) for operand in self._operands)
+        return f"[TODO: repr] {str(self._typ.name.lower())} {operands}"

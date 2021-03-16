@@ -16,6 +16,7 @@ from qlink_interface import (
 
 from netqasm.lang.ir import GenericInstr
 from netqasm.logging.glob import get_netqasm_logger
+
 from .qubit import Qubit
 
 if TYPE_CHECKING:
