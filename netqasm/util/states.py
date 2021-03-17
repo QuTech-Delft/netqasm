@@ -17,7 +17,7 @@ def bloch_sphere_rep(mat):
     assert mat.shape == (2, 2), "mat should be a 2x2 matrix"
 
     # Compute cartesian coordinates
-    ax = mat[0, 1] + mat[1, 0]
+    ax = (mat[0, 1] + mat[1, 0])
     ay = (mat[1, 0] - mat[0, 1]) / 1j
     az = 2 * mat[0, 0] - 1
 

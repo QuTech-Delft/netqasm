@@ -1,10 +1,10 @@
-from concurrent.futures import ProcessPoolExecutor as Pool
 from typing import List
+from concurrent.futures import ProcessPoolExecutor as Pool
 
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.util.yaml import dump_yaml
 from netqasm.logging.output import save_all_struct_loggers
 from netqasm.util.thread import as_completed
-from netqasm.util.yaml import dump_yaml
 
 from .app_config import AppConfig
 
@@ -30,12 +30,12 @@ def run_applications(
         for app_cfg in app_cfgs:
             inputs = app_cfg.inputs
             if use_app_config:
-                inputs["app_config"] = app_cfg
+                inputs['app_config'] = app_cfg
             future = executor.submit(app_cfg.main_func, **inputs)
             app_futures.append(future)
 
         # Join the application processes and the backend
-        names = [f"app_{app_name}" for app_name in app_names]
+        names = [f'app_{app_name}' for app_name in app_names]
         results = {}
         for future, name in as_completed(app_futures, names=names):
             results[name] = future.result()

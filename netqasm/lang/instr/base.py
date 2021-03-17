@@ -1,18 +1,19 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
+from abc import ABC, abstractmethod
 
+from netqasm.util.string import rspaces
 from netqasm.lang import encoding
-from netqasm.lang.operand import (
+from netqasm.util.log import HostLine
+
+from netqasm.lang.instr.operand import (
+    Operand,
+    Register,
+    Immediate,
     Address,
     ArrayEntry,
     ArraySlice,
-    Immediate,
-    Operand,
-    Register,
 )
-from netqasm.util.log import HostLine
-from netqasm.util.string import rspaces
 
 # Abstract base instruction types. Should not be instantiated directly.
 
@@ -22,7 +23,6 @@ class NetQASMInstruction(ABC):
     """
     Base NetQASM instruction class.
     """
-
     id: int = -1
     mnemonic: str = ""
     lineno: Optional[HostLine] = None
@@ -34,7 +34,7 @@ class NetQASMInstruction(ABC):
 
     @classmethod
     @abstractmethod
-    def deserialize_from(cls, raw: bytes) -> "NetQASMInstruction":
+    def deserialize_from(cls, raw: bytes) -> 'NetQASMInstruction':
         pass
 
     @abstractmethod
@@ -80,7 +80,6 @@ class RegInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand.
     """
-
     reg: Register = None  # type: ignore
 
     @property
@@ -95,7 +94,10 @@ class RegInstruction(NetQASMInstruction):
         return cls(id=cls.id, reg=reg)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.RegCommand(id=self.id, reg=self.reg.cstruct)
+        c_struct = encoding.RegCommand(
+            id=self.id,
+            reg=self.reg.cstruct
+        )
         return bytes(c_struct)
 
     @classmethod
@@ -114,7 +116,6 @@ class RegRegInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
 
@@ -132,7 +133,9 @@ class RegRegInstruction(NetQASMInstruction):
 
     def serialize(self) -> bytes:
         c_struct = encoding.RegRegCommand(
-            id=self.id, reg0=self.reg0.cstruct, reg1=self.reg1.cstruct
+            id=self.id,
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct
         )
         return bytes(c_struct)
 
@@ -153,7 +156,6 @@ class RegImmImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand followed by 2 Immediate operands.
     """
-
     reg: Register = None  # type: ignore
     imm0: Immediate = None  # type: ignore
     imm1: Immediate = None  # type: ignore
@@ -173,7 +175,10 @@ class RegImmImmInstruction(NetQASMInstruction):
 
     def serialize(self) -> bytes:
         c_struct = encoding.RegImmImmCommand(
-            id=self.id, reg=self.reg.cstruct, imm0=self.imm0.value, imm1=self.imm1.value
+            id=self.id,
+            reg=self.reg.cstruct,
+            imm0=self.imm0.value,
+            imm1=self.imm1.value
         )
         return bytes(c_struct)
 
@@ -184,7 +189,11 @@ class RegImmImmInstruction(NetQASMInstruction):
         assert isinstance(reg, Register)
         assert isinstance(imm0, int)
         assert isinstance(imm1, int)
-        return cls(reg=reg, imm0=Immediate(value=imm0), imm1=Immediate(value=imm1))
+        return cls(
+            reg=reg,
+            imm0=Immediate(value=imm0),
+            imm1=Immediate(value=imm1)
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.imm0)} {str(self.imm1)}"
@@ -195,7 +204,6 @@ class RegRegImmImmInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands followed by 2 Immediate operands.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
     imm0: Immediate = None  # type: ignore
@@ -221,7 +229,7 @@ class RegRegImmImmInstruction(NetQASMInstruction):
             reg0=self.reg0.cstruct,
             reg1=self.reg1.cstruct,
             imm0=self.imm0.value,
-            imm1=self.imm1.value,
+            imm1=self.imm1.value
         )
         return bytes(c_struct)
 
@@ -234,7 +242,10 @@ class RegRegImmImmInstruction(NetQASMInstruction):
         assert isinstance(imm0, int)
         assert isinstance(imm1, int)
         return cls(
-            reg0=reg0, reg1=reg1, imm0=Immediate(value=imm0), imm1=Immediate(value=imm1)
+            reg0=reg0,
+            reg1=reg1,
+            imm0=Immediate(value=imm0),
+            imm1=Immediate(value=imm1)
         )
 
     def _pretty_print(self):
@@ -246,7 +257,6 @@ class RegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 3 Register operands.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
     reg2: Register = None  # type: ignore
@@ -269,7 +279,7 @@ class RegRegRegInstruction(NetQASMInstruction):
             id=self.id,
             reg0=self.reg0.cstruct,
             reg1=self.reg1.cstruct,
-            reg2=self.reg2.cstruct,
+            reg2=self.reg2.cstruct
         )
         return bytes(c_struct)
 
@@ -280,7 +290,11 @@ class RegRegRegInstruction(NetQASMInstruction):
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
         assert isinstance(reg2, Register)
-        return cls(reg0=reg0, reg1=reg1, reg2=reg2)
+        return cls(
+            reg0=reg0,
+            reg1=reg1,
+            reg2=reg2
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.reg2)}"
@@ -291,7 +305,6 @@ class RegRegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 4 Register operands.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
     reg2: Register = None  # type: ignore
@@ -317,7 +330,7 @@ class RegRegRegRegInstruction(NetQASMInstruction):
             reg0=self.reg0.cstruct,
             reg1=self.reg1.cstruct,
             reg2=self.reg2.cstruct,
-            reg3=self.reg3.cstruct,
+            reg3=self.reg3.cstruct
         )
         return bytes(c_struct)
 
@@ -345,7 +358,6 @@ class ImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Immediate operand.
     """
-
     imm: Immediate = None  # type: ignore
 
     @property
@@ -360,7 +372,10 @@ class ImmInstruction(NetQASMInstruction):
         return cls(imm=imm)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.ImmCommand(id=self.id, imm=self.imm.value)
+        c_struct = encoding.ImmCommand(
+            id=self.id,
+            imm=self.imm.value
+        )
         return bytes(c_struct)
 
     @classmethod
@@ -379,7 +394,6 @@ class RegRegImmInstruction(NetQASMInstruction):
     """
     An instruction with 2 Register operands and one Immediate operand.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
     imm: Immediate = None  # type: ignore
@@ -402,7 +416,7 @@ class RegRegImmInstruction(NetQASMInstruction):
             id=self.id,
             reg0=self.reg0.cstruct,
             reg1=self.reg1.cstruct,
-            imm=self.imm.value,
+            imm=self.imm.value
         )
         return bytes(c_struct)
 
@@ -424,7 +438,6 @@ class RegImmInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one Immediate operand.
     """
-
     reg: Register = None  # type: ignore
     imm: Immediate = None  # type: ignore
 
@@ -442,7 +455,9 @@ class RegImmInstruction(NetQASMInstruction):
 
     def serialize(self) -> bytes:
         c_struct = encoding.RegImmCommand(
-            id=self.id, reg=self.reg.cstruct, imm=self.imm.value
+            id=self.id,
+            reg=self.reg.cstruct,
+            imm=self.imm.value
         )
         return bytes(c_struct)
 
@@ -452,7 +467,10 @@ class RegImmInstruction(NetQASMInstruction):
         reg, imm = operands
         assert isinstance(reg, Register)
         assert isinstance(imm, int)
-        return cls(reg=reg, imm=Immediate(value=imm))
+        return cls(
+            reg=reg,
+            imm=Immediate(value=imm)
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.imm)}"
@@ -463,7 +481,6 @@ class RegEntryInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one ArrayEntry operand.
     """
-
     reg: Register = None  # type: ignore
     entry: ArrayEntry = None  # type: ignore
 
@@ -481,7 +498,9 @@ class RegEntryInstruction(NetQASMInstruction):
 
     def serialize(self) -> bytes:
         c_struct = encoding.RegEntryCommand(
-            id=self.id, reg=self.reg.cstruct, entry=self.entry.cstruct
+            id=self.id,
+            reg=self.reg.cstruct,
+            entry=self.entry.cstruct
         )
         return bytes(c_struct)
 
@@ -491,7 +510,10 @@ class RegEntryInstruction(NetQASMInstruction):
         reg, entry = operands
         assert isinstance(reg, Register)
         assert isinstance(entry, ArrayEntry)
-        return cls(reg=reg, entry=entry)
+        return cls(
+            reg=reg,
+            entry=entry
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.entry)}"
@@ -502,7 +524,6 @@ class RegAddrInstruction(NetQASMInstruction):
     """
     An instruction with 1 Register operand and one Address operand.
     """
-
     reg: Register = None  # type: ignore
     address: Address = None  # type: ignore
 
@@ -520,7 +541,9 @@ class RegAddrInstruction(NetQASMInstruction):
 
     def serialize(self) -> bytes:
         c_struct = encoding.RegAddrCommand(
-            id=self.id, reg=self.reg.cstruct, addr=self.address.cstruct
+            id=self.id,
+            reg=self.reg.cstruct,
+            addr=self.address.cstruct
         )
         return bytes(c_struct)
 
@@ -530,7 +553,10 @@ class RegAddrInstruction(NetQASMInstruction):
         reg, addr = operands
         assert isinstance(reg, Register)
         assert isinstance(addr, Address)
-        return cls(reg=reg, address=addr)
+        return cls(
+            reg=reg,
+            address=addr
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.address)}"
@@ -541,7 +567,6 @@ class ArrayEntryInstruction(NetQASMInstruction):
     """
     An instruction with 1 ArrayEntry operand and one Address operand.
     """
-
     entry: ArrayEntry = None  # type: ignore
 
     @property
@@ -556,7 +581,10 @@ class ArrayEntryInstruction(NetQASMInstruction):
         return cls(entry=entry)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.ArrayEntryCommand(id=self.id, entry=self.entry.cstruct)
+        c_struct = encoding.ArrayEntryCommand(
+            id=self.id,
+            entry=self.entry.cstruct
+        )
         return bytes(c_struct)
 
     @classmethod
@@ -564,7 +592,9 @@ class ArrayEntryInstruction(NetQASMInstruction):
         assert len(operands) == 1
         entry = operands[0]
         assert isinstance(entry, ArrayEntry)
-        return cls(entry=entry)
+        return cls(
+            entry=entry
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.entry)}"
@@ -575,7 +605,6 @@ class ArraySliceInstruction(NetQASMInstruction):
     """
     An instruction with 1 ArraySlice operand.
     """
-
     slice: ArraySlice = None  # type: ignore
 
     @property
@@ -590,7 +619,10 @@ class ArraySliceInstruction(NetQASMInstruction):
         return cls(slice=slice)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.ArraySliceCommand(id=self.id, slice=self.slice.cstruct)
+        c_struct = encoding.ArraySliceCommand(
+            id=self.id,
+            slice=self.slice.cstruct
+        )
         return bytes(c_struct)
 
     @classmethod
@@ -598,7 +630,9 @@ class ArraySliceInstruction(NetQASMInstruction):
         assert len(operands) == 1
         slice = operands[0]
         assert isinstance(slice, ArraySlice)
-        return cls(slice=slice)
+        return cls(
+            slice=slice
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.slice)}"
@@ -609,7 +643,6 @@ class AddrInstruction(NetQASMInstruction):
     """
     An instruction with 1 Address operand.
     """
-
     address: Address = None  # type: ignore
 
     @property
@@ -624,7 +657,10 @@ class AddrInstruction(NetQASMInstruction):
         return cls(address=addr)
 
     def serialize(self) -> bytes:
-        c_struct = encoding.AddrCommand(id=self.id, addr=self.address.cstruct)
+        c_struct = encoding.AddrCommand(
+            id=self.id,
+            addr=self.address.cstruct
+        )
         return bytes(c_struct)
 
     @classmethod
@@ -632,7 +668,9 @@ class AddrInstruction(NetQASMInstruction):
         assert len(operands) == 1
         addr = operands[0]
         assert isinstance(addr, Address)
-        return cls(address=addr)
+        return cls(
+            address=addr
+        )
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.address)}"
@@ -643,7 +681,6 @@ class Reg5Instruction(NetQASMInstruction):
     """
     An instruction with 5 Register operands.
     """
-
     reg0: Register = None  # type: ignore
     reg1: Register = None  # type: ignore
     reg2: Register = None  # type: ignore
@@ -663,7 +700,7 @@ class Reg5Instruction(NetQASMInstruction):
             reg1=Register.from_raw(c_struct.reg1),
             reg2=Register.from_raw(c_struct.reg2),
             reg3=Register.from_raw(c_struct.reg3),
-            reg4=Register.from_raw(c_struct.reg4),
+            reg4=Register.from_raw(c_struct.reg4)
         )
 
     def serialize(self) -> bytes:
@@ -673,7 +710,7 @@ class Reg5Instruction(NetQASMInstruction):
             reg1=self.reg1.cstruct,
             reg2=self.reg2.cstruct,
             reg3=self.reg3.cstruct,
-            reg4=self.reg4.cstruct,
+            reg4=self.reg4.cstruct
         )
         return bytes(c_struct)
 
@@ -712,7 +749,7 @@ class DebugInstruction(NetQASMInstruction):
         pass
 
     def serialize(self) -> bytes:
-        return b""
+        return b''
 
     @classmethod
     def from_operands(cls, operands: List[Operand]):

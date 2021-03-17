@@ -1,5 +1,6 @@
+from netqasm.lang.parsing import parse_text_subroutine, deserialize
+
 from netqasm.lang.instr.vanilla import CphaseInstruction
-from netqasm.lang.parsing import deserialize, parse_text_subroutine
 
 
 def test():
@@ -99,7 +100,7 @@ def test_deserialize_subroutine():
     print(subroutine2)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     test()
     test_rotations()
     test_deserialize_subroutine()

@@ -1,6 +1,6 @@
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.sdk.toolbox.sim_states import get_fidelity, qubit_from, to_dm
+from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm, get_fidelity
 
 
 def main(app_config=None):
@@ -14,7 +14,9 @@ def main(app_config=None):
 
     # Initialize the connection
     receiver = NetQASMConnection(
-        app_name=app_config.app_name, log_config=log_config, epr_sockets=[epr_socket]
+        app_name=app_config.app_name,
+        log_config=log_config,
+        epr_sockets=[epr_socket]
     )
     with receiver:
         epr = epr_socket.recv()[0]
@@ -51,7 +53,7 @@ def main(app_config=None):
             "correction1": "Z" if m1 == 1 else "None",
             "correction2": "X" if m2 == 1 else "None",
             "received_state": dm.tolist(),
-            "fidelity": fidelity,
+            "fidelity": fidelity
         }
 
 

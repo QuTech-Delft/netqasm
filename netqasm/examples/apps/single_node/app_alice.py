@@ -3,7 +3,7 @@ from netqasm.sdk.external import NetQASMConnection
 from netqasm.sdk.toolbox import set_qubit_state
 
 
-def main(app_config=None, phi=0.0, theta=0.0):
+def main(app_config=None, phi=0., theta=0.):
     log_config = app_config.log_config
     # Initialize the connection to the backend
     alice = NetQASMConnection(
@@ -24,7 +24,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
     m1, m2 = int(m1), int(m2)
     print(f"m1 = {m1}, m2 = {m2}")
 
-    return {"m1": m1, "m2": m2}
+    return {'m1': m1, 'm2': m2}
 
 
 if __name__ == "__main__":

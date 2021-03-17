@@ -1,5 +1,5 @@
-from netqasm.logging.output import get_new_app_logger
 from netqasm.sdk import EPRSocket
+from netqasm.logging.output import get_new_app_logger
 from netqasm.sdk.external import NetQASMConnection
 
 
@@ -17,7 +17,8 @@ def main(app_config=None, x=0):
         raise ValueError(f"x should be 0 or 1, not {x}")
 
     app_logger = get_new_app_logger(
-        app_name=app_config.app_name, log_config=app_config.log_config
+        app_name=app_config.app_name,
+        log_config=app_config.log_config
     )
     app_logger.log(f"Alice received input bit x = {x}")
 
@@ -26,7 +27,7 @@ def main(app_config=None, x=0):
     alice = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[epr_socket],
+        epr_sockets=[epr_socket]
     )
 
     with alice:
@@ -40,7 +41,7 @@ def main(app_config=None, x=0):
             a = measure_basis_1(alice, epr)
 
     app_logger.log(f"Alice outputs a = {a}")
-    return {"a": int(a)}
+    return {'a': int(a)}
 
 
 if __name__ == "__main__":

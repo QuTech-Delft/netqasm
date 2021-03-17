@@ -1,8 +1,8 @@
 import random
 
-from netqasm.logging.glob import set_log_level
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.logging.glob import set_log_level
 
 
 def main(no_output=False):
@@ -10,9 +10,7 @@ def main(no_output=False):
         num = 10
 
         outcomes = alice.new_array(num)
-        rand_nums = alice.new_array(
-            init_values=[random.randint(0, 1) for _ in range(num)]
-        )
+        rand_nums = alice.new_array(init_values=[random.randint(0, 1) for _ in range(num)])
 
         with rand_nums.enumerate() as (i, r):
             q = Qubit(alice)
@@ -21,9 +19,9 @@ def main(no_output=False):
             q.measure(future=outcomes.get_future_index(i))
 
     if no_output:
-        print(f"binary:\n{alice.storage[0]}")
+        print(f'binary:\n{alice.storage[0]}')
 
 
 if __name__ == "__main__":
-    set_log_level("INFO")
+    set_log_level('INFO')
     main()

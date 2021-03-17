@@ -2,7 +2,7 @@ import ctypes
 from enum import Enum
 from typing import Union
 
-from netqasm.lang.encoding import INTEGER, Address, OptionalInt, Register
+from netqasm.lang.encoding import Address, Register, INTEGER, OptionalInt
 from netqasm.lang.subroutine import Subroutine
 
 # This module defines the messages that the host can send to
@@ -22,8 +22,8 @@ MESSAGE_TYPE_BYTES = len(bytes(MESSAGE_TYPE()))  # type: ignore
 
 class MessageHeader(ctypes.Structure):
     _fields_ = [
-        ("id", MESSAGE_ID),
-        ("length", ctypes.c_uint32),
+        ('id', MESSAGE_ID),
+        ('length', ctypes.c_uint32),
     ]
 
     @classmethod
@@ -45,7 +45,7 @@ class MessageType(Enum):
 class Message(ctypes.Structure):
     _pack = 1
     _fields_ = [
-        ("type", MESSAGE_TYPE),
+        ('type', MESSAGE_TYPE),
     ]
 
     @classmethod
@@ -65,8 +65,8 @@ class Message(ctypes.Structure):
 
 class InitNewAppMessage(Message):
     _fields_ = [
-        ("app_id", APP_ID),  # type: ignore
-        ("max_qubits", NUM_QUBITS),
+        ('app_id', APP_ID),  # type: ignore
+        ('max_qubits', NUM_QUBITS),
     ]
 
     TYPE = MessageType.INIT_NEW_APP
@@ -88,14 +88,7 @@ class OpenEPRSocketMessage(Message):
 
     TYPE = MessageType.OPEN_EPR_SOCKET
 
-    def __init__(
-        self,
-        app_id=0,
-        epr_socket_id=0,
-        remote_node_id=0,
-        remote_epr_socket_id=0,
-        min_fidelity=100,
-    ):
+    def __init__(self, app_id=0, epr_socket_id=0, remote_node_id=0, remote_epr_socket_id=0, min_fidelity=100):
         super().__init__(self.TYPE.value)
         self.app_id = app_id
         self.epr_socket_id = epr_socket_id
@@ -127,9 +120,7 @@ class SubroutineMessage:
         elif isinstance(subroutine, bytes):
             self.subroutine = subroutine
         else:
-            raise TypeError(
-                f"subroutine should be Subroutine or bytes, not {type(subroutine)}"
-            )
+            raise TypeError(f"subroutine should be Subroutine or bytes, not {type(subroutine)}")
 
     def __bytes__(self):
         return bytes(MESSAGE_TYPE(self.type)) + bytes(self.subroutine)
@@ -146,7 +137,7 @@ class SubroutineMessage:
 
 class StopAppMessage(Message):
     _fields_ = [
-        ("app_id", APP_ID),  # type: ignore
+        ('app_id', APP_ID),  # type: ignore
     ]
 
     TYPE = MessageType.STOP_APP
@@ -182,9 +173,7 @@ MESSAGE_CLASSES = {
 
 
 def deserialize_host_msg(raw: bytes) -> Message:
-    message_type = MessageType(
-        MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value
-    )
+    message_type = MessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = MESSAGE_CLASSES[message_type]
     return message_class.deserialize_from(raw)  # type: ignore
 
@@ -202,7 +191,7 @@ class ReturnMessageType(Enum):
 
 class MsgDoneMessage(ReturnMessage):
     _fields_ = [
-        ("msg_id", MESSAGE_ID),  # type: ignore
+        ('msg_id', MESSAGE_ID),  # type: ignore
     ]
 
     TYPE = ReturnMessageType.DONE
@@ -220,7 +209,7 @@ class ErrorCode(Enum):
 
 class ErrorMessage(ReturnMessage):
     _fields_ = [
-        ("err_code", ctypes.c_uint8),
+        ('err_code', ctypes.c_uint8),
     ]
 
     TYPE = ReturnMessageType.ERR
@@ -233,8 +222,8 @@ class ErrorMessage(ReturnMessage):
 class ReturnArrayMessageHeader(ctypes.Structure):
     _pack = 1
     _fields_ = [
-        ("address", Address),
-        ("length", INTEGER),
+        ('address', Address),
+        ('length', INTEGER),
     ]
 
     @classmethod
@@ -273,9 +262,7 @@ class ReturnArrayMessage:
         return bytes(MESSAGE_TYPE(self.type)) + bytes(hdr) + bytes(payload)
 
     def __str__(self):
-        return (
-            f"{self.__class__.__name__}(address={self.address}, values={self.values})"
-        )
+        return f"{self.__class__.__name__}(address={self.address}, values={self.values})"
 
     def __len__(self):
         return len(bytes(self))
@@ -285,15 +272,15 @@ class ReturnArrayMessage:
         raw = raw[MESSAGE_TYPE_BYTES:]
         hdr = ReturnArrayMessageHeader.from_buffer_copy(raw)
         array_type = OptionalInt * hdr.length
-        raw = raw[ReturnArrayMessageHeader.len() :]
+        raw = raw[ReturnArrayMessageHeader.len():]
         values = list(v.value for v in array_type.from_buffer_copy(raw))
         return cls(address=hdr.address.address, values=values)
 
 
 class ReturnRegMessage(ReturnMessage):
     _fields_ = [
-        ("register", Register),  # type: ignore
-        ("value", INTEGER),  # type: ignore
+        ('register', Register),  # type: ignore
+        ('value', INTEGER),  # type: ignore
     ]
 
     TYPE = ReturnMessageType.RET_REG
@@ -313,8 +300,6 @@ RETURN_MESSAGE_CLASSES = {
 
 
 def deserialize_return_msg(raw: bytes) -> Message:
-    message_type = ReturnMessageType(
-        MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value
-    )
+    message_type = ReturnMessageType(MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value)
     message_class = RETURN_MESSAGE_CLASSES[message_type]
     return message_class.deserialize_from(raw)  # type: ignore

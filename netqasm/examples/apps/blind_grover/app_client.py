@@ -1,9 +1,9 @@
 import numpy as np
 
-from netqasm.examples.lib.bqc import recv_meas_outcome, send_meas_cmd, teleport_state
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
+from netqasm.examples.lib.bqc import teleport_state, send_meas_cmd, recv_meas_outcome
 
 logger = get_netqasm_logger()
 
@@ -17,7 +17,14 @@ def get_phi_for_oracle(b0, b1):
     return phi1, phi2
 
 
-def main(app_config=None, b0=0, b1=0, r1=0, r2=0, theta1=0.0, theta2=0.0):
+def main(
+        app_config=None,
+        b0=0,
+        b1=0,
+        r1=0,
+        r2=0,
+        theta1=0.0,
+        theta2=0.0):
 
     socket = Socket("client", "server", log_config=app_config.log_config)
     epr_socket = EPRSocket("server")

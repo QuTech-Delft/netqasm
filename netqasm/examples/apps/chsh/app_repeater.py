@@ -11,7 +11,7 @@ def main(app_config=None):
     repeater = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[epr_socket_alice, epr_socket_bob],
+        epr_sockets=[epr_socket_alice, epr_socket_bob]
     )
 
     with repeater:
@@ -33,7 +33,7 @@ def main(app_config=None):
     msg = str((m1, m2))
     socket_bob.send(msg)
 
-    return {"m1": m1, "m2": m2}
+    return {'m1': m1, 'm2': m2}
 
 
 if __name__ == "__main__":
