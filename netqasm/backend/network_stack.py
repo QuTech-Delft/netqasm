@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from qlink_interface import LinkLayerCreate, LinkLayerOKTypeK, LinkLayerOKTypeM
 
-
 # Number of elements in a create request etc
 # NOTE minus 2 since remote_node_id and epr_socket_id comes as immediates
 CREATE_FIELDS = len(LinkLayerCreate._fields) - 2
@@ -24,6 +23,8 @@ class BaseNetworkStack(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def setup_epr_socket(self, epr_socket_id, remote_node_id, remote_epr_socket_id, timeout=1):
+    def setup_epr_socket(
+        self, epr_socket_id, remote_node_id, remote_epr_socket_id, timeout=1
+    ):
         """Asks the network stack to setup circuits to be used"""
         pass

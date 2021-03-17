@@ -1,12 +1,11 @@
-import pytest
 import numpy as np
+import pytest
 
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.runtime.application import default_app_instance
+from netqasm.runtime.settings import Simulator, get_simulator
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, simulate_application
-from netqasm.runtime.application import default_app_instance
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.runtime.settings import get_simulator, Simulator
-
 
 logger = get_netqasm_logger()
 
@@ -29,10 +28,8 @@ def post_function(backend):
     bob_state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate
     assert alice_state is bob_state
     expected_state = np.array(
-        [[0.5, 0, 0, 0.5],
-         [0, 0, 0, 0],
-         [0, 0, 0, 0],
-         [0.5, 0, 0, 0.5]])
+        [[0.5, 0, 0, 0.5], [0, 0, 0, 0], [0, 0, 0, 0], [0.5, 0, 0, 0.5]]
+    )
 
     logger.info(f"state = {alice_state.dm}")
     assert np.all(np.isclose(expected_state, alice_state.dm))
@@ -47,11 +44,18 @@ def test_create_epr():
     #     ("Alice", run_alice),
     #     ("Bob", run_bob),
     # ])
-    app_instance = default_app_instance([
-        ("Alice", run_alice),
-        ("Bob", run_bob),
-    ])
-    simulate_application(app_instance, use_app_config=False, post_function=post_function, enable_logging=False)
+    app_instance = default_app_instance(
+        [
+            ("Alice", run_alice),
+            ("Bob", run_bob),
+        ]
+    )
+    simulate_application(
+        app_instance,
+        use_app_config=False,
+        post_function=post_function,
+        enable_logging=False,
+    )
 
 
 if __name__ == "__main__":

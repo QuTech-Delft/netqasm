@@ -1,7 +1,12 @@
+from netqasm.examples.lib.bqc import (
+    measXY,
+    recv_meas_cmd,
+    recv_teleported_state,
+    send_meas_outcome,
+)
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.examples.lib.bqc import measXY, recv_teleported_state, recv_meas_cmd, send_meas_outcome
 
 logger = get_netqasm_logger()
 
@@ -16,7 +21,7 @@ def main(app_config=None, num_iter=3):
         app_name=app_config.app_name,
         log_config=app_config.log_config,
         epr_sockets=[epr_socket],
-        max_qubits=num_qubits
+        max_qubits=num_qubits,
     )
 
     with server:
@@ -27,7 +32,7 @@ def main(app_config=None, num_iter=3):
 
         # Apply a CPHASE gate between every pair of consecutive qubits.
         for i in range(num_qubits - 1):
-            q[i].cphase(q[i+1])
+            q[i].cphase(q[i + 1])
 
         # TODO check why this is needed
         server.flush()
@@ -41,6 +46,4 @@ def main(app_config=None, num_iter=3):
 
         # The output of the computation is in the last qubit.
         dm = get_qubit_state(q[num_qubits - 1])
-        return {
-            "output_state": dm if dm is None else dm.tolist()
-        }
+        return {"output_state": dm if dm is None else dm.tolist()}

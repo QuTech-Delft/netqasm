@@ -1,7 +1,7 @@
 import pytest
 
-from netqasm.sdk.futures import Future, NoValueError, NonConstantIndexError
 from netqasm.lang.parsing import parse_register
+from netqasm.sdk.futures import Future, NonConstantIndexError, NoValueError
 from netqasm.sdk.shared_memory import SharedMemory
 
 

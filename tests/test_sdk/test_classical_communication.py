@@ -1,10 +1,11 @@
-import pytest
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from timeit import default_timer as timer
 
-from netqasm.sdk import ThreadSocket
+import pytest
+
 from netqasm.logging.glob import set_log_level
+from netqasm.sdk import ThreadSocket
 
 
 def execute_functions(functions):
@@ -30,7 +31,6 @@ def test_connection_error():
 
 
 def test_connect():
-
     def connect_alice():
         ThreadSocket("alice", "bob", timeout=1)
 
@@ -42,7 +42,6 @@ def test_connect():
 
 
 def test_set_callback():
-
     def connect_alice():
         ThreadSocket("alice", "bob", timeout=1)
 
@@ -78,13 +77,15 @@ def test_connection_lost():
     assert callbacks[0] == 1
 
 
-@pytest.mark.parametrize("msg", [
-    None,
-    0,
-    [1, 2],
-])
+@pytest.mark.parametrize(
+    "msg",
+    [
+        None,
+        0,
+        [1, 2],
+    ],
+)
 def test_faulty_send_type(msg):
-
     def connect_alice():
         socket = ThreadSocket("alice", "bob", timeout=1)
         with pytest.raises(TypeError):
@@ -98,7 +99,6 @@ def test_faulty_send_type(msg):
 
 
 def test_faulty_send_connection():
-
     def connect_alice():
         ThreadSocket("alice", "bob", timeout=1)
 
@@ -127,7 +127,6 @@ def test_send_recv():
 
 
 def test_recv_block():
-
     def alice():
         socket = ThreadSocket("alice", "bob")
         socket.wait()
@@ -211,7 +210,7 @@ def test_ping_pong_counter_callbacks():
     execute_functions([alice, bob])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     set_log_level(logging.DEBUG)
     test_connect()
     test_connection_lost()

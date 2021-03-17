@@ -1,11 +1,16 @@
 from dataclasses import dataclass
+
 import numpy as np
 
-import netqasm.lang.instr.core as core
-from netqasm.util.quantum_gates import get_rotation_matrix, get_controlled_rotation_matrix
+from netqasm.util.quantum_gates import (
+    get_controlled_rotation_matrix,
+    get_rotation_matrix,
+)
 
+from . import core
 
 # Explicit instruction types in the NV flavour.
+
 
 @dataclass
 class GateXInstruction(core.SingleQubitInstruction):
@@ -13,9 +18,7 @@ class GateXInstruction(core.SingleQubitInstruction):
     mnemonic: str = "x"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [0, 1],
-            [1, 0]])
+        return np.array([[0, 1], [1, 0]])
 
 
 @dataclass
@@ -24,9 +27,7 @@ class GateYInstruction(core.SingleQubitInstruction):
     mnemonic: str = "y"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [0, -1j],
-            [1j, 0]])
+        return np.array([[0, -1j], [1j, 0]])
 
 
 @dataclass
@@ -35,9 +36,7 @@ class GateZInstruction(core.SingleQubitInstruction):
     mnemonic: str = "z"
 
     def to_matrix(self) -> np.array:
-        return np.array([
-            [1, 0],
-            [0, -1]])
+        return np.array([[1, 0], [0, -1]])
 
 
 @dataclass

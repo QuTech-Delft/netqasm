@@ -1,9 +1,9 @@
 import abc
 from types import GeneratorType
 
+from netqasm.backend.messages import MessageType, Signal
 from netqasm.lang.parsing import deserialize
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.backend.messages import MessageType, Signal
 
 
 class BaseSubroutineHandler:
@@ -48,7 +48,7 @@ class BaseSubroutineHandler:
         yield from self._handle_message(msg_id=msg_id, msg=msg)
 
     def _handle_message(self, msg_id, msg):
-        self._logger.info(f'Handle message {msg}')
+        self._logger.info(f"Handle message {msg}")
         output = self._message_handlers[msg.TYPE](msg)
         if isinstance(output, GeneratorType):
             yield from output
@@ -86,8 +86,9 @@ class BaseSubroutineHandler:
 
     def _handle_subroutine(self, msg):
         subroutine = deserialize(msg.subroutine, flavour=self.flavour)
-        self._logger.debug(f"Executing next subroutine "
-                           f"from app ID {subroutine.app_id}")
+        self._logger.debug(
+            f"Executing next subroutine " f"from app ID {subroutine.app_id}"
+        )
         yield from self._execute_subroutine(subroutine=subroutine)
 
     def _execute_subroutine(self, subroutine):
@@ -97,8 +98,10 @@ class BaseSubroutineHandler:
         app_id = msg.app_id
         self._add_app(app_id=app_id)
         max_qubits = msg.max_qubits
-        self._logger.debug(f"Allocating a new "
-                           f"unit module of size {max_qubits} for application with app ID {app_id}.\n")
+        self._logger.debug(
+            f"Allocating a new "
+            f"unit module of size {max_qubits} for application with app ID {app_id}.\n"
+        )
         self._executor.init_new_application(
             app_id=app_id,
             max_qubits=max_qubits,
@@ -118,7 +121,9 @@ class BaseSubroutineHandler:
 
     def _handle_signal(self, msg):
         signal = Signal(msg.signal)
-        self._logger.debug(f"SubroutineHandler at node {self.name} handles the signal {signal}")
+        self._logger.debug(
+            f"SubroutineHandler at node {self.name} handles the signal {signal}"
+        )
         if signal == Signal.STOP:
             self._logger.debug(f"SubroutineHandler at node {self.name} will stop")
             # Just mark that it will stop, to first send back the reply

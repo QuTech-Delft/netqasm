@@ -1,5 +1,6 @@
 import inspect
 import os
+from typing import Optional
 
 
 class HostLine:
@@ -34,9 +35,9 @@ class LineTracker:
     def _get_file_from_frame(self, frame):
         return os.path.abspath(frame.f_code.co_filename)
 
-    def get_line(self) -> HostLine:
+    def get_line(self) -> Optional[HostLine]:
         if not self._track_lines:
-            return None  # type: ignore
+            return None
 
         frame = inspect.currentframe()
         assert frame is not None
