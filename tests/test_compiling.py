@@ -1,19 +1,19 @@
+import pytest
+import numpy as np
 from typing import Dict, Set
 
-import numpy as np
-import pytest
-
-from netqasm.backend.messages import deserialize_host_msg as deserialize_message
-from netqasm.lang.instr import core
-from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
-from netqasm.lang.operand import Register
-from netqasm.lang.parsing import deserialize as deserialize_subroutine
-from netqasm.lang.parsing import parse_text_subroutine
-from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import set_log_level
-from netqasm.sdk.compiling import NVSubroutineCompiler
+from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.backend.messages import deserialize_host_msg as deserialize_message
+from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.compiling import NVSubroutineCompiler
+
+from netqasm.lang.instr.flavour import VanillaFlavour, NVFlavour
+from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.instr import core
+from netqasm.lang.instr.operand import Register
 
 
 def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:
@@ -28,9 +28,7 @@ def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:
     return matrix
 
 
-def pad_controlled_single_matrix(
-    m: np.array, ctrl_index, target_index, total
-) -> np.array:
+def pad_controlled_single_matrix(m: np.array, ctrl_index, target_index, total) -> np.array:
     """Create matrix for `total` qubits where `m` is applied on qubit `target_index`
     if qubit in `ctrl_index` is 1 (and identities on the other qubits).
     E.g. pad_controlled_single_matrix(X, 3, 1, 3) returns a 4-qubit matrix representing a CNOT
@@ -60,9 +58,7 @@ class SubroutineMatrix:
 
     def __init__(self, virt_ids: Set[int]):
         self._virt_ids = virt_ids
-        self._matrix_indices: Dict[
-            int, int
-        ] = dict()  # map of virt ID to index in matrix
+        self._matrix_indices: Dict[int, int] = dict()  # map of virt ID to index in matrix
 
         self._matrix = np.eye(1)
         for i, id in enumerate(virt_ids):
@@ -73,20 +69,21 @@ class SubroutineMatrix:
         m = pad_single_matrix(
             m=instr_matrix,
             index=self._matrix_indices[virt_id],
-            total=len(self._matrix_indices.keys()),
-        )
+            total=len(self._matrix_indices.keys()))
 
         self._matrix = self._matrix @ m
 
     def apply_two_qubit_instr(
-        self, instr_matrix: np.array, virt_id0: int, virt_id1: int
+        self,
+        instr_matrix: np.array,
+        virt_id0: int,
+        virt_id1: int
     ):
         m = pad_controlled_single_matrix(
             m=instr_matrix,
             ctrl_index=self._matrix_indices[virt_id0],
             target_index=self._matrix_indices[virt_id1],
-            total=len(self._matrix_indices.keys()),
-        )
+            total=len(self._matrix_indices.keys()))
 
         self._matrix = self._matrix @ m
 
@@ -117,13 +114,9 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.array:
             qreg_values[instr.reg] = instr.imm.value
 
         if isinstance(instr, core.SingleQubitInstruction):
-            sub_matrix.apply_single_qubit_instr(
-                instr.to_matrix(), qreg_values[instr.reg]
-            )
+            sub_matrix.apply_single_qubit_instr(instr.to_matrix(), qreg_values[instr.reg])
         elif isinstance(instr, core.RotationInstruction):
-            sub_matrix.apply_single_qubit_instr(
-                instr.to_matrix(), qreg_values[instr.reg]
-            )
+            sub_matrix.apply_single_qubit_instr(instr.to_matrix(), qreg_values[instr.reg])
         elif isinstance(instr, core.TwoQubitInstruction):
             sub_matrix.apply_two_qubit_instr(
                 instr_matrix=instr.to_matrix_target_only(),
@@ -134,46 +127,44 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.array:
     return sub_matrix.matrix
 
 
-@pytest.mark.parametrize(
-    "text_subroutine",
-    [
-        (
-            """
+@pytest.mark.parametrize("text_subroutine", [
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
         z Q0
         """
-        ),
-        (
-            """
+    ),
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
         set Q1 1
         rot_x Q0 3 1
         """
-        ),
-        (
-            """
+    ),
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
         set Q1 1
         cnot Q1 Q0
         """
-        ),
-        (
-            """
+    ),
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
         set Q1 1
         cphase Q1 Q0
         """
-        ),
-        (
-            """
+    ),
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
@@ -183,9 +174,8 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.array:
         h Q1
         cnot Q2 Q0
         """
-        ),
-    ],
-)
+    ),
+])
 def test_mapping(text_subroutine: str):
     """
     Test whether the NV compiler correctly maps gates by comparing the matrices
@@ -228,14 +218,14 @@ rot_z Q0 1 2
     print(f"after compiling: {subroutine}")
 
     for instr in subroutine.commands:
-        assert instr.__class__ not in VanillaFlavour().instrs
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
 
 
-@pytest.mark.parametrize(
-    "subroutine_str",
-    [
-        (
-            """
+@pytest.mark.parametrize("subroutine_str", [
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
@@ -246,9 +236,9 @@ rot_z Q0 1 2
         init Q1
         cnot Q0 Q1
         """
-        ),
-        (
-            """
+    ),
+    (
+        """
         # NETQASM 0.0
         # APPID 0
         set Q0 0
@@ -259,9 +249,8 @@ rot_z Q0 1 2
         init Q1
         cphase Q1 Q0
         """
-        ),
-    ],
-)
+    )
+])
 def test_compiling_nv_text(subroutine_str):
     original = parse_text_subroutine(subroutine_str)
     print(f"before compiling: {original}")
@@ -269,11 +258,13 @@ def test_compiling_nv_text(subroutine_str):
     print(f"after compiling: {compiled}")
 
     for instr in compiled.commands:
-        assert instr.__class__ not in VanillaFlavour().instrs
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
 
 
 def test_compiling_nv_using_sdk():
-    set_log_level("DEBUG")
+    set_log_level('DEBUG')
     with DebugConnection("Alice", compiler=NVSubroutineCompiler) as alice:
         q = Qubit(alice)
         q.X()
@@ -294,8 +285,10 @@ def test_compiling_nv_using_sdk():
     # NOTE this does not test much anymore since we need to state which flavour we
     # are using to be able to deserialize
     for instr in subroutine.commands:
-        assert instr.__class__ not in VanillaFlavour().instrs
+        assert (
+            instr.__class__ not in VanillaFlavour().instrs
+        )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     test_compiling_nv_using_sdk()

@@ -1,10 +1,7 @@
-from typing import List, Union
-
-from netqasm.sdk.futures import Future, RegFuture
-from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.qubit import Qubit as qubit
 
 
-def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int]:
+def parity_meas(qubits, bases):
     """
     Performs a parity measurement on the provided qubits in the Pauli bases specified by 'bases'.
     `bases` should be a string with letters in 'IXYZ' and optionally start with '-'.
@@ -26,7 +23,7 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
         The measurement outcome
     """
 
-    if bases.startswith("-"):
+    if bases.startswith('-'):
         negative = True
         bases = bases[1:]
     else:
@@ -38,22 +35,19 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
 
     num_qubits = len(qubits)
 
-    flip_basis = ["I"] * num_qubits
+    flip_basis = ["I"]*num_qubits
     non_identity_bases = []
-
-    # declare outcome variable
-    m: Union[Future, RegFuture, int]
 
     # Check if we need to flip the bases of the qubits
     for i in range(len(bases)):
         B = bases[i]
-        if B == "X":
+        if B == 'X':
             flip_basis[i] = "H"
             non_identity_bases.append(i)
-        elif B == "Y":
+        elif B == 'Y':
             flip_basis[i] = "K"
             non_identity_bases.append(i)
-        elif B == "Z":
+        elif B == 'Z':
             non_identity_bases.append(i)
         else:
             pass
@@ -68,18 +62,18 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
         q = qubits[q_index]
 
         # Flip to correct basis
-        if flip_basis[q_index] == "H":
+        if flip_basis[q_index] == 'H':
             q.H()
-        if flip_basis[q_index] == "K":
+        if flip_basis[q_index] == 'K':
             q.K()
 
         # m = q.measure()
         m = q.measure(inplace=True)
 
         # # Flip the qubit back
-        if flip_basis[q_index] == "H":
+        if flip_basis[q_index] == 'H':
             q.H()
-        if flip_basis[q_index] == "K":
+        if flip_basis[q_index] == 'K':
             q.K()
 
     else:
@@ -89,13 +83,13 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
         conn = qubits[0]._conn
 
         # Initialize ancilla qubit
-        anc = Qubit(conn)
+        anc = qubit(conn)
 
         # Flip to correct basis
         for i in range(len(bases)):
-            if flip_basis[i] == "H":
+            if flip_basis[i] == 'H':
                 qubits[i].H()
-            if flip_basis[i] == "K":
+            if flip_basis[i] == 'K':
                 qubits[i].K()
 
         # Transfer parity information to ancilla qubit
@@ -107,14 +101,10 @@ def parity_meas(qubits: List[Qubit], bases: str) -> Union[Future, RegFuture, int
 
         # Flip to correct basis
         for i in range(len(bases)):
-            if flip_basis[i] == "H":
+            if flip_basis[i] == 'H':
                 qubits[i].H()
-            if flip_basis[i] == "K":
+            if flip_basis[i] == 'K':
                 qubits[i].K()
     if negative:
-        if not isinstance(m, Future):
-            assert isinstance(m, int)
-            m = 1 - m
-        else:
-            m.add(1, mod=2)
+        m.add(1, mod=2)
     return m

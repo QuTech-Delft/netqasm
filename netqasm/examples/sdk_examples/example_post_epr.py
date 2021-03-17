@@ -1,6 +1,6 @@
-from netqasm.logging.glob import set_log_level
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
+from netqasm.logging.glob import set_log_level
 
 DebugConnection.node_ids = {
     "Alice": 0,
@@ -22,9 +22,9 @@ def main(no_output=False):
             q.measure(outcome)
 
     if no_output:
-        print(f"binary:\n{alice.storage[2]}")
+        print(f'binary:\n{alice.storage[2]}')
 
 
 if __name__ == "__main__":
-    set_log_level("INFO")
+    set_log_level('INFO')
     main()

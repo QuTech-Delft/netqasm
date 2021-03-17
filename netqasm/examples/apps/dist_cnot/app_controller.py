@@ -1,6 +1,6 @@
 from netqasm.sdk import EPRSocket, Qubit
-from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 from netqasm.sdk.toolbox import set_qubit_state
+from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 
 
 def main(app_config=None, phi=0.0, theta=0.0):
@@ -14,7 +14,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
     controller = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[target_epr],
+        epr_sockets=[target_epr]
     )
 
     with controller:
@@ -50,6 +50,6 @@ def main(app_config=None, phi=0.0, theta=0.0):
         dm = get_qubit_state(ctrl_qubit, reduced_dm=False)
 
         return {
-            "epr_meas": int(epr_meas),
-            "final_state": dm if dm is None else dm.tolist(),
+            'epr_meas': int(epr_meas),
+            'final_state': dm if dm is None else dm.tolist(),
         }

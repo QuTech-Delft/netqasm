@@ -1,16 +1,16 @@
-import inspect
 import os
 import shutil
-from datetime import datetime
-from functools import wraps
-from itertools import combinations
+import inspect
 from runpy import run_path
-from typing import Any, Dict
+from datetime import datetime
+from itertools import combinations
+from functools import wraps
+from typing import Dict, Any
 
-from netqasm.examples import apps
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.runtime.settings import Simulator, set_simulator
-from netqasm.util.yaml import dump_yaml, load_yaml
+from netqasm.util.yaml import load_yaml, dump_yaml
+from netqasm.examples import apps
+from netqasm.runtime.settings import set_simulator, Simulator
 
 EXAMPLE_APPS_DIR = os.path.dirname(os.path.abspath(apps.__file__))
 
@@ -25,7 +25,7 @@ logger = get_netqasm_logger()
 
 
 def load_app_config_file(app_dir, app_name) -> Any:
-    ext = ".yaml"
+    ext = '.yaml'
     file_path = os.path.join(app_dir, f"{app_name}{ext}")
     if os.path.exists(file_path):
         config = load_yaml(file_path=file_path)
@@ -38,8 +38,8 @@ def load_app_config_file(app_dir, app_name) -> Any:
 
 
 def get_roles_config_path(app_dir):
-    ext = ".yaml"
-    file_path = os.path.join(app_dir, f"roles{ext}")
+    ext = '.yaml'
+    file_path = os.path.join(app_dir, f'roles{ext}')
     return file_path
 
 
@@ -51,17 +51,15 @@ def load_roles_config(roles_config_file):
 
 
 def load_app_files(app_dir) -> Dict[str, str]:  # app_name -> file
-    app_tag = "app_"
-    ext = ".py"
+    app_tag = 'app_'
+    ext = '.py'
     app_files = {}
     for entry in os.listdir(app_dir):
-        if entry.startswith(app_tag) and entry.endswith(".py"):
-            app_name = entry[len(app_tag) : -len(ext)]
+        if entry.startswith(app_tag) and entry.endswith('.py'):
+            app_name = entry[len(app_tag):-len(ext)]
             app_files[app_name] = entry
     if len(app_files) == 0:
-        raise ValueError(
-            f"directory {app_dir} does not seem to be a application directory (no app_xxx.py files)"
-        )
+        raise ValueError(f"directory {app_dir} does not seem to be a application directory (no app_xxx.py files)")
     return app_files
 
 
@@ -73,7 +71,7 @@ def get_log_dir(app_dir):
 
 
 def get_timed_log_dir(log_dir):
-    now = datetime.now().strftime("%Y%m%d-%H%M%S")
+    now = datetime.now().strftime('%Y%m%d-%H%M%S')
     timed_log_dir = os.path.join(log_dir, now)
     if not os.path.exists(timed_log_dir):
         os.mkdir(timed_log_dir)
@@ -81,17 +79,17 @@ def get_timed_log_dir(log_dir):
 
 
 def get_post_function_path(app_dir):
-    return os.path.join(app_dir, "post_function.py")
+    return os.path.join(app_dir, 'post_function.py')
 
 
 def load_post_function(post_function_file):
     if not os.path.exists(post_function_file):
         return None
-    return run_path(post_function_file)["main"]
+    return run_path(post_function_file)['main']
 
 
 def get_results_path(timed_log_dir):
-    return os.path.join(timed_log_dir, "results.yaml")
+    return os.path.join(timed_log_dir, 'results.yaml')
 
 
 def new_folder(path, template="teleport", quiet=False):
@@ -185,10 +183,10 @@ def init_folder(path, quiet=False):
 
     if file_added:
         if not quiet:
-            if path == ".":
-                path_str = "current path"
+            if path == '.':
+                path_str = 'current path'
             else:
-                path_str = "`{path}`"
+                path_str = '`{path}`'
             print(f"Initialized {path_str} with missing config files")
     else:
         if not quiet:
@@ -197,14 +195,12 @@ def init_folder(path, quiet=False):
 
 def file_creation_notify(func):
     """Decorator for notification about file creation"""
-
     @wraps(func)
     def new_func(file_path, *args, quiet=False, **kwargs):
         func(file_path, *args, quiet=quiet, **kwargs)
 
         if not quiet:
             print(f"Created file `{file_path}`")
-
     return new_func
 
 
@@ -276,13 +272,13 @@ def _find_argument_for_app_file(app_file_path):
     return {
         param.name: param.default
         for param in signature.parameters.values()
-        if param.name != "app_config"
+        if param.name != 'app_config'
     }
 
 
 @file_creation_notify
 def _create_new_readme_file(file_path, quiet=False):
-    with open(file_path, "w") as f:
+    with open(file_path, 'w') as f:
         f.write(
             "# Application name\n"
             "Some description of the application.\n"
@@ -297,7 +293,7 @@ def _create_new_readme_file(file_path, quiet=False):
 
 @file_creation_notify
 def _create_new_results_config_file(file_path, quiet=False):
-    with open(file_path, "w") as f:
+    with open(file_path, 'w') as f:
         f.write(
             r"""[
     [
@@ -314,8 +310,4 @@ def _create_new_results_config_file(file_path, quiet=False):
 
 
 def get_example_apps():
-    return [
-        app_name
-        for app_name in os.listdir(EXAMPLE_APPS_DIR)
-        if app_name not in IGNORED_FILES
-    ]
+    return [app_name for app_name in os.listdir(EXAMPLE_APPS_DIR) if app_name not in IGNORED_FILES]

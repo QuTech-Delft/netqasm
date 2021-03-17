@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Any, Optional
 
 from netqasm.sdk.config import LogConfig
 
@@ -19,5 +19,5 @@ def default_app_config(app_name: str, main_func: Callable) -> AppConfig:
         node_name=app_name,
         main_func=main_func,
         log_config=None,
-        inputs={},
+        inputs={}
     )

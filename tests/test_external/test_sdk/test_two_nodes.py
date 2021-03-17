@@ -1,7 +1,7 @@
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.runtime.application import default_app_instance
 from netqasm.sdk import Qubit
 from netqasm.sdk.external import NetQASMConnection, simulate_application
+from netqasm.runtime.application import default_app_instance
+from netqasm.logging.glob import get_netqasm_logger
 
 logger = get_netqasm_logger()
 
@@ -33,10 +33,8 @@ def run_bob():
 
 
 def test_two_nodes():
-    app_instance = default_app_instance(
-        [
-            ("Alice", run_alice),
-            ("Bob", run_bob),
-        ]
-    )
+    app_instance = default_app_instance([
+        ("Alice", run_alice),
+        ("Bob", run_bob),
+    ])
     simulate_application(app_instance, use_app_config=False, enable_logging=False)

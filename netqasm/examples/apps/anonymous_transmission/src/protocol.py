@@ -1,10 +1,10 @@
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.toolbox import set_qubit_state
 from netqasm.sdk import Qubit
 from netqasm.sdk.external import NetQASMConnection, get_qubit_state
-from netqasm.sdk.toolbox import set_qubit_state
 
-from .conf import apps
 from .sub_protocols import quantum_anonymous_tranmission, setup_sockets
+from .conf import apps
 
 logger = get_netqasm_logger()
 

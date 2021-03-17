@@ -1,7 +1,7 @@
-from netqasm.logging.glob import get_netqasm_logger
-from netqasm.runtime.application import default_app_instance
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, simulate_application
+from netqasm.runtime.application import default_app_instance
+from netqasm.logging.glob import get_netqasm_logger
 
 logger = get_netqasm_logger()
 num = 10
@@ -36,15 +36,11 @@ def run_bob():
 
 
 def test_post_epr_context():
-    app_instance = default_app_instance(
-        [
-            ("alice", run_alice),
-            ("bob", run_bob),
-        ]
-    )
-    node_outcomes = simulate_application(
-        app_instance, use_app_config=False, enable_logging=False
-    )[0]
+    app_instance = default_app_instance([
+        ("alice", run_alice),
+        ("bob", run_bob),
+    ])
+    node_outcomes = simulate_application(app_instance, use_app_config=False, enable_logging=False)[0]
 
     logger.info(node_outcomes)
     assert node_outcomes["app_alice"] == node_outcomes["app_bob"]

@@ -1,6 +1,6 @@
-from netqasm.logging.glob import set_log_level
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.logging.glob import set_log_level
 
 
 def main(no_output=False):
@@ -15,9 +15,9 @@ def main(no_output=False):
             res.add(m)
 
         if no_output:
-            print(f"binary:\n{alice.storage[0]}")
+            print(f'binary:\n{alice.storage[0]}')
 
 
 if __name__ == "__main__":
-    set_log_level("INFO")
+    set_log_level('INFO')
     main()

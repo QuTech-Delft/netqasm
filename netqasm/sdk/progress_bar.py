@@ -3,9 +3,9 @@ import sys
 
 
 class ProgressBar:
-    def __init__(self, maxitr: int):
-        self.maxitr: int = maxitr
-        self.itr: int = 0
+    def __init__(self, maxitr):
+        self.maxitr = maxitr
+        self.itr = 0
         try:
             self.cols = os.get_terminal_size().columns
         except (OSError, AttributeError):
@@ -13,11 +13,11 @@ class ProgressBar:
         print("")
         self.update()
 
-    def increase(self) -> None:
+    def increase(self):
         self.itr += 1
         self.update()
 
-    def update(self) -> None:
+    def update(self):
         cols = self.cols - 8
         assert self.itr <= self.maxitr
         ratio = float(self.itr) / self.maxitr
@@ -28,5 +28,5 @@ class ProgressBar:
         sys.stdout.flush()
         pass
 
-    def close(self) -> None:
+    def close(self):
         print("")
