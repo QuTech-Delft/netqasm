@@ -7,13 +7,7 @@ from netqasm.backend.network_stack import CREATE_FIELDS
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
-from netqasm.lang.instr.operand import (
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Immediate,
-    Register,
-)
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Immediate, Register
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import set_log_level
@@ -688,7 +682,7 @@ def test_epr_m():
 
 if __name__ == "__main__":
     test_simple()
-    test_rotations()
-    test_epr()
-    test_two_epr()
-    test_epr_m()
+    # test_rotations()
+    # test_epr()
+    # test_two_epr()
+    # test_epr_m()

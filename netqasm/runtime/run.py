@@ -3,7 +3,7 @@ import os
 import sys
 from typing import List
 
-from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
+from netqasm.lang.instr import NVFlavour, VanillaFlavour
 from netqasm.logging.glob import get_netqasm_logger, set_log_level
 from netqasm.runtime import env
 from netqasm.runtime.settings import Flavour, Formalism

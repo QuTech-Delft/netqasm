@@ -6,7 +6,7 @@ import pytest
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
 from netqasm.lang.instr import core
 from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
-from netqasm.lang.instr.operand import Register
+from netqasm.lang.operand import Register
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.lang.parsing import parse_text_subroutine
 from netqasm.lang.subroutine import Subroutine

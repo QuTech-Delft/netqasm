@@ -1,9 +1,8 @@
 import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.lang.instr import core, nv, vanilla
-from netqasm.lang.instr.base import DebugInstruction, NetQASMInstruction
-from netqasm.lang.instr.operand import Immediate, Register, RegisterName
+from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla
+from netqasm.lang.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
 from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.util.log import HostLine

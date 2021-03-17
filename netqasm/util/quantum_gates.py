@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import linalg
 
-from netqasm.lang.instr.instr_enum import Instruction
+from netqasm.lang.ir import GenericInstr
 
 # Single-qubit gates
 X = np.array([[0, 1], [1, 0]])
@@ -18,15 +18,15 @@ CPHASE = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
 
 
 STATIC_QUBIT_GATE_TO_MATRIX = {
-    Instruction.X: X,
-    Instruction.Y: Y,
-    Instruction.Z: Z,
-    Instruction.H: H,
-    Instruction.K: K,
-    Instruction.S: S,
-    Instruction.T: T,
-    Instruction.CNOT: CNOT,
-    Instruction.CPHASE: CPHASE,
+    GenericInstr.X: X,
+    GenericInstr.Y: Y,
+    GenericInstr.Z: Z,
+    GenericInstr.H: H,
+    GenericInstr.K: K,
+    GenericInstr.S: S,
+    GenericInstr.T: T,
+    GenericInstr.CNOT: CNOT,
+    GenericInstr.CPHASE: CPHASE,
 }
 
 
@@ -57,15 +57,15 @@ def gate_to_matrix(instr, angle=None):
     """Returns the matrix representation of a quantum gate"""
     if instr in STATIC_QUBIT_GATE_TO_MATRIX:
         return STATIC_QUBIT_GATE_TO_MATRIX[instr]
-    elif instr in [Instruction.ROT_X, Instruction.ROT_Y, Instruction.ROT_Z]:
+    elif instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
         if angle is None:
             raise TypeError(
                 "To get the matrix of a rotation an angle needs to be specified"
             )
         axis = {
-            Instruction.ROT_X: [1, 0, 0],
-            Instruction.ROT_Y: [0, 1, 0],
-            Instruction.ROT_Z: [0, 0, 1],
+            GenericInstr.ROT_X: [1, 0, 0],
+            GenericInstr.ROT_Y: [0, 1, 0],
+            GenericInstr.ROT_Z: [0, 0, 1],
         }[instr]
         if isinstance(angle, tuple):
             n, d = angle

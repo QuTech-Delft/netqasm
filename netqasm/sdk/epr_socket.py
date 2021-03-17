@@ -14,13 +14,10 @@ from qlink_interface import (
     RandomBasis,
 )
 
-from netqasm.lang.instr.instr_enum import Instruction
+from netqasm.lang.ir import GenericInstr
 from netqasm.logging.glob import get_netqasm_logger
 
 from .qubit import Qubit
-
-"""TODO write about epr sockets"""
-
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
@@ -34,22 +31,6 @@ class EPRMeasBasis(Enum):
     X = 0
     Y = auto()
     Z = auto()
-
-
-class NoCircuitError(RuntimeError):
-    pass
-
-
-def _assert_has_conn(method):
-    def new_method(self, *args, **kwargs):
-        if self._conn is None:
-            raise NoCircuitError(
-                "To use the socket it first needs to be setup by giving it to a `NetQASMConnection`"
-            )
-        return method(self, *args, **kwargs)
-
-    new_method.__doc__ = method.__doc__
-    return new_method
 
 
 class EPRSocket(abc.ABC):
@@ -136,8 +117,6 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
-    # TODO: remove commented-out decorators
-    # @_assert_has_conn
     def create(
         self,
         number: int = 1,
@@ -240,7 +219,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self.conn.create_epr(  # type: ignore
+        return self.conn._builder.create_epr(  # type: ignore
             remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -254,7 +233,6 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    # @_assert_has_conn
     def create_context(self, number: int = 1, sequential: bool = False):
         """Creates EPR pairs with a remote node and handles each pair by
         the operations defined in a subsequent context, see example below.
@@ -311,7 +289,7 @@ class EPRSocket(abc.ABC):
                   the size of the unit module. However, if `sequential` is `True` is can.
         """
         try:
-            instruction = Instruction.CREATE_EPR
+            instruction = GenericInstr.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -319,7 +297,7 @@ class EPRSocket(abc.ABC):
                 ent_info_array,
                 output,
                 pair,
-            ) = self.conn._pre_epr_context(
+            ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -329,7 +307,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._post_epr_context(
+            self.conn._builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -337,7 +315,6 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    # @_assert_has_conn
     def recv(
         self,
         number: int = 1,
@@ -354,7 +331,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn.recv_epr(
+        return self.conn._builder.recv_epr(
             remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -364,11 +341,10 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    # @_assert_has_conn
     def recv_context(self, number: int = 1, sequential: bool = False):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
-            instruction = Instruction.RECV_EPR
+            instruction = GenericInstr.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -376,7 +352,7 @@ class EPRSocket(abc.ABC):
                 ent_info_array,
                 output,
                 pair,
-            ) = self.conn._pre_epr_context(
+            ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -386,7 +362,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._post_epr_context(
+            self.conn._builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -394,6 +370,5 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
-    # @_assert_has_conn
     def _get_node_id(self, app_name: str) -> int:
         return self.conn.network_info.get_node_id_for_app(app_name=app_name)

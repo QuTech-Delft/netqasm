@@ -9,7 +9,7 @@ from qlink_interface import RequestType
 
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
-from netqasm.lang.subroutine import Address, ArrayEntry, Register
+from netqasm.lang.operand import Address, ArrayEntry, Register
 from netqasm.runtime.interface.logging import (
     AppLogEntry,
     ClassCommLogEntry,

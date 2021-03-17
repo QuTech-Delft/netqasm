@@ -4,9 +4,10 @@ import pytest
 
 from netqasm.backend.executor import Executor
 from netqasm.lang.encoding import RegisterName
+from netqasm.lang.operand import Register
 from netqasm.lang.parsing import parse_text_subroutine
-from netqasm.lang.subroutine import Register
 from netqasm.logging.glob import set_log_level
+from netqasm.sdk.shared_memory import SharedMemoryManager
 
 
 @pytest.mark.parametrize(
@@ -56,6 +57,8 @@ def test_executor(subroutine_str, expected_register, expected_output):
 
     print(subroutine)
 
+    SharedMemoryManager.reset_memories()
+
     app_id = 0
     executor = Executor()
     # Consume the generator
@@ -98,6 +101,8 @@ def test_failing_executor(subroutine_str, error_type, error_line):
     subroutine = parse_text_subroutine(subroutine_str)
 
     print(subroutine)
+
+    SharedMemoryManager.reset_memories()
 
     app_id = 0
     executor = Executor()

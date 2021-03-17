@@ -4,17 +4,16 @@ from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from netqasm.lang.instr import operand
-from netqasm.lang.instr.instr_enum import Instruction
+from netqasm.lang import operand
+from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, Symbols
 from netqasm.lang.parsing import parse_address, parse_register
-from netqasm.lang.subroutine import BranchLabel, Command, Symbols
 from netqasm.util.log import HostLine
 
 if TYPE_CHECKING:
-    from netqasm.lang.subroutine import T_OperandUnion
+    from netqasm.lang.ir import T_OperandUnion
     from netqasm.sdk.connection import BaseNetQASMConnection
 
-T_Cmd = Union[Command, BranchLabel]
+T_Cmd = Union[ICmd, BranchLabel]
 T_CValue = Union[int, "Future", "RegFuture"]
 
 
@@ -144,7 +143,7 @@ class BaseFuture(int):
     def if_eq(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BEQ,
+            condition=GenericInstr.BEQ,
             a=self,
             b=other,
         )
@@ -152,7 +151,7 @@ class BaseFuture(int):
     def if_ne(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BNE,
+            condition=GenericInstr.BNE,
             a=self,
             b=other,
         )
@@ -160,7 +159,7 @@ class BaseFuture(int):
     def if_lt(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BLT,
+            condition=GenericInstr.BLT,
             a=self,
             b=other,
         )
@@ -168,7 +167,7 @@ class BaseFuture(int):
     def if_ge(self, other: Optional[T_CValue]) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BGE,
+            condition=GenericInstr.BGE,
             a=self,
             b=other,
         )
@@ -176,7 +175,7 @@ class BaseFuture(int):
     def if_ez(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BEZ,
+            condition=GenericInstr.BEZ,
             a=self,
             b=None,
         )
@@ -184,7 +183,7 @@ class BaseFuture(int):
     def if_nz(self) -> _IfContext:
         return _IfContext(
             connection=self._connection,
-            condition=Instruction.BNZ,
+            condition=GenericInstr.BNZ,
             a=self,
             b=None,
         )
@@ -243,7 +242,7 @@ class Future(BaseFuture):
             other = parse_register(other)
 
         # Store self in a temporary register
-        tmp_register = self._connection._get_inactive_register(activate=True)
+        tmp_register = self._connection._builder._get_inactive_register(activate=True)
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
@@ -252,7 +251,9 @@ class Future(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._get_inactive_register(activate=True)
+            other_operand = self._connection._builder._get_inactive_register(
+                activate=True
+            )
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -267,17 +268,17 @@ class Future(BaseFuture):
             other_operand,
         ]
         if mod is None:
-            add_instr = Instruction.ADD
+            add_instr = GenericInstr.ADD
         else:
             if not isinstance(mod, int):
                 raise NotImplementedError
-            add_instr = Instruction.ADDM
+            add_instr = GenericInstr.ADDM
             add_operands.append(mod)
 
         commands = (
             load_commands
             + [
-                Command(
+                ICmd(
                     instruction=add_instr,
                     operands=add_operands,
                 )
@@ -285,23 +286,23 @@ class Future(BaseFuture):
             + store_commands
         )
 
-        self._connection._remove_active_register(tmp_register)
+        self._connection._builder._remove_active_register(tmp_register)
         if other_tmp_register is not None:
-            self._connection._remove_active_register(other_tmp_register)
+            self._connection._builder._remove_active_register(other_tmp_register)
 
-        self._connection.add_pending_commands(commands)
+        self._connection._builder.add_pending_commands(commands)
 
     def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
-        return self._get_access_commands(Instruction.LOAD, register)
+        return self._get_access_commands(GenericInstr.LOAD, register)
 
     def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
-        return self._get_access_commands(Instruction.STORE, register)
+        return self._get_access_commands(GenericInstr.STORE, register)
 
     def _get_access_commands(
-        self, instruction: Instruction, register: operand.Register
+        self, instruction: GenericInstr, register: operand.Register
     ) -> List[T_Cmd]:
         assert (
-            instruction == Instruction.LOAD or instruction == Instruction.STORE
+            instruction == GenericInstr.LOAD or instruction == GenericInstr.STORE
         ), "Not an access instruction"
         commands = []
         if isinstance(self._index, Future):
@@ -309,11 +310,11 @@ class Future(BaseFuture):
                 raise RuntimeError(
                     "Future-index must be from the same connection as the future itself"
                 )
-            tmp_register = self._connection._get_inactive_register()
+            tmp_register = self._connection._builder._get_inactive_register()
             # NOTE this might be many commands if the index is a future with a future index etc
-            with self._connection._activate_register(tmp_register):
+            with self._connection._builder._activate_register(tmp_register):
                 access_index_cmds = self._index._get_access_commands(
-                    instruction=Instruction.LOAD,
+                    instruction=GenericInstr.LOAD,
                     register=tmp_register,
                 )
             commands += access_index_cmds
@@ -327,7 +328,7 @@ class Future(BaseFuture):
         address_entry = parse_address(
             f"{Symbols.ADDRESS_START}{self._address}[{index}]"
         )
-        access_cmd = Command(
+        access_cmd = ICmd(
             instruction=instruction,
             operands=[
                 register,
@@ -394,7 +395,9 @@ class RegFuture(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._get_inactive_register(activate=True)
+            other_operand = self._connection._builder._get_inactive_register(
+                activate=True
+            )
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -409,17 +412,17 @@ class RegFuture(BaseFuture):
             other_operand,
         ]
         if mod is None:
-            add_instr = Instruction.ADD
+            add_instr = GenericInstr.ADD
         else:
             if not isinstance(mod, int):
                 raise NotImplementedError
-            add_instr = Instruction.ADDM
+            add_instr = GenericInstr.ADDM
             add_operands.append(mod)
 
         commands = (
             load_commands
             + [
-                Command(
+                ICmd(
                     instruction=add_instr,
                     operands=add_operands,
                 )
@@ -428,9 +431,9 @@ class RegFuture(BaseFuture):
         )
 
         if other_tmp_register is not None:
-            self._connection._remove_active_register(other_tmp_register)
+            self._connection._builder._remove_active_register(other_tmp_register)
 
-        self._connection.add_pending_commands(commands)
+        self._connection._builder.add_pending_commands(commands)
 
 
 class Array:
@@ -540,13 +543,13 @@ class _Context:
         return _Context.next_id - 1
 
     def __enter__(self):
-        return getattr(self._connection, self.ENTER_METH)(
+        return getattr(self._connection._builder, self.ENTER_METH)(
             context_id=self._id,
             **self._kwargs,
         )
 
     def __exit__(self, *args, **kwargs):
-        getattr(self._connection, self.EXIT_METH)(
+        getattr(self._connection._builder, self.EXIT_METH)(
             context_id=self._id,
             **self._kwargs,
         )
@@ -560,7 +563,7 @@ class _IfContext(_Context):
     def __init__(
         self,
         connection: BaseNetQASMConnection,
-        condition: Instruction,
+        condition: GenericInstr,
         a: Optional[T_CValue],
         b: Optional[T_CValue],
     ):

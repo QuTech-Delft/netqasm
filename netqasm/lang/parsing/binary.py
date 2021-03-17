@@ -1,8 +1,7 @@
 import ctypes
 
 from netqasm.lang import encoding
-from netqasm.lang.instr.base import NetQASMInstruction
-from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
+from netqasm.lang.instr import Flavour, NetQASMInstruction, VanillaFlavour
 from netqasm.lang.subroutine import Subroutine
 
 INSTR_ID = ctypes.c_uint8
@@ -14,7 +13,7 @@ class Deserializer:
     :class:`~.NetQASMInstructions` are immediately created from the binary encoding.
 
     (This is in contrast with the parsing.text module, which first converts the input
-    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.Command` s, before transforming it into
+    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.ICmd` s, before transforming it into
     a :class:`~.Subroutine` containing :class:`~.NetQASMInstruction` s.)
     """
 
