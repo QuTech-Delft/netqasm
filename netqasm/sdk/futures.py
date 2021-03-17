@@ -242,7 +242,7 @@ class Future(BaseFuture):
             other = parse_register(other)
 
         # Store self in a temporary register
-        tmp_register = self._connection._get_inactive_register(activate=True)
+        tmp_register = self._connection._builder._get_inactive_register(activate=True)
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
@@ -251,7 +251,9 @@ class Future(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._get_inactive_register(activate=True)
+            other_operand = self._connection._builder._get_inactive_register(
+                activate=True
+            )
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -284,11 +286,11 @@ class Future(BaseFuture):
             + store_commands
         )
 
-        self._connection._remove_active_register(tmp_register)
+        self._connection._builder._remove_active_register(tmp_register)
         if other_tmp_register is not None:
-            self._connection._remove_active_register(other_tmp_register)
+            self._connection._builder._remove_active_register(other_tmp_register)
 
-        self._connection.add_pending_commands(commands)
+        self._connection._builder.add_pending_commands(commands)
 
     def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(GenericInstr.LOAD, register)
@@ -308,9 +310,9 @@ class Future(BaseFuture):
                 raise RuntimeError(
                     "Future-index must be from the same connection as the future itself"
                 )
-            tmp_register = self._connection._get_inactive_register()
+            tmp_register = self._connection._builder._get_inactive_register()
             # NOTE this might be many commands if the index is a future with a future index etc
-            with self._connection._activate_register(tmp_register):
+            with self._connection._builder._activate_register(tmp_register):
                 access_index_cmds = self._index._get_access_commands(
                     instruction=GenericInstr.LOAD,
                     register=tmp_register,
@@ -393,7 +395,9 @@ class RegFuture(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._get_inactive_register(activate=True)
+            other_operand = self._connection._builder._get_inactive_register(
+                activate=True
+            )
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -427,9 +431,9 @@ class RegFuture(BaseFuture):
         )
 
         if other_tmp_register is not None:
-            self._connection._remove_active_register(other_tmp_register)
+            self._connection._builder._remove_active_register(other_tmp_register)
 
-        self._connection.add_pending_commands(commands)
+        self._connection._builder.add_pending_commands(commands)
 
 
 class Array:
@@ -539,13 +543,13 @@ class _Context:
         return _Context.next_id - 1
 
     def __enter__(self):
-        return getattr(self._connection, self.ENTER_METH)(
+        return getattr(self._connection._builder, self.ENTER_METH)(
             context_id=self._id,
             **self._kwargs,
         )
 
     def __exit__(self, *args, **kwargs):
-        getattr(self._connection, self.EXIT_METH)(
+        getattr(self._connection._builder, self.EXIT_METH)(
             context_id=self._id,
             **self._kwargs,
         )

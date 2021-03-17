@@ -26,12 +26,12 @@ class Qubit:
     ):
         self._conn: BaseNetQASMConnection = conn
         if virtual_address is None:
-            self._qubit_id: int = self._conn.new_qubit_id()
+            self._qubit_id: int = self._conn._builder.new_qubit_id()
         else:
             self._qubit_id = virtual_address
 
         if add_new_command:
-            self._conn.add_new_qubit_commands(qubit_id=self.qubit_id)
+            self._conn._builder.add_new_qubit_commands(qubit_id=self.qubit_id)
 
         self._active: bool = False
         self._activate()
@@ -82,13 +82,13 @@ class Qubit:
 
     def _activate(self) -> None:
         self._active = True
-        if self not in self._conn.active_qubits:
-            self._conn.active_qubits.append(self)
+        if self not in self._conn._builder.active_qubits:
+            self._conn._builder.active_qubits.append(self)
 
     def _deactivate(self) -> None:
         self._active = False
-        if self in self._conn.active_qubits:
-            self._conn.active_qubits.remove(self)
+        if self in self._conn._builder.active_qubits:
+            self._conn._builder.active_qubits.remove(self)
 
     @property
     def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
@@ -140,12 +140,12 @@ class Qubit:
 
         if future is None:
             if store_array:
-                array = self._conn.new_array(1)
+                array = self._conn._builder.new_array(1)
                 future = array.get_future_index(0)
             else:
                 future = RegFuture(self._conn)
 
-        self._conn.add_measure_commands(
+        self._conn._builder.add_measure_commands(
             qubit_id=self.qubit_id,
             future=future,
             inplace=inplace,
@@ -160,7 +160,7 @@ class Qubit:
         """
         Performs a X on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.X, qubit_id=self.qubit_id
         )
 
@@ -168,7 +168,7 @@ class Qubit:
         """
         Performs a Y on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Y, qubit_id=self.qubit_id
         )
 
@@ -176,7 +176,7 @@ class Qubit:
         """
         Performs a Z on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Z, qubit_id=self.qubit_id
         )
 
@@ -184,7 +184,7 @@ class Qubit:
         """
         Performs a T gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.T, qubit_id=self.qubit_id
         )
 
@@ -192,7 +192,7 @@ class Qubit:
         """
         Performs a Hadamard on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.H, qubit_id=self.qubit_id
         )
 
@@ -200,7 +200,7 @@ class Qubit:
         """
         Performs a K gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.K, qubit_id=self.qubit_id
         )
 
@@ -208,7 +208,7 @@ class Qubit:
         """
         Performs a S gate on the qubit.
         """
-        self._conn.add_single_qubit_commands(
+        self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.S, qubit_id=self.qubit_id
         )
 
@@ -216,7 +216,7 @@ class Qubit:
         """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
         If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
         """
-        self._conn.add_single_qubit_rotation_commands(
+        self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_X,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -228,7 +228,7 @@ class Qubit:
         """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`
         If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
         """
-        self._conn.add_single_qubit_rotation_commands(
+        self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Y,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -240,7 +240,7 @@ class Qubit:
         """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`
         If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
         """
-        self._conn.add_single_qubit_rotation_commands(
+        self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Z,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -258,7 +258,7 @@ class Qubit:
         target : :class:`~.Qubit`
             The target qubit
         """
-        self._conn.add_two_qubit_commands(
+        self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CNOT,
             control_qubit_id=self.qubit_id,
             target_qubit_id=target.qubit_id,
@@ -274,7 +274,7 @@ class Qubit:
         target : :class:`~.Qubit`
             The target qubit
         """
-        self._conn.add_two_qubit_commands(
+        self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CPHASE,
             control_qubit_id=self.qubit_id,
             target_qubit_id=target.qubit_id,
@@ -284,13 +284,13 @@ class Qubit:
         r"""
         Resets the qubit to the state \|0>
         """
-        self._conn.add_init_qubit_commands(qubit_id=self.qubit_id)
+        self._conn._builder.add_init_qubit_commands(qubit_id=self.qubit_id)
 
     def free(self) -> None:
         """
         Unallocates the qubit.
         """
-        self._conn.add_qfree_commands(qubit_id=self.qubit_id)
+        self._conn._builder.add_qfree_commands(qubit_id=self.qubit_id)
 
 
 class _FutureQubit(Qubit):

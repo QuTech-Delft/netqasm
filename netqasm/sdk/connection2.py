@@ -1,3 +1,5 @@
+# type: ignore
+# flake8: noqa
 """TODO write about connections"""
 
 from __future__ import annotations

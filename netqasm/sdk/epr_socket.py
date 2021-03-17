@@ -219,7 +219,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self.conn.create_epr(  # type: ignore
+        return self.conn._builder.create_epr(  # type: ignore
             remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -297,7 +297,7 @@ class EPRSocket(abc.ABC):
                 ent_info_array,
                 output,
                 pair,
-            ) = self.conn._pre_epr_context(
+            ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -307,7 +307,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._post_epr_context(
+            self.conn._builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -331,7 +331,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn.recv_epr(
+        return self.conn._builder.recv_epr(
             remote_node_id=self.remote_node_id,
             epr_socket_id=self._epr_socket_id,
             number=number,
@@ -352,7 +352,7 @@ class EPRSocket(abc.ABC):
                 ent_info_array,
                 output,
                 pair,
-            ) = self.conn._pre_epr_context(
+            ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -362,7 +362,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._post_epr_context(
+            self.conn._builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
