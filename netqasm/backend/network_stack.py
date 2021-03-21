@@ -28,3 +28,7 @@ class BaseNetworkStack(abc.ABC):
     ):
         """Asks the network stack to setup circuits to be used"""
         pass
+
+    @abc.abstractmethod
+    def get_purpose_id(self, remote_node_id, epr_socket_id) -> int:
+        pass
