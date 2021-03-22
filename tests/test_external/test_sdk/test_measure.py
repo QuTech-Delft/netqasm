@@ -18,7 +18,7 @@ def run_alice():
             count += m
         avg = count / num
         logger.info(avg)
-        assert 0.4 <= avg <= 0.6
+        assert 0.35 <= avg <= 0.65
 
 
 def test_measure():
