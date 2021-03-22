@@ -1,4 +1,5 @@
 import ctypes
+from typing import Optional
 
 from netqasm.lang import encoding
 from netqasm.lang.instr import Flavour, NetQASMInstruction, VanillaFlavour
@@ -55,7 +56,7 @@ class Deserializer:
         return instr
 
 
-def deserialize(data: bytes, flavour=None) -> Subroutine:
+def deserialize(data: bytes, flavour: Optional[Flavour] = None) -> Subroutine:
     """
     Convert a binary encoding into a Subroutine object.
     The Vanilla flavour is used by default.

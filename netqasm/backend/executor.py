@@ -79,7 +79,10 @@ class Executor:
     instr_logger_class = InstrLogger
 
     def __init__(
-        self, name: Optional[str] = None, instr_log_dir: Optional[str] = None
+        self,
+        name: Optional[str] = None,
+        instr_log_dir: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """Executes a sequence of NetQASM instructions.
 
@@ -174,8 +177,8 @@ class Executor:
         return self._name
 
     @property
-    def node_id(self) -> int:  # type: ignore
-        return self._node.ID  # type: ignore
+    def node_id(self) -> int:
+        raise NotImplementedError
 
     def set_instr_logger(self, instr_log_dir: str) -> None:
         self._instr_logger = self.__class__.get_instr_logger(
@@ -663,7 +666,7 @@ class Executor:
         angle: float,
     ) -> Optional[Generator[Any, None, None]]:
         """Performs a single qubit rotation with the angle `n * pi / m`"""
-        pass
+        return None
 
     def _do_controlled_qubit_rotation(
         self,
@@ -775,7 +778,7 @@ class Executor:
         q_array_address: Optional[int],
         arg_array_address: int,
         ent_info_array_address: int,
-    ):
+    ) -> Optional[Generator[Any, None, None]]:
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
         create_request = self._get_create_request(
@@ -802,6 +805,7 @@ class Executor:
                 pairs_left=create_request.number,
             )
         )
+        return None
 
     def _get_create_request(
         self,
@@ -987,8 +991,8 @@ class Executor:
                 break
         self._logger.debug(f"Finished waiting for array entry {array_entry}")
 
-    def _do_wait(self):
-        pass
+    def _do_wait(self) -> Optional[Generator[Any, None, None]]:
+        return None
 
     @inc_program_counter
     def _instr_qfree(
@@ -1216,15 +1220,15 @@ class Executor:
 
     def _reserve_physical_qubit(
         self, physical_address: int
-    ) -> Optional[Generator[Any, None, None]]:
+    ) -> Generator[Any, None, None]:
         """To be subclassed for different quantum processors (e.g. netsquid)"""
-        return None
+        yield None
 
     def _clear_phys_qubit_in_memory(
         self, physical_address: int
-    ) -> Optional[Generator[Any, None, None]]:
+    ) -> Generator[Any, None, None]:
         """To be subclassed for different quantum processors (e.g. netsquid)"""
-        return None
+        yield None
 
     def _get_unused_physical_qubit(self) -> int:
         # Assuming that the topology of the unit module is a complete graph
@@ -1419,7 +1423,7 @@ class Executor:
     def _get_qubit_state(self, app_id: int, virtual_address: int) -> Any:
         raise NotImplementedError
 
-    def _get_positions(self, subroutine_id: int, addresses: List[int]):
+    def _get_positions(self, subroutine_id: int, addresses: List[int]) -> List[int]:
         return [
             self._get_position(subroutine_id=subroutine_id, address=address)
             for address in addresses

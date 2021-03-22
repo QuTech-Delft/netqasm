@@ -209,13 +209,13 @@ class ThreadSocket(Socket):
         comm_log_dir : str, optional
             Path to log classical communication to. File name will be "{node_name}_class_comm.log"
         """
+        self._app_name: str = app_name
+        self._remote_app_name: str = remote_app_name
+        self._id: int = socket_id
         if app_name == remote_app_name:
             raise ValueError(
                 f"Cannot connect to itself app_name {app_name} = remote_app_name {remote_app_name}"
             )
-        self._app_name: str = app_name
-        self._remote_app_name: str = remote_app_name
-        self._id: int = socket_id
 
         if log_config is None:
             log_config = LogConfig()
