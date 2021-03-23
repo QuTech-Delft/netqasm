@@ -40,7 +40,7 @@ def get_rotation_matrix(axis, angle):
     return rot_mat
 
 
-def get_controlled_rotation_matrix(axis, angle) -> np.array:
+def get_controlled_rotation_matrix(axis, angle) -> np.ndarray:
     target_pos = get_rotation_matrix(axis, angle)
     target_neg = get_rotation_matrix(axis, -angle)
 
