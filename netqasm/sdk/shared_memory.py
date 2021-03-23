@@ -183,11 +183,19 @@ class SharedMemory:
         elif isinstance(key, int):
             return self._get_array(key)
 
-    def get_register(self, register: operand.Register) -> Optional[int]:
-        return self._registers[register.name][register.index]
+    def get_register(self, register: Union[str, operand.Register]) -> Optional[int]:
+        if isinstance(register, str):
+            reg = parse_register(register)
+        else:
+            reg = register
+        return self._registers[reg.name][reg.index]
 
-    def set_register(self, register: operand.Register, value: int) -> None:
-        self._registers[register.name][register.index] = value
+    def set_register(self, register: Union[str, operand.Register], value: int) -> None:
+        if isinstance(register, str):
+            reg = parse_register(register)
+        else:
+            reg = register
+        self._registers[reg.name][reg.index] = value
 
     def get_array_part(
         self, address: int, index: Union[int, slice]

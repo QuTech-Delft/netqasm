@@ -2,6 +2,7 @@ import importlib
 import json
 import logging
 import os
+import time
 
 import click
 import requests
@@ -284,6 +285,12 @@ def _get_token_header():
     default="generic",
     help="What quantum hardware to use in nodes if no explicit network config is specified",
 )
+@click.option(
+    "--timer/--no-timer",
+    type=bool,
+    default=False,
+    help="Measure and display how much time the simulation took",
+)
 def simulate(
     app_dir,
     track_lines,
@@ -297,6 +304,7 @@ def simulate(
     num,
     sim_context,
     hardware,
+    timer,
 ):
     """
     Simulate an application on a simulated QNodeOS.
@@ -325,6 +333,9 @@ def simulate(
     if log_dir is None:
         log_dir = os.path.join(app_dir, "log")
     log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
+
+    if timer:
+        start = time.perf_counter()
     simulate_application(
         app_instance=app_instance,
         num_rounds=num,
@@ -336,6 +347,8 @@ def simulate(
         enable_logging=log_to_files,
         hardware=hardware,
     )
+    if timer:
+        print(f"finished simulation in {round(time.perf_counter() - start, 2)} seconds")
 
 
 ##################

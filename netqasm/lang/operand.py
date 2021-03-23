@@ -106,8 +106,8 @@ class ArrayEntry(Operand):
 @dataclass
 class ArraySlice(Operand):
     address: Address
-    start: Register
-    stop: Register
+    start: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
+    stop: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
 
     def __post_init__(self):
         if isinstance(self.address, int):
