@@ -22,7 +22,7 @@ class SingleQubitInstruction(base.RegInstruction):
         self.reg = new_val
 
     @abstractmethod
-    def to_matrix(self) -> np.array:
+    def to_matrix(self) -> np.ndarray:
         pass
 
 

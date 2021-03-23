@@ -16,7 +16,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
 
 
-def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:
+def pad_single_matrix(m: np.ndarray, index: int, total: int) -> np.ndarray:
     """Create matrix for `total` qubits where `m` is applied on qubit `index`
     and identities on the other qubits"""
     matrix = np.eye(1)
@@ -29,8 +29,8 @@ def pad_single_matrix(m: np.array, index: int, total: int) -> np.array:
 
 
 def pad_controlled_single_matrix(
-    m: np.array, ctrl_index, target_index, total
-) -> np.array:
+    m: np.ndarray, ctrl_index, target_index, total
+) -> np.ndarray:
     """Create matrix for `total` qubits where `m` is applied on qubit `target_index`
     if qubit in `ctrl_index` is 1 (and identities on the other qubits).
     E.g. pad_controlled_single_matrix(X, 3, 1, 3) returns a 4-qubit matrix representing a CNOT
@@ -69,7 +69,7 @@ class SubroutineMatrix:
             self._matrix_indices[id] = i
             self._matrix = np.kron(self._matrix, np.eye(2))
 
-    def apply_single_qubit_instr(self, instr_matrix: np.array, virt_id: int):
+    def apply_single_qubit_instr(self, instr_matrix: np.ndarray, virt_id: int):
         m = pad_single_matrix(
             m=instr_matrix,
             index=self._matrix_indices[virt_id],
@@ -79,7 +79,7 @@ class SubroutineMatrix:
         self._matrix = self._matrix @ m
 
     def apply_two_qubit_instr(
-        self, instr_matrix: np.array, virt_id0: int, virt_id1: int
+        self, instr_matrix: np.ndarray, virt_id0: int, virt_id1: int
     ):
         m = pad_controlled_single_matrix(
             m=instr_matrix,
@@ -95,7 +95,7 @@ class SubroutineMatrix:
         return self._matrix
 
 
-def _subroutine_as_matrix(subroutine: Subroutine) -> np.array:
+def _subroutine_as_matrix(subroutine: Subroutine) -> np.ndarray:
     """Try to write quantum instructions in subroutine as one matrix.
     This function relies on the fact that the subroutine has only "set"
     instructions for Q registers, and should only be used for subroutines
