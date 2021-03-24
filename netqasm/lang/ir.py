@@ -68,6 +68,10 @@ class GenericInstr(Enum):
     RET_REG = auto()
     RET_ARR = auto()
 
+    CROT_X = auto()
+    CROT_Y = auto()
+    CROT_Z = auto()
+
     # Move source qubit to target qubit (target is overwritten)
     MOV = auto()
 

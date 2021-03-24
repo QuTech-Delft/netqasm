@@ -229,9 +229,15 @@ def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
     if index is None:
         return address_parsed
     elif isinstance(index, tuple):
-        if not isinstance(index[0], Register) or not isinstance(index[1], Register):
+        if (
+            not isinstance(index[0], Register)
+            or not isinstance(index[1], Register)
+            or not isinstance(index[0], int)
+            or not isinstance(index[1], int)
+        ):
             raise TypeError(
-                f"indices {index[0]} and {index[1]} should be Registers, not {type(index[0])} and {type(index[1])}"
+                f"indices {index[0]} and {index[1]} should be ints or Registers,"
+                " not {type(index[0])} and {type(index[1])}"
             )
         return ArraySlice(address_parsed, start=index[0], stop=index[1])
     elif isinstance(index, int) or isinstance(index, Register):
@@ -468,6 +474,14 @@ _REPLACE_CONSTANTS_EXCEPTION = [
 
 for instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
     for index in [1, 2]:
+        _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
+
+for instr in [
+    GenericInstr.CROT_X,
+    GenericInstr.CROT_Y,
+    GenericInstr.CROT_Z,
+]:
+    for index in [2, 3]:
         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
 
 
