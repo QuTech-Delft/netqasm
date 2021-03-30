@@ -229,15 +229,12 @@ def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
     if index is None:
         return address_parsed
     elif isinstance(index, tuple):
-        if (
-            not isinstance(index[0], Register)
-            or not isinstance(index[1], Register)
-            or not isinstance(index[0], int)
-            or not isinstance(index[1], int)
+        if (not isinstance(index[0], Register) and not isinstance(index[0], int)) or (
+            not isinstance(index[1], Register) and not isinstance(index[1], int)
         ):
             raise TypeError(
                 f"indices {index[0]} and {index[1]} should be ints or Registers,"
-                " not {type(index[0])} and {type(index[1])}"
+                f" not {type(index[0])} and {type(index[1])}"
             )
         return ArraySlice(address_parsed, start=index[0], stop=index[1])
     elif isinstance(index, int) or isinstance(index, Register):
