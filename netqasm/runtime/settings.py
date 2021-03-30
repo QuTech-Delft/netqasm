@@ -4,6 +4,7 @@ from enum import Enum
 
 class Simulator(Enum):
     NETSQUID = "netsquid"
+    NETSQUID_SINGLE_THREAD = "netsquid_single_thread"
     SIMULAQRON = "simulaqron"
     DEBUG = "debug"
 

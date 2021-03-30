@@ -15,9 +15,12 @@ if is_using_hardware:
         raise ModuleNotFoundError("to use QNodeOS , `qnodeos` needs to be installed")
 elif simulator == Simulator.NETSQUID:
     try:
-        # from squidasm.run import run_applications  # type: ignore
-        from squidasm.run.simulate import simulate_application  # type: ignore
-        from squidasm.sdk import NetSquidConnection as NetQASMConnection  # type: ignore
+        from squidasm.run.multithread.sdk import (
+            NetSquidConnection as NetQASMConnection,  # type: ignore
+        )
+        from squidasm.run.multithread.simulate import (
+            simulate_application,  # type: ignore
+        )
         from squidasm.util.sim import get_qubit_state  # type: ignore
 
         from netqasm.sdk.classical_communication import (
@@ -26,6 +29,18 @@ elif simulator == Simulator.NETSQUID:
         from netqasm.sdk.classical_communication import (
             ThreadSocket as Socket,  # type: ignore
         )
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            f"to use {Simulator.NETSQUID.value} as simulator, `squidasm` needs to be installed"
+        )
+elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
+    try:
+        from squidasm.run.singlethread import NetQASMConnection, Socket  # type: ignore
+
+        from netqasm.sdk.classical_communication import (
+            ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
+        )
+
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             f"to use {Simulator.NETSQUID.value} as simulator, `squidasm` needs to be installed"
