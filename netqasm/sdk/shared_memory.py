@@ -6,12 +6,16 @@ from netqasm.lang import operand
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.lang.ir import Symbols
 from netqasm.lang.parsing import parse_address, parse_register
+from netqasm.runtime.settings import get_is_using_hardware
 
 if TYPE_CHECKING:
     from netqasm.lang.operand import ArrayEntry
 
 
 def _assert_within_width(value: int, width: int) -> None:
+    if not get_is_using_hardware():
+        # in simulation, don't care about overflow
+        return
     min_value = -(2 ** (width - 1))
     max_value = 2 ** (width - 1) - 1
     if not min_value <= value <= max_value:
