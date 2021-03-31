@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List
 
+from netqasm.util.yaml import load_yaml
+
 
 class QuantumHardware(Enum):
     Generic = "Generic"
@@ -127,3 +129,9 @@ RolesConfig = Dict[str, str]
 # App input per role.
 # Keys are names of variables that are passed to the role's `main` function.
 AppInput = Dict[str, Any]
+
+
+def network_cfg_from_file(network_config_file: str = None) -> NetworkConfig:
+    yaml_dict = load_yaml(network_config_file)
+    network_cfg = parse_network_config(yaml_dict)
+    return network_cfg
