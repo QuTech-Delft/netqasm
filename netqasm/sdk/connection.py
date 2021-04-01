@@ -20,13 +20,6 @@ from typing import (
     Union,
 )
 
-from qlink_interface import (
-    EPRType,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-)
-
 from netqasm import NETQASM_VERSION
 from netqasm.backend.messages import (
     InitNewAppMessage,
@@ -41,6 +34,12 @@ from netqasm.lang import operand
 from netqasm.lang.ir import BranchLabel, ICmd, PreSubroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.qlink_compat import (
+    EPRType,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+)
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture

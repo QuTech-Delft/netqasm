@@ -3,6 +3,7 @@ import random
 
 import numpy as np
 import pytest
+from netsquid.qubits import qubitapi
 
 from netqasm.examples.apps.blind_grover.app_client import main as blind_grover_client
 from netqasm.examples.apps.blind_grover.app_server import main as blind_grover_server
@@ -20,8 +21,8 @@ from netqasm.sdk.external import simulate_application
 logger = get_netqasm_logger()
 
 
-def fidelity_ok(qstate1, dm2, threshold=0.999):
-    fidelity = qstate1.fidelity(dm2)
+def fidelity_ok(qubit, dm, threshold=0.999):
+    fidelity = qubitapi.fidelity(qubit, dm)
     return fidelity > threshold
 
 
@@ -73,7 +74,7 @@ def run_blind_rotation():
         ns.qubits.operate(ref, ns.Z)
     ns.qubits.operate(ref, ns.qubits.create_rotation_op(theta[num_iter], (0, 0, 1)))
 
-    assert fidelity_ok(ref.qstate, np.array(output_state))
+    assert fidelity_ok(ref, np.array(output_state))
 
 
 @pytest.mark.skipif(

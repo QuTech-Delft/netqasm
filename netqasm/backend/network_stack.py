@@ -2,7 +2,7 @@ import abc
 from dataclasses import dataclass
 from typing import Any, Generator, Union
 
-from qlink_interface import (
+from netqasm.qlink_compat import (
     LinkLayerCreate,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,

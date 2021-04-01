@@ -5,11 +5,10 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Set, Tuple
 
-from qlink_interface import RequestType
-
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.operand import Address, ArrayEntry, Register
+from netqasm.qlink_compat import RequestType
 from netqasm.runtime.interface.logging import (
     AppLogEntry,
     ClassCommLogEntry,

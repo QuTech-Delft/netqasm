@@ -1,6 +1,5 @@
-from qlink_interface import EPRType
-
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.qlink_compat import EPRType
 from netqasm.runtime.application import default_app_instance
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, simulate_application
