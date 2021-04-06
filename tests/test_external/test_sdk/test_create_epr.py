@@ -31,8 +31,8 @@ def post_function(backend):
         [[0.5, 0, 0, 0.5], [0, 0, 0, 0], [0, 0, 0, 0], [0.5, 0, 0, 0.5]]
     )
 
-    logger.info(f"state = {alice_state.dm}")
-    assert np.all(np.isclose(expected_state, alice_state.dm))
+    logger.info(f"state = {alice_state.qrepr.reduced_dm()}")
+    assert np.all(np.isclose(expected_state, alice_state.qrepr.reduced_dm()))
 
 
 @pytest.mark.skipif(

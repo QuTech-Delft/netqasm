@@ -7,6 +7,7 @@ from enum import Enum
 from itertools import count
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
     Dict,
     Iterator,
@@ -16,15 +17,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-)
-
-from qlink_interface import (
-    EPRType,
-    LinkLayerCreate,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-    RandomBasis,
 )
 
 from netqasm import NETQASM_VERSION
@@ -51,6 +43,14 @@ from netqasm.lang.parsing.text import (
     parse_register,
 )
 from netqasm.lang.subroutine import Subroutine
+from netqasm.qlink_compat import (
+    EPRType,
+    LinkLayerCreate,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+    RandomBasis,
+)
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture
@@ -524,7 +524,7 @@ class Builder:
         if instruction == GenericInstr.CREATE_EPR:
             # request arguments
             # TODO add other args
-            create_kwargs = {}
+            create_kwargs: Dict[str, Any] = {}
             create_kwargs["type"] = tp
             create_kwargs["number"] = number
             # TODO currently this give 50 / 50 since with the current link layer
@@ -736,7 +736,7 @@ class Builder:
         ent_info_array = self._create_ent_info_array(number=number, tp=tp)
         result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
         if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
         else:
             virtual_qubit_ids = None  # type: ignore
         wait_all = post_routine is None
@@ -790,7 +790,7 @@ class Builder:
         result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
         output: Union[List[Qubit], T_LinkLayerOkList, _FutureQubit] = result_futures
         if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
         else:
             raise ValueError(
                 "EPR generation as a context is only allowed for K type requests"
@@ -912,7 +912,7 @@ class Builder:
                 LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
             ] = self.__class__.ENT_INFO[tp](*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
-        return ent_info_slices
+        return ent_info_slices  # type: ignore
 
     def _create_ent_qubits(
         self,
@@ -926,14 +926,14 @@ class Builder:
             if sequential:
                 if i == 0:
                     qubit = Qubit(
-                        self._connection, add_new_command=False, ent_info=ent_info_slice
+                        self._connection, add_new_command=False, ent_info=ent_info_slice  # type: ignore
                     )
                     virtual_address = qubit.qubit_id
                 else:
                     qubit = Qubit(
                         self._connection,
                         add_new_command=False,
-                        ent_info=ent_info_slice,
+                        ent_info=ent_info_slice,  # type: ignore
                         virtual_address=virtual_address,
                     )
             else:
@@ -946,7 +946,7 @@ class Builder:
                 qubit = Qubit(
                     self._connection,
                     add_new_command=False,
-                    ent_info=ent_info_slice,
+                    ent_info=ent_info_slice,  # type: ignore
                     virtual_address=virtual_address,
                 )
             qubits.append(qubit)

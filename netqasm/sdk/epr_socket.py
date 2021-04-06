@@ -6,16 +6,15 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
-from qlink_interface import (
+from netqasm.lang.ir import GenericInstr
+from netqasm.logging.glob import get_netqasm_logger
+from netqasm.qlink_compat import (
     EPRType,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
     RandomBasis,
 )
-
-from netqasm.lang.ir import GenericInstr
-from netqasm.logging.glob import get_netqasm_logger
 
 from .qubit import Qubit
 

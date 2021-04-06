@@ -11,16 +11,6 @@ from types import GeneratorType
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, Union
 
 import numpy as np
-from qlink_interface import (
-    LinkLayerCreate,
-    LinkLayerErr,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-    RequestType,
-    ReturnType,
-    get_creator_node_id,
-)
 
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.backend.network_stack import BaseNetworkStack
@@ -33,6 +23,17 @@ from netqasm.lang.parsing import parse_address
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
+from netqasm.qlink_compat import (
+    LinkLayerCreate,
+    LinkLayerErr,
+    LinkLayerOKTypeK,
+    LinkLayerOKTypeM,
+    LinkLayerOKTypeR,
+    RequestType,
+    ReturnType,
+    get_creator_node_id,
+    response_from_qlink_1_0,
+)
 from netqasm.sdk import shared_memory
 from netqasm.sdk.shared_memory import (
     Arrays,
@@ -835,13 +836,13 @@ class Executor:
             )
         kwargs = {}
         for arg, field, default in zip(
-            args, LinkLayerCreate._fields, LinkLayerCreate.__new__.__defaults__
+            args, LinkLayerCreate._fields, LinkLayerCreate.__new__.__defaults__  # type: ignore
         ):
             if arg is None:
                 kwargs[field] = default
             else:
                 kwargs[field] = arg
-        kwargs["type"] = RequestType(kwargs["type"])
+        kwargs["type"] = RequestType(kwargs["type"])  # type: ignore
 
         return LinkLayerCreate(**kwargs)
 
@@ -1247,7 +1248,10 @@ class Executor:
         return subroutine.app_id
 
     def _handle_epr_response(self, response: T_LinkLayerResponse) -> None:
-        self._pending_epr_responses.append(response)
+        # Convert from qlink-layer 1.0
+        converted_res = response_from_qlink_1_0(response)
+
+        self._pending_epr_responses.append(converted_res)
         self._handle_pending_epr_responses()
 
     def _handle_pending_epr_responses(self) -> None:
@@ -1261,12 +1265,12 @@ class Executor:
         for i, response in enumerate(self._pending_epr_responses):
 
             if response.type == ReturnType.ERR:
-                self._handle_epr_err_response(response)
+                self._handle_epr_err_response(response)  # type: ignore
             else:
                 self._logger.debug(
                     f"Try to handle EPR OK ({response.type}) response from network stack"
                 )
-                info = self._extract_epr_info(response=response)
+                info = self._extract_epr_info(response=response)  # type: ignore
                 if info is not None:
                     epr_cmd_data, pair_index, is_creator, request_key = info
                     handled = self._epr_response_handlers[response.type](
@@ -1285,7 +1289,7 @@ class Executor:
 
                     self._store_ent_info(
                         epr_cmd_data=epr_cmd_data,
-                        response=response,
+                        response=response,  # type: ignore
                         pair_index=pair_index,
                     )
                     self._pending_epr_responses.pop(i)

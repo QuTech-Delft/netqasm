@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from netsquid.qubits import qubitapi
+
 from netqasm.runtime.settings import Simulator, get_simulator
 
 if get_simulator() == Simulator.NETSQUID:
@@ -41,4 +43,4 @@ def get_fidelity(q1: NetSquidQubit, q2: np.ndarray) -> float:
             "`get_fidelity` function only possible with NetSquid simulator"
         )
 
-    return q1.qstate.fidelity(q2)  # type: ignore
+    return qubitapi.fidelity(q1, q2)  # type: ignore

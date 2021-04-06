@@ -52,7 +52,7 @@ def run_bob():
 
 
 def post_function(backend):
-    state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate.dm
+    state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate.qrepr.reduced_dm()
     logger.info(f"state = {state}")
     expected = np.array([[0.5, 0.5], [0.5, 0.5]])
     logger.info(f"expected = {expected}")

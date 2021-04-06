@@ -92,7 +92,7 @@ def create_ghz(
         else:
             # Middle role
             role = _Role.middle
-            q_up = up_epr_socket.create()[0]
+            q_up: Qubit = up_epr_socket.create()[0]  # type: ignore
             # merge the states by doing half a Bell measurement
             q.cnot(q_up)
             m = q_up.measure()

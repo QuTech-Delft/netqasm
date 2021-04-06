@@ -50,7 +50,7 @@ def post_function(backend):
         (1, 0): np.array([[0.5, -0.5], [-0.5, 0.5]]),
         (1, 1): np.array([[0.5, -0.5], [-0.5, 0.5]]),
     }
-    state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate.dm
+    state = backend.nodes["Bob"].qmemory._get_qubits(0)[0].qstate.qrepr.reduced_dm()
     logger.info(f"state = {state}")
     expected = expected_states[m1, m2]
     logger.info(f"expected = {expected}")

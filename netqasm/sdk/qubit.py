@@ -7,8 +7,7 @@ from netqasm.lang.ir import GenericInstr
 from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
-    from qlink_interface import LinkLayerOKTypeK
-
+    from netqasm.qlink_compat import LinkLayerOKTypeK
     from netqasm.sdk.connection import BaseNetQASMConnection
 
 
