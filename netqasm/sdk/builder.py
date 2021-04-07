@@ -151,7 +151,7 @@ class Builder:
         # What compiler (if any) to be used
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
-    def _inactivate_qubits(self) -> None:
+    def inactivate_qubits(self) -> None:
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
             q.active = False

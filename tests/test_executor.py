@@ -109,7 +109,7 @@ def test_failing_executor(subroutine_str, error_type, error_line):
     executor.init_new_application(app_id=app_id, max_qubits=1)
 
     with pytest.raises(error_type) as exc:
-        executor._consume_execute_subroutine(subroutine=subroutine)
+        executor.consume_execute_subroutine(subroutine=subroutine)
 
     print(f"Exception: {exc.value}")
     assert str(exc.value).startswith(f"At line {error_line}")

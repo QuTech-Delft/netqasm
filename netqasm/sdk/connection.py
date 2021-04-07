@@ -1,4 +1,9 @@
-"""TODO write about connections"""
+#
+# Interface to quantum node controllers.
+#
+# This module provides the `BaseNetQASMConnection` class which represents
+# the connection with a quantum node controller.
+#
 
 from __future__ import annotations
 
@@ -34,12 +39,7 @@ from netqasm.lang import operand
 from netqasm.lang.ir import BranchLabel, ICmd, PreSubroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.qlink_compat import (
-    EPRType,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-)
+from netqasm.qlink_compat import LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture
@@ -63,31 +63,34 @@ T_PostRoutine = Callable[
 T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
 T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
+# Imports that are only needed for type checking
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
 
 
-# NOTE this is needed to be able to instanciate tuples the same way as namedtuples
-class _Tuple(tuple):
-    @classmethod
-    def __new__(cls, *args, **kwargs):
-        return tuple.__new__(cls, args[1:])
-
-
 class BaseNetQASMConnection(abc.ABC):
+    """Base class for representing connections to a quantum node controller.
+
+    A BaseNetQASMConnection instance provides an interface for Host programs to
+    interact with a quantum node controller like QNodeOS, which controls the quantum
+    hardware.
+
+    The interaction with the quantum node controller includes registering applications,
+    opening EPR sockets, sending NetQASM subroutines, and getting execution results,
+
+    A BaseNetQASMConnection instance also provides a 'context' for the Host to
+    run its code in. Code within this context is compiled into NetQASM subroutines
+    and then sent to the quantum node controller.
+    """
 
     # Global dict to track all used app IDs for each program
     _app_ids: Dict[str, List[int]] = {}  # <party> -> [<app_id1>, <app_id2>, ...]
 
+    # Global dict to track app names per node.
+    # Currently only used for logging purposes, specifically only in
+    # `netqasm.runtime.process_logs._create_app_instr_logs`.
     # Dict[node_name, Dict[app_id, app_name]]
     _app_names: Dict[str, Dict[int, str]] = {}
-
-    # Class to use to pack entanglement information
-    ENT_INFO = {
-        EPRType.K: LinkLayerOKTypeK,
-        EPRType.M: LinkLayerOKTypeM,
-        EPRType.R: LinkLayerOKTypeR,
-    }
 
     def __init__(
         self,
@@ -102,27 +105,82 @@ class BaseNetQASMConnection(abc.ABC):
         _init_app: bool = True,
         _setup_epr_sockets: bool = True,
     ):
+        """BaseNetQASMConnection constructor.
+
+        In most cases, you will want to instantiate a subclass of this.
+
+        :param app_name: Name of the application.
+            Specifically, this is the name of the program that runs on this particular
+            node. So, `app_name` can often be seen as the name of the "role" within the
+            multi-party application or protocol.
+            For example, in a Blind Computation protocol, the two roles may be
+            "client" and "server"; the `app_name` of a particular
+            `BaseNetQASMConnection` instance may then e.g. be "client".
+
+        :param node_name: name of the Node that is controlled by the quantum
+            node controller that we connect to. The Node name may be different from
+            the `app_name`, and e.g. reflect its geographical location, like a city
+            name. If None, the Node name is obtained by querying the global
+            `NetworkInfo` by using the `app_name`.
+
+        :param app_id: ID of this application.
+            An application registered in the quantum node controller using this
+            connection will use this app ID.
+            If None, a unique ID will be chosen (unique among possible other
+            applications that were registered through other BaseNetQASMConnection
+            instances).
+
+        :param max_qubits: maximum number of qubits that can be in use
+            at the same time by applications registered through this connection.
+            Defaults to 5.
+
+        :param log_config: configuration object specifying what to log.
+
+        :param epr_sockets: list of EPR sockets.
+            If `_setup_epr_sockets` is True, these EPR sockets are automatically
+            opened upon entering this connection's context.
+
+        :param compiler: the class that is used to instantiate the compiler.
+            If None, a compiler is used that can compile for the hardware of the
+            node this connection is to.
+
+        :param return_arrays: whether to add "return array"-instructions at the end
+            of subroutines. A reason to set this to False could be that a quantum
+            node controller does not support returning arrays back to the Host.
+
+        :param _init_app: whether to immediately send a "register application" message
+            to the quantum node controller upon construction of this connection.
+
+        :param _setup_epr_sockets: whether to immediately send "open EPR socket"
+            messages to the quantum node controller upon construction of this
+            connection. If True, the "open EPR socket" messages are for the EPR sockets
+            defined in the `epr_sockets` parameter.
+        """
         self._app_name: str = app_name
 
-        # Set an app ID
+        # Set the app ID. If one was provided in `app_id`, try to use that one.
         self._app_id: int = self._get_new_app_id(app_id)
 
         if node_name is None:
             node_name = self.network_info.get_node_name_for_app(app_name)
         self._node_name: str = node_name
 
+        # Update global _app_names dict. Only used for logging purposes.
         if node_name not in self._app_names:
             self._app_names[node_name] = {}
         self._app_names[node_name][self._app_id] = app_name
 
-        # All qubits active for this connection
-        self.active_qubits: List[Qubit] = []
-
+        # Try to obtain the Shared Memory instance corresponding to this connection.
+        # Depending on the runtime environment, this instance may not yet exist at
+        # this moment. If this is the case, the SharedMemory instance *should*
+        # become available later on.
         self._shared_memory: Optional[
             SharedMemory
         ] = SharedMemoryManager.get_shared_memory(self.node_name, key=self._app_id)
 
-        # Can be set to false for e.g. debugging, not exposed to user atm
+        # Whether to send additional closing messages to the quantum node controller
+        # at the end of an application. See the `close()` method.
+        # At the moment only used for debugging and not exposed to the user.
         self._clear_app_on_exit: bool = True
         self._stop_backend_on_exit: bool = True
 
@@ -132,11 +190,14 @@ class BaseNetQASMConnection(abc.ABC):
         self._line_tracker: LineTracker = LineTracker(log_config=log_config)
         self._track_lines: bool = log_config.track_lines
 
-        # Should subroutines commited be saved for logging/debugging
+        # Set directory for storing serialized subroutines.
         self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
-        # Commited subroutines saved for logging/debugging
+        # Subroutines that should be serialized and stored.
         self._commited_subroutines: List[Subroutine] = []
 
+        # Builder object of this connection.
+        # The Builder is used to gather application code and output an
+        # Intermediate Representation (IR), which is then compiled into subroutines.
         self._builder = Builder(
             connection=self,
             max_qubits=max_qubits,
@@ -145,9 +206,14 @@ class BaseNetQASMConnection(abc.ABC):
             return_arrays=return_arrays,
         )
 
-        # What compiler (if any) to be used
+        # What compiler (if any) to be used.
+        # Currently, the "_compiler" attribute is more of a transpiler, since it can
+        # only convert between NetQASM flavours.
+        # The actual conversion from Python DSL statements to IR to NetQASM is
+        # done by the Builder.
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
+        # Logger for stdout. (Not for log files.)
         self._logger: logging.Logger = get_netqasm_logger(
             f"{self.__class__.__name__}({self.app_name})"
         )
@@ -156,7 +222,6 @@ class BaseNetQASMConnection(abc.ABC):
             self._init_new_app(max_qubits=max_qubits)
 
         if _setup_epr_sockets:
-            # Setup epr sockets
             self._setup_epr_sockets(epr_sockets=epr_sockets)
 
     @property
@@ -268,7 +333,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._pop_app_id()
 
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
-        self._inactivate_qubits()
+        self._builder.inactivate_qubits()
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
@@ -289,11 +354,6 @@ class BaseNetQASMConnection(abc.ABC):
         """Commit a message to the backend/qnodeos"""
         # Should be subclassed
         pass
-
-    def _inactivate_qubits(self) -> None:
-        while len(self.active_qubits) > 0:
-            q = self.active_qubits.pop()
-            q.active = False
 
     def _signal_stop(self, clear_app: bool = True, stop_backend: bool = True) -> None:
         if clear_app:
@@ -320,6 +380,10 @@ class BaseNetQASMConnection(abc.ABC):
                 )
             self._shared_memory = mem
         return self._shared_memory
+
+    @property
+    def active_qubits(self) -> List[Qubit]:
+        return self._builder.active_qubits
 
     def _init_new_app(self, max_qubits: int) -> None:
         """Informs the backend of the new application and how many qubits it will maximally use"""

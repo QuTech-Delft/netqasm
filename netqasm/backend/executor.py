@@ -1,3 +1,10 @@
+#
+# NetQASM execution interface for simulators.
+#
+# This module provides the `Executor` class which can be used by simulators
+# as a base class for executing NetQASM instructions.
+#
+
 from __future__ import annotations
 
 import logging
@@ -8,7 +15,18 @@ from dataclasses import dataclass
 from enum import Enum
 from itertools import count
 from types import GeneratorType
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
@@ -20,7 +38,6 @@ from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr.base import NetQASMInstruction
 from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
 from netqasm.lang.parsing import parse_address
-from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import InstrLogger
 from netqasm.qlink_compat import (
@@ -35,14 +52,14 @@ from netqasm.qlink_compat import (
     response_from_qlink_1_0,
 )
 from netqasm.sdk import shared_memory
-from netqasm.sdk.shared_memory import (
-    Arrays,
-    SharedMemory,
-    SharedMemoryManager,
-    setup_registers,
-)
+from netqasm.sdk.shared_memory import Arrays, SharedMemory, SharedMemoryManager
 from netqasm.util.error import NotAllocatedError
 
+# Imports that are only needed for type checking
+if TYPE_CHECKING:
+    from netqasm.lang.subroutine import Subroutine
+
+# Type definitions
 T_UnitModule = List[Optional[int]]
 T_LinkLayerResponse = Union[
     LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR, LinkLayerErr
@@ -54,6 +71,8 @@ T_RequestKey = Tuple[int, int]
 
 @dataclass
 class EprCmdData:
+    """Container for info about EPR pending requests."""
+
     subroutine_id: int
     ent_info_array_address: int
     q_array_address: Optional[int]
@@ -63,6 +82,11 @@ class EprCmdData:
 
 
 def inc_program_counter(method):
+    """Decorator that automatically increases the current program counter.
+
+    Should be used on functions that interpret a single NetQASM instruction.
+    """
+
     def new_method(self, subroutine_id, instr):
         output = method(self, subroutine_id, instr)
         if isinstance(output, GeneratorType):
@@ -75,8 +99,23 @@ def inc_program_counter(method):
 
 
 class Executor:
+    """Base class for entities that execute NetQASM applications.
 
+    An Executor represents the component in a quantum node controller that handles
+    the registration and execution of NetQASM applications.
+    It can execute NetQASM subroutines by interpreting their instructions.
+
+    This base class provides handlers for classical NetQASM instructions.
+    These are methods with names `_instr_XXX`.
+    Methods that handle quantum instructions are a no-op and should be overridden
+    by subclasses.
+    Entanglement instructions are handled and forwarded to the network stack.
+    """
+
+    # Global dictionary holding instruction logger objects per Executor instance
     _INSTR_LOGGERS: Dict[str, Optional[InstrLogger]] = {}
+
+    # Class used for instruction loggers. May be different for subclasses of `Executor`.
     instr_logger_class = InstrLogger
 
     def __init__(
@@ -85,21 +124,10 @@ class Executor:
         instr_log_dir: Optional[str] = None,
         **kwargs,
     ) -> None:
-        """Executes a sequence of NetQASM instructions.
+        """Executor constructor.
 
-        The methods starting with `_instr_xxx` define what a given instruction should do and
-        returns the new program counter (+1 unless a branching instruction).
-        There are default implementations of these methods, however those involving qubits simply logs (DEBUG) what
-        is being executed without actually updating any qubit state. For this reason the measurement instruction
-        simply leaves the classical register unchanged.
-
-        The intention is that all these methods should be overriden to define what should actually happen
-        but the default implementations can be used testing and debugging.
-
-        Parameters
-        ----------
-        name : str or None
-            Give a name to the executor for logging purposes.
+        :param name: name of the executor for logging purposes, defaults to None
+        :param instr_log_dir: directory to log instructions to, defaults to None
         """
         self._name: str  # declare type
 
@@ -175,13 +203,26 @@ class Executor:
 
     @property
     def name(self) -> str:
+        """Get the name of this executor.
+
+        :return: name
+        """
         return self._name
 
     @property
     def node_id(self) -> int:
+        """Get the ID of the node this Executor runs on
+
+        :raises NotImplementedError: This should be overridden by a subclass
+        :return: ID of the node
+        """
         raise NotImplementedError
 
     def set_instr_logger(self, instr_log_dir: str) -> None:
+        """Let the executor use an instruction logger that logs to `instr_log_dir`
+
+        :param instr_log_dir: path to the log directory
+        """
         self._instr_logger = self.__class__.get_instr_logger(
             node_name=self._name,
             instr_log_dir=instr_log_dir,
@@ -213,6 +254,10 @@ class Executor:
 
     @property
     def network_stack(self) -> Optional[BaseNetworkStack]:
+        """Get the network stack (if any) connected to this Executor.
+
+        :return: the network stack
+        """
         return self._network_stack
 
     @network_stack.setter
@@ -224,21 +269,26 @@ class Executor:
         self._network_stack = network_stack
 
     def init_new_application(self, app_id: int, max_qubits: int) -> None:
-        """Sets up a unit module and a shared memory for a new application"""
+        """Register a new application.
+
+        :param app_id: App ID of the application.
+        :param max_qubits: Maximum number of qubits the application is allowed to
+            allocate at the same time.
+        """
         self.allocate_new_qubit_unit_module(app_id=app_id, num_qubits=max_qubits)
-        self.setup_registers(app_id=app_id)
-        self.setup_arrays(app_id=app_id)
-        self.new_shared_memory(app_id=app_id)
+        self._setup_registers(app_id=app_id)
+        self._setup_arrays(app_id=app_id)
+        self._new_shared_memory(app_id=app_id)
 
-    def setup_registers(self, app_id: int) -> None:
+    def _setup_registers(self, app_id: int) -> None:
         """Setup registers for application"""
-        self._registers[app_id] = setup_registers()
+        self._registers[app_id] = shared_memory.setup_registers()
 
-    def setup_arrays(self, app_id: int) -> None:
+    def _setup_arrays(self, app_id: int) -> None:
         """Setup memory for storing arrays for application"""
         self._app_arrays[app_id] = Arrays()
 
-    def new_shared_memory(self, app_id: int) -> None:
+    def _new_shared_memory(self, app_id: int) -> None:
         """Instantiate a new shared memory with an application"""
         self._shared_memories[app_id] = SharedMemoryManager.create_shared_memory(
             node_name=self._name, key=app_id
@@ -247,6 +297,15 @@ class Executor:
     def setup_epr_socket(
         self, epr_socket_id: int, remote_node_id: int, remote_epr_socket_id: int
     ) -> Generator[Any, None, None]:
+        """Instruct the Executor to open an EPR Socket.
+
+        The Executor forwards this instruction to the Network Stack.
+
+        :param epr_socket_id: ID of local EPR socket
+        :param remote_node_id: ID of remote node
+        :param remote_epr_socket_id: ID of remote EPR socket
+        :yield: [description]
+        """
         if self.network_stack is None:
             return
         output = self.network_stack.setup_epr_socket(
@@ -258,7 +317,11 @@ class Executor:
             yield from output
 
     def stop_application(self, app_id: int) -> Generator[Any, None, None]:
-        """Stops an application and clears all qubits and classical memories"""
+        """Stop an application and clear all qubits and classical memories.
+
+        :param app_id: ID of the application to stop
+        :yield: [description]
+        """
         yield from self._clear_qubits(app_id=app_id)
         self._clear_registers(app_id=app_id)
         self._clear_arrays(app_id=app_id)
@@ -283,13 +346,13 @@ class Executor:
     def _clear_shared_memory(self, app_id: int) -> None:
         self._shared_memories.pop(app_id)
 
-    def reset_program_counter(self, subroutine_id: int) -> None:
+    def _reset_program_counter(self, subroutine_id: int) -> None:
         """Resets the program counter for a given subroutine ID"""
         self._program_counters.pop(subroutine_id, 0)
 
-    def clear_subroutine(self, subroutine_id: int) -> None:
+    def _clear_subroutine(self, subroutine_id: int) -> None:
         """Clears a subroutine from the executor"""
-        self.reset_program_counter(subroutine_id=subroutine_id)
+        self._reset_program_counter(subroutine_id=subroutine_id)
         self._subroutines.pop(subroutine_id, 0)
 
     def _get_instruction_handlers(self) -> Dict[str, Callable]:
@@ -321,6 +384,10 @@ class Executor:
         return instruction_handlers
 
     def _get_epr_response_handlers(self) -> Dict[ReturnType, Callable]:
+        """Get callbacks for EPR generation responses from the Network Stack.
+
+        :return: dictionary of callbacks for each response type
+        """
         epr_response_handlers = {
             ReturnType.ERR: self._handle_epr_err_response,
             ReturnType.OK_K: self._handle_epr_ok_k_response,
@@ -330,19 +397,29 @@ class Executor:
 
         return epr_response_handlers
 
-    def _consume_execute_subroutine(self, subroutine: Subroutine) -> None:
-        """Consumes the generator returned by execute_subroutine"""
+    def consume_execute_subroutine(self, subroutine: Subroutine) -> None:
+        """Consume the generator returned by `execute_subroutine`.
+
+        :param subroutine: subroutine to execute
+        """
         list(self.execute_subroutine(subroutine=subroutine))
 
     def execute_subroutine(self, subroutine: Subroutine) -> Generator[Any, None, None]:
-        """Executes the a subroutine given to the executor"""
+        """Execute a NetQASM subroutine.
+
+        This is a generator to allow simulators to yield at certain points during execution,
+        e.g. to yield control to a asynchronous runtime.
+
+        :param subroutine: subroutine to execute
+        :yield: [description]
+        """
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
-        self.reset_program_counter(subroutine_id)
+        self._reset_program_counter(subroutine_id)
         output = self._execute_commands(subroutine_id, subroutine.commands)
         if isinstance(output, GeneratorType):
             yield from output
-        self.clear_subroutine(subroutine_id=subroutine_id)
+        self._clear_subroutine(subroutine_id=subroutine_id)
 
     def _get_new_subroutine_id(self) -> int:
         self._next_subroutine_id += 1
@@ -351,7 +428,13 @@ class Executor:
     def _execute_commands(
         self, subroutine_id: int, commands: List[NetQASMInstruction]
     ) -> Generator[Any, None, None]:
-        """Executes a given subroutine"""
+        """Execute a sequence of NetQASM instructions (commands) that are
+        in a subroutine.
+
+        :param subroutine_id: ID of the subroutine these instructions are in
+        :param commands: list of NetQASM instructions
+        :yield: [description]
+        """
         while self._program_counters[subroutine_id] < len(commands):
             prog_counter = self._program_counters[subroutine_id]
             command = commands[prog_counter]
@@ -374,7 +457,13 @@ class Executor:
     def _execute_command(
         self, subroutine_id: int, command: NetQASMInstruction
     ) -> Generator[Any, None, None]:
-        """Executes a single instruction"""
+        """Execute a single NetQASM instruction (command).
+
+        :raises TypeError: if `command` is not a NetQASMInstruction
+        :raises RuntimeError: if something went wrong while interpreting the
+        instruction
+        :yield: [description]
+        """
         if not isinstance(command, NetQASMInstruction):
             raise TypeError(f"Expected a NetQASMInstruction, not {type(command)}")
 
@@ -425,6 +514,7 @@ class Executor:
 
     @inc_program_counter
     def _instr_set(self, subroutine_id: int, instr: ins.core.SetInstruction) -> None:
+        """Handle a NetQASM 'set' instruction."""
         self._logger.debug(f"Set register {instr.reg} to {instr.imm}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         self._set_register(app_id, instr.reg, instr.imm.value)
@@ -432,6 +522,7 @@ class Executor:
     def _set_register(
         self, app_id: int, register: operand.Register, value: int
     ) -> None:
+        """Set the value of a register."""
         self._registers[app_id][register.name][register.index] = value
 
     def _get_register(self, app_id: int, register: operand.Register) -> Optional[int]:
@@ -441,6 +532,10 @@ class Executor:
     def _instr_qalloc(
         self, subroutine_id: int, instr: ins.core.QAllocInstruction
     ) -> int:
+        """Handle a NetQASM `qalloc` instruction.
+
+        :return: ID of physical qubit that got allocated
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         qubit_address = self._get_register(app_id, instr.reg)
         if qubit_address is None:
@@ -452,6 +547,10 @@ class Executor:
     def _instr_store(
         self, subroutine_id: int, instr: ins.core.StoreInstruction
     ) -> None:
+        """Handle a NetQASM `store` instruction.
+
+        Updates the relevant array entry.
+        """
         register = instr.reg
         array_entry = instr.entry
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -465,6 +564,10 @@ class Executor:
 
     @inc_program_counter
     def _instr_load(self, subroutine_id: int, instr: ins.core.LoadInstruction) -> None:
+        """Handle a NetQASM `load` instruction.
+
+        Loads the relevant array entry into a register.
+        """
         register = instr.reg
         array_entry = instr.entry
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -478,6 +581,7 @@ class Executor:
 
     @inc_program_counter
     def _instr_lea(self, subroutine_id: int, instr: ins.core.LeaInstruction) -> None:
+        """Handle a NetQASM `lea` instruction."""
         register = instr.reg
         address = instr.address
         self._logger.debug(f"Storing address of {address} to register {register}")
@@ -488,6 +592,10 @@ class Executor:
     def _instr_undef(
         self, subroutine_id: int, instr: ins.core.UndefInstruction
     ) -> None:
+        """Handle a NetQASM `undef` instruction.
+
+        Sets the relevant array entry to `None`.
+        """
         array_entry = instr.entry
         self._logger.debug(f"Unset array entry {array_entry}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
@@ -497,6 +605,10 @@ class Executor:
     def _instr_array(
         self, subroutine_id: int, instr: ins.core.ArrayInstruction
     ) -> None:
+        """Handle a NetQASM `array` instruction.
+
+        Instantiates a new array with the relevant length.
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         length = self._get_register(app_id, instr.size)
         assert length is not None
@@ -519,6 +631,11 @@ class Executor:
             ins.core.JmpInstruction,
         ],
     ) -> None:
+        """Handle a NetQASM branching instruction.
+
+        The program counter is updated to the target label (in case of a jump)
+        or to the next instruction (no jump).
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         a, b = None, None
         registers = []
@@ -560,6 +677,7 @@ class Executor:
             ins.core.ClassicalOpModInstruction,
         ],
     ) -> None:
+        """Handle a NetQASM branching instruction with a binary condition."""
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         mod = None
         if isinstance(instr, ins.core.ClassicalOpModInstruction):
@@ -581,6 +699,7 @@ class Executor:
     def _compute_binary_classical_instr(
         self, instr: NetQASMInstruction, a: int, b: int, mod: Optional[int] = 1
     ):
+        """Evaluate the binary condition of a NetQASM branching instruction."""
         if isinstance(instr, ins.core.AddInstruction):
             return a + b
         elif isinstance(instr, ins.core.AddmInstruction):
@@ -598,6 +717,13 @@ class Executor:
     def _handle_single_qubit_instr(
         self, subroutine_id: int, instr: ins.core.SingleQubitInstruction
     ) -> Generator[Any, None, None]:
+        """Handle a single-qubit NetQASM instruction.
+
+        Gets the virtual ID of the qubit and then calls `_do_single_qubit_instr`.
+
+        This is a generator so that implementations of `_do_single_qubit_instr` can
+        be generators themselves.
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.reg)
         assert q_address is not None
@@ -609,13 +735,29 @@ class Executor:
     def _do_single_qubit_instr(
         self, instr: ins.core.SingleQubitInstruction, subroutine_id: int, address: int
     ) -> Optional[Generator[Any, None, None]]:
-        """Performs a single qubit gate"""
+        """Perform a single qubit gate on qubit with virtual ID `address`.
+
+        This is a generator to allow simulators to yield at certain points during
+        execution, e.g. to yield control to an asynchronous runtime.
+
+        :param instr: NetQASM instruction to execute
+        :param subroutine_id: ID of subroutine currently being executed
+        :param address: virtual ID of qubit to act on
+        :return: [description]
+        """
         return None
 
     @inc_program_counter
     def _handle_single_qubit_rotation(
         self, subroutine_id: int, instr: ins.core.RotationInstruction
     ) -> Generator[Any, None, None]:
+        """Handle a single-qubit NetQASM rotation instruction.
+
+        Gets the virtual ID of the qubit and then calls `_do_single_qubit_rotation`.
+
+        This is a generator so that implementations of `_do_single_qubit_rotation` can
+        be generators themselves.
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.reg)
         assert q_address is not None
@@ -666,7 +808,17 @@ class Executor:
         address: int,
         angle: float,
     ) -> Optional[Generator[Any, None, None]]:
-        """Performs a single qubit rotation with the angle `n * pi / m`"""
+        """Perform a single-qubit rotation.
+
+        This is a generator to allow simulators to yield at certain points during
+        execution, e.g. to yield control to an asynchronous runtime.
+
+        :param instr: NetQASM instruction to execute
+        :param subroutine_id: ID of subroutine currently being executed
+        :param address: virtual ID of qubit to act on
+        :param angle: angle to rotate about
+        :return: [description]
+        """
         return None
 
     def _do_controlled_qubit_rotation(
@@ -677,13 +829,31 @@ class Executor:
         address2: int,
         angle: float,
     ) -> Optional[Generator[Any, None, None]]:
-        """Performs a controlled qubit rotation with the angle `n * pi / m`"""
+        """Perform a single-qubit controlled rotation.
+
+        This is a generator to allow simulators to yield at certain points during
+        execution, e.g. to yield control to an asynchronous runtime.
+
+        :param instr: NetQASM instruction to execute
+        :param subroutine_id: ID of subroutine currently being executed
+        :param address1: virtual ID of control qubit
+        :param address2: virtual ID of target qubit
+        :param angle: angle to rotate about
+        :return: [description]
+        """
         return None
 
     @inc_program_counter
     def _handle_two_qubit_instr(
         self, subroutine_id: int, instr: ins.core.TwoQubitInstruction
     ) -> Generator[Any, None, None]:
+        """Handle a two-qubit NetQASM instruction.
+
+        Gets the virtual ID of the qubits and then calls `_do_two_qubit_instr`.
+
+        This is a generator so that implementations of `_do_two_qubit_instr` can
+        be generators themselves.
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address1 = self._get_register(app_id=app_id, register=instr.reg0)
         q_address2 = self._get_register(app_id=app_id, register=instr.reg1)
@@ -703,13 +873,32 @@ class Executor:
         address1: int,
         address2: int,
     ) -> Optional[Generator[Any, None, None]]:
-        """Performs a two qubit gate"""
+        """Perform a two-qubit gate.
+
+        This is a generator to allow simulators to yield at certain points during
+        execution, e.g. to yield control to an asynchronous runtime.
+
+        :param instr: NetQASM instruction to execute
+        :param subroutine_id: ID of subroutine currently being executed
+        :param address1: virtual ID of first qubit
+        :param address2: virtual ID of second qubit
+        :return: [description]
+        """
         return None
 
     @inc_program_counter
     def _instr_meas(
         self, subroutine_id: int, instr: ins.core.MeasInstruction
     ) -> Generator[Any, None, None]:
+        """Handle a `meas` NetQASM instruction.
+
+        Gets the virtual ID of the qubit and then calls `_do_meas`.
+
+        This is a generator so that implementations of `do_meas` can
+        be generators themselves.
+
+        :return: measurement outcome (0 or 1)
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         q_address = self._get_register(app_id=app_id, register=instr.qreg)
         assert q_address is not None
@@ -729,14 +918,29 @@ class Executor:
     def _do_meas(
         self, subroutine_id: int, q_address: int
     ) -> Union[int, Generator[int, None, None]]:
-        """Performs a measurement on a single qubit"""
-        # Always give outcome zero in the default debug class
+        """Perform a single-qubit measurement.
+
+        This is a generator to allow simulators to yield at certain points during
+        execution, e.g. to yield control to an asynchronous runtime.
+
+        :param instr: NetQASM instruction to execute
+        :param subroutine_id: ID of subroutine currently being executed
+        :param address: virtual ID of qubit to act on
+        :return: [description]
+        """
         return 0
 
     @inc_program_counter
     def _instr_create_epr(
         self, subroutine_id: int, instr: ins.core.CreateEPRInstruction
     ) -> Generator[Any, None, None]:
+        """Handle a `create_epr` NetQASM instruction.
+
+        Gathers the relevant values from registers and then calls `_do_create_epr`.
+
+        This is a generator so that implementations of `_do_create_epr` can
+        be generators themselves.
+        """
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         remote_node_id = self._get_register(
             app_id=app_id, register=instr.remote_node_id
@@ -780,6 +984,19 @@ class Executor:
         arg_array_address: int,
         ent_info_array_address: int,
     ) -> Optional[Generator[Any, None, None]]:
+        """Send a request to the Network Stack to create EPR pairs.
+
+        This is a generator so that implementations of `_do_single_qubit_rotation` can
+        be generators themselves.
+
+        :param remote_node_id: ID of remote node
+        :param epr_socket_id: ID of local EPR socket
+        :param q_array_address: address of array containing virtual qubits IDs.
+        These IDs are mapped to local halves of the generated pairs.
+        :param arg_array_address: address of array containing request information
+        :param ent_info_array_address: address of array that will hold generation
+        information after EPR generation has completed
+        """
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
         create_request = self._get_create_request(
@@ -1178,6 +1395,15 @@ class Executor:
         virtual_address: int,
         physical_address: Optional[int] = None,
     ) -> int:
+        """[summary]
+
+        :param subroutine_id: [description]
+        :param virtual_address: [description]
+        :param physical_address: [description], defaults to None
+        :raises ValueError: [description]
+        :raises RuntimeError: [description]
+        :return: physical qubit ID
+        """
         unit_module = self._get_unit_module(subroutine_id)
         if virtual_address >= len(unit_module):
             app_id = self._subroutines[subroutine_id].app_id
