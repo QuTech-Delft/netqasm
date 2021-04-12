@@ -94,6 +94,7 @@ class Builder:
     def __init__(
         self,
         connection,  # TODO: remove?,
+        app_id: int,
         max_qubits: int = 5,
         log_config: LogConfig = None,
         epr_sockets: Optional[List[EPRSocket]] = None,
@@ -101,6 +102,7 @@ class Builder:
         return_arrays: bool = True,
     ):
         self._connection = connection
+        self._app_id = app_id
 
         # All qubits active for this connection
         self.active_qubits: List[Qubit] = []
@@ -143,10 +145,8 @@ class Builder:
         self._line_tracker: LineTracker = LineTracker(log_config=log_config)
         self._track_lines: bool = log_config.track_lines
 
-        # Should subroutines commited be saved for logging/debugging
-        self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
-        self._commited_subroutines: List[Subroutine] = []
+        self._committed_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
@@ -295,7 +295,7 @@ class Builder:
     def _get_metadata(self) -> Dict:
         return {
             "netqasm_version": NETQASM_VERSION,
-            "app_id": 0,  # TODO
+            "app_id": self._app_id,
         }
 
     def _pop_pending_commands(self) -> List[T_Cmd]:
@@ -316,7 +316,11 @@ class Builder:
         return subroutine
 
     def _log_subroutine(self, subroutine: Subroutine) -> None:
-        self._commited_subroutines.append(subroutine)
+        self._committed_subroutines.append(subroutine)
+
+    @property
+    def committed_subroutines(self) -> List[Subroutine]:
+        return self._committed_subroutines
 
     def add_single_qubit_rotation_commands(
         self,
