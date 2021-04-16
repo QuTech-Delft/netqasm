@@ -1,4 +1,8 @@
-"""TODO write about qubits"""
+"""Qubit representation.
+
+This module contains the `Qubit` class, which are used by application scripts
+as handles to in-memory qubits.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
@@ -16,6 +20,26 @@ class QubitNotActiveError(MemoryError):
 
 
 class Qubit:
+    """Representation of a qubit that has been allocated in the quantum node.
+
+    A `Qubit` instance represents a quantum state that is stored in a physical qubit
+    somewhere in the quantum node.
+    The particular qubit is identified by its virtual qubit ID.
+    To which physical qubit ID this is mapped (at a given time), is handled completely
+    by the quantum node controller and is not known to the `Qubit` itself.
+
+    A `Qubit` object can be instantiated in an application script.
+    Such an instantiation is automatically compiled into NetQASM instructions that
+    allocate and initialize a new qubit in the quantum node controller.
+
+    A `Qubit` object may also be obtained by SDK functions that return them, like
+    the `create()` method on an `EPRSocket`, which returns the object as a handle to
+    the qubit that is now entangled with one in another node.
+
+    Qubit operations like applying gates and measuring them are done by calling
+    methods on a `Qubit` instance.
+    """
+
     def __init__(
         self,
         conn: BaseNetQASMConnection,
@@ -23,6 +47,17 @@ class Qubit:
         ent_info: Optional[LinkLayerOKTypeK] = None,
         virtual_address: Optional[int] = None,
     ):
+        """Qubit constructor. This is the standard way to allocate a new qubit in
+        an application.
+
+        :param conn: connection of the application in which to allocate the qubit
+        :param add_new_command: whether to automatically add NetQASM instructions to
+            the current subroutine to allocate and initialize the qubit
+        :param ent_info: entanglement generation information in case this qubit is
+            the result of an entanglement generation request
+        :param virtual_address: explicit virtual ID to use for this qubit. If None,
+            a free ID is automatically chosen.
+        """
         self._conn: BaseNetQASMConnection = conn
         if virtual_address is None:
             self._qubit_id: int = self._conn._builder.new_qubit_id()
@@ -124,16 +159,16 @@ class Qubit:
         inplace: bool = False,
         store_array: bool = True,
     ) -> Union[Future, RegFuture]:
-        """
-        Measures the qubit in the standard basis and returns the measurement outcome.
+        """Measure the qubit in the standard basis and get the measurement outcome.
 
-        Parameters
-        ----------
-        future : :class:`~.sdk.futures.Future`
-            The future to place the outcome in
-        inplace : bool
-            If inplace=False, the measurement is destructive and the qubit is removed from memory.
-            If inplace=True, the qubit is left in the post-measurement state.
+        :param future: the `Future` to place the outcome in. If None, a Future is
+            created automatically.
+        :param inplace: If False, the measurement is destructive and the qubit is
+            removed from memory. If True, the qubit is left in the post-measurement
+            state.
+        :param store_array: whether to store the outcome in an array. If not, it is
+            placed in a register. Only used if `future` is None.
+        :return: the Future representing the measurement outcome
         """
         self.assert_active()
 
