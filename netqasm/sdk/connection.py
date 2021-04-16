@@ -1,9 +1,9 @@
-#
-# Interface to quantum node controllers.
-#
-# This module provides the `BaseNetQASMConnection` class which represents
-# the connection with a quantum node controller.
-#
+"""
+Interface to quantum node controllers.
+
+This module provides the `BaseNetQASMConnection` class which represents
+the connection with a quantum node controller.
+"""
 
 from __future__ import annotations
 
@@ -35,15 +35,14 @@ from netqasm.backend.messages import (
     SubroutineMessage,
 )
 from netqasm.lang import operand
-from netqasm.lang.ir import BranchLabel, ICmd, PreSubroutine
+from netqasm.lang.ir import PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.qlink_compat import LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
-from netqasm.sdk.futures import Array, Future, RegFuture
+from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.network import NetworkInfo
 from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
@@ -53,9 +52,6 @@ from .builder import Builder
 # Note that `SubroutineMessage` does not derive from `Message` so it has to be
 # mentioned explicitly.
 T_Message = Union[Message, SubroutineMessage]
-
-# Generic type for classical values (that may only get a value at runtime).
-T_CValue = Union[int, Future, RegFuture]
 
 # Callback function type for conditional statements.
 T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
@@ -496,7 +492,7 @@ class BaseNetQASMConnection(abc.ABC):
     ) -> None:
         """Send a subroutine to the quantum node controller.
 
-        Takes a `PreSubroutine`, i.e. an intermediate represenation of the subroutine
+        Takes a `PreSubroutine`, i.e. an intermediate representation of the subroutine
         that comes from the Builder.
         The PreSubroutine is compiled into a `Subroutine` instance.
         """
@@ -553,7 +549,7 @@ class BaseNetQASMConnection(abc.ABC):
         by default. Each iteration the index is increased by `step` (default 1).
         Looping stops when the index reaches `stop`.
 
-        Code inside the callback function *must* be compilable to NetQASM, that is,
+        Code inside the context *must* be compilable to NetQASM, that is,
         it should only contain quantum operations and/or classical values that are
         are stored in shared memory (arrays and registers).
         No classical communication is allowed.

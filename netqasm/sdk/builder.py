@@ -53,16 +53,15 @@ from netqasm.qlink_compat import (
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
-from netqasm.sdk.futures import Array, Future, RegFuture
+from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.qubit import Qubit, _FutureQubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
 
-T_Cmd = Union[ICmd, BranchLabel]
 T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
 ]
-T_CValue = Union[int, Future, RegFuture]
 T_PostRoutine = Callable[
     ["Builder", Union[_FutureQubit, List[Future]], operand.Register], None
 ]
