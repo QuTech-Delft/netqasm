@@ -1,4 +1,6 @@
-"""TODO write about futures"""
+"""Abstractions for classical runtime values."""
+
+
 from __future__ import annotations
 
 import abc
