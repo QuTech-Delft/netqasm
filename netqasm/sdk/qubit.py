@@ -126,12 +126,14 @@ class Qubit:
 
     @property
     def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
-        """Get the entanglement info"""
+        """Get information about the successful link layer request that resulted in
+        this qubit."""
         return self._ent_info
 
     @property
     def remote_entangled_node(self) -> Optional[str]:
         """Get the name of the remote node the qubit is entangled with.
+
         If not entanled, `None` is returned.
         """
         if self._remote_ent_node is not None:
@@ -147,9 +149,7 @@ class Qubit:
         return remote_node_name
 
     def assert_active(self) -> None:
-        """
-        Checks if the qubit is active
-        """
+        """Assert that the qubit is active, i.e. allocated."""
         if not self.active:
             raise QubitNotActiveError(f"Qubit {self.qubit_id} is not active")
 
@@ -168,7 +168,9 @@ class Qubit:
             state.
         :param store_array: whether to store the outcome in an array. If not, it is
             placed in a register. Only used if `future` is None.
-        :return: the Future representing the measurement outcome
+        :return: the Future representing the measurement outcome. It is a `Future` if
+        the result is in an array (default) or `RegFuture` if the result is in a
+        register.
         """
         self.assert_active()
 
@@ -191,56 +193,51 @@ class Qubit:
         return future
 
     def X(self) -> None:
-        """
-        Performs a X on the qubit.
-        """
+        """Apply an X gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.X, qubit_id=self.qubit_id
         )
 
     def Y(self) -> None:
-        """
-        Performs a Y on the qubit.
-        """
+        """Apply a Y gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Y, qubit_id=self.qubit_id
         )
 
     def Z(self) -> None:
-        """
-        Performs a Z on the qubit.
-        """
+        """Apply a Z gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Z, qubit_id=self.qubit_id
         )
 
     def T(self) -> None:
-        """
-        Performs a T gate on the qubit.
+        """Apply a T gate on the qubit.
+
+        A T gate is a Z-rotation with angle pi/4.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.T, qubit_id=self.qubit_id
         )
 
     def H(self) -> None:
-        """
-        Performs a Hadamard on the qubit.
-        """
+        """Apply a Hadamard gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.H, qubit_id=self.qubit_id
         )
 
     def K(self) -> None:
-        """
-        Performs a K gate on the qubit.
+        """Apply a K gate on the qubit.
+
+        A K gate moves the |0> state to +|i> (positive Y) and vice versa.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.K, qubit_id=self.qubit_id
         )
 
     def S(self) -> None:
-        """
-        Performs a S gate on the qubit.
+        """Apply an S gate on the qubit.
+
+        An S gate is a Z-rotation with angle pi/2.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.S, qubit_id=self.qubit_id
