@@ -244,8 +244,17 @@ class Qubit:
         )
 
     def rot_X(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the X-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_X,
@@ -256,8 +265,17 @@ class Qubit:
         )
 
     def rot_Y(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the Y-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Y,
@@ -268,8 +286,17 @@ class Qubit:
         )
 
     def rot_Z(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the Z-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Z,
@@ -280,14 +307,9 @@ class Qubit:
         )
 
     def cnot(self, target: Qubit) -> None:
-        """
-        Applies a cnot onto target.
-        Target should be a qubit-object with the same connection.
+        """Apply a CNOT gate between this qubit (control) and a target qubit.
 
-        Parameters
-        ----------
-        target : :class:`~.Qubit`
-            The target qubit
+        :param target: target qubit. Should have the same connection as this qubit.
         """
         self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CNOT,
@@ -296,14 +318,9 @@ class Qubit:
         )
 
     def cphase(self, target: Qubit) -> None:
-        """
-        Applies a cphase onto target.
-        Target should be a qubit-object with the same connection.
+        """Apply a CPHASE (CZ) gate between this qubit (control) and a target qubit.
 
-        Parameters
-        ----------
-        target : :class:`~.Qubit`
-            The target qubit
+        :param target: target qubit. Should have the same connection as this qubit.
         """
         self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CPHASE,
@@ -312,21 +329,35 @@ class Qubit:
         )
 
     def reset(self) -> None:
-        r"""
-        Resets the qubit to the state \|0>
-        """
+        r"""Reset the qubit to the state \|0>."""
         self._conn._builder.add_init_qubit_commands(qubit_id=self.qubit_id)
 
     def free(self) -> None:
         """
-        Unallocates the qubit.
+        Free the qubit and its virtual ID.
+
+        After freeing, the underlying physical qubit can be used to store another state.
         """
         self._conn._builder.add_qfree_commands(qubit_id=self.qubit_id)
 
 
-class _FutureQubit(Qubit):
+class FutureQubit(Qubit):
+    """A Qubit that will be available in the future.
+
+    This class is very similar to the `Future` class which is used for classical
+    values.
+    A `FutureQubit` acts like a `Qubit` so that all qubit operations can be applied on
+    it. FutureQubits are typically the result of EPR creating requests, where they
+    represent the qubits that will be available when EPR generation has finished.
+    """
+
     def __init__(self, conn: BaseNetQASMConnection, future_id: Future):
-        """Used by NetQASMConnection to handle operations on a future qubit (e.g. post createEPR)"""
+        """FutureQubit constructor. Typically not used directly.
+
+        :param conn: connection through which subroutines are sent that contain this
+            qubit
+        :param future_id: the virtual ID this qubit will have
+        """
         self._conn: BaseNetQASMConnection = conn
 
         self.qubit_id: Future = future_id

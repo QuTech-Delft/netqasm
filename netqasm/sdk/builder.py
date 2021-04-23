@@ -1,5 +1,3 @@
-"""TODO write about connections"""
-
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -54,7 +52,7 @@ from netqasm.qlink_compat import (
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
-from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.qubit import FutureQubit, Qubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
@@ -63,7 +61,7 @@ T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
 ]
 T_PostRoutine = Callable[
-    ["Builder", Union[_FutureQubit, List[Future]], operand.Register], None
+    ["Builder", Union[FutureQubit, List[Future]], operand.Register], None
 ]
 T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
 T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
@@ -641,7 +639,7 @@ class Builder:
             )
             if tp == EPRType.K:
                 q_id = qubit_ids.get_future_index(pair)
-                q = _FutureQubit(conn=conn, future_id=q_id)
+                q = FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
             elif tp == EPRType.M:
                 slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
@@ -777,7 +775,7 @@ class Builder:
         List[T_Cmd],
         operand.Register,
         Array,
-        Union[List[Qubit], T_LinkLayerOkList, _FutureQubit],
+        Union[List[Qubit], T_LinkLayerOkList, FutureQubit],
         operand.Register,
     ]:
         # NOTE since this is in a context there will be a post_routine
@@ -791,7 +789,7 @@ class Builder:
             tp=tp,
         )
         result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
-        output: Union[List[Qubit], T_LinkLayerOkList, _FutureQubit] = result_futures
+        output: Union[List[Qubit], T_LinkLayerOkList, FutureQubit] = result_futures
         if tp == EPRType.K:
             virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
         else:
@@ -815,7 +813,7 @@ class Builder:
         pair = loop_register
         if tp == EPRType.K:
             q_id = qubit_ids_array.get_future_index(pair)
-            q = _FutureQubit(conn=self._connection, future_id=q_id)
+            q = FutureQubit(conn=self._connection, future_id=q_id)
             output = q
         # elif tp == EPRType.M:
         #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
