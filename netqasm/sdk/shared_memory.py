@@ -1,3 +1,7 @@
+"""Abstractions for the classical memory shared between the Host and
+the quantum node controller.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -19,10 +23,12 @@ def _assert_within_width(value: int, width: int) -> None:
     min_value = -(2 ** (width - 1))
     max_value = 2 ** (width - 1) - 1
     if not min_value <= value <= max_value:
-        raise OverflowError("value {value} does not fit into {width} bits")
+        raise OverflowError(f"value {value} does not fit into {width} bits")
 
 
-class Register:
+class RegisterGroup:
+    """A register group (like "R", or "Q") in shared memory."""
+
     def __init__(self):
         self._size: int = 2 ** REG_INDEX_BITS
         self._register: Dict[int, Optional[int]] = {}
@@ -54,8 +60,8 @@ class Register:
         ]
 
 
-def setup_registers() -> Dict[RegisterName, Register]:
-    return {reg_name: Register() for reg_name in RegisterName}
+def setup_registers() -> Dict[RegisterName, RegisterGroup]:
+    return {reg_name: RegisterGroup() for reg_name in RegisterName}
 
 
 class Arrays:
@@ -172,8 +178,34 @@ class Arrays:
 
 
 class SharedMemory:
+    """Representation of the classical memory that is shared between the Host
+    and the quantum node controller.
+
+    Each application is associated with a single `SharedMemory`.
+    Although the name contains "shared", it is typically only used in one "direction":
+    the quantum node controller writes to it, and the Host reads from it.
+
+    Shared memory consists of two types of memory: registers and arrays.
+    The quantum node controller writes to the shared memory if it executes a "return"
+    NetQASM instruction (`ret_reg` or `ret_arr`). This is typically done at the end
+    of a subroutine. The Host can then read the values from the shared memory, which
+    means that the Host effectively receives the returned values.
+
+    When trying to use a value represented by a `Future`, it will try to get the value
+    from the shared memory. So, *only* after the quantum node controller has executed
+    a subroutine containing the relevant `ret_reg` or `ret_arr` NetQASM instruction,
+    the shared memory is updated and the value from the Future can be used.
+
+    The specific runtime context determines how a shared memory is implemented and
+    by which component it is controlled. In the case of a physical setup, where the
+    Host and the quantum node controller may be separate devices, "writing to the
+    shared memory" may simply be "sending values from the quantum node controller to
+    the Host". On the other hand, a simulator that runs the Host and the quantum node
+    controller in the same process might e.g. use a global shared object.
+    """
+
     def __init__(self):
-        self._registers: Dict[RegisterName, Register] = setup_registers()
+        self._registers: Dict[RegisterName, RegisterGroup] = setup_registers()
         self._arrays: Arrays = Arrays()
 
     def __getitem__(
@@ -247,6 +279,14 @@ class SharedMemory:
 
 
 class SharedMemoryManager:
+    """Global object that manages shared memories. Typically used by simulators.
+
+    This class can be used as a global object that stores `SharedMemory` objects.
+    Simulators that simulate Hosts and the quantum node controllers in the same
+    process may use this to have a single location for creating and accessing shared
+    memories.
+    """
+
     _MEMORIES: Dict[Tuple[str, Optional[int]], Optional[SharedMemory]] = {}
 
     @classmethod

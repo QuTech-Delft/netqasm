@@ -141,7 +141,7 @@ class Executor:
         ] = self._get_instruction_handlers()
 
         # Registers for different apps
-        self._registers: Dict[int, Dict[RegisterName, shared_memory.Register]] = {}
+        self._registers: Dict[int, Dict[RegisterName, shared_memory.RegisterGroup]] = {}
 
         # Arrays stored in memory for different apps
         self._app_arrays: Dict[int, Arrays] = {}
