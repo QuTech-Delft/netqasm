@@ -6,7 +6,7 @@ from netqasm.sdk.external import NetQASMConnection, simulate_application
 
 logger = get_netqasm_logger()
 
-num = 5
+num = 1
 
 
 def run_alice():
