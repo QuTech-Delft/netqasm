@@ -29,7 +29,7 @@ def run_bob():
     return outcomes
 
 
-def disable_test_create_epr_m():
+def test_create_epr_m():
     app_instance = default_app_instance(
         [
             ("alice", run_alice),
