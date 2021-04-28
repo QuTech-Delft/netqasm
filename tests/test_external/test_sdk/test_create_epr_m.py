@@ -6,7 +6,7 @@ from netqasm.sdk.external import NetQASMConnection, simulate_application
 
 logger = get_netqasm_logger()
 
-num = 1
+num = 10
 
 
 def run_alice():
@@ -29,7 +29,7 @@ def run_bob():
     return outcomes
 
 
-def disabled_test_create_epr_m():
+def disable_test_create_epr_m():
     app_instance = default_app_instance(
         [
             ("alice", run_alice),

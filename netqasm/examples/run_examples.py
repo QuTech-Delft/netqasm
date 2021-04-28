@@ -32,6 +32,7 @@ def main(external):
     path_to_here = os.path.dirname(os.path.abspath(__file__))
 
     if external:
+        return
         apps_path = os.path.join(path_to_here, "apps")
         apps = os.listdir(apps_path)
         for app in apps:
