@@ -1,10 +1,11 @@
 import random
+
 import numpy as np
 
+from netqasm.examples.lib.bqc import recv_meas_outcome, send_meas_cmd, teleport_state
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket
-from netqasm.examples.lib.bqc import teleport_state, send_meas_cmd, recv_meas_outcome
 
 logger = get_netqasm_logger()
 
@@ -56,8 +57,8 @@ def main(app_config=None, num_iter=3, theta=None, phi=None, r=None):
         # and secret key bits r[j] are required to be compensated for.
         # The actual angle we send to the Server is then called delta[i].
         for i in range(num_iter):
-            delta[i] = pow(-1, s[i-1] ^ r[i-1]) * phi[i]
-            delta[i] += (s[i-2] ^ r[i-2]) * np.pi
+            delta[i] = pow(-1, s[i - 1] ^ r[i - 1]) * phi[i]
+            delta[i] += (s[i - 2] ^ r[i - 2]) * np.pi
             delta[i] += r[i] * np.pi
             # we have q[i] = Rz(m[i]*pi + theta[i]), compensate for this:
             delta[i] -= theta[i]

@@ -1,9 +1,8 @@
-from dataclasses import dataclass
-from typing import Dict, List, Type, Optional
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Type
 
-from netqasm.lang.instr import vanilla, core, nv
-from netqasm.lang.instr.base import NetQASMInstruction
+from . import NetQASMInstruction, core, nv, vanilla
 
 
 @dataclass
@@ -40,7 +39,7 @@ CORE_INSTRUCTIONS: List[Type[NetQASMInstruction]] = [
     core.WaitSingleInstruction,
     core.QFreeInstruction,
     core.RetRegInstruction,
-    core.RetArrInstruction
+    core.RetArrInstruction,
 ]
 
 
@@ -76,7 +75,6 @@ class Flavour(ABC):
 
 
 class VanillaFlavour(Flavour):
-
     @property
     def instrs(self):
         return [
@@ -100,7 +98,6 @@ class VanillaFlavour(Flavour):
 
 
 class NVFlavour(Flavour):
-
     @property
     def instrs(self):
         return [

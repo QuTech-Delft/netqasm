@@ -1,9 +1,9 @@
 import ctypes
+from typing import Optional
 
 from netqasm.lang import encoding
+from netqasm.lang.instr import Flavour, NetQASMInstruction, VanillaFlavour
 from netqasm.lang.subroutine import Subroutine
-from netqasm.lang.instr.flavour import Flavour, VanillaFlavour
-from netqasm.lang.instr.base import NetQASMInstruction
 
 INSTR_ID = ctypes.c_uint8
 
@@ -14,7 +14,7 @@ class Deserializer:
     :class:`~.NetQASMInstructions` are immediately created from the binary encoding.
 
     (This is in contrast with the parsing.text module, which first converts the input
-    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.Command` s, before transforming it into
+    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.ICmd` s, before transforming it into
     a :class:`~.Subroutine` containing :class:`~.NetQASMInstruction` s.)
     """
 
@@ -22,9 +22,9 @@ class Deserializer:
         self.flavour = flavour
 
     def _parse_metadata(self, raw):
-        metadata = raw[:encoding.METADATA_BYTES]
+        metadata = raw[: encoding.METADATA_BYTES]
         metadata = encoding.Metadata.from_buffer_copy(metadata)
-        data = raw[encoding.METADATA_BYTES:]
+        data = raw[encoding.METADATA_BYTES :]
         return metadata, data
 
     def deserialize_subroutine(self, raw: bytes) -> Subroutine:
@@ -34,7 +34,9 @@ class Deserializer:
         num_commands = int(len(raw) / encoding.COMMAND_BYTES)
 
         commands = [
-            self.deserialize_command(raw[i * encoding.COMMAND_BYTES:(i + 1) * encoding.COMMAND_BYTES])
+            self.deserialize_command(
+                raw[i * encoding.COMMAND_BYTES : (i + 1) * encoding.COMMAND_BYTES]
+            )
             for i in range(num_commands)
         ]
 
@@ -54,7 +56,7 @@ class Deserializer:
         return instr
 
 
-def deserialize(data: bytes, flavour=None) -> Subroutine:
+def deserialize(data: bytes, flavour: Optional[Flavour] = None) -> Subroutine:
     """
     Convert a binary encoding into a Subroutine object.
     The Vanilla flavour is used by default.

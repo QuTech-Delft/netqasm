@@ -1,4 +1,4 @@
-from netqasm.sdk.epr_socket import EPRType, EPRSocket
+from netqasm.sdk.epr_socket import EPRSocket, EPRType
 from netqasm.sdk.external import NetQASMConnection
 
 

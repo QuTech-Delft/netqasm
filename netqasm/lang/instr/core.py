@@ -1,13 +1,15 @@
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List
-from abc import abstractmethod
+
 import numpy as np
 
-from netqasm.lang.instr.operand import Register, Immediate
-from netqasm.lang.instr import base
+from netqasm.lang.operand import Immediate, Register
 
+from . import base
 
 # Explicit core NetQASM instructions.
+
 
 @dataclass  # type: ignore
 class SingleQubitInstruction(base.RegInstruction):
@@ -20,7 +22,7 @@ class SingleQubitInstruction(base.RegInstruction):
         self.reg = new_val
 
     @abstractmethod
-    def to_matrix(self) -> np.array:
+    def to_matrix(self) -> np.ndarray:
         pass
 
 
@@ -290,6 +292,7 @@ class BranchUnaryInstruction(base.RegImmInstruction):
     Represents an instruction to branch to a certain line, depending on a
     unary expression.
     """
+
     @property
     def line(self):
         return self.imm
@@ -300,7 +303,9 @@ class BranchUnaryInstruction(base.RegImmInstruction):
 
     @abstractmethod
     def check_condition(self, a) -> bool:
-        raise RuntimeError("check_condition called on the base BranchUnaryInstruction class")
+        raise RuntimeError(
+            "check_condition called on the base BranchUnaryInstruction class"
+        )
 
 
 @dataclass
@@ -327,6 +332,7 @@ class BranchBinaryInstruction(base.RegRegImmInstruction):
     Represents an instruction to branch to a certain line, depending on a
     binary expression.
     """
+
     @property
     def line(self):
         return self.imm
@@ -337,7 +343,9 @@ class BranchBinaryInstruction(base.RegRegImmInstruction):
 
     @abstractmethod
     def check_condition(self, a, b) -> bool:
-        raise RuntimeError("check_condition called on the base BranchBinaryInstruction class")
+        raise RuntimeError(
+            "check_condition called on the base BranchBinaryInstruction class"
+        )
 
 
 @dataclass

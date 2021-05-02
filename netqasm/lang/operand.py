@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 
 from netqasm.lang import encoding
 from netqasm.lang.encoding import RegisterName
@@ -69,7 +70,7 @@ class Address(Operand):
 @dataclass
 class ArrayEntry(Operand):
     address: Address
-    index: Register
+    index: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
 
     def __post_init__(self):
         if isinstance(self.address, int):
@@ -105,8 +106,8 @@ class ArrayEntry(Operand):
 @dataclass
 class ArraySlice(Operand):
     address: Address
-    start: Register
-    stop: Register
+    start: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
+    stop: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
 
     def __post_init__(self):
         if isinstance(self.address, int):

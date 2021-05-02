@@ -1,4 +1,4 @@
-from netqasm.sdk.epr_socket import EPRSocket, EPRType, EPRMeasBasis
+from netqasm.sdk.epr_socket import EPRMeasBasis, EPRSocket, EPRType
 from netqasm.sdk.external import NetQASMConnection
 
 
@@ -17,8 +17,12 @@ def main(app_config=None):
     num_pairs = 10
 
     with client:
-        outcomes = epr_socket.create(number=num_pairs, tp=EPRType.M,
-                                     basis_local=EPRMeasBasis.Y, basis_remote=EPRMeasBasis.Y)
+        outcomes = epr_socket.create(
+            number=num_pairs,
+            tp=EPRType.M,
+            basis_local=EPRMeasBasis.Y,
+            basis_remote=EPRMeasBasis.Y,
+        )
 
     for outcome in outcomes:
         print(f"Client: {outcome.measurement_outcome}")

@@ -1,41 +1,52 @@
-NetQASM (0.6.0)
-=====================================================
+# NetQASM (0.7.0)
+Utilities for writing, compiling, and running quantum network applications.
 
-Welcome to NetQASM's README.
+## Intro
+NetQASM is an instruction set architecture that allows one to control quantum network controllers and run applications on a quantum network.
 
-To install the package do:
+Applications may be written directly in the NetQASM language, which resembles assembly code. However, this repository provides an SDK which allows writing application code in Python.
+
+
+## Installation
+
+To install the package:
 ```sh
 make install
 ```
 
-To verify the installation do:
+To verify the installation:
 ```sh
 make verify
 ```
 
-Examples
---------
-Check the folder `examples` for how to program and run netqasm programs.
+
+
+## Examples
+Example applications can be found in `netqasm/examples`.
+
+Applications can be run in two ways:
+- From the command line, using `netqasm simulate`. 
+  This requires the application code to be organized in a directory with a specific format (see below).
+- By running a Python script that contains code to start the application.
+
+Examples of applications organized in a directory can be found in `netqasm/examples/apps`.
+They can be run on a simulator using
+```sh
+netqasm simulate --app-dir netqasm/examples/<app>
+```
+
+Examples of Python scripts that can run applications can be found in `netqasm/examples/sdk_examples`. These files can be run directly using `python <filename>`.
 
 ## CLI
-There is a CLI for easily run applications written in Python which produces NetQASM and communicates these to a simulator, e.g. NetSquid.
-To do this, do for example:
-```sh
-cd netqasm/examples/apps/teleport
-netqasm simulate
-```
-which will simulate a teleport application between Alice and Bob, defined by the scrips `app_alice.py` and `app_bob.py`, in the folder [`netqasm/examples/apps/teleport`](https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm/tree/master/netqasm/examples/apps/teleport).
-You can a log-record of what quantum operations occured during this simulation in `netqasm/examples/apps/teleport/log`.
+Once installed, `netqasm` can be used as a command-line interface (CLI) to perform various operations.
 
-Through the CLI you can specify custom paths to application and network configuration as well as logging directory and logging level. To see all options and their description do
-```sh
-netqasm simulate --help
-```
+See `netqasm --help` and `netqasm <command> --help` for the options.
 
 For example you can use the `--simulator=<simulator>` to specify the simulator.
 Currently support for:
 * [`netsquid`](https://netsquid.org/)
 * [`simulaqron`](http://www.simulaqron.org/)
+
 
 ### Configuration
 The applications can be configured by yaml-files in the same folder (e.g. `alice.yaml`) which provides arguments to the application, such as how to initialize the state to be teleported.
@@ -63,6 +74,16 @@ containing the following fields:
 In the log-folder, there are also files containing information about the NETQASM subroutines sent from the host to the backend in the files called for example `subroutines_alice.pkl`.
 These files are pickled version of a list of subroutines (which are dataclasses).
 
-Syntax
-------
+# Syntax
 There is a syntax file for vim in [`syntax/vim/nqasm.vim`](https://gitlab.tudelft.nl/qinc-wehner/NetQASM/NetQASM/blob/master/syntax/vim/nqasm.vim) to highlight NetQASM.
+
+
+## Architecture
+See [the architecture document](./netqasm/ARCH.md).
+
+
+# Development
+
+For code formatting, `black` and `isort` are used.
+Type hints should be added as much as possible.
+Types are checked using `mypy`.
