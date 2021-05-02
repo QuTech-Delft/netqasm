@@ -1,11 +1,11 @@
 from netqasm.runtime.application import Application, ApplicationInstance, Program
 from netqasm.runtime.interface.config import default_network_config
-from netqasm.sdk.connection2 import DebugConnection2
+from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.external import simulate_application
 
 
 def client():
-    with DebugConnection2("client") as conn:
+    with DebugConnection("client") as conn:
         print("this is the client")
         builder = conn.builder
 
