@@ -4,6 +4,18 @@ CHANGELOG
 Upcoming
 --------
 
+2021-05-02 (0.7.0)
+------------------
+- Added type hints to most of the code.
+- Now using the `black` and `isort` formatters for the whole repo.
+- Extracted pre-subroutine construction out of the Connection class and moved to the Builder class.
+- Improved type hints related to numpy types.
+- Added convenience methods to the `SharedMemory` class.
+- Added support for single-threaded SquidASM simulator.
+- Bumped qlink-layer requirement to 1.0.0. Arrays for EPR instructions still use the 0.1.0 format.
+- Added a compatibility module for simulators that use qlink-layer 1.0.0 themselves but want to interpret EPR arrays using 0.1.0.
+- Updated code that is deprecated in NetSquid 1.0 (it is now compatible with 1.0).
+
 2021-02-05 (0.6.0)
 ------------------
 - Added support for choosing the measurement basis for M-type EPR generation.
