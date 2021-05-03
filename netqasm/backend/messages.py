@@ -1,3 +1,7 @@
+"""
+Definitions of messages between the Host and the quantum node controller.
+"""
+
 import ctypes
 from enum import Enum
 from typing import Union
@@ -5,9 +9,7 @@ from typing import Union
 from netqasm.lang.encoding import INTEGER, Address, OptionalInt, Register
 from netqasm.lang.subroutine import Subroutine
 
-# This module defines the messages that the host can send to
-# the backend/QNodeOS
-
+# C types for serialization
 MESSAGE_TYPE = ctypes.c_uint8
 MESSAGE_ID = ctypes.c_uint32
 APP_ID = ctypes.c_uint32
@@ -64,6 +66,8 @@ class Message(ctypes.Structure):
 
 
 class InitNewAppMessage(Message):
+    """Message sent to the quantum node controller to register a new application."""
+
     _fields_ = [
         ("app_id", APP_ID),  # type: ignore
         ("max_qubits", NUM_QUBITS),
@@ -78,6 +82,8 @@ class InitNewAppMessage(Message):
 
 
 class OpenEPRSocketMessage(Message):
+    """Message sent to the quantum node controller to open an EPR socket."""
+
     _fields_ = [
         ("app_id", APP_ID),  # type: ignore
         ("epr_socket_id", EPR_SOCKET_ID),  # type: ignore
@@ -105,6 +111,7 @@ class OpenEPRSocketMessage(Message):
 
 
 class SubroutineMessage:
+    """Message sent to the quantum node controller to execute a subroutine."""
 
     TYPE = MessageType.SUBROUTINE
 
@@ -145,6 +152,8 @@ class SubroutineMessage:
 
 
 class StopAppMessage(Message):
+    """Message sent to the quantum node controller to stop/finish an application."""
+
     _fields_ = [
         ("app_id", APP_ID),  # type: ignore
     ]
@@ -161,6 +170,11 @@ class Signal(Enum):
 
 
 class SignalMessage(Message):
+    """Message sent to the quantum node controller with a specific signal.
+
+    Currently only used with the SquidASM simulator backend.
+    """
+
     _fields_ = [
         ("signal", SIGNAL),
     ]
@@ -182,6 +196,11 @@ MESSAGE_CLASSES = {
 
 
 def deserialize_host_msg(raw: bytes) -> Message:
+    """Convert a serialized message into a `Message` object
+
+    :param raw: serialized message (string of bytes)
+    :return: deserialized message object
+    """
     message_type = MessageType(
         MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value
     )
@@ -190,6 +209,8 @@ def deserialize_host_msg(raw: bytes) -> Message:
 
 
 class ReturnMessage(Message):
+    """Base class for messages from the quantum node controller to the Host."""
+
     pass
 
 
@@ -201,6 +222,8 @@ class ReturnMessageType(Enum):
 
 
 class MsgDoneMessage(ReturnMessage):
+    """Message to the Host that a subroutine has finished."""
+
     _fields_ = [
         ("msg_id", MESSAGE_ID),  # type: ignore
     ]
@@ -219,6 +242,8 @@ class ErrorCode(Enum):
 
 
 class ErrorMessage(ReturnMessage):
+    """Message to the Host that an error occurred at the quantum node controller."""
+
     _fields_ = [
         ("err_code", ctypes.c_uint8),
     ]
@@ -231,6 +256,10 @@ class ErrorMessage(ReturnMessage):
 
 
 class ReturnArrayMessageHeader(ctypes.Structure):
+    """Header for a message with a returned array coming from the quantum node
+    controller.
+    """
+
     _pack = 1
     _fields_ = [
         ("address", Address),
@@ -243,6 +272,7 @@ class ReturnArrayMessageHeader(ctypes.Structure):
 
 
 class ReturnArrayMessage:
+    """Message with a returned array coming from the quantum node controller."""
 
     TYPE = ReturnMessageType.RET_ARR
 
@@ -291,6 +321,8 @@ class ReturnArrayMessage:
 
 
 class ReturnRegMessage(ReturnMessage):
+    """Message with a returned register coming from the quantum node controller."""
+
     _fields_ = [
         ("register", Register),  # type: ignore
         ("value", INTEGER),  # type: ignore
@@ -313,6 +345,11 @@ RETURN_MESSAGE_CLASSES = {
 
 
 def deserialize_return_msg(raw: bytes) -> Message:
+    """Convert a serialized 'return' message into a `Message` object
+
+    :param raw: serialized message (string of bytes)
+    :return: deserialized message object
+    """
     message_type = ReturnMessageType(
         MESSAGE_TYPE.from_buffer_copy(raw[:MESSAGE_TYPE_BYTES]).value
     )

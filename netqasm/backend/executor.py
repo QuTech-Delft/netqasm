@@ -1,9 +1,9 @@
-#
-# NetQASM execution interface for simulators.
-#
-# This module provides the `Executor` class which can be used by simulators
-# as a base class for executing NetQASM instructions.
-#
+"""
+NetQASM execution interface for simulators.
+
+This module provides the `Executor` class which can be used by simulators
+as a base class for executing NetQASM instructions.
+"""
 
 from __future__ import annotations
 

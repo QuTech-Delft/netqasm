@@ -1,3 +1,10 @@
+"""
+Quantum node controller interface for simulators.
+
+This module provides the `QNodeController` class which can be used by simulators
+as a base class for modeling the quantum node controller.
+"""
+
 import abc
 import logging
 from types import GeneratorType
@@ -21,7 +28,14 @@ from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 
 
-class BaseSubroutineHandler:
+class QNodeController:
+    """Class for representing a Quantum Node Controller in a simulation.
+
+    A QNodeController represents a physical quantum node controller that handles
+    messages coming from the Host, lets the Executor execute subroutines, and sends
+    results back to the Host.
+    """
+
     def __init__(
         self,
         name: str,
@@ -29,7 +43,13 @@ class BaseSubroutineHandler:
         flavour: Optional[Flavour] = None,
         **kwargs,
     ) -> None:
-        """An extremely simplified version of QNodeOS for handling NetQASM subroutines"""
+        """QNodeController constructor.
+
+        :param name: name used for logging purposes
+        :param instr_log_dir: directory used to write log files to
+        :param flavour: which NetQASM flavour this quantum node controller should
+            expect and be able to interpret
+        """
         self.name: str = name
 
         self.flavour: Optional[Flavour] = flavour
