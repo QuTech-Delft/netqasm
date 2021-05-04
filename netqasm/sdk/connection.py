@@ -196,7 +196,6 @@ class BaseNetQASMConnection(abc.ABC):
             connection=self,
             app_id=self._app_id,
             max_qubits=max_qubits,
-            epr_sockets=epr_sockets,
             compiler=compiler,
             return_arrays=return_arrays,
         )

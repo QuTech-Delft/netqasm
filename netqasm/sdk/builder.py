@@ -1,3 +1,9 @@
+"""Conversion from Python code into an NetQASM subroutines.
+
+This module contains the `Builder` class, which is used by a Connection to transform
+Python application script code into NetQASM subroutines.
+"""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -72,16 +78,15 @@ if TYPE_CHECKING:
     from .connection import BaseNetQASMConnection
 
 
-# NOTE this is needed to be able to instanciate tuples the same way as namedtuples
-class _Tuple(tuple):
-    @classmethod
-    def __new__(cls, *args, **kwargs):
-        return tuple.__new__(cls, args[1:])
-
-
 class Builder:
+    """Object that transforms Python script code into `PreSubroutine`s.
 
-    # Class to use to pack entanglement information
+    A Connection uses a Builder to handle statements in application script code.
+    The Builder converts the statements into pseudo-NetQASM instructions that are
+    assembled into a PreSubroutine. When the connectin flushes, the PreSubroutine is
+    is compiled into a NetQASM subroutine.
+    """
+
     ENT_INFO = {
         EPRType.K: LinkLayerOKTypeK,
         EPRType.M: LinkLayerOKTypeM,
@@ -90,14 +95,28 @@ class Builder:
 
     def __init__(
         self,
-        connection,  # TODO: remove?,
+        connection,
         app_id: int,
         max_qubits: int = 5,
         log_config: LogConfig = None,
-        epr_sockets: Optional[List[EPRSocket]] = None,
         compiler: Optional[Type[SubroutineCompiler]] = None,
         return_arrays: bool = True,
     ):
+        """Builder constructor. Typically not used directly by the Host script.
+
+        :param connection: Connection that this builder builds for
+        :param app_id: ID of the application as given by the quantum node controller
+        :param max_qubits: maximum number of qubits allowed (as registered with the 
+            quantum node controller)
+        :param log_config: logging configuration, typically just passed as-is by the 
+            connection object
+        :param compiler: which compiler class to use for the translation from 
+            PreSubroutine to Subroutine
+        :param return_arrays: whether to add ret_arr NetQASM instructions at the end of
+            each subroutine (for all arrays that are used in the subroutine). May be
+            set to False if the quantum node controller does not support returning 
+            arrays.
+        """
         self._connection = connection
         self._app_id = app_id
 
@@ -301,10 +320,7 @@ class Builder:
         return commands
 
     def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
-        """Parses and assembles the subroutine.
-
-        Can be subclassed and overried for more elaborate compiling.
-        """
+        """Convert a PreSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).compile()

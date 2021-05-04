@@ -81,7 +81,8 @@ class Arrays:
                 )
                 if not isinstance(address_entry, ArrayEntry):
                     raise RuntimeError(
-                        f"Something went wrong: address_entry should be ArrayEntry but it is {type(address_entry)}"
+                        f"Something went wrong: address_entry should be "
+                        f"ArrayEntry but it is {type(address_entry)}"
                     )
                 values.append((address_entry, value))
         return values
