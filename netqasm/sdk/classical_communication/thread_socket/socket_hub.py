@@ -1,3 +1,9 @@
+"""Global management for classical sockets that live in separate threads.
+
+This module contains the _SocketHub that manages sockets that are in separate threads
+and need to communicate with each other.
+"""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -20,6 +26,10 @@ if TYPE_CHECKING:
 
 
 class _SocketHub:
+    """Global manager for classical sockets that live in separate threads.
+
+    This class is used by ThreadSockets and is typically not used directly.
+    """
 
     _CONNECT_SLEEP_TIME: float = 0.1
     _RECV_SLEEP_TIME: float = 0.1

@@ -15,19 +15,34 @@ if TYPE_CHECKING:
 
 
 class BroadcastChannel(abc.ABC):
+    """Socket for sending messages to all nodes in the network (broadcasting).
+
+    A BroadcastChannel can be used by Hosts to broadcast a message to all other nodes
+    in the network. It is very similar to a Socket object, just without an explicit
+    single remote node.
+
+    A BroadcastChannel is a local object that each node (that wants to send and
+    receive broadcast messages) must instantiate themselves.
+    """
+
     def __init__(
         self,
         app_name: str,
-        remote_app_names: List[str],
         timeout: Optional[float] = None,
         use_callbacks: bool = False,
     ):
-        """Socket used to broadcast classical data between applications."""
+        """BroadcastChannel constructor.
+
+        :param app_name: application/Host name of this channel's constructor
+        :param timeout: maximum time to try and create this channel before aborting
+        :param use_callbacks: whether to use the `recv_callback` and
+            `conn_lost_callback` callback methods
+        """
         pass
 
     @abc.abstractmethod
     def send(self, msg: str) -> None:
-        """Broadcast a message to all remote node."""
+        """Broadcast a message to all remote nodes."""
         pass
 
     @abc.abstractmethod
@@ -55,27 +70,17 @@ class BroadcastChannel(abc.ABC):
 
 
 class BroadcastChannelBySockets(BroadcastChannel):
+    """Implementation of a BroadcastChannel using a Socket for each remote node.
+
+    Technically this is a multicast channel since the receiving nodes must be
+    explicitly listed. It simply uses one-to-one sockets for every remote node.
+    """
+
     def __init__(self, app_name: str, remote_app_names: List[str], **kwargs):
-        """Socket used to broadcast classical data between applications.
+        """BroadcastChannel constructor.
 
-        Simple uses one-to-one sockets to acheive a broadcast.
-        These class of these sockets are defined by the class attribute `_socket_class`,
-        which should be specified in a subclass.
-
-        Parameters
-        ----------
-        app_name : int
-            app name of the local node.
-        remote_node_name : str
-            Node ID of the remote node.
-        socket_id : int, optional
-            ID of the socket (can be seen as a port)
-        timeout : float, optional
-            Optionally use a timeout for trying to setup a connection with another node.
-        use_callbacks : bool, optional
-            Whether to use callbacks or not.
-        comm_log_dir : str, optional
-            Path to log classical communication to. File name will be "{node_name}_class_comm.log"
+        :param app_name: application/Host name of self
+        :param remote_app_names: list of receiving remote Hosts
         """
         self._sockets = {
             remote_app_name: self._socket_class(
@@ -90,7 +95,7 @@ class BroadcastChannelBySockets(BroadcastChannel):
         pass
 
     def send(self, msg: str) -> None:
-        """Broadcast a message to all remote node."""
+        """Broadcast a message to all remote nodes."""
         for socket in self._sockets.values():
             socket.send(msg=msg)
 

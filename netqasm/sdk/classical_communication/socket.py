@@ -45,7 +45,7 @@ class Socket(abc.ABC):
     Implementations (subclasses) of Sockets may be quite different, depending on the
     runtime environment. A physical setup (with real hardware) may implement this as
     TCP sockets. A simulator might use inter-thread communication (see e.g.
-    `ThreadSocket`) or another custom object type.
+    `ThreadSocket`), or another custom object type.
     """
 
     def __init__(
