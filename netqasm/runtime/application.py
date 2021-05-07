@@ -28,6 +28,18 @@ from netqasm.util.yaml import load_yaml
 
 @dataclass
 class Program:
+    """Program running on one specific node. Part of a multi-node application.
+
+    :param party: name of the party or role in the multi-node application (protocol).
+        E.g. a blind computation application may have two parties: "client" and
+        "server". Note that the party name is not necessarily the name of the node this
+        Program runs on (which may be, e.g. "Delft").
+    :param entry: entry point of the Program. This must be Python function.
+    :param args: list of argument names that the entry point expects
+    :param results: list of result names that are keys in the dictionary that this
+        Program returns on completion
+    """
+
     party: str
     entry: Callable
     args: List[str]
@@ -36,6 +48,14 @@ class Program:
 
 @dataclass
 class AppMetadata:
+    """Metadata about a NetQASM application.
+
+    :param name: name of the application
+    :param description: description of the application
+    :param authors: list of authors of the application
+    :param version: application version
+    """
+
     name: str
     description: str
     authors: List[str]
@@ -44,12 +64,29 @@ class AppMetadata:
 
 @dataclass
 class Application:
+    """Static NetQASM application (or protocol) information.
+
+    :param programs: list of programs for each of the parties that are involved
+        in this application (or protocol).
+    :param metadata: application metadata
+    """
+
     programs: List[Program]
     metadata: Optional[AppMetadata]
 
 
 @dataclass
 class ApplicationInstance:
+    """Instantiation of a NetQASM application with concrete input values and
+        configuration of the underlying network.
+
+    :param app: static application info
+    :param program_inputs: program input values for each of the application's programs
+    :param network: configuration for a simulated network
+    :param party_alloc: mapping of application parties to nodes in the network
+    :param logging_cfg: logging configuration
+    """
+
     app: Application
     program_inputs: Dict[str, Dict[str, Any]]
     network: Optional[NetworkConfig]
@@ -59,6 +96,7 @@ class ApplicationInstance:
 
 @dataclass
 class ApplicationOutput:
+    """Results of a finished run of an ApplicationInstance. Should be subclassed."""
     pass
 
 

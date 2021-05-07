@@ -386,16 +386,15 @@ def run(
     """
     set_is_using_hardware(True)
 
-    setup_apps = importlib.import_module("netqasm.runtime.run").setup_apps
-    setup_apps(
-        app_dir=app_dir,
-        start_backend=False,
-        lib_dirs=lib_dirs,
-        track_lines=track_lines,
-        app_config_dir=app_config_dir,
-        log_dir=log_dir,
-        log_to_files=log_to_files,
-        log_level=log_level.upper(),
+    run_application = importlib.import_module("netqasm.sdk.external").run_application
+
+    if app_dir is None:
+        app_dir = "."
+    app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
+
+    run_application(
+        app_instance=app_instance,
+        instr_log_dir=log_dir,
         results_file=results_file,
     )
 

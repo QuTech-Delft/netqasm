@@ -6,7 +6,7 @@ The relevant quantum node controllers are expected to be setup elsewhere, e.g. a
 hardware that is connected to the machine that runs `run_applications`.
 """
 
-from concurrent.futures import ProcessPoolExecutor as Pool
+from multiprocessing.pool import ThreadPool
 from typing import List
 
 from netqasm.logging.glob import get_netqasm_logger
@@ -15,40 +15,46 @@ from netqasm.util.thread import as_completed
 from netqasm.util.yaml import dump_yaml
 
 from .app_config import AppConfig
+from .application import ApplicationInstance
 
 logger = get_netqasm_logger()
 
 
-def run_applications(
-    app_cfgs: List[AppConfig],
+def run_application(
+    app_instance: ApplicationInstance,
     post_function=None,
-    instr_log_dir=None,
-    network_config=None,  # not used
     results_file=None,
-    formalism=None,  # not used
-    flavour=None,  # not used
     use_app_config=True,  # whether to give app_config as argument to app's main()
 ):
-    """Executes functions containing application scripts"""
-    app_names = [app_cfg.app_name for app_cfg in app_cfgs]
+    programs = app_instance.app.programs
 
-    with Pool(len(app_names)) as executor:
-        # Start the application processes
-        app_futures = []
-        for app_cfg in app_cfgs:
-            inputs = app_cfg.inputs
+    with ThreadPool(len(programs) + 1) as executor:
+        # Start the program threads
+        program_futures = []
+        for program in programs:
+            inputs = app_instance.program_inputs[program.party]
             if use_app_config:
+                app_cfg = AppConfig(
+                    app_name=program.party,
+                    node_name=app_instance.party_alloc[program.party],
+                    main_func=program.entry,
+                    log_config=app_instance.logging_cfg,
+                    inputs=inputs,
+                )
                 inputs["app_config"] = app_cfg
-            future = executor.submit(app_cfg.main_func, **inputs)
-            app_futures.append(future)
+            future = executor.apply_async(program.entry, kwds=inputs)
+            program_futures.append(future)
 
-        # Join the application processes and the backend
-        names = [f"app_{app_name}" for app_name in app_names]
+        # Join the application threads and the backend
+        program_names = [program.party for program in app_instance.app.programs]
+        # NOTE: use app_<name> instead of prog_<name> for now for backward compatibility
+        names = [f"app_{prog_name}" for prog_name in program_names]
         results = {}
-        for future, name in as_completed(app_futures, names=names):
-            results[name] = future.result()
+        for future, name in as_completed(program_futures, names=names):
+            results[name] = future.get()
         if results_file is not None:
             save_results(results=results, results_file=results_file)
+
     save_all_struct_loggers()
 
 

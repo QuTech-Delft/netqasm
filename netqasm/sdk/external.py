@@ -26,7 +26,7 @@ if is_using_hardware:
         )
         from qnodeos.sdk.socket import Socket  # type: ignore
 
-        from netqasm.runtime.hardware import run_applications  # type: ignore
+        from netqasm.runtime.hardware import run_application  # type: ignore
     except ModuleNotFoundError:
         raise ModuleNotFoundError("to use QNodeOS , `qnodeos` needs to be installed")
 elif simulator == Simulator.NETSQUID:
@@ -63,7 +63,7 @@ elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
         )
 elif simulator == Simulator.SIMULAQRON:
     try:
-        from simulaqron.run import run_applications  # type: ignore
+        from simulaqron.run import run_application  # type: ignore
         from simulaqron.sdk.broadcast_channel import BroadcastChannel  # type: ignore
         from simulaqron.sdk.connection import (
             SimulaQronConnection as NetQASMConnection,  # type: ignore
@@ -76,7 +76,7 @@ elif simulator == Simulator.SIMULAQRON:
         )
 elif simulator == Simulator.DEBUG:
     from netqasm.runtime.debug import get_qubit_state  # type: ignore
-    from netqasm.runtime.debug import run_applications  # type: ignore
+    from netqasm.runtime.debug import run_application  # type: ignore
     from netqasm.sdk.classical_communication import (
         ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
     )
