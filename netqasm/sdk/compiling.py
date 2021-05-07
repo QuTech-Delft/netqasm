@@ -1,6 +1,6 @@
 """Transpilation of subroutines from one flavour to another.
 
-This module contains the SubroutineCompiler interface which is a base class for 
+This module contains the SubroutineCompiler interface which is a base class for
 transpilers that can convert a NetQASM subroutine into a subroutine with a specific
 flavour.
 """

@@ -1,8 +1,4 @@
 # Exports not-implemented function such that the DebugConnection can be used
-from typing import List
-
-from netqasm.runtime.app_config import AppConfig
-from netqasm.runtime.settings import Formalism
 
 from .application import ApplicationInstance
 

@@ -6,9 +6,9 @@ use the concrete external names.
 Which of the concrete implementations is re-exported depends on global variables (most
 importantly the variable indicating which simulator should be used).
 
-For example, an application may import the `NetQASMConnection` name from 
+For example, an application may import the `NetQASMConnection` name from
 `netqasm.sdk.external`, while having set the simulator type to NETSQUID.
-This results in the import resolving to an import of 
+This results in the import resolving to an import of
 `squidasm.run.multithread.sdk.NetSquidConnection`, even though the application never
 had to specify this concrete name. This allows the same application code to be used
 with different implementations of `NetQASMConnection`.

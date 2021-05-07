@@ -73,8 +73,6 @@ T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
 T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 if TYPE_CHECKING:
-    from netqasm.sdk.epr_socket import EPRSocket
-
     from .connection import BaseNetQASMConnection
 
 
@@ -106,15 +104,15 @@ class Builder:
 
         :param connection: Connection that this builder builds for
         :param app_id: ID of the application as given by the quantum node controller
-        :param max_qubits: maximum number of qubits allowed (as registered with the 
+        :param max_qubits: maximum number of qubits allowed (as registered with the
             quantum node controller)
-        :param log_config: logging configuration, typically just passed as-is by the 
+        :param log_config: logging configuration, typically just passed as-is by the
             connection object
-        :param compiler: which compiler class to use for the translation from 
+        :param compiler: which compiler class to use for the translation from
             PreSubroutine to Subroutine
         :param return_arrays: whether to add ret_arr NetQASM instructions at the end of
             each subroutine (for all arrays that are used in the subroutine). May be
-            set to False if the quantum node controller does not support returning 
+            set to False if the quantum node controller does not support returning
             arrays.
         """
         self._connection = connection

@@ -97,6 +97,7 @@ class ApplicationInstance:
 @dataclass
 class ApplicationOutput:
     """Results of a finished run of an ApplicationInstance. Should be subclassed."""
+
     pass
 
 

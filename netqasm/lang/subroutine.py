@@ -1,7 +1,7 @@
 """
 NetQASM subroutine definitions.
 
-This module contains the `Subroutine` class which represents a static (not being 
+This module contains the `Subroutine` class which represents a static (not being
 executed) NetQASM subroutine.
 """
 

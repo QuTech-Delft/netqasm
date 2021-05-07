@@ -1,7 +1,7 @@
 """Interface for classical broadcasting between Hosts.
 
-This module contains the `BroadcastChannel` class which is a base for representing 
-classical broadcasting (sending classical messages to all other nodes in the network) 
+This module contains the `BroadcastChannel` class which is a base for representing
+classical broadcasting (sending classical messages to all other nodes in the network)
 between Hosts.
 """
 from __future__ import annotations

@@ -7,7 +7,6 @@ hardware that is connected to the machine that runs `run_applications`.
 """
 
 from multiprocessing.pool import ThreadPool
-from typing import List
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.logging.output import save_all_struct_loggers
