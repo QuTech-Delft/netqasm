@@ -1,3 +1,9 @@
+"""Command-line interface of the `netqasm` executable.
+
+This module defines the commands that may be used when using `netqasm` as a program
+on the command line, as well as handlers for these commands.
+"""
+
 import importlib
 import json
 import logging

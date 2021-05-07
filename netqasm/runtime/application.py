@@ -1,3 +1,19 @@
+"""NetQASM application definitions.
+
+NetQASM applications are modeled as pieces of Python code together with metadata.
+Generally, applications are multi-node, i.e. they consist of separate chunks of code
+that are run by separate nodes.
+
+To distinguish the notion of a multiple-node-spanning collection of code and single-node
+piece of code, the following terminology is used:
+
+- A *Program* is code that runs on a single node. It is a Python script whose code is
+  executed on (1) the Host component of that node and (2) the quantum node controller
+  of that node.
+- An *Application* is a collection of Programs (specifically, one Program per node).
+
+"""
+
 import importlib
 import os
 import sys

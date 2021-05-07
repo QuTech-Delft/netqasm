@@ -1,3 +1,11 @@
+"""Execution of application scripts without setting up a backend.
+
+The `run_applications` function simply spawns a thread for each of the applications
+given to it, and runs the Python script of each application.
+The relevant quantum node controllers are expected to be setup elsewhere, e.g. as real
+hardware that is connected to the machine that runs `run_applications`.
+"""
+
 from concurrent.futures import ProcessPoolExecutor as Pool
 from typing import List
 
