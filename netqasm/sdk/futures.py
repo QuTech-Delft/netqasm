@@ -117,8 +117,8 @@ class BaseFuture(int):
     A Future represents a classical value that becomes available at some point
     in the future. At the moment, a Future always represents an integer value.
 
-    Futures have a `value` property that is either `None` (when the value is not yet)
-    available, or has a concrete integer value.
+    Futures have a `value` property that is either `None` (when the value is not yet
+    available), or has a concrete integer value.
     Executing a subroutine on the quantum node controller makes the value property go
     from `None` to a concrete value, granted that the subroutine sets the value of
     whatever the Future represents.
