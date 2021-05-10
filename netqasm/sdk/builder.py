@@ -1,4 +1,8 @@
-"""TODO write about connections"""
+"""Conversion from Python code into an NetQASM subroutines.
+
+This module contains the `Builder` class, which is used by a Connection to transform
+Python application script code into NetQASM subroutines.
+"""
 
 from __future__ import annotations
 
@@ -53,38 +57,34 @@ from netqasm.qlink_compat import (
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
-from netqasm.sdk.futures import Array, Future, RegFuture
-from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
+from netqasm.sdk.qubit import FutureQubit, Qubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
 
-T_Cmd = Union[ICmd, BranchLabel]
 T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
 ]
-T_CValue = Union[int, Future, RegFuture]
 T_PostRoutine = Callable[
-    ["Builder", Union[_FutureQubit, List[Future]], operand.Register], None
+    ["Builder", Union[FutureQubit, List[Future]], operand.Register], None
 ]
 T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
 T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 if TYPE_CHECKING:
-    from netqasm.sdk.epr_socket import EPRSocket
-
     from .connection import BaseNetQASMConnection
 
 
-# NOTE this is needed to be able to instanciate tuples the same way as namedtuples
-class _Tuple(tuple):
-    @classmethod
-    def __new__(cls, *args, **kwargs):
-        return tuple.__new__(cls, args[1:])
-
-
 class Builder:
+    """Object that transforms Python script code into `PreSubroutine`s.
 
-    # Class to use to pack entanglement information
+    A Connection uses a Builder to handle statements in application script code.
+    The Builder converts the statements into pseudo-NetQASM instructions that are
+    assembled into a PreSubroutine. When the connectin flushes, the PreSubroutine is
+    is compiled into a NetQASM subroutine.
+    """
+
     ENT_INFO = {
         EPRType.K: LinkLayerOKTypeK,
         EPRType.M: LinkLayerOKTypeM,
@@ -93,14 +93,30 @@ class Builder:
 
     def __init__(
         self,
-        connection,  # TODO: remove?,
+        connection,
+        app_id: int,
         max_qubits: int = 5,
         log_config: LogConfig = None,
-        epr_sockets: Optional[List[EPRSocket]] = None,
         compiler: Optional[Type[SubroutineCompiler]] = None,
         return_arrays: bool = True,
     ):
+        """Builder constructor. Typically not used directly by the Host script.
+
+        :param connection: Connection that this builder builds for
+        :param app_id: ID of the application as given by the quantum node controller
+        :param max_qubits: maximum number of qubits allowed (as registered with the
+            quantum node controller)
+        :param log_config: logging configuration, typically just passed as-is by the
+            connection object
+        :param compiler: which compiler class to use for the translation from
+            PreSubroutine to Subroutine
+        :param return_arrays: whether to add ret_arr NetQASM instructions at the end of
+            each subroutine (for all arrays that are used in the subroutine). May be
+            set to False if the quantum node controller does not support returning
+            arrays.
+        """
         self._connection = connection
+        self._app_id = app_id
 
         # All qubits active for this connection
         self.active_qubits: List[Qubit] = []
@@ -143,15 +159,13 @@ class Builder:
         self._line_tracker: LineTracker = LineTracker(log_config=log_config)
         self._track_lines: bool = log_config.track_lines
 
-        # Should subroutines commited be saved for logging/debugging
-        self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
         # Commited subroutines saved for logging/debugging
-        self._commited_subroutines: List[Subroutine] = []
+        self._committed_subroutines: List[Subroutine] = []
 
         # What compiler (if any) to be used
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
-    def _inactivate_qubits(self) -> None:
+    def inactivate_qubits(self) -> None:
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
             q.active = False
@@ -295,7 +309,7 @@ class Builder:
     def _get_metadata(self) -> Dict:
         return {
             "netqasm_version": NETQASM_VERSION,
-            "app_id": 0,  # TODO
+            "app_id": self._app_id,
         }
 
     def _pop_pending_commands(self) -> List[T_Cmd]:
@@ -304,10 +318,7 @@ class Builder:
         return commands
 
     def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
-        """Parses and assembles the subroutine.
-
-        Can be subclassed and overried for more elaborate compiling.
-        """
+        """Convert a PreSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).compile()
@@ -316,7 +327,11 @@ class Builder:
         return subroutine
 
     def _log_subroutine(self, subroutine: Subroutine) -> None:
-        self._commited_subroutines.append(subroutine)
+        self._committed_subroutines.append(subroutine)
+
+    @property
+    def committed_subroutines(self) -> List[Subroutine]:
+        return self._committed_subroutines
 
     def add_single_qubit_rotation_commands(
         self,
@@ -638,7 +653,7 @@ class Builder:
             )
             if tp == EPRType.K:
                 q_id = qubit_ids.get_future_index(pair)
-                q = _FutureQubit(conn=conn, future_id=q_id)
+                q = FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
             elif tp == EPRType.M:
                 slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
@@ -774,7 +789,7 @@ class Builder:
         List[T_Cmd],
         operand.Register,
         Array,
-        Union[List[Qubit], T_LinkLayerOkList, _FutureQubit],
+        Union[List[Qubit], T_LinkLayerOkList, FutureQubit],
         operand.Register,
     ]:
         # NOTE since this is in a context there will be a post_routine
@@ -788,7 +803,7 @@ class Builder:
             tp=tp,
         )
         result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
-        output: Union[List[Qubit], T_LinkLayerOkList, _FutureQubit] = result_futures
+        output: Union[List[Qubit], T_LinkLayerOkList, FutureQubit] = result_futures
         if tp == EPRType.K:
             virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
         else:
@@ -812,7 +827,7 @@ class Builder:
         pair = loop_register
         if tp == EPRType.K:
             q_id = qubit_ids_array.get_future_index(pair)
-            q = _FutureQubit(conn=self._connection, future_id=q_id)
+            q = FutureQubit(conn=self._connection, future_id=q_id)
             output = q
         # elif tp == EPRType.M:
         #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)

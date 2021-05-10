@@ -1,3 +1,9 @@
+"""Runtime interface for simulators.
+
+This module contains the RuntimeManager class which can be used as a base class by
+simulators to handle setting up backends and running applications.
+"""
+
 from abc import abstractmethod
 
 from netqasm.runtime.application import ApplicationOutput

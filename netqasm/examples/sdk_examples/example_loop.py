@@ -18,7 +18,7 @@ def main(no_output=False):
             q.measure(outcome)
             even.add(1, mod=2)
 
-    if no_output:
+    if not no_output:
         print(f"binary:\n{alice.storage[0]}")
 
 

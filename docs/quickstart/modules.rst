@@ -47,9 +47,10 @@ NetQASM connection
    :noindex:
 
    .. autoclass:: BaseNetQASMConnection
-      :noindex:
-      :special-members: __enter__, __exit__
-      :members: app_name, node_name, app_id, flush, block
+     :noindex:
+     :special-members: __enter__, __exit__
+     :members:
+   :undoc-members: app_name, node_name, app_id, flush, block
 
 Qubit
 -----
@@ -58,8 +59,9 @@ Qubit
    :noindex:
 
    .. autoclass:: Qubit
-      :noindex:
-      :members: qubit_id, entanglement_info, remote_entangled_node, measure,
+     :noindex:
+     :members:
+   :undoc-members: qubit_id, entanglement_info, remote_entangled_node, measure,
                 X, Y, Z, H, S, K, T,
                 rot_X, rot_Y, rot_Z,
                 cnot, cphase, reset, free
@@ -71,15 +73,16 @@ EPR socket
    :noindex:
 
    .. autoclass:: EPRSocket
-      :members: conn, remote_app_name, remote_node_id, epr_socket_id, remote_epr_socket_id, min_fidelity,
+     :members:
+   :undoc-members: conn, remote_app_name, remote_node_id, epr_socket_id, remote_epr_socket_id, min_fidelity,
                 create, recv,
-      :noindex:
+     :noindex:
 
       .. automethod:: create_context(number=1, sequential=False)
-         :noindex:
+        :noindex:
 
       .. automethod:: recv_context(number=1, sequential=False)
-         :noindex:
+        :noindex:
 
 Futures
 -------
@@ -88,21 +91,25 @@ Futures
    :noindex:
 
    .. autoclass:: Future
-      :members: add, value
-      :noindex:
+     :members:
+   :undoc-members: add, value
+     :noindex:
 
    .. autoclass:: Array
-      :members: get_future_index, get_future_slice, foreach, enumerate
-      :noindex:
+     :members:
+   :undoc-members: get_future_index, get_future_slice, foreach, enumerate
+     :noindex:
 
    .. autoclass:: RegFuture
-      :members: add, value
-      :noindex:
+     :members:
+   :undoc-members: add, value
+     :noindex:
 
 
 Classical communication
 -----------------------
 
 .. automodule:: netqasm.sdk.classical_communication.socket
-   :members: Socket
+   :members:
+   :undoc-members: Socket
    :noindex:

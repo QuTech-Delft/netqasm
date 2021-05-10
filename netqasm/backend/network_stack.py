@@ -1,3 +1,10 @@
+"""
+Network stack interface for simulators.
+
+This module provides the `BaseNetworkStack` class which can be used by simulators
+as a base class for modeling the network stack.
+"""
+
 import abc
 from dataclasses import dataclass
 from typing import Any, Generator, Union
@@ -23,10 +30,15 @@ class Address:
 
 
 class BaseNetworkStack(abc.ABC):
+    """Base class for a (extremly simplified) network stack in simulators.
+
+    This class can be used as a simplified network stack that can handle requests
+    that adhere to the QLink-Interface.
+    """
+
     @abc.abstractmethod
     def put(self, request: Union[LinkLayerCreate, LinkLayerRecv]) -> None:
-        """Handles an request to the network stack"""
-        # NOTE: LinkLayerRecv is currently not used at all
+        """Put a link layer request to the network stack"""
         pass
 
     @abc.abstractmethod
@@ -37,7 +49,7 @@ class BaseNetworkStack(abc.ABC):
         remote_epr_socket_id: int,
         timeout: float = 1.0,
     ) -> Generator[Any, None, None]:
-        """Asks the network stack to setup circuits to be used"""
+        """Ask the network stack to open an EPR socket."""
         pass
 
     @abc.abstractmethod

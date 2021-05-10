@@ -1,4 +1,9 @@
-"""TODO write about connections"""
+"""
+Interface to quantum node controllers.
+
+This module provides the `BaseNetQASMConnection` class which represents
+the connection with a quantum node controller.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,6 @@ from typing import (
     Union,
 )
 
-from netqasm import NETQASM_VERSION
 from netqasm.backend.messages import (
     InitNewAppMessage,
     Message,
@@ -31,63 +35,58 @@ from netqasm.backend.messages import (
     SubroutineMessage,
 )
 from netqasm.lang import operand
-from netqasm.lang.ir import BranchLabel, ICmd, PreSubroutine
-from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.ir import PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.qlink_compat import (
-    EPRType,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-)
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
-from netqasm.sdk.futures import Array, Future, RegFuture
+from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.network import NetworkInfo
 from netqasm.sdk.progress_bar import ProgressBar
-from netqasm.sdk.qubit import Qubit, _FutureQubit
+from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
 from .builder import Builder
 
-T_Cmd = Union[ICmd, BranchLabel]
-T_LinkLayerOkList = Union[
-    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
-]
+# Generic type for messages sent to the quantum node controller.
+# Note that `SubroutineMessage` does not derive from `Message` so it has to be
+# mentioned explicitly.
 T_Message = Union[Message, SubroutineMessage]
-T_CValue = Union[int, Future, RegFuture]
-T_PostRoutine = Callable[
-    ["BaseNetQASMConnection", Union[_FutureQubit, List[Future]], operand.Register], None
-]
+
+# Callback function type for conditional statements.
 T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
+
+# Callback function type for loop statements.
 T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
+# Imports that are only needed for type checking
 if TYPE_CHECKING:
     from netqasm.sdk.epr_socket import EPRSocket
 
 
-# NOTE this is needed to be able to instanciate tuples the same way as namedtuples
-class _Tuple(tuple):
-    @classmethod
-    def __new__(cls, *args, **kwargs):
-        return tuple.__new__(cls, args[1:])
-
-
 class BaseNetQASMConnection(abc.ABC):
+    """Base class for representing connections to a quantum node controller.
+
+    A BaseNetQASMConnection instance provides an interface for Host programs to
+    interact with a quantum node controller like QNodeOS, which controls the quantum
+    hardware.
+
+    The interaction with the quantum node controller includes registering applications,
+    opening EPR sockets, sending NetQASM subroutines, and getting execution results,
+
+    A BaseNetQASMConnection instance also provides a 'context' for the Host to
+    run its code in. Code within this context is compiled into NetQASM subroutines
+    and then sent to the quantum node controller.
+    """
 
     # Global dict to track all used app IDs for each program
     _app_ids: Dict[str, List[int]] = {}  # <party> -> [<app_id1>, <app_id2>, ...]
 
+    # Global dict to track app names per node.
+    # Currently only used for logging purposes, specifically only in
+    # `netqasm.runtime.process_logs._create_app_instr_logs`.
     # Dict[node_name, Dict[app_id, app_name]]
     _app_names: Dict[str, Dict[int, str]] = {}
-
-    # Class to use to pack entanglement information
-    ENT_INFO = {
-        EPRType.K: LinkLayerOKTypeK,
-        EPRType.M: LinkLayerOKTypeM,
-        EPRType.R: LinkLayerOKTypeR,
-    }
 
     def __init__(
         self,
@@ -102,27 +101,82 @@ class BaseNetQASMConnection(abc.ABC):
         _init_app: bool = True,
         _setup_epr_sockets: bool = True,
     ):
+        """BaseNetQASMConnection constructor.
+
+        In most cases, you will want to instantiate a subclass of this.
+
+        :param app_name: Name of the application.
+            Specifically, this is the name of the program that runs on this particular
+            node. So, `app_name` can often be seen as the name of the "role" within the
+            multi-party application or protocol.
+            For example, in a Blind Computation protocol, the two roles may be
+            "client" and "server"; the `app_name` of a particular
+            `BaseNetQASMConnection` instance may then e.g. be "client".
+
+        :param node_name: name of the Node that is controlled by the quantum
+            node controller that we connect to. The Node name may be different from
+            the `app_name`, and e.g. reflect its geographical location, like a city
+            name. If None, the Node name is obtained by querying the global
+            `NetworkInfo` by using the `app_name`.
+
+        :param app_id: ID of this application.
+            An application registered in the quantum node controller using this
+            connection will use this app ID.
+            If None, a unique ID will be chosen (unique among possible other
+            applications that were registered through other BaseNetQASMConnection
+            instances).
+
+        :param max_qubits: maximum number of qubits that can be in use
+            at the same time by applications registered through this connection.
+            Defaults to 5.
+
+        :param log_config: configuration object specifying what to log.
+
+        :param epr_sockets: list of EPR sockets.
+            If `_setup_epr_sockets` is True, these EPR sockets are automatically
+            opened upon entering this connection's context.
+
+        :param compiler: the class that is used to instantiate the compiler.
+            If None, a compiler is used that can compile for the hardware of the
+            node this connection is to.
+
+        :param return_arrays: whether to add "return array"-instructions at the end
+            of subroutines. A reason to set this to False could be that a quantum
+            node controller does not support returning arrays back to the Host.
+
+        :param _init_app: whether to immediately send a "register application" message
+            to the quantum node controller upon construction of this connection.
+
+        :param _setup_epr_sockets: whether to immediately send "open EPR socket"
+            messages to the quantum node controller upon construction of this
+            connection. If True, the "open EPR socket" messages are for the EPR sockets
+            defined in the `epr_sockets` parameter.
+        """
         self._app_name: str = app_name
 
-        # Set an app ID
+        # Set the app ID. If one was provided in `app_id`, try to use that one.
         self._app_id: int = self._get_new_app_id(app_id)
 
         if node_name is None:
             node_name = self.network_info.get_node_name_for_app(app_name)
         self._node_name: str = node_name
 
+        # Update global _app_names dict. Only used for logging purposes.
         if node_name not in self._app_names:
             self._app_names[node_name] = {}
         self._app_names[node_name][self._app_id] = app_name
 
-        # All qubits active for this connection
-        self.active_qubits: List[Qubit] = []
-
+        # Try to obtain the Shared Memory instance corresponding to this connection.
+        # Depending on the runtime environment, this instance may not yet exist at
+        # this moment. If this is the case, the SharedMemory instance *should*
+        # become available later on.
         self._shared_memory: Optional[
             SharedMemory
         ] = SharedMemoryManager.get_shared_memory(self.node_name, key=self._app_id)
 
-        # Can be set to false for e.g. debugging, not exposed to user atm
+        # Whether to send additional closing messages to the quantum node controller
+        # at the end of an application. See the `close()` method.
+        # At the moment only used for debugging and not exposed to the user.
         self._clear_app_on_exit: bool = True
         self._stop_backend_on_exit: bool = True
 
@@ -132,22 +186,28 @@ class BaseNetQASMConnection(abc.ABC):
         self._line_tracker: LineTracker = LineTracker(log_config=log_config)
         self._track_lines: bool = log_config.track_lines
 
-        # Should subroutines commited be saved for logging/debugging
+        # Set directory for storing serialized subroutines.
         self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
-        # Commited subroutines saved for logging/debugging
-        self._commited_subroutines: List[Subroutine] = []
 
+        # Builder object of this connection.
+        # The Builder is used to gather application code and output an
+        # Intermediate Representation (IR), which is then compiled into subroutines.
         self._builder = Builder(
             connection=self,
+            app_id=self._app_id,
             max_qubits=max_qubits,
-            epr_sockets=epr_sockets,
             compiler=compiler,
             return_arrays=return_arrays,
         )
 
-        # What compiler (if any) to be used
+        # What compiler (if any) to be used.
+        # Currently, the "_compiler" attribute is more of a transpiler, since it can
+        # only convert between NetQASM flavours.
+        # The actual conversion from Python DSL statements to IR to NetQASM is
+        # done by the Builder.
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
+        # Logger for stdout. (Not for log files.)
         self._logger: logging.Logger = get_netqasm_logger(
             f"{self.__class__.__name__}({self.app_name})"
         )
@@ -156,7 +216,6 @@ class BaseNetQASMConnection(abc.ABC):
             self._init_new_app(max_qubits=max_qubits)
 
         if _setup_epr_sockets:
-            # Setup epr sockets
             self._setup_epr_sockets(epr_sockets=epr_sockets)
 
     @property
@@ -196,12 +255,13 @@ class BaseNetQASMConnection(abc.ABC):
         )
 
     def __enter__(self):
-        """Used to open the connection in a context.
+        """Start a context with this connection.
 
-        This is the intended behaviour of the connection.
-        Operations specified using the connection or a qubit created with it gets combined into a
-        subroutine, until either :meth:`~.flush` is called or the connection goes out of context
-        which calls :meth:`~.__exit__`.
+        Quantum operations specified within the connection are automatically compiled
+        into NetQASM subroutines.
+        These subroutines are sent to the quantum node controller, over this
+        connection, when either :meth:`~.flush` is called or the connection goes out
+        of context which calls :meth:`~.__exit__`.
 
         .. code-block::
 
@@ -214,7 +274,7 @@ class BaseNetQASMConnection(abc.ABC):
                 # Measure the qubit
                 m = q.measure()
                 # Flush the subroutine to populate the variable `m` with the outcome
-                # Alternetively, this can be done by letting the connection
+                # Alternatively, this can be done by letting the connection
                 # go out of context and move the print to after.
                 alice.flush()
                 print(m)
@@ -222,7 +282,10 @@ class BaseNetQASMConnection(abc.ABC):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """TODO describe"""
+        """Called automatically when a connection context ends.
+
+        Default behavior is to call the `close` method on the connection.
+        """
         # Allow to not clear the app or stop the backend upon exit, for debugging and post processing
         self.close(
             clear_app=self._clear_app_on_exit,
@@ -230,7 +293,10 @@ class BaseNetQASMConnection(abc.ABC):
         )
 
     def _get_new_app_id(self, app_id: Optional[int]) -> int:
-        """Finds a new app ID if not specific"""
+        """Find a suitable new app ID.
+
+        Tries to use the specified `app_id`, if not in use already.
+        """
         name = self.app_name
         if name not in self._app_ids:
             self._app_ids[name] = []
@@ -249,9 +315,7 @@ class BaseNetQASMConnection(abc.ABC):
             return app_id
 
     def _pop_app_id(self) -> None:
-        """
-        Removes the used app ID from the list.
-        """
+        """Remove the used app ID from the list."""
         try:
             self._app_ids[self.app_name].remove(self.app_id)
         except ValueError:
@@ -261,14 +325,17 @@ class BaseNetQASMConnection(abc.ABC):
         self._pop_app_id()
 
     def close(self, clear_app: bool = True, stop_backend: bool = False) -> None:
-        """Handle exiting of context."""
+        """Close a connection.
+
+        By default, this method is automatically called when a connection context ends.
+        """
         # Flush all pending commands
         self.flush()
 
         self._pop_app_id()
 
         self._signal_stop(clear_app=clear_app, stop_backend=stop_backend)
-        self._inactivate_qubits()
+        self._builder.inactivate_qubits()
 
         if self._log_subroutines_dir is not None:
             self._save_log_subroutines()
@@ -276,7 +343,10 @@ class BaseNetQASMConnection(abc.ABC):
     def _commit_message(
         self, msg: T_Message, block: bool = True, callback: Optional[Callable] = None
     ) -> None:
-        """Commit a message to the backend/qnodeos"""
+        """Commit a message to the quantum node controller.
+
+        The message gets serialized and then sent through the connection.
+        """
         self._logger.debug(f"Committing message {msg}")
         self._commit_serialized_message(
             raw_msg=bytes(msg), block=block, callback=callback
@@ -286,16 +356,15 @@ class BaseNetQASMConnection(abc.ABC):
     def _commit_serialized_message(
         self, raw_msg: bytes, block: bool = True, callback: Optional[Callable] = None
     ) -> None:
-        """Commit a message to the backend/qnodeos"""
-        # Should be subclassed
+        """Commit a serialized message to the quantum node controller."""
         pass
 
-    def _inactivate_qubits(self) -> None:
-        while len(self.active_qubits) > 0:
-            q = self.active_qubits.pop()
-            q.active = False
-
     def _signal_stop(self, clear_app: bool = True, stop_backend: bool = True) -> None:
+        """Signal to the quantum node controller to stop.
+
+        This signal may be used with simulator backends so that they can e.g. reset
+        their state.
+        """
         if clear_app:
             self._commit_message(msg=StopAppMessage(app_id=self._app_id))
 
@@ -303,13 +372,19 @@ class BaseNetQASMConnection(abc.ABC):
             self._commit_message(msg=SignalMessage(signal=Signal.STOP), block=False)
 
     def _save_log_subroutines(self) -> None:
+        """Serialize and dump subroutines that were sent over this connection."""
         filename = f"subroutines_{self.app_name}.pkl"
         filepath = os.path.join(self._log_subroutines_dir, filename)  # type: ignore
         with open(filepath, "wb") as f:
-            pickle.dump(self._commited_subroutines, f)
+            pickle.dump(self._builder.committed_subroutines, f)
 
     @property
     def shared_memory(self) -> SharedMemory:
+        """Get this connection's Shared Memory object.
+
+        This property should *not* be accessed before any potential setting-up
+        of shared memories has finished. If it cannot be found, an error is raised.
+        """
         if self._shared_memory is None:
             mem = SharedMemoryManager.get_shared_memory(
                 self.node_name, key=self._app_id
@@ -321,18 +396,39 @@ class BaseNetQASMConnection(abc.ABC):
             self._shared_memory = mem
         return self._shared_memory
 
+    @property
+    def active_qubits(self) -> List[Qubit]:
+        """Get a list of qubits that are currently in use.
+
+        "In use" means that the virtual qubit represented by this `Qubit` instance
+        has been allocated and hence its virtual ID cannot be re-used.
+
+        :return: list of active qubits
+        """
+        return self._builder.active_qubits
+
     def _init_new_app(self, max_qubits: int) -> None:
-        """Informs the backend of the new application and how many qubits it will maximally use"""
+        """Send a message to the quantum node controller to register a new application.
+
+        :param max_qubits: maximum number of qubits that this application may allocate
+            at the same time.
+        """
         self._commit_message(
             msg=InitNewAppMessage(
                 app_id=self._app_id,
                 max_qubits=max_qubits,
             )
         )
+
+        # Wait until a shared memory is available.
+        # This is to be sure that we can access the shared memory at any time
+        # during the application.
+        # TODO: improve how this is handled
         while self.shared_memory is None:
             pass
 
     def _setup_epr_sockets(self, epr_sockets: Optional[List[EPRSocket]]) -> None:
+        """Send messages to the quantum node controller to open EPR sockets."""
         if epr_sockets is None:
             return
         for epr_socket in epr_sockets:
@@ -353,7 +449,7 @@ class BaseNetQASMConnection(abc.ABC):
         remote_epr_socket_id: int,
         min_fidelity: int,
     ) -> None:
-        """Sets up a new epr socket"""
+        """Send a message to the quantum node controller to open an EPR socket."""
         self._commit_message(
             msg=OpenEPRSocketMessage(
                 app_id=self._app_id,
@@ -365,6 +461,18 @@ class BaseNetQASMConnection(abc.ABC):
         )
 
     def flush(self, block: bool = True, callback: Optional[Callable] = None) -> None:
+        """Compile and send all pending operations to the quantum node controller.
+
+        All operations that have been added to this connection's Builder (typically by
+        issuing these operations within a connection context) are collected and
+        compiled into a NetQASM subroutine. This subroutine is then sent over the connection
+        to be executed by the quantum node controller.
+
+        :param block: block on receiving the result of executing the compiled subroutine
+            from the quantum node controller.
+        :param callback: if `block` is False, this callback is called when the quantum
+            node controller sends the subroutine results.
+        """
         subroutine = self._builder._pop_pending_subroutine()
         if subroutine is None:
             return
@@ -381,6 +489,12 @@ class BaseNetQASMConnection(abc.ABC):
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
+        """Send a subroutine to the quantum node controller.
+
+        Takes a `PreSubroutine`, i.e. an intermediate representation of the subroutine
+        that comes from the Builder.
+        The PreSubroutine is compiled into a `Subroutine` instance.
+        """
         self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
@@ -396,27 +510,29 @@ class BaseNetQASMConnection(abc.ABC):
 
         self._builder._reset()
 
-    def _subroutine_from_commands(self, commands: List[T_Cmd]) -> PreSubroutine:
-        # Build sub-routine
-        metadata = self._get_metadata()
-        return PreSubroutine(**metadata, commands=commands)  # type: ignore
-
-    def _get_metadata(self) -> Dict:
-        return {
-            "netqasm_version": NETQASM_VERSION,
-            "app_id": self._app_id,
-        }
-
-    def _log_subroutine(self, subroutine: Subroutine) -> None:
-        self._commited_subroutines.append(subroutine)
-
     def block(self) -> None:
-        """Block until flushed subroutines finish"""
+        """Block until a flushed subroutines finishes.
+
+        This should be implemented by subclasses.
+
+        :raises NotImplementedError
+        """
         raise NotImplementedError
 
     def new_array(
         self, length: int = 1, init_values: Optional[List[Optional[int]]] = None
     ) -> Array:
+        """Allocate a new array in the shared memory.
+
+        This operation is handled by the connection's Builder.
+        The Builder make sures the relevant NetQASM instructions end up in the
+        subroutine.
+
+        :param length: length of the array, defaults to 1
+        :param init_values: list of initial values of the array. If not None, must
+            have the same length as `length`.
+        :return: a handle to the array that can be used in application code
+        """
         return self._builder.new_array(length, init_values)
 
     def loop(
@@ -426,6 +542,41 @@ class BaseNetQASMConnection(abc.ABC):
         step: int = 1,
         loop_register: Optional[operand.Register] = None,
     ) -> Iterator[operand.Register]:
+        """Create a context for code that gets looped.
+
+        Each iteration of the loop is associated with an index, which starts at 0
+        by default. Each iteration the index is increased by `step` (default 1).
+        Looping stops when the index reaches `stop`.
+
+        Code inside the context *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        This operation is handled by the connection's Builder.
+        The Builder make sures the NetQASM subroutine contains a loop around the
+        (compiled) code that is inside the context.
+
+        Example:
+        .. code-block::
+
+            with NetQASMConnection(app_name="alice") as alice:
+                outcomes = alice.new_array(10)
+                with alice.loop(10) as i:
+                    q = Qubit(alice)
+                    q.H()
+                    outcome = outcomes.get_future_index(i)
+                    q.measure(outcome)
+
+        :param stop: end of iteration range (exluding)
+        :param start: start of iteration range (including), defaults to 0
+        :param step: step size of iteration range, defaults to 1
+        :param loop_register: specific register to be used for holding the loop index.
+            In most cases there is no need to explicitly specify this.
+        :return: the context object (to be used in a `with ...` expression)
+        """
+        # TODO: this returns a method that has a decorator.
+        #       Are type hints still correct?
         return self._builder.loop(stop, start, step, loop_register)  # type: ignore
 
     def loop_body(
@@ -436,30 +587,99 @@ class BaseNetQASMConnection(abc.ABC):
         step: int = 1,
         loop_register: Optional[operand.Register] = None,
     ) -> None:
+        """Loop code that is defined in a Python function (body).
+
+        The function to loop should have a single argument with that has the
+        `BaseNetQASMConnection` type.
+
+        :param body: function to loop
+        :param stop: end of iteration range (exluding)
+        :param start: start of iteration range (including), defaults to 0
+        :param step: step size of iteration range, defaults to 1
+        :param loop_register: specific register to be used for holding the loop index.
+        """
         self._builder.loop_body(body, stop, start, step, loop_register)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a == b"""
+        """Execute a function if a == b.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param b: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_eq(a, b, body)
 
     def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a != b"""
+        """Execute a function if a != b.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param b: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_ne(a, b, body)
 
     def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a < b"""
+        """Execute a function if a < b.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param b: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_lt(a, b, body)
 
     def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a >= b"""
+        """Execute a function if a > b.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param b: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_ge(a, b, body)
 
     def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a == 0"""
+        """Execute a function if a == 0.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_ez(a, body)
 
     def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a != 0"""
+        """Execute a function if a != 0.
+
+        Code inside the callback function *must* be compilable to NetQASM, that is,
+        it should only contain quantum operations and/or classical values that are
+        are stored in shared memory (arrays and registers).
+        No classical communication is allowed.
+
+        :param a: a classical value
+        :param body: function to execute if condition is true
+        """
         self._builder.if_nz(a, body)
 
     def tomography(
@@ -562,6 +782,11 @@ class BaseNetQASMConnection(abc.ABC):
 
 
 class DebugConnection(BaseNetQASMConnection):
+    """Connection that mocks most of the `BaseNetQASMConnection` logic.
+
+    Subroutines that are flushed are simply stored in this object.
+    No actual connection is made.
+    """
 
     node_ids: Dict[str, int] = {}
 

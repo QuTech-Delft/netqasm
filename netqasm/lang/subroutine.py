@@ -1,3 +1,11 @@
+"""
+NetQASM subroutine definitions.
+
+This module contains the `Subroutine` class which represents a static (not being
+executed) NetQASM subroutine.
+"""
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass
