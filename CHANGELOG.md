@@ -6,7 +6,8 @@ Upcoming
 
 2021-05-10 (0.7.2)
 ------------------
-- Temporarily disable `test_create_epr_m.py`
+- Temporarily disable `test_create_epr_m.py` test
+- Temporarily disable `link_layer_md` example
 
 2021-05-10 (0.7.1)
 ------------------
