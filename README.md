@@ -1,4 +1,4 @@
-# NetQASM (0.7.1)
+# NetQASM (0.7.2)
 Utilities for writing, compiling, and running quantum network applications.
 
 ## Intro
