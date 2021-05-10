@@ -20,6 +20,13 @@ skip_ifs = {
     ),
 }
 
+skip_ifs = {
+    "link_layer_md": SkipIf(
+        get_simulator() == Simulator.NETSQUID,
+        reason="Current NetSquid simulator does not handle MD requests well.",
+    ),
+}
+
 
 def _has_first_argument(function, argument):
     """Checks if a function takes a named argument as the first argument"""
