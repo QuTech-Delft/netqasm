@@ -2,6 +2,7 @@ netqasm\.backend\.messages
 ---------------------------
 
 .. automodule:: netqasm.backend.messages
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

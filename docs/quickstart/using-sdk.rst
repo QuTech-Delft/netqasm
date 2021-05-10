@@ -139,7 +139,7 @@ Run it a few times to see the different outcomes.
    So in the above example we could have just as well done:
 
    .. code-block:: python
-      :caption: app_alice.py
+     :caption: app_alice.py
 
       from netqasm.sdk.external import NetQASMConnection
       from netqasm.sdk import Qubit

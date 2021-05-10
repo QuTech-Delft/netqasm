@@ -2,6 +2,7 @@ netqasm\.lang\.encoding
 ---------------------------
 
 .. automodule:: netqasm.lang.encoding
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

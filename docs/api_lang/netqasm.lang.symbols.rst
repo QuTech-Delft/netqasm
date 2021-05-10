@@ -2,6 +2,7 @@ netqasm\.lang\.symbols
 ---------------------------
 
 .. automodule:: netqasm.lang.symbols
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

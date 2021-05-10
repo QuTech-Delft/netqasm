@@ -2,6 +2,7 @@ netqasm\.sdk\.config
 ---------------------------
 
 .. automodule:: netqasm.sdk.config
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

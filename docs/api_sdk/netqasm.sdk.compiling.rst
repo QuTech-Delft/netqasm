@@ -2,6 +2,7 @@ netqasm\.sdk\.compiling
 ---------------------------
 
 .. automodule:: netqasm.sdk.compiling
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

@@ -2,6 +2,7 @@ netqasm\.runtime\.hardware
 ---------------------------
 
 .. automodule:: netqasm.runtime.hardware
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

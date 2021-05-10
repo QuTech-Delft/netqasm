@@ -2,6 +2,7 @@ netqasm\.runtime\.cli
 ---------------------------
 
 .. automodule:: netqasm.runtime.cli
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:

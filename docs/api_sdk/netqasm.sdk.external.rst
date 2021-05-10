@@ -2,6 +2,7 @@ netqasm\.sdk\.external
 ---------------------------
 
 .. automodule:: netqasm.sdk.external
-    :members:
-    :show-inheritance:
-    :inherited-members:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:
