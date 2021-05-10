@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-05-10 (0.7.2)
+------------------
+- Temporarily disable `test_create_epr_m.py`
+
 2021-05-10 (0.7.1)
 ------------------
 - Added docstrings to a large part of the codebase
