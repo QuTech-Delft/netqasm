@@ -8,18 +8,21 @@ Welcome to netqasm's and its SDK's documentation!
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Installation
 
    installation
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Quick start
+
    quickstart
-   api/netqasm
 
 
+.. toctree::
+   :maxdepth: 2
+   :caption: API reference
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   api_root
