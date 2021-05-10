@@ -2,12 +2,7 @@ from netqasm.sdk.qubit import Qubit
 
 
 def t_inverse(q: Qubit) -> None:
-    """Performs an inverse of the T gate by applying the T gate 7 times.
-
-    Parameters
-    ----------
-    q : :class:`~.Qubit`
-    """
+    """Performs an inverse of the T gate by applying the T gate 7 times."""
     for _ in range(7):
         q.T()
 
@@ -17,12 +12,6 @@ def toffoli_gate(control1: Qubit, control2: Qubit, target: Qubit) -> None:
     and `target` as target, using CNOTS, Ts and Hadamard gates.
 
     See https://en.wikipedia.org/wiki/Toffoli_gate
-
-    Parameters
-    ----------
-    control1 : :class:`~.Qubit`
-    control2 : :class:`~.Qubit`
-    target : :class:`~.Qubit`
     """
     target.H()
     control2.cnot(target)

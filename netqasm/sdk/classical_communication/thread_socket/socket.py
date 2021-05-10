@@ -1,3 +1,9 @@
+"""Classical socket implementation using a hub that is shared across threads.
+
+This module contains the ThreadSocket class which is an implementation of the Socket
+interface that can be used by Hosts that run in a multi-thread simulation.
+"""
+
 from __future__ import annotations
 
 import json
@@ -177,6 +183,16 @@ def log_recv_structured(method):
 
 
 class ThreadSocket(Socket):
+    """Classical socket implementation for multi-threaded simulations.
+
+    This implementation should be used when the simulation consists of a single process,
+    with a thread for each Host. A global SocketHub instance must be available and
+    shared between all threads. The ThreadSocket instance for a Host can then 'send'
+    and 'receive' messages to/from other Hosts by writing/reading from the shared
+    SocketHub memory.
+
+    Currently only used with the SquidASM simulator backend.
+    """
 
     _COMM_LOGGERS: Dict[str, Optional[ClassCommLogger]] = {}
     _SOCKET_HUB: _SocketHub = _socket_hub
@@ -190,24 +206,16 @@ class ThreadSocket(Socket):
         use_callbacks: bool = False,
         log_config: Optional[LogConfig] = None,
     ):
-        """Socket used when applications run under the same process in different threads.
+        """ThreadSocket constructor.
 
-        This connection is only a hack used in simulations to easily develop applications and protocols.
-
-        Parameters
-        ----------
-        app_name : int
-            app name of the local node.
-        remote_node_name : str
-            Node ID of the remote node.
-        socket_id : int, optional
-            ID of the socket (can be seen as a port)
-        timeout : float, optional
-            Optionally use a timeout for trying to setup a connection with another node.
-        use_callbacks : bool, optional
-            Whether to use callbacks or not.
-        comm_log_dir : str, optional
-            Path to log classical communication to. File name will be "{node_name}_class_comm.log"
+        :param app_name: application/Host name of this socket's owner
+        :param remote_app_name: remote application/Host name
+        :param socket_id: local ID to use for this socket
+        :param timeout: maximum amount of real time to try to connect to the remote
+            socket
+        :param use_callbacks: whether to call the `recv_callback` method upon receiving
+            a message
+        :param log_config: logging configuration for this socket
         """
         self._app_name: str = app_name
         self._remote_app_name: str = remote_app_name

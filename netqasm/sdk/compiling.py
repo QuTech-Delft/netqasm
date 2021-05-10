@@ -1,3 +1,10 @@
+"""Transpilation of subroutines from one flavour to another.
+
+This module contains the SubroutineCompiler interface which is a base class for
+transpilers that can convert a NetQASM subroutine into a subroutine with a specific
+flavour.
+"""
+
 import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
@@ -14,17 +21,15 @@ class SubroutineCompiler(abc.ABC):
 
     @abc.abstractmethod
     def compile(self) -> Subroutine:
-        """Compile a subroutine (inplace) to a specific hardware
-
-        Parameters
-        ----------
-        subroutine : :class:`netqasm.lang.subroutine.Subroutine`
-            The subroutine to compile
-        """
+        """Compile the subroutine into one with a specific flavour."""
         pass
 
 
 class NVSubroutineCompiler(SubroutineCompiler):
+    """A transpiler that converts a subroutine with the vanilla flavour to a subroutine
+    with the NV flavour.
+    """
+
     def __init__(self, subroutine: Subroutine, debug=False):
         self._subroutine: Subroutine = subroutine
         self._used_registers: Set[Register] = set()

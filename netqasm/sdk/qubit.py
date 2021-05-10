@@ -1,4 +1,8 @@
-"""TODO write about qubits"""
+"""Qubit representation.
+
+This module contains the `Qubit` class, which are used by application scripts
+as handles to in-memory qubits.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Union
@@ -16,6 +20,26 @@ class QubitNotActiveError(MemoryError):
 
 
 class Qubit:
+    """Representation of a qubit that has been allocated in the quantum node.
+
+    A `Qubit` instance represents a quantum state that is stored in a physical qubit
+    somewhere in the quantum node.
+    The particular qubit is identified by its virtual qubit ID.
+    To which physical qubit ID this is mapped (at a given time), is handled completely
+    by the quantum node controller and is not known to the `Qubit` itself.
+
+    A `Qubit` object can be instantiated in an application script.
+    Such an instantiation is automatically compiled into NetQASM instructions that
+    allocate and initialize a new qubit in the quantum node controller.
+
+    A `Qubit` object may also be obtained by SDK functions that return them, like
+    the `create()` method on an `EPRSocket`, which returns the object as a handle to
+    the qubit that is now entangled with one in another node.
+
+    Qubit operations like applying gates and measuring them are done by calling
+    methods on a `Qubit` instance.
+    """
+
     def __init__(
         self,
         conn: BaseNetQASMConnection,
@@ -23,6 +47,17 @@ class Qubit:
         ent_info: Optional[LinkLayerOKTypeK] = None,
         virtual_address: Optional[int] = None,
     ):
+        """Qubit constructor. This is the standard way to allocate a new qubit in
+        an application.
+
+        :param conn: connection of the application in which to allocate the qubit
+        :param add_new_command: whether to automatically add NetQASM instructions to
+            the current subroutine to allocate and initialize the qubit
+        :param ent_info: entanglement generation information in case this qubit is
+            the result of an entanglement generation request
+        :param virtual_address: explicit virtual ID to use for this qubit. If None,
+            a free ID is automatically chosen.
+        """
         self._conn: BaseNetQASMConnection = conn
         if virtual_address is None:
             self._qubit_id: int = self._conn._builder.new_qubit_id()
@@ -91,12 +126,14 @@ class Qubit:
 
     @property
     def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
-        """Get the entanglement info"""
+        """Get information about the successful link layer request that resulted in
+        this qubit."""
         return self._ent_info
 
     @property
     def remote_entangled_node(self) -> Optional[str]:
         """Get the name of the remote node the qubit is entangled with.
+
         If not entanled, `None` is returned.
         """
         if self._remote_ent_node is not None:
@@ -112,9 +149,7 @@ class Qubit:
         return remote_node_name
 
     def assert_active(self) -> None:
-        """
-        Checks if the qubit is active
-        """
+        """Assert that the qubit is active, i.e. allocated."""
         if not self.active:
             raise QubitNotActiveError(f"Qubit {self.qubit_id} is not active")
 
@@ -124,16 +159,18 @@ class Qubit:
         inplace: bool = False,
         store_array: bool = True,
     ) -> Union[Future, RegFuture]:
-        """
-        Measures the qubit in the standard basis and returns the measurement outcome.
+        """Measure the qubit in the standard basis and get the measurement outcome.
 
-        Parameters
-        ----------
-        future : :class:`~.sdk.futures.Future`
-            The future to place the outcome in
-        inplace : bool
-            If inplace=False, the measurement is destructive and the qubit is removed from memory.
-            If inplace=True, the qubit is left in the post-measurement state.
+        :param future: the `Future` to place the outcome in. If None, a Future is
+            created automatically.
+        :param inplace: If False, the measurement is destructive and the qubit is
+            removed from memory. If True, the qubit is left in the post-measurement
+            state.
+        :param store_array: whether to store the outcome in an array. If not, it is
+            placed in a register. Only used if `future` is None.
+        :return: the Future representing the measurement outcome. It is a `Future` if
+        the result is in an array (default) or `RegFuture` if the result is in a
+        register.
         """
         self.assert_active()
 
@@ -156,64 +193,68 @@ class Qubit:
         return future
 
     def X(self) -> None:
-        """
-        Performs a X on the qubit.
-        """
+        """Apply an X gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.X, qubit_id=self.qubit_id
         )
 
     def Y(self) -> None:
-        """
-        Performs a Y on the qubit.
-        """
+        """Apply a Y gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Y, qubit_id=self.qubit_id
         )
 
     def Z(self) -> None:
-        """
-        Performs a Z on the qubit.
-        """
+        """Apply a Z gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.Z, qubit_id=self.qubit_id
         )
 
     def T(self) -> None:
-        """
-        Performs a T gate on the qubit.
+        """Apply a T gate on the qubit.
+
+        A T gate is a Z-rotation with angle pi/4.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.T, qubit_id=self.qubit_id
         )
 
     def H(self) -> None:
-        """
-        Performs a Hadamard on the qubit.
-        """
+        """Apply a Hadamard gate on the qubit."""
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.H, qubit_id=self.qubit_id
         )
 
     def K(self) -> None:
-        """
-        Performs a K gate on the qubit.
+        """Apply a K gate on the qubit.
+
+        A K gate moves the |0> state to +|i> (positive Y) and vice versa.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.K, qubit_id=self.qubit_id
         )
 
     def S(self) -> None:
-        """
-        Performs a S gate on the qubit.
+        """Apply an S gate on the qubit.
+
+        An S gate is a Z-rotation with angle pi/2.
         """
         self._conn._builder.add_single_qubit_commands(
             instr=GenericInstr.S, qubit_id=self.qubit_id
         )
 
     def rot_X(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the X-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the X-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_X,
@@ -224,8 +265,17 @@ class Qubit:
         )
 
     def rot_Y(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the Y-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the Y-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Y,
@@ -236,8 +286,17 @@ class Qubit:
         )
 
     def rot_Z(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
-        """Performs a rotation around the Z-axis of an angle `n * pi / 2 ^ d`
-        If `angle` is specified `n` and `d` are ignored and a sequence of `n` and `d` are used to approximate the angle.
+        """Do a rotation around the Z-axis of the specified angle.
+
+        The angle is interpreted as ǹ * pi / 2 ^d` radians.
+        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
+        If `angle` is specified, `n` and `d` are ignored and this instruction is
+        automatically converted into a sequence of (n, d) rotations such that the
+        discrete (n, d) values approximate the original angle.
+
+        :param n: numerator of discrete angle specification
+        :param d: denomerator of discrete angle specification
+        :param angle: exact floating-point angle, defaults to None
         """
         self._conn._builder.add_single_qubit_rotation_commands(
             instruction=GenericInstr.ROT_Z,
@@ -248,14 +307,9 @@ class Qubit:
         )
 
     def cnot(self, target: Qubit) -> None:
-        """
-        Applies a cnot onto target.
-        Target should be a qubit-object with the same connection.
+        """Apply a CNOT gate between this qubit (control) and a target qubit.
 
-        Parameters
-        ----------
-        target : :class:`~.Qubit`
-            The target qubit
+        :param target: target qubit. Should have the same connection as this qubit.
         """
         self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CNOT,
@@ -264,14 +318,9 @@ class Qubit:
         )
 
     def cphase(self, target: Qubit) -> None:
-        """
-        Applies a cphase onto target.
-        Target should be a qubit-object with the same connection.
+        """Apply a CPHASE (CZ) gate between this qubit (control) and a target qubit.
 
-        Parameters
-        ----------
-        target : :class:`~.Qubit`
-            The target qubit
+        :param target: target qubit. Should have the same connection as this qubit.
         """
         self._conn._builder.add_two_qubit_commands(
             instr=GenericInstr.CPHASE,
@@ -280,21 +329,35 @@ class Qubit:
         )
 
     def reset(self) -> None:
-        r"""
-        Resets the qubit to the state \|0>
-        """
+        r"""Reset the qubit to the state \|0>."""
         self._conn._builder.add_init_qubit_commands(qubit_id=self.qubit_id)
 
     def free(self) -> None:
         """
-        Unallocates the qubit.
+        Free the qubit and its virtual ID.
+
+        After freeing, the underlying physical qubit can be used to store another state.
         """
         self._conn._builder.add_qfree_commands(qubit_id=self.qubit_id)
 
 
-class _FutureQubit(Qubit):
+class FutureQubit(Qubit):
+    """A Qubit that will be available in the future.
+
+    This class is very similar to the `Future` class which is used for classical
+    values.
+    A `FutureQubit` acts like a `Qubit` so that all qubit operations can be applied on
+    it. FutureQubits are typically the result of EPR creating requests, where they
+    represent the qubits that will be available when EPR generation has finished.
+    """
+
     def __init__(self, conn: BaseNetQASMConnection, future_id: Future):
-        """Used by NetQASMConnection to handle operations on a future qubit (e.g. post createEPR)"""
+        """FutureQubit constructor. Typically not used directly.
+
+        :param conn: connection through which subroutines are sent that contain this
+            qubit
+        :param future_id: the virtual ID this qubit will have
+        """
         self._conn: BaseNetQASMConnection = conn
 
         self.qubit_id: Future = future_id

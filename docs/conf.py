@@ -17,12 +17,12 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'netqasm'
-copyright = '2019, Axel Dahlberg'
-author = 'Axel Dahlberg'
+project = "netqasm"
+copyright = "2019, Axel Dahlberg"
+author = "Axel Dahlberg"
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.0'
+release = "0.7.2"
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,20 +31,20 @@ release = '0.7.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.githubpages',
-    'sphinx.ext.todo',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.doctest',
-    'sphinx.ext.extlinks',
-    'sphinx_autodoc_typehints',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.githubpages",
+    "sphinx.ext.todo",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.doctest",
+    "sphinx.ext.extlinks",
+    "sphinx_autodoc_typehints",
     # 'sphinx_exercise',
 ]
 napoleon_include_init_with_doc = True
-autodoc_member_order = 'bysource'
-autoclass_content = 'both'
+autodoc_member_order = "bysource"
+# autoclass_content = 'both'
 always_document_param_types = True
 
 extlinks = {
@@ -53,18 +53,21 @@ extlinks = {
     "squidasm": ("https://gitlab.com/softwarequtech/netqasm/squidasm/%s", ""),
     "network-layer": ("https://arxiv.org/abs/2010.02575/%s", ""),
     "repcode": ("https://en.wikipedia.org/wiki/Quantum_error_correction/%s", ""),
-    "netqasm-paper": ("https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-paper/%s", ""),
+    "netqasm-paper": (
+        "https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-paper/%s",
+        "",
+    ),
     # TODO add link to qnodeos
-    "qnodeos": ("%s", "")
+    "qnodeos": ("%s", ""),
 }
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -72,9 +75,9 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]

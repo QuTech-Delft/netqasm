@@ -1,3 +1,19 @@
+"""Imports of concrete (external) implementations of various NetQASM interfaces.
+
+This module re-exports concrete types that are defined externally (e.g. in SquidASM).
+The types are re-exported under generic names, such that client code does not need to
+use the concrete external names.
+Which of the concrete implementations is re-exported depends on global variables (most
+importantly the variable indicating which simulator should be used).
+
+For example, an application may import the `NetQASMConnection` name from
+`netqasm.sdk.external`, while having set the simulator type to NETSQUID.
+This results in the import resolving to an import of
+`squidasm.run.multithread.sdk.NetSquidConnection`, even though the application never
+had to specify this concrete name. This allows the same application code to be used
+with different implementations of `NetQASMConnection`.
+"""
+
 from netqasm.runtime.settings import Simulator, get_is_using_hardware, get_simulator
 
 simulator = get_simulator()
@@ -10,7 +26,7 @@ if is_using_hardware:
         )
         from qnodeos.sdk.socket import Socket  # type: ignore
 
-        from netqasm.runtime.hardware import run_applications  # type: ignore
+        from netqasm.runtime.hardware import run_application  # type: ignore
     except ModuleNotFoundError:
         raise ModuleNotFoundError("to use QNodeOS , `qnodeos` needs to be installed")
 elif simulator == Simulator.NETSQUID:
@@ -47,7 +63,7 @@ elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
         )
 elif simulator == Simulator.SIMULAQRON:
     try:
-        from simulaqron.run import run_applications  # type: ignore
+        from simulaqron.run import run_application  # type: ignore
         from simulaqron.sdk.broadcast_channel import BroadcastChannel  # type: ignore
         from simulaqron.sdk.connection import (
             SimulaQronConnection as NetQASMConnection,  # type: ignore
@@ -60,7 +76,7 @@ elif simulator == Simulator.SIMULAQRON:
         )
 elif simulator == Simulator.DEBUG:
     from netqasm.runtime.debug import get_qubit_state  # type: ignore
-    from netqasm.runtime.debug import run_applications  # type: ignore
+    from netqasm.runtime.debug import run_application  # type: ignore
     from netqasm.sdk.classical_communication import (
         ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
     )
