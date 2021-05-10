@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-05-10 (0.7.1)
+------------------
+- Added docstrings to a large part of the codebase
+- Some refactoring based on inconsistencies found while documenting
+
 2021-05-02 (0.7.0)
 ------------------
 - Added type hints to most of the code.
