@@ -593,14 +593,17 @@ class BaseNetQASMConnection(abc.ABC):
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
-    def add_measure_commands(self, qubit_id, future, inplace):
+    def add_measure_commands(self, qubit_id, future, inplace, store_array: bool = True):
         if self._compiler == NVSubroutineCompiler:
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
             if not isinstance(qubit_id, Future):
                 if qubit_id != 0:
                     self._free_up_qubit(virtual_address=0)
-        outcome_reg = self._get_new_meas_outcome_reg()
+        # When storing the outcome to an array, the register is only used temporarily
+        # and can be safely overwritten afterwards, i.e. does not need to be marked
+        # as "in-use".
+        outcome_reg = self._get_new_meas_outcome_reg(free_immediately=store_array)
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         meas_command = Command(
             instruction=Instruction.MEAS,
@@ -625,11 +628,12 @@ class BaseNetQASMConnection(abc.ABC):
         commands = set_commands + [meas_command] + free_commands + outcome_commands
         self.add_pending_commands(commands)
 
-    def _get_new_meas_outcome_reg(self):
+    def _get_new_meas_outcome_reg(self, free_immediately: bool = False):
         # Find the next unused M-register.
         for i in range(16):
             if i not in self._used_meas_registers:
-                self._used_meas_registers.append(i)
+                if not free_immediately:
+                    self._used_meas_registers.append(i)
                 return Register(RegisterName.M, i)
 
     def add_new_qubit_commands(self, qubit_id):

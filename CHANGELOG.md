@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-05-25 (0.6.1)
+------------------
+- Fixed an issue where M-registers did not get re-used if they were only used temporarily before storing measurement outcomes into an array.
+
 2021-02-05 (0.6.0)
 ------------------
 - Added support for choosing the measurement basis for M-type EPR generation.
