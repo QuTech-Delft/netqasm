@@ -1,9 +1,9 @@
+from netqasm.sdk.qubit import Qubit
 import pytest
 
 from netqasm.sdk.futures import Future, NoValueError, NonConstantIndexError
 from netqasm.lang.parsing import parse_register
 from netqasm.sdk.shared_memory import SharedMemory
-
 
 class MockConnnection:
     def __init__(self):

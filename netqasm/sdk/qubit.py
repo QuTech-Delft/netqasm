@@ -127,6 +127,7 @@ class Qubit:
             qubit_id=self.qubit_id,
             future=future,
             inplace=inplace,
+            store_array=store_array,
         )
 
         if not inplace:

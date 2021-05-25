@@ -667,9 +667,57 @@ def test_epr_m():
     assert subroutine == expected
 
 
+def test_return_outcomes_in_registers():
+    set_log_level(logging.INFO)
+
+    conn = DebugConnection("alice")
+    conn.shared_memory.init_new_array(address=0, length=10)
+
+    with conn:
+        outcomes = []
+        for i in range(5):
+            q = Qubit(conn)
+            outcomes.append(q.measure(store_array=False))
+
+    raw_subroutine = deserialize_message(raw=conn.storage[1]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+
+    # Verify that each measurement outcome is returns in a different register
+    last_instrs = subroutine.commands[-5:]
+    for i, ins in enumerate(last_instrs):
+        assert isinstance(ins, instructions.core.RetRegInstruction)
+        assert ins.reg == Register(RegisterName.M, i)
+    return outcomes
+
+
+def test_return_outcomes_in_array():
+    set_log_level(logging.INFO)
+
+    conn = DebugConnection("alice")
+    conn.shared_memory.init_new_array(address=0, length=10)
+
+    with conn:
+        outcomes = []
+        for i in range(5):
+            q = Qubit(conn)
+            outcomes.append(q.measure(store_array=True))
+
+    raw_subroutine = deserialize_message(raw=conn.storage[1]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+
+    # Verify that register M0 is re-used for every measurement
+    for ins in subroutine.commands:
+        if isinstance(ins, instructions.core.MeasInstruction):
+            assert ins.creg == Register(RegisterName.M, 0)
+
+    return outcomes
+
+
 if __name__ == "__main__":
     test_simple()
     test_rotations()
     test_epr()
     test_two_epr()
     test_epr_m()
+    test_return_outcomes_in_registers()
+    test_return_outcomes_in_array()
