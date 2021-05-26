@@ -16,6 +16,7 @@ from netqasm.qlink_compat import (
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
     RandomBasis,
+    TimeUnit,
 )
 
 from .qubit import Qubit
@@ -152,6 +153,8 @@ class EPRSocket(abc.ABC):
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
         basis_local: EPRMeasBasis = None,
         basis_remote: EPRMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
@@ -244,6 +247,11 @@ class EPRSocket(abc.ABC):
         :param tp: type of entanglement generation, defaults to EPRType.K. Note that
             corresponding `recv` of the remote node's EPR socket must specify the
             same type.
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
@@ -289,6 +297,8 @@ class EPRSocket(abc.ABC):
             post_routine=post_routine,
             sequential=sequential,
             tp=tp,
+            time_unit=time_unit,
+            max_time=max_time,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
             rotations_local=rotations_local,
@@ -296,7 +306,13 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    def create_context(self, number: int = 1, sequential: bool = False):
+    def create_context(
+        self,
+        number: int = 1,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+    ):
         """Create a context that is executed for each generated EPR pair consecutively.
 
         Creates EPR pairs with a remote node and handles each pair by
@@ -333,6 +349,8 @@ class EPRSocket(abc.ABC):
                 number=number,
                 sequential=sequential,
                 tp=EPRType.K,
+                time_unit=time_unit,
+                max_time=max_time,
             )
             yield output, pair
         finally:
@@ -385,7 +403,11 @@ class EPRSocket(abc.ABC):
         )
 
     @contextmanager
-    def recv_context(self, number: int = 1, sequential: bool = False):
+    def recv_context(
+        self,
+        number: int = 1,
+        sequential: bool = False,
+    ):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
             instruction = GenericInstr.RECV_EPR

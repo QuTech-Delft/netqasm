@@ -68,6 +68,13 @@ class BellState(Enum):
     PSI_MINUS = auto()  # |01> - |10>
 
 
+# Unit for max_time argument
+class TimeUnit(Enum):
+    MICRO_SECONDS = 0
+    MILLI_SECONDS = 1
+    SECONDS = 2
+
+
 # CREATE message to the link layer for entanglement generation
 LinkLayerCreate = namedtuple(
     "LinkLayerCreate",
