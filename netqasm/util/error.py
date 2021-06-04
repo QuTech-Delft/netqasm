@@ -13,5 +13,6 @@ class NoCircuitRuleError(RuntimeError):
 class NotAllocatedError(RuntimeError):
     pass
 
+
 class SubroutineAbortedError(RuntimeError):
     pass
