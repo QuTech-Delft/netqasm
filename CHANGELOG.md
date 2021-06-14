@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-06-14 (0.7.3)
+------------------
+- Added `max_time` and `time_unit` parameters to `EPRSocket.create()`
+- Added `SubroutineAbortedError` type
+
 2021-05-10 (0.7.2)
 ------------------
 - Temporarily disable `test_create_epr_m.py` test
