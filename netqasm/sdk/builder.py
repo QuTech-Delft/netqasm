@@ -54,6 +54,7 @@ from netqasm.qlink_compat import (
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
     RandomBasis,
+    TimeUnit,
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
@@ -516,6 +517,8 @@ class Builder:
         ent_info_array: Array,
         wait_all: bool,
         tp: EPRType,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
@@ -542,6 +545,9 @@ class Builder:
             create_kwargs: Dict[str, Any] = {}
             create_kwargs["type"] = tp
             create_kwargs["number"] = number
+            if max_time != 0:  # if 0, don't need to set value explicitly
+                create_kwargs["time_unit"] = time_unit.value
+                create_kwargs["max_time"] = max_time
             # TODO currently this give 50 / 50 since with the current link layer
             # This should change and not be hardcoded here
             if random_basis_local is not None:
@@ -738,6 +744,8 @@ class Builder:
         post_routine: Optional[T_PostRoutine],
         sequential: bool,
         tp: EPRType,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
@@ -765,6 +773,8 @@ class Builder:
             ent_info_array=ent_info_array,
             wait_all=wait_all,
             tp=tp,
+            time_unit=time_unit,
+            max_time=max_time,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
             rotations_local=rotations_local,
@@ -785,6 +795,8 @@ class Builder:
         number: int = 1,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
     ) -> Tuple[
         List[T_Cmd],
         operand.Register,
@@ -819,6 +831,8 @@ class Builder:
             ent_info_array=ent_info_array,
             wait_all=False,
             tp=tp,
+            time_unit=time_unit,
+            max_time=max_time,
         )
         if qubit_ids_array is None:
             raise RuntimeError("qubit_ids_array is None")
@@ -976,6 +990,8 @@ class Builder:
         post_routine: Optional[T_PostRoutine] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
@@ -995,6 +1011,8 @@ class Builder:
             post_routine=post_routine,
             sequential=sequential,
             tp=tp,
+            time_unit=time_unit,
+            max_time=max_time,
             random_basis_local=random_basis_local,
             random_basis_remote=random_basis_remote,
             rotations_local=rotations_local,

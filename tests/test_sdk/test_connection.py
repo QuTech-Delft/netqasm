@@ -9,7 +9,7 @@ from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Immediate, Reg
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import set_log_level
-from netqasm.qlink_compat import EPRType
+from netqasm.qlink_compat import EPRType, TimeUnit
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.qubit import Qubit
@@ -677,6 +677,54 @@ def test_epr_m():
     print(subroutine)
     print(expected)
     assert subroutine == expected
+
+
+def test_epr_max_time():
+
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        q1 = epr_socket.create(time_unit=TimeUnit.MILLI_SECONDS, max_time=25)[0]
+        q1.H()
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    print(subroutine)
+    assert subroutine.commands[15:21] == [
+        instructions.core.SetInstruction(
+            reg=Register(RegisterName.R, 0),
+            imm=Immediate(1),
+        ),
+        instructions.core.SetInstruction(
+            reg=Register(RegisterName.R, 1),
+            imm=Immediate(5),
+        ),
+        instructions.core.StoreInstruction(
+            reg=Register(RegisterName.R, 0),
+            entry=ArrayEntry(
+                address=Address(2),
+                index=Register(RegisterName.R, 1),
+            ),
+        ),
+        instructions.core.SetInstruction(
+            reg=Register(RegisterName.R, 0),
+            imm=Immediate(25),
+        ),
+        instructions.core.SetInstruction(
+            reg=Register(RegisterName.R, 1),
+            imm=Immediate(6),
+        ),
+        instructions.core.StoreInstruction(
+            reg=Register(RegisterName.R, 0),
+            entry=ArrayEntry(
+                address=Address(2),
+                index=Register(RegisterName.R, 1),
+            ),
+        ),
+    ]
 
 
 if __name__ == "__main__":
