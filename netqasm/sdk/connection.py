@@ -233,6 +233,11 @@ class BaseNetQASMConnection(abc.ABC):
         """Get the application ID"""
         return self._app_id
 
+    @app_id.setter
+    def app_id(self, id: int) -> None:
+        self._app_id = id
+        self._builder.app_id = id
+
     @abc.abstractmethod
     def _get_network_info(self) -> Type[NetworkInfo]:
         raise NotImplementedError

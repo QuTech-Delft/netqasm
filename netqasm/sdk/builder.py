@@ -166,6 +166,14 @@ class Builder:
         # What compiler (if any) to be used
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
 
+    @property
+    def app_id(self) -> int:
+        return self._app_id
+
+    @app_id.setter
+    def app_id(self, id: int) -> None:
+        self._app_id = id
+
     def inactivate_qubits(self) -> None:
         while len(self.active_qubits) > 0:
             q = self.active_qubits.pop()
@@ -310,7 +318,7 @@ class Builder:
     def _get_metadata(self) -> Dict:
         return {
             "netqasm_version": NETQASM_VERSION,
-            "app_id": self._app_id,
+            "app_id": self.app_id,
         }
 
     def _pop_pending_commands(self) -> List[T_Cmd]:
