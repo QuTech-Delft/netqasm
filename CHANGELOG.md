@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-06-22 (0.7.4)
+------------------
+- Fixed bug where Builder's App ID was not updated when Connection's App ID changed.
+
 2021-06-14 (0.7.3)
 ------------------
 - Added `max_time` and `time_unit` parameters to `EPRSocket.create()`
