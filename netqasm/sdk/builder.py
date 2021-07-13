@@ -7,6 +7,7 @@ Python application script code into NetQASM subroutines.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import Enum
 from itertools import count
 from typing import (
@@ -75,6 +76,21 @@ T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 if TYPE_CHECKING:
     from .connection import BaseNetQASMConnection
+
+
+@dataclass
+class EntRequestParams:
+    remote_node_id: int
+    epr_socket_id: int
+    number: int
+    post_routine: Optional[T_PostRoutine]
+    sequential: bool
+    time_unit: TimeUnit = TimeUnit.MICRO_SECONDS
+    max_time: int = 0
+    random_basis_local: Optional[RandomBasis] = None
+    random_basis_remote: Optional[RandomBasis] = None
+    rotations_local: Tuple[int, int, int] = (0, 0, 0)
+    rotations_remote: Tuple[int, int, int] = (0, 0, 0)
 
 
 class Builder:
@@ -515,109 +531,99 @@ class Builder:
         commands = set_commands + [qfree_command]
         self.add_pending_commands(commands)
 
+    def _build_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
+        create_kwargs: Dict[str, Any] = {}
+        create_kwargs["type"] = tp
+        create_kwargs["number"] = params.number
+        if params.max_time != 0:  # if 0, don't need to set value explicitly
+            create_kwargs["time_unit"] = params.time_unit.value
+            create_kwargs["max_time"] = params.max_time
+        # TODO currently this give 50 / 50 since with the current link layer
+        # This should change and not be hardcoded here
+        if params.random_basis_local is not None:
+            # NOTE Currently there is not value one can set to specify
+            # a uniform distribution for three bases. This needs to be changed
+            # in the underlying link layer/network stack
+            assert params.random_basis_local in [
+                RandomBasis.XZ,
+                RandomBasis.CHSH,
+            ], "Can only random measure in one of two bases for now"
+            create_kwargs["random_basis_local"] = params.random_basis_local
+            create_kwargs["probability_dist_local1"] = 128
+        if params.random_basis_remote is not None:
+            assert params.random_basis_remote in [
+                RandomBasis.XZ,
+                RandomBasis.CHSH,
+            ], "Can only random measure in one of two bases for now"
+            create_kwargs["random_basis_remote"] = params.random_basis_remote
+            create_kwargs["probability_dist_remote1"] = 128
+
+        if tp == EPRType.M:
+            rotx1_local, roty_local, rotx2_local = params.rotations_local
+            rotx1_remote, roty_remote, rotx2_remote = params.rotations_remote
+
+            if params.rotations_local != (
+                0,
+                0,
+                0,
+            ):  # instructions for explicitly setting to zero are redundant
+                create_kwargs["rotation_X_local1"] = rotx1_local
+                create_kwargs["rotation_Y_local"] = roty_local
+                create_kwargs["rotation_X_local2"] = rotx2_local
+
+            if params.rotations_remote != (
+                0,
+                0,
+                0,
+            ):  # instructions for explicitly setting to zero are redundant
+                create_kwargs["rotation_X_remote1"] = rotx1_remote
+                create_kwargs["rotation_Y_remote"] = roty_remote
+                create_kwargs["rotation_X_remote2"] = rotx2_remote
+
+        create_args = []
+        # NOTE we don't include the two first args since these are remote_node_id
+        # and epr_socket_id which come as registers
+        for field in LinkLayerCreate._fields[2:]:
+            arg = create_kwargs.get(field)
+            # If Enum, use its value
+            if isinstance(arg, Enum):
+                arg = arg.value
+            create_args.append(arg)
+        # TODO don't create a new array if already created from previous command
+        return self.new_array(init_values=create_args)
+
     def _add_epr_commands(
         self,
         instruction: GenericInstr,
-        virtual_qubit_ids: Optional[List[int]],
-        remote_node_id: int,
-        epr_socket_id: int,
-        number: int,
-        ent_info_array: Array,
+        qubit_ids_array: Optional[Array],
+        ent_results_array: Array,
         wait_all: bool,
         tp: EPRType,
-        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
-        max_time: int = 0,
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+        params: EntRequestParams,
         **kwargs,
-    ) -> Optional[Array]:
-        # qubit addresses
-
+    ) -> None:
         qubit_ids_array_address: Union[int, operand.Register]
         epr_cmd_operands: List[T_OperandUnion]
 
         if tp == EPRType.K:
-            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+            assert qubit_ids_array is not None
             qubit_ids_array_address = qubit_ids_array.address
         else:
-            qubit_ids_array = None  # type: ignore
             # NOTE since this argument won't be used just set it to some
             # constant register for now
             qubit_ids_array_address = operand.Register(RegisterName.C, 0)
 
         if instruction == GenericInstr.CREATE_EPR:
-            # request arguments
-            # TODO add other args
-            create_kwargs: Dict[str, Any] = {}
-            create_kwargs["type"] = tp
-            create_kwargs["number"] = number
-            if max_time != 0:  # if 0, don't need to set value explicitly
-                create_kwargs["time_unit"] = time_unit.value
-                create_kwargs["max_time"] = max_time
-            # TODO currently this give 50 / 50 since with the current link layer
-            # This should change and not be hardcoded here
-            if random_basis_local is not None:
-                # NOTE Currently there is not value one can set to specify
-                # a uniform distribution for three bases. This needs to be changed
-                # in the underlying link layer/network stack
-                assert random_basis_local in [
-                    RandomBasis.XZ,
-                    RandomBasis.CHSH,
-                ], "Can only random measure in one of two bases for now"
-                create_kwargs["random_basis_local"] = random_basis_local
-                create_kwargs["probability_dist_local1"] = 128
-            if random_basis_remote is not None:
-                assert random_basis_remote in [
-                    RandomBasis.XZ,
-                    RandomBasis.CHSH,
-                ], "Can only random measure in one of two bases for now"
-                create_kwargs["random_basis_remote"] = random_basis_remote
-                create_kwargs["probability_dist_remote1"] = 128
-
-            if tp == EPRType.M:
-                rotx1_local, roty_local, rotx2_local = rotations_local
-                rotx1_remote, roty_remote, rotx2_remote = rotations_remote
-
-                if rotations_local != (
-                    0,
-                    0,
-                    0,
-                ):  # instructions for explicitly setting to zero are redundant
-                    create_kwargs["rotation_X_local1"] = rotx1_local
-                    create_kwargs["rotation_Y_local"] = roty_local
-                    create_kwargs["rotation_X_local2"] = rotx2_local
-
-                if rotations_remote != (
-                    0,
-                    0,
-                    0,
-                ):  # instructions for explicitly setting to zero are redundant
-                    create_kwargs["rotation_X_remote1"] = rotx1_remote
-                    create_kwargs["rotation_Y_remote"] = roty_remote
-                    create_kwargs["rotation_X_remote2"] = rotx2_remote
-
-            create_args = []
-            # NOTE we don't include the two first args since these are remote_node_id
-            # and epr_socket_id which come as registers
-            for field in LinkLayerCreate._fields[2:]:
-                arg = create_kwargs.get(field)
-                # If Enum, use its value
-                if isinstance(arg, Enum):
-                    arg = arg.value
-                create_args.append(arg)
-            # TODO don't create a new array if already created from previous command
-            create_args_array = self.new_array(init_values=create_args)
+            create_args_array = self._build_epr_create_args(tp, params)
             epr_cmd_operands = [
                 qubit_ids_array_address,
                 create_args_array.address,
-                ent_info_array.address,
+                ent_results_array.address,
             ]
         elif instruction == GenericInstr.RECV_EPR:
             epr_cmd_operands = [
                 qubit_ids_array_address,
-                ent_info_array.address,
+                ent_results_array.address,
             ]
         else:
             raise ValueError(f"Not an epr instruction {instruction}")
@@ -625,36 +631,30 @@ class Builder:
         # epr command
         epr_cmd = ICmd(
             instruction=instruction,
-            args=[remote_node_id, epr_socket_id],
+            args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,
         )
 
         # wait
+        arr_slice = ArraySlice(
+            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+        )
         if wait_all:
-            wait_cmds = [
-                ICmd(
-                    instruction=GenericInstr.WAIT_ALL,
-                    operands=[ArraySlice(ent_info_array.address, start=0, stop=len(ent_info_array))],  # type: ignore
-                )
-            ]
+            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
         else:
             wait_cmds = []
 
         commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
         self.add_pending_commands(commands)
 
-        return qubit_ids_array
-
     def _add_post_commands(
         self,
         qubit_ids: Optional[Array],
         number: int,
-        ent_info_array: Array,
+        ent_results_array: Array,
         tp: EPRType,
-        post_routine: Optional[T_PostRoutine],
+        post_routine: T_PostRoutine,
     ) -> None:
-        if post_routine is None:
-            return
 
         loop_register = self._get_inactive_register()
 
@@ -662,7 +662,7 @@ class Builder:
             # Wait for each pair individually
             pair = loop_register
             conn._builder._add_wait_for_ent_info_cmd(
-                ent_info_array=ent_info_array,
+                ent_results_array=ent_results_array,
                 pair=pair,
             )
             if tp == EPRType.K:
@@ -671,7 +671,7 @@ class Builder:
                 post_routine(self, q, pair)
             elif tp == EPRType.M:
                 slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
-                ent_info_slice = ent_info_array.get_future_slice(slc)
+                ent_info_slice = ent_results_array.get_future_slice(slc)
                 post_routine(self, ent_info_slice, pair)
             else:
                 raise NotImplementedError
@@ -680,7 +680,7 @@ class Builder:
         self.loop_body(post_loop, stop=number, loop_register=loop_register)
 
     def _add_wait_for_ent_info_cmd(
-        self, ent_info_array: Array, pair: operand.Register
+        self, ent_results_array: Array, pair: operand.Register
     ) -> None:
         """Wait for the correct slice of the entanglement info array for the given pair"""
         # NOTE arr_start should be pair * OK_FIELDS and
@@ -734,7 +734,7 @@ class Builder:
             instruction=GenericInstr.WAIT_ALL,
             operands=[
                 ArraySlice(
-                    Address(ent_info_array.address), start=arr_start, stop=arr_stop
+                    Address(ent_results_array.address), start=arr_start, stop=arr_stop
                 )
             ],
         )
@@ -746,65 +746,74 @@ class Builder:
     def _handle_request(
         self,
         instruction: GenericInstr,
-        remote_node_id: int,
-        epr_socket_id: int,
-        number: int,
-        post_routine: Optional[T_PostRoutine],
-        sequential: bool,
         tp: EPRType,
-        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
-        max_time: int = 0,
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+        params: EntRequestParams,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         self._assert_epr_args(
-            number=number, post_routine=post_routine, sequential=sequential, tp=tp
+            number=params.number,
+            post_routine=params.post_routine,
+            sequential=params.sequential,
+            tp=tp,
         )
         # NOTE the `output` is either a list of qubits or a list of entanglement information
         # depending on the type of the request.
-        ent_info_array = self._create_ent_info_array(number=number, tp=tp)
-        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
-        if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
-        else:
-            virtual_qubit_ids = None  # type: ignore
-        wait_all = post_routine is None
 
-        qubit_ids_array = self._add_epr_commands(
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(number=params.number, tp=tp)
+
+        # K-type requests need to specify an array with qubit IDs for the generated
+        # qubits.
+        qubit_ids_array: Optional[Array]
+
+        # SDK handles to result values. For K-type requests, these are Qubit objects.
+        # For M-type requests, these are T_LinkLayerOkTypeM objects.
+        result_futures: Union[List[Qubit], T_LinkLayerOkList]
+
+        if tp == EPRType.K:
+            result_futures = self._get_qubit_futures_array(
+                tp, params.number, params.sequential, ent_results_array
+            )
+            assert all(isinstance(q, Qubit) for q in result_futures)
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
+            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+        elif tp == EPRType.M:
+            result_futures = self._get_meas_dir_futures_array(
+                tp, params.number, params.sequential, ent_results_array
+            )
+            qubit_ids_array = None
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self._add_epr_commands(
             instruction=instruction,
-            virtual_qubit_ids=virtual_qubit_ids,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            ent_info_array=ent_info_array,
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
             wait_all=wait_all,
             tp=tp,
-            time_unit=time_unit,
-            max_time=max_time,
-            random_basis_local=random_basis_local,
-            random_basis_remote=random_basis_remote,
-            rotations_local=rotations_local,
-            rotations_remote=rotations_remote,
+            params=params,
         )
 
-        self._add_post_commands(
-            qubit_ids_array, number, ent_info_array, tp, post_routine
-        )
+        # Construct and add NetQASM instructions for post routine
+        if params.post_routine:
+            self._add_post_commands(
+                qubit_ids_array,
+                params.number,
+                ent_results_array,
+                tp,
+                params.post_routine,
+            )
 
         return result_futures
 
     def _pre_epr_context(
         self,
         instruction: GenericInstr,
-        remote_node_id: int,
-        epr_socket_id: int,
-        number: int = 1,
-        sequential: bool = False,
-        tp: EPRType = EPRType.K,
-        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
-        max_time: int = 0,
+        tp: EPRType,
+        params: EntRequestParams,
     ) -> Tuple[
         List[T_Cmd],
         operand.Register,
@@ -817,30 +826,54 @@ class Builder:
         def dummy():
             pass
 
-        self._assert_epr_args(number=number, post_routine=dummy, sequential=sequential, tp=tp)  # type: ignore
-        ent_info_array = self._create_ent_info_array(
-            number=number,
+        self._assert_epr_args(
+            number=params.number,
+            post_routine=dummy,  # type: ignore
+            sequential=params.sequential,
             tp=tp,
         )
-        result_futures = self._get_futures_array(tp, number, sequential, ent_info_array)
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(number=params.number, tp=tp)
+
+        # K-type requests need to specify an array with qubit IDs for the generated
+        # qubits.
+        qubit_ids_array: Optional[Array]
+
+        # SDK handles to result values. For K-type requests, these are Qubit objects.
+        # For M-type requests, these are T_LinkLayerOkTypeM objects.
+        result_futures: Union[List[Qubit], T_LinkLayerOkList]
+
+        if tp == EPRType.K:
+            result_futures = self._get_qubit_futures_array(
+                tp, params.number, params.sequential, ent_results_array
+            )
+            assert all(isinstance(q, Qubit) for q in result_futures)
+            virtual_qubit_ids = [q.qubit_id for q in result_futures]
+            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+        elif tp == EPRType.M:
+            result_futures = self._get_meas_dir_futures_array(
+                tp, params.number, params.sequential, ent_results_array
+            )
+            qubit_ids_array = None
+
         output: Union[List[Qubit], T_LinkLayerOkList, FutureQubit] = result_futures
+
         if tp == EPRType.K:
             virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
         else:
             raise ValueError(
                 "EPR generation as a context is only allowed for K type requests"
             )
-        qubit_ids_array = self._add_epr_commands(
+
+        self._add_epr_commands(
             instruction=instruction,
-            virtual_qubit_ids=virtual_qubit_ids,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            ent_info_array=ent_info_array,
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
             wait_all=False,
             tp=tp,
-            time_unit=time_unit,
-            max_time=max_time,
+            params=params,
         )
         if qubit_ids_array is None:
             raise RuntimeError("qubit_ids_array is None")
@@ -853,23 +886,23 @@ class Builder:
             output = q
         # elif tp == EPRType.M:
         #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
-        #     ent_info_slice = ent_info_array.get_future_slice(slc)
+        #     ent_info_slice = ent_results_array.get_future_slice(slc)
         #     output = ent_info_slice
         else:
             raise NotImplementedError
-        return pre_commands, loop_register, ent_info_array, output, pair
+        return pre_commands, loop_register, ent_results_array, output, pair
 
     def _post_epr_context(
         self,
         pre_commands: List[T_Cmd],
         number: int,
         loop_register: operand.Register,
-        ent_info_array: Array,
+        ent_results_array: Array,
         pair: operand.Register,
     ) -> None:
         body_commands = self._pop_pending_commands()
         self._add_wait_for_ent_info_cmd(
-            ent_info_array=ent_info_array,
+            ent_results_array=ent_results_array,
             pair=pair,
         )
         wait_cmds = self._pop_pending_commands()
@@ -905,44 +938,48 @@ class Builder:
                 f"greater than the maximum number of qubits specified ({self._max_qubits})."
             )
 
-    def _create_ent_info_array(self, number: int, tp: EPRType) -> Array:
+    def _create_ent_results_array(self, number: int, tp: EPRType) -> Array:
         if tp == EPRType.K:
-            ent_info_array = self.new_array(length=OK_FIELDS_K * number)
+            ent_results_array = self.new_array(length=OK_FIELDS_K * number)
         elif tp == EPRType.M:
-            ent_info_array = self.new_array(length=OK_FIELDS_M * number)
+            ent_results_array = self.new_array(length=OK_FIELDS_M * number)
         else:
             raise ValueError(f"Unsupported Create type: {tp}")
-        return ent_info_array
+        return ent_results_array
 
-    def _get_futures_array(
-        self, tp: EPRType, number: int, sequential: bool, ent_info_array: Array
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        ent_info_slices = self._create_ent_info_slices(
+    def _get_meas_dir_futures_array(
+        self, tp: EPRType, number: int, sequential: bool, ent_results_array: Array
+    ) -> T_LinkLayerOkList:
+        return self._create_ent_info_slices(
             num_pairs=number,
-            ent_info_array=ent_info_array,
+            ent_results_array=ent_results_array,
             tp=tp,
         )
-        if tp == EPRType.K:
-            qubits = self._create_ent_qubits(
-                ent_info_slices=ent_info_slices,
-                sequential=sequential,
-            )
-            return qubits
-        elif tp == EPRType.M:
-            return ent_info_slices
-        else:
-            raise NotImplementedError
+
+    def _get_qubit_futures_array(
+        self, tp: EPRType, number: int, sequential: bool, ent_results_array: Array
+    ) -> List[Qubit]:
+        ent_info_slices = self._create_ent_info_slices(
+            num_pairs=number,
+            ent_results_array=ent_results_array,
+            tp=tp,
+        )
+        qubits = self._create_ent_qubits(
+            ent_info_slices=ent_info_slices,
+            sequential=sequential,
+        )
+        return qubits
 
     def _create_ent_info_slices(
         self,
         num_pairs: int,
-        ent_info_array: Array,
+        ent_results_array: Array,
         tp: EPRType,
     ) -> T_LinkLayerOkList:
         ent_info_slices = []
         num_fields = OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
         for i in range(num_pairs):
-            ent_info_slice_futures: List[Future] = ent_info_array.get_future_slice(
+            ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
                 slice(i * num_fields, (i + 1) * num_fields)
             )
             ent_info_slice: Union[
@@ -992,59 +1029,27 @@ class Builder:
 
     def create_epr(
         self,
-        remote_node_id: int,
-        epr_socket_id: int,
-        number: int = 1,
-        post_routine: Optional[T_PostRoutine] = None,
-        sequential: bool = False,
-        tp: EPRType = EPRType.K,
-        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
-        max_time: int = 0,
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+        tp: EPRType,
+        params: EntRequestParams,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
-        if not isinstance(remote_node_id, int):
+        if not isinstance(params.remote_node_id, int):
             raise TypeError(
-                f"remote_node_id should be an int, not of type {type(remote_node_id)}"
+                f"remote_node_id should be an int, not of type {type(params.remote_node_id)}"
             )
 
         return self._handle_request(
-            instruction=GenericInstr.CREATE_EPR,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=tp,
-            time_unit=time_unit,
-            max_time=max_time,
-            random_basis_local=random_basis_local,
-            random_basis_remote=random_basis_remote,
-            rotations_local=rotations_local,
-            rotations_remote=rotations_remote,
+            instruction=GenericInstr.CREATE_EPR, tp=tp, params=params
         )
 
     def recv_epr(
         self,
-        remote_node_id: int,
-        epr_socket_id: int,
-        number: int = 1,
-        post_routine: Optional[T_PostRoutine] = None,
-        sequential: bool = False,
-        tp: EPRType = EPRType.K,
+        tp: EPRType,
+        params: EntRequestParams,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
         return self._handle_request(
-            instruction=GenericInstr.RECV_EPR,
-            remote_node_id=remote_node_id,
-            epr_socket_id=epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=tp,
+            instruction=GenericInstr.RECV_EPR, tp=tp, params=params
         )
 
     def _get_new_qubit_address(self) -> int:
