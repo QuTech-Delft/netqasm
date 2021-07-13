@@ -74,7 +74,7 @@ class EprCmdData:
     """Container for info about EPR pending requests."""
 
     subroutine_id: int
-    ent_info_array_address: int
+    ent_results_array_address: int
     q_array_address: Optional[int]
     request: Optional[LinkLayerCreate]
     tot_pairs: int
@@ -950,19 +950,19 @@ class Executor:
             app_id=app_id, register=instr.qubit_addr_array
         )
         arg_array_address = self._get_register(app_id=app_id, register=instr.arg_array)
-        ent_info_array_address = self._get_register(
-            app_id=app_id, register=instr.ent_info_array
+        ent_results_array_address = self._get_register(
+            app_id=app_id, register=instr.ent_results_array
         )
         assert remote_node_id is not None
         assert epr_socket_id is not None
         # q_array_address can be None
         assert arg_array_address is not None
-        assert ent_info_array_address is not None
+        assert ent_results_array_address is not None
         self._logger.debug(
             f"Creating EPR pair with remote node id {remote_node_id} and EPR socket ID {epr_socket_id}, "
             f"using qubit addresses stored in array with address {q_array_address}, "
             f"using arguments stored in array with address {arg_array_address}, "
-            f"placing the entanglement information in array at address {ent_info_array_address}"
+            f"placing the entanglement information in array at address {ent_results_array_address}"
         )
         output = self._do_create_epr(
             subroutine_id=subroutine_id,
@@ -970,7 +970,7 @@ class Executor:
             epr_socket_id=epr_socket_id,
             q_array_address=q_array_address,
             arg_array_address=arg_array_address,
-            ent_info_array_address=ent_info_array_address,
+            ent_results_array_address=ent_results_array_address,
         )
         if isinstance(output, GeneratorType):
             yield from output
@@ -982,7 +982,7 @@ class Executor:
         epr_socket_id: int,
         q_array_address: Optional[int],
         arg_array_address: int,
-        ent_info_array_address: int,
+        ent_results_array_address: int,
     ) -> Optional[Generator[Any, None, None]]:
         """Send a request to the Network Stack to create EPR pairs.
 
@@ -994,7 +994,7 @@ class Executor:
         :param q_array_address: address of array containing virtual qubits IDs.
         These IDs are mapped to local halves of the generated pairs.
         :param arg_array_address: address of array containing request information
-        :param ent_info_array_address: address of array that will hold generation
+        :param ent_results_array_address: address of array that will hold generation
         information after EPR generation has completed
         """
         if self.network_stack is None:
@@ -1016,7 +1016,7 @@ class Executor:
         self._epr_create_requests[remote_node_id, create_request.purpose_id].append(
             EprCmdData(
                 subroutine_id=subroutine_id,
-                ent_info_array_address=ent_info_array_address,
+                ent_results_array_address=ent_results_array_address,
                 q_array_address=q_array_address,
                 request=create_request,
                 tot_pairs=create_request.number,
@@ -1085,25 +1085,25 @@ class Executor:
         q_array_address = self._get_register(
             app_id=app_id, register=instr.qubit_addr_array
         )
-        ent_info_array_address = self._get_register(
-            app_id=app_id, register=instr.ent_info_array
+        ent_results_array_address = self._get_register(
+            app_id=app_id, register=instr.ent_results_array
         )
         assert remote_node_id is not None
         assert epr_socket_id is not None
         # q_address can be None
-        assert ent_info_array_address is not None
+        assert ent_results_array_address is not None
         self._logger.debug(
             f"Receiving EPR pair with remote node id {remote_node_id} "
             f"and EPR socket ID {epr_socket_id}, "
             f"using qubit addresses stored in array with address {q_array_address}, "
-            f"placing the entanglement information in array at address {ent_info_array_address}"
+            f"placing the entanglement information in array at address {ent_results_array_address}"
         )
         output = self._do_recv_epr(
             subroutine_id=subroutine_id,
             remote_node_id=remote_node_id,
             epr_socket_id=epr_socket_id,
             q_array_address=q_array_address,
-            ent_info_array_address=ent_info_array_address,
+            ent_results_array_address=ent_results_array_address,
         )
         if isinstance(output, GeneratorType):
             yield from output
@@ -1114,7 +1114,7 @@ class Executor:
         remote_node_id: int,
         epr_socket_id: int,
         q_array_address: Optional[int],
-        ent_info_array_address: int,
+        ent_results_array_address: int,
     ) -> Optional[Generator[Any, None, None]]:
         if self.network_stack is None:
             raise RuntimeError("SubroutineHandler has no network stack")
@@ -1122,7 +1122,7 @@ class Executor:
         # Get number of pairs based on length of ent info array
         num_pairs = self._get_num_pairs_from_array(
             app_id=app_id,
-            ent_info_array_address=ent_info_array_address,
+            ent_results_array_address=ent_results_array_address,
         )
         purpose_id = self._get_purpose_id(
             remote_node_id=remote_node_id,
@@ -1131,7 +1131,7 @@ class Executor:
         self._epr_recv_requests[remote_node_id, purpose_id].append(
             EprCmdData(
                 subroutine_id=subroutine_id,
-                ent_info_array_address=ent_info_array_address,
+                ent_results_array_address=ent_results_array_address,
                 q_array_address=q_array_address,
                 request=None,
                 tot_pairs=num_pairs,
@@ -1141,9 +1141,9 @@ class Executor:
         return None
 
     def _get_num_pairs_from_array(
-        self, app_id: int, ent_info_array_address: int
+        self, app_id: int, ent_results_array_address: int
     ) -> int:
-        ent_info = self._app_arrays[app_id][ent_info_array_address, :]
+        ent_info = self._app_arrays[app_id][ent_results_array_address, :]
         assert isinstance(ent_info, list)
         return int(len(ent_info) / OK_FIELDS)
 
@@ -1580,10 +1580,10 @@ class Executor:
         ent_info = [
             entry.value if isinstance(entry, Enum) else entry for entry in response
         ]
-        ent_info_array_address = epr_cmd_data.ent_info_array_address
+        ent_results_array_address = epr_cmd_data.ent_results_array_address
         self._logger.debug(
             f"Storing entanglement information for pair {pair_index} "
-            f"in array at address {ent_info_array_address}"
+            f"in array at address {ent_results_array_address}"
         )
         # Start and stop of slice
         arr_start = pair_index * OK_FIELDS
@@ -1592,7 +1592,9 @@ class Executor:
         app_id = self._get_app_id(subroutine_id=subroutine_id)
         if app_id not in self._app_arrays:
             raise KeyError("App ID {app_id} does not have any arrays")
-        self._app_arrays[app_id][ent_info_array_address, arr_start:arr_stop] = ent_info
+        self._app_arrays[app_id][
+            ent_results_array_address, arr_start:arr_stop
+        ] = ent_info
 
     def _handle_epr_ok_k_response(
         self, epr_cmd_data: EprCmdData, response: LinkLayerOKTypeK, pair_index: int

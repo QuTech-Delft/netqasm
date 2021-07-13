@@ -313,7 +313,7 @@ class RecvEPRCommand(Command):
             ("remote_node_id", Register),
             ("epr_socket_id", Register),
             ("qubit_address_array", Register),
-            ("ent_info_array", Register),
+            ("ent_results_array", Register),
         ]
     )
 

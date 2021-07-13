@@ -471,11 +471,11 @@ class CreateEPRInstruction(base.Reg5Instruction):
         self.reg3 = new_val
 
     @property
-    def ent_info_array(self):
+    def ent_results_array(self):
         return self.reg4
 
-    @ent_info_array.setter
-    def ent_info_array(self, new_val: Register):
+    @ent_results_array.setter
+    def ent_results_array(self, new_val: Register):
         self.reg4 = new_val
 
 
@@ -509,11 +509,11 @@ class RecvEPRInstruction(base.RegRegRegRegInstruction):
         self.reg2 = new_val
 
     @property
-    def ent_info_array(self):
+    def ent_results_array(self):
         return self.reg3
 
-    @ent_info_array.setter
-    def ent_info_array(self, new_val: Register):
+    @ent_results_array.setter
+    def ent_results_array(self, new_val: Register):
         self.reg3 = new_val
 
 
