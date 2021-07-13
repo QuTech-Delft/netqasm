@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-07-13 (0.7.5)
+------------------
+- Added support for Remote State Preparation entanglement requests.
+
 2021-06-22 (0.7.4)
 ------------------
 - Fixed bug where Builder's App ID was not updated when Connection's App ID changed.
