@@ -18,6 +18,7 @@ from netqasm.qlink_compat import (
     RandomBasis,
     TimeUnit,
 )
+from netqasm.sdk.builder import EntRequestParams
 
 from .qubit import Qubit
 
@@ -291,18 +292,20 @@ class EPRSocket(abc.ABC):
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
         return self.conn._builder.create_epr(  # type: ignore
-            remote_node_id=self.remote_node_id,
-            epr_socket_id=self._epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
             tp=tp,
-            time_unit=time_unit,
-            max_time=max_time,
-            random_basis_local=random_basis_local,
-            random_basis_remote=random_basis_remote,
-            rotations_local=rotations_local,
-            rotations_remote=rotations_remote,
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
+                random_basis_local=random_basis_local,
+                random_basis_remote=random_basis_remote,
+                rotations_local=rotations_local,
+                rotations_remote=rotations_remote,
+            ),
         )
 
     @contextmanager
@@ -339,18 +342,21 @@ class EPRSocket(abc.ABC):
             (
                 pre_commands,
                 loop_register,
-                ent_info_array,
+                ent_results_array,
                 output,
                 pair,
             ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
-                remote_node_id=self.remote_node_id,
-                epr_socket_id=self._epr_socket_id,
-                number=number,
-                sequential=sequential,
                 tp=EPRType.K,
-                time_unit=time_unit,
-                max_time=max_time,
+                params=EntRequestParams(
+                    remote_node_id=self.remote_node_id,
+                    epr_socket_id=self._epr_socket_id,
+                    number=number,
+                    post_routine=None,
+                    sequential=sequential,
+                    time_unit=time_unit,
+                    max_time=max_time,
+                ),
             )
             yield output, pair
         finally:
@@ -358,7 +364,7 @@ class EPRSocket(abc.ABC):
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
-                ent_info_array=ent_info_array,
+                ent_results_array=ent_results_array,
                 pair=pair,
             )
 
@@ -394,12 +400,14 @@ class EPRSocket(abc.ABC):
             raise RuntimeError("EPRSocket does not have an open connection")
 
         return self.conn._builder.recv_epr(
-            remote_node_id=self.remote_node_id,
-            epr_socket_id=self._epr_socket_id,
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
             tp=tp,
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+            ),
         )
 
     @contextmanager
@@ -415,16 +423,19 @@ class EPRSocket(abc.ABC):
             (
                 pre_commands,
                 loop_register,
-                ent_info_array,
+                ent_results_array,
                 output,
                 pair,
             ) = self.conn._builder._pre_epr_context(
                 instruction=instruction,
-                remote_node_id=self.remote_node_id,
-                epr_socket_id=self._epr_socket_id,
-                number=number,
-                sequential=sequential,
                 tp=EPRType.K,
+                params=EntRequestParams(
+                    remote_node_id=self.remote_node_id,
+                    epr_socket_id=self._epr_socket_id,
+                    number=number,
+                    post_routine=None,
+                    sequential=sequential,
+                ),
             )
             yield output, pair
         finally:
@@ -432,7 +443,7 @@ class EPRSocket(abc.ABC):
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
-                ent_info_array=ent_info_array,
+                ent_results_array=ent_results_array,
                 pair=pair,
             )
 

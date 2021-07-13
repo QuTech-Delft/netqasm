@@ -679,6 +679,286 @@ def test_epr_m():
     assert subroutine == expected
 
 
+def test_epr_r_create():
+
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        outcomes = epr_socket.create(tp=EPRType.R)
+        m = outcomes[0].measurement_outcome
+        with m.if_eq(0):
+            m.add(1)
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    expected = Subroutine(
+        netqasm_version=(0, 0),
+        app_id=0,
+        commands=[
+            # Arg array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 1),
+                address=Address(0),
+            ),
+            # ent info array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(CREATE_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 1),
+                address=Address(1),
+            ),
+            # tp arg
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(2),  # EPRType.R
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 1),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 2)),
+            ),
+            # num pairs arg
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(1),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 1),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 2)),
+            ),
+            # create cmd
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 4),
+                imm=Immediate(0),
+            ),
+            instructions.core.CreateEPRInstruction(
+                reg0=Register(RegisterName.R, 1),
+                reg1=Register(RegisterName.R, 2),
+                reg2=Register(RegisterName.C, 0),
+                reg3=Register(RegisterName.R, 3),
+                reg4=Register(RegisterName.R, 4),
+            ),
+            # wait cmd
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.WaitAllInstruction(
+                slice=ArraySlice(
+                    address=Address(0),
+                    start=Register(RegisterName.R, 1),
+                    stop=Register(RegisterName.R, 2),
+                ),
+            ),
+            # if statement
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(2),
+            ),
+            instructions.core.LoadInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(
+                    address=Address(0),
+                    index=Register(RegisterName.R, 1),
+                ),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.BneInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 1),
+                imm=Immediate(28),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(2),
+            ),
+            instructions.core.LoadInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(
+                    address=Address(0),
+                    index=Register(RegisterName.R, 1),
+                ),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.AddInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 0),
+                reg2=Register(RegisterName.R, 1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(2),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(
+                    address=Address(0),
+                    index=Register(RegisterName.R, 1),
+                ),
+            ),
+            # return cmds
+            instructions.core.RetArrInstruction(
+                address=Address(0),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(1),
+            ),
+        ],
+    )
+    for i, command in enumerate(subroutine.commands):
+        print(repr(command))
+        expected_command = expected.commands[i]
+        print(repr(expected_command))
+        print()
+        assert command == expected_command
+    print(f"subroutine: {subroutine}")
+    print(f"expected: {expected}")
+    assert subroutine == expected
+
+
+def test_epr_r_receive():
+
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        _ = epr_socket.recv(tp=EPRType.R)[0]
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    print(subroutine)
+    expected = Subroutine(
+        netqasm_version=(0, 0),
+        app_id=0,
+        commands=[
+            # Arg array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(0),
+            ),
+            # Qubit address array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # create cmd
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(0),
+            ),
+            instructions.core.RecvEPRInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 1),
+                reg2=Register(RegisterName.R, 2),
+                reg3=Register(RegisterName.R, 3),
+            ),
+            # wait cmd
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.WaitAllInstruction(
+                slice=ArraySlice(
+                    address=Address(0),
+                    start=Register(RegisterName.R, 0),
+                    stop=Register(RegisterName.R, 1),
+                ),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(0),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(1),
+            ),
+        ],
+    )
+    for i, command in enumerate(subroutine.commands):
+        print(f"actual command: {repr(command)}")
+        expected_command = expected.commands[i]
+        print(f"expected command: {repr(expected_command)}")
+        print()
+        assert command == expected_command
+    print(f"actual: {subroutine}")
+    print(f"expected: {expected}")
+    assert subroutine == expected
+
+
 def test_epr_max_time():
 
     set_log_level(logging.DEBUG)
@@ -728,8 +1008,10 @@ def test_epr_max_time():
 
 
 if __name__ == "__main__":
-    test_simple()
+    # test_simple()
     # test_rotations()
     # test_epr()
     # test_two_epr()
     # test_epr_m()
+    # test_epr_r_create()
+    test_epr_r_receive()

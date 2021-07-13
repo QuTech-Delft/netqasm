@@ -49,6 +49,14 @@ def as_int_when_value(cls):
                     f"The object '{repr(self)}' has no value yet, "
                     "consider flusing the current subroutine"
                 )
+            try:
+                if isinstance(*args, Future):
+                    raise RuntimeError(
+                        "Cannot directly do a binary operation on two Futures. "
+                        "Convert them to `int`s first."
+                    )
+            except TypeError:
+                pass
             return int_method(value, *args, **kwargs)
 
         return new_method

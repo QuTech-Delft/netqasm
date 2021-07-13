@@ -43,7 +43,7 @@ def main(app_config=None, row=0, strategy=None):
         q1_ID = q1.entanglement_info.sequence_number
         q2_ID = q2.entanglement_info.sequence_number
 
-        if q1_ID < q2_ID:
+        if int(q1_ID) < int(q2_ID):
             qa = q1
             qc = q2
         else:
