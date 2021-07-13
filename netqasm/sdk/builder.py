@@ -558,7 +558,7 @@ class Builder:
             create_kwargs["random_basis_remote"] = params.random_basis_remote
             create_kwargs["probability_dist_remote1"] = 128
 
-        if tp == EPRType.M:
+        if tp == EPRType.M or tp == EPRType.R:
             rotx1_local, roty_local, rotx2_local = params.rotations_local
             rotx1_remote, roty_remote, rotx2_remote = params.rotations_remote
 
@@ -605,7 +605,9 @@ class Builder:
         qubit_ids_array_address: Union[int, operand.Register]
         epr_cmd_operands: List[T_OperandUnion]
 
-        if tp == EPRType.K:
+        if tp == EPRType.K or (
+            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
+        ):
             assert qubit_ids_array is not None
             qubit_ids_array_address = qubit_ids_array.address
         else:
@@ -764,24 +766,30 @@ class Builder:
         # This will be filled in by the quantum node controller.
         ent_results_array = self._create_ent_results_array(number=params.number, tp=tp)
 
-        # K-type requests need to specify an array with qubit IDs for the generated
-        # qubits.
+        # K-type requests and receivers of R-type requests need to specify an array
+        # with qubit IDs for the generated qubits.
         qubit_ids_array: Optional[Array]
 
-        # SDK handles to result values. For K-type requests, these are Qubit objects.
-        # For M-type requests, these are T_LinkLayerOkTypeM objects.
+        # SDK handles to result values. For K-type requests and receivers of R-type
+        # requests, these are Qubit objects.
+        # For M-type requests and senders of R-type requests, these are
+        # T_LinkLayerOkType objects.
         result_futures: Union[List[Qubit], T_LinkLayerOkList]
 
-        if tp == EPRType.K:
+        if tp == EPRType.K or (
+            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
+        ):
             result_futures = self._get_qubit_futures_array(
-                tp, params.number, params.sequential, ent_results_array
+                params.number, params.sequential, ent_results_array
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M:
+        elif tp == EPRType.M or (
+            tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
+        ):
             result_futures = self._get_meas_dir_futures_array(
-                tp, params.number, params.sequential, ent_results_array
+                params.number, ent_results_array
             )
             qubit_ids_array = None
 
@@ -845,16 +853,20 @@ class Builder:
         # For M-type requests, these are T_LinkLayerOkTypeM objects.
         result_futures: Union[List[Qubit], T_LinkLayerOkList]
 
-        if tp == EPRType.K:
+        if tp == EPRType.K or (
+            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
+        ):
             result_futures = self._get_qubit_futures_array(
-                tp, params.number, params.sequential, ent_results_array
+                params.number, params.sequential, ent_results_array
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
             qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M:
+        elif tp == EPRType.M or (
+            tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
+        ):
             result_futures = self._get_meas_dir_futures_array(
-                tp, params.number, params.sequential, ent_results_array
+                params.number, ent_results_array
             )
             qubit_ids_array = None
 
@@ -943,26 +955,25 @@ class Builder:
             ent_results_array = self.new_array(length=OK_FIELDS_K * number)
         elif tp == EPRType.M:
             ent_results_array = self.new_array(length=OK_FIELDS_M * number)
+        elif tp == EPRType.R:
+            # NOTE: also for R-type request we use the LinkLayerOkTypeM type
+            ent_results_array = self.new_array(length=OK_FIELDS_M * number)
         else:
             raise ValueError(f"Unsupported Create type: {tp}")
         return ent_results_array
 
     def _get_meas_dir_futures_array(
-        self, tp: EPRType, number: int, sequential: bool, ent_results_array: Array
+        self, number: int, ent_results_array: Array
     ) -> T_LinkLayerOkList:
-        return self._create_ent_info_slices(
-            num_pairs=number,
-            ent_results_array=ent_results_array,
-            tp=tp,
+        return self._create_ent_info_m_slices(
+            num_pairs=number, ent_results_array=ent_results_array
         )
 
     def _get_qubit_futures_array(
-        self, tp: EPRType, number: int, sequential: bool, ent_results_array: Array
+        self, number: int, sequential: bool, ent_results_array: Array
     ) -> List[Qubit]:
-        ent_info_slices = self._create_ent_info_slices(
-            num_pairs=number,
-            ent_results_array=ent_results_array,
-            tp=tp,
+        ent_info_slices = self._create_ent_info_k_slices(
+            num_pairs=number, ent_results_array=ent_results_array
         )
         qubits = self._create_ent_qubits(
             ent_info_slices=ent_info_slices,
@@ -970,23 +981,29 @@ class Builder:
         )
         return qubits
 
-    def _create_ent_info_slices(
-        self,
-        num_pairs: int,
-        ent_results_array: Array,
-        tp: EPRType,
-    ) -> T_LinkLayerOkList:
+    def _create_ent_info_k_slices(
+        self, num_pairs: int, ent_results_array: Array
+    ) -> List[LinkLayerOKTypeK]:
         ent_info_slices = []
-        num_fields = OK_FIELDS_K if tp == EPRType.K else OK_FIELDS_M
         for i in range(num_pairs):
             ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
-                slice(i * num_fields, (i + 1) * num_fields)
+                slice(i * OK_FIELDS_K, (i + 1) * OK_FIELDS_K)
             )
-            ent_info_slice: Union[
-                LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
-            ] = self.__class__.ENT_INFO[tp](*ent_info_slice_futures)
+            ent_info_slice = LinkLayerOKTypeK(*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
-        return ent_info_slices  # type: ignore
+        return ent_info_slices
+
+    def _create_ent_info_m_slices(
+        self, num_pairs: int, ent_results_array: Array
+    ) -> List[LinkLayerOKTypeM]:
+        ent_info_slices = []
+        for i in range(num_pairs):
+            ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
+                slice(i * OK_FIELDS_M, (i + 1) * OK_FIELDS_M)
+            )
+            ent_info_slice = LinkLayerOKTypeM(*ent_info_slice_futures)
+            ent_info_slices.append(ent_info_slice)
+        return ent_info_slices
 
     def _create_ent_qubits(
         self,
