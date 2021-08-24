@@ -494,7 +494,7 @@ class Builder:
 
     def _get_new_meas_outcome_reg(self) -> operand.Register:
         # Find the next unused M-register.
-        for i in range(16):
+        for i in range(64):
             if i not in self._used_meas_registers:
                 self._used_meas_registers.append(i)
                 return operand.Register(RegisterName.M, i)
