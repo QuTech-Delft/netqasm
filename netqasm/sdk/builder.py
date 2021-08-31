@@ -1016,8 +1016,19 @@ class Builder:
             # If sequential we want all qubits to have the same ID
             if sequential:
                 if i == 0:
+                    if self._compiler == NVSubroutineCompiler:
+                        # If compiling for NV, only virtual ID 0 can be used to store the entangled
+                        # qubit. So, if this qubit is already in use, we need to move it away first.
+                        virtual_address = 0
+                        # FIXME: Unlike in the non-sequential case we do not free. This is because
+                        # currently if multiple CREATE commands are issued this will incorrectly think
+                        # that the virtual_address 0 is in use. This will in turn trigger a move which
+                        # will break the code on nodes with no storage qubits.
                     qubit = Qubit(
-                        self._connection, add_new_command=False, ent_info=ent_info_slice  # type: ignore
+                        self._connection,
+                        add_new_command=False,
+                        ent_info=ent_info_slice,  # type: ignore
+                        virtual_address=virtual_address,
                     )
                     virtual_address = qubit.qubit_id
                 else:
