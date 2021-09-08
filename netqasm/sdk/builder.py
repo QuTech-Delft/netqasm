@@ -667,7 +667,7 @@ class Builder:
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
-            if tp == EPRType.K:
+            if tp == EPRType.K or tp == EPRType.R:
                 q_id = qubit_ids.get_future_index(pair)
                 q = FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
@@ -1088,12 +1088,13 @@ class Builder:
         raise RuntimeError("Could not get new qubit address")
 
     def _get_new_array_address(self) -> int:
-        used_addresses = self._used_array_addresses
-        for address in count(0):
-            if address not in used_addresses:
-                used_addresses.append(address)
-                return address
-        raise RuntimeError("Could not get new array address")
+        if len(self._used_array_addresses) > 0:
+            # last element is always the highest address
+            result = self._used_array_addresses[-1] + 1
+        else:
+            result = 0
+        self._used_array_addresses.append(result)
+        return result
 
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
