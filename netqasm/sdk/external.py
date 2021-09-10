@@ -63,7 +63,9 @@ elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
         )
 elif simulator == Simulator.SIMULAQRON:
     try:
-        from simulaqron.run import run_application  # type: ignore
+        from simulaqron.run.run import (
+            run_applications as simulate_application,  # type: ignore
+        )
         from simulaqron.sdk.broadcast_channel import BroadcastChannel  # type: ignore
         from simulaqron.sdk.connection import (
             SimulaQronConnection as NetQASMConnection,  # type: ignore

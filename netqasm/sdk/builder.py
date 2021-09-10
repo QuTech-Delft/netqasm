@@ -140,7 +140,9 @@ class Builder:
 
         self._used_array_addresses: List[int] = []
 
-        self._used_meas_registers: List[int] = []
+        self._used_meas_registers: Dict[operand.Register, bool] = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
 
         self._pending_commands: List[T_Cmd] = []
 
@@ -483,6 +485,7 @@ class Builder:
         if future is not None:
             if isinstance(future, Future):
                 outcome_commands = future._get_store_commands(outcome_reg)
+                self._used_meas_registers[outcome_reg] = False
             elif isinstance(future, RegFuture):
                 future.reg = outcome_reg
                 self._registers_to_return.append(outcome_reg)
@@ -494,10 +497,10 @@ class Builder:
 
     def _get_new_meas_outcome_reg(self) -> operand.Register:
         # Find the next unused M-register.
-        for i in range(16):
-            if i not in self._used_meas_registers:
-                self._used_meas_registers.append(i)
-                return operand.Register(RegisterName.M, i)
+        for reg, used in self._used_meas_registers.items():
+            if not used:
+                self._used_meas_registers[reg] = True
+                return reg
         raise RuntimeError("Ran out of M-registers")
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
@@ -667,7 +670,7 @@ class Builder:
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
-            if tp == EPRType.K:
+            if tp == EPRType.K or tp == EPRType.R:
                 q_id = qubit_ids.get_future_index(pair)
                 q = FutureQubit(conn=conn, future_id=q_id)
                 post_routine(self, q, pair)
@@ -1016,8 +1019,19 @@ class Builder:
             # If sequential we want all qubits to have the same ID
             if sequential:
                 if i == 0:
+                    if self._compiler == NVSubroutineCompiler:
+                        # If compiling for NV, only virtual ID 0 can be used to store the entangled
+                        # qubit. So, if this qubit is already in use, we need to move it away first.
+                        virtual_address = 0
+                        # FIXME: Unlike in the non-sequential case we do not free. This is because
+                        # currently if multiple CREATE commands are issued this will incorrectly think
+                        # that the virtual_address 0 is in use. This will in turn trigger a move which
+                        # will break the code on nodes with no storage qubits.
                     qubit = Qubit(
-                        self._connection, add_new_command=False, ent_info=ent_info_slice  # type: ignore
+                        self._connection,
+                        add_new_command=False,
+                        ent_info=ent_info_slice,  # type: ignore
+                        virtual_address=virtual_address,
                     )
                     virtual_address = qubit.qubit_id
                 else:
@@ -1077,19 +1091,22 @@ class Builder:
         raise RuntimeError("Could not get new qubit address")
 
     def _get_new_array_address(self) -> int:
-        used_addresses = self._used_array_addresses
-        for address in count(0):
-            if address not in used_addresses:
-                used_addresses.append(address)
-                return address
-        raise RuntimeError("Could not get new array address")
+        if len(self._used_array_addresses) > 0:
+            # last element is always the highest address
+            address = self._used_array_addresses[-1] + 1
+        else:
+            address = 0
+        self._used_array_addresses.append(address)
+        return address
 
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
         #     raise RuntimeError("Should not have active registers left when flushing")
         self._arrays_to_return = []
         self._registers_to_return = []
-        self._used_meas_registers = []
+        self._used_meas_registers = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
         self._pre_context_commands = {}
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
