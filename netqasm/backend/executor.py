@@ -29,6 +29,7 @@ from typing import (
 )
 
 import numpy as np
+import qlink_interface as qlink_1_0
 
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
 from netqasm.backend.network_stack import BaseNetworkStack
@@ -1474,10 +1475,16 @@ class Executor:
         return subroutine.app_id
 
     def _handle_epr_response(self, response: T_LinkLayerResponse) -> None:
-        # Convert from qlink-layer 1.0
-        converted_res = response_from_qlink_1_0(response)
 
-        self._pending_epr_responses.append(converted_res)
+        if (
+            isinstance(response, qlink_1_0.ResCreateAndKeep)
+            or isinstance(response, qlink_1_0.ResMeasureDirectly)
+            or isinstance(response, qlink_1_0.ResError)
+        ):
+            # Convert from qlink-layer 1.0
+            response = response_from_qlink_1_0(response)
+
+        self._pending_epr_responses.append(response)
         self._handle_pending_epr_responses()
 
     def _handle_pending_epr_responses(self) -> None:

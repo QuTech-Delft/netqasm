@@ -1,4 +1,5 @@
 from netqasm.logging.output import get_new_app_logger
+from netqasm.runtime.settings import Simulator, get_simulator
 from netqasm.sdk import EPRSocket, Qubit
 from netqasm.sdk.classical_communication.message import StructuredMessage
 from netqasm.sdk.external import NetQASMConnection, Socket
@@ -47,7 +48,8 @@ def main(app_config=None, phi=0.0, theta=0.0):
 
     socket.send_structured(StructuredMessage("Corrections", (m1, m2)))
 
-    socket.send_silent(str((phi, theta)))
+    if get_simulator() == Simulator.NETSQUID:
+        socket.send_silent(str((phi, theta)))
 
     return {"m1": m1, "m2": m2}
 

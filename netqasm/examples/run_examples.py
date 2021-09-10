@@ -18,12 +18,10 @@ skip_ifs = {
         get_simulator() == Simulator.SIMULAQRON,
         reason="Current broadcast channel in simulaqron cannot handle socket IDs",
     ),
-}
-
-skip_ifs = {
     "link_layer_md": SkipIf(
-        get_simulator() == Simulator.NETSQUID,
-        reason="Current NetSquid simulator does not handle MD requests well.",
+        get_simulator() == Simulator.NETSQUID
+        or get_simulator() == Simulator.SIMULAQRON,
+        reason="Current simulators do not handle MD requests well.",
     ),
 }
 
