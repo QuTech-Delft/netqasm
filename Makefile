@@ -73,7 +73,7 @@ docs html:
 build bdist: _clean_dist
 	@$(PYTHON3) setup.py bdist_wheel
 
-install: test-deps
+install: python-deps test-deps
 	@$(PYTHON3) -m pip install -e .
 
 _clean_dist:
