@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from netsquid.qubits import qubitapi
-
 from netqasm.runtime.settings import Simulator, get_simulator
 
 if get_simulator() == Simulator.NETSQUID:
     import netsquid as ns
     import numpy as np
-    from netsquid.qubits import operators
+    from netsquid.qubits import operators, qubitapi
     from netsquid.qubits.qubit import Qubit as NetSquidQubit
 
 
