@@ -36,7 +36,7 @@ REG_BITS = len(bytes(REG_TYPE())) * 8  # type: ignore
 # Num bits in register name
 REG_NAME_BITS = 2
 # Num bits in register index
-REG_INDEX_BITS = 6
+REG_INDEX_BITS = 4
 
 COMMAND_BYTES = 7
 
@@ -84,6 +84,7 @@ class Register(ctypes.Structure):
     _fields_ = [
         ("register_name", REG_TYPE, REG_NAME_BITS),
         ("register_index", REG_TYPE, REG_INDEX_BITS),
+        (PADDING_FIELD, REG_TYPE, REG_BITS - REG_NAME_BITS - REG_INDEX_BITS),
     ]
 
 
