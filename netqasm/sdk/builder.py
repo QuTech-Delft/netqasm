@@ -140,7 +140,9 @@ class Builder:
 
         self._used_array_addresses: List[int] = []
 
-        self._used_meas_registers: List[int] = []
+        self._used_meas_registers: Dict[operand.Register, bool] = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
 
         self._pending_commands: List[T_Cmd] = []
 
@@ -483,6 +485,7 @@ class Builder:
         if future is not None:
             if isinstance(future, Future):
                 outcome_commands = future._get_store_commands(outcome_reg)
+                self._used_meas_registers[outcome_reg] = False
             elif isinstance(future, RegFuture):
                 future.reg = outcome_reg
                 self._registers_to_return.append(outcome_reg)
@@ -494,10 +497,10 @@ class Builder:
 
     def _get_new_meas_outcome_reg(self) -> operand.Register:
         # Find the next unused M-register.
-        for i in range(64):
-            if i not in self._used_meas_registers:
-                self._used_meas_registers.append(i)
-                return operand.Register(RegisterName.M, i)
+        for reg, used in self._used_meas_registers.items():
+            if not used:
+                self._used_meas_registers[reg] = True
+                return reg
         raise RuntimeError("Ran out of M-registers")
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
@@ -1101,7 +1104,9 @@ class Builder:
         #     raise RuntimeError("Should not have active registers left when flushing")
         self._arrays_to_return = []
         self._registers_to_return = []
-        self._used_meas_registers = []
+        self._used_meas_registers = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
         self._pre_context_commands = {}
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
