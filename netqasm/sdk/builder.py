@@ -1090,11 +1090,11 @@ class Builder:
     def _get_new_array_address(self) -> int:
         if len(self._used_array_addresses) > 0:
             # last element is always the highest address
-            result = self._used_array_addresses[-1] + 1
+            address = self._used_array_addresses[-1] + 1
         else:
-            result = 0
-        self._used_array_addresses.append(result)
-        return result
+            address = 0
+        self._used_array_addresses.append(address)
+        return address
 
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
