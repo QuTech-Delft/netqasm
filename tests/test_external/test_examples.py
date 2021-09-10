@@ -3,7 +3,6 @@ import random
 
 import numpy as np
 import pytest
-from netsquid.qubits import qubitapi
 
 from netqasm.examples.apps.blind_grover.app_client import main as blind_grover_client
 from netqasm.examples.apps.blind_grover.app_server import main as blind_grover_server
@@ -17,6 +16,9 @@ from netqasm.logging.glob import get_netqasm_logger
 from netqasm.runtime.application import default_app_instance
 from netqasm.runtime.settings import Simulator, get_simulator
 from netqasm.sdk.external import simulate_application
+
+if get_simulator() == Simulator.NETSQUID:
+    from netsquid.qubits import qubitapi
 
 logger = get_netqasm_logger()
 
@@ -127,6 +129,10 @@ def run_blind_grover():
     assert b1 == m1
 
 
+@pytest.mark.skipif(
+    get_simulator() != Simulator.NETSQUID,
+    reason="Can only run blind rotation tests using netsquid for now",
+)
 def test_blind_grover():
     num = 3
     for _ in range(num):
