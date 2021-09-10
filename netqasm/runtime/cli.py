@@ -15,6 +15,11 @@ import requests
 
 import netqasm
 from netqasm.logging.glob import get_netqasm_logger, set_log_level
+from netqasm.runtime.application import (
+    app_instance_from_path,
+    network_cfg_from_path,
+    post_function_from_path,
+)
 from netqasm.runtime.env import get_example_apps, init_folder, new_folder
 from netqasm.runtime.settings import (
     Formalism,
@@ -329,13 +334,9 @@ def simulate(
     ).simulate_application
     if app_dir is None:
         app_dir = "."
-    app_instance = netqasm.runtime.application.app_instance_from_path(app_dir)
-    network_cfg = netqasm.runtime.application.network_cfg_from_path(
-        app_dir, network_config_file
-    )
-    post_function = netqasm.runtime.application.post_function_from_path(
-        app_dir, post_function_file
-    )
+    app_instance = app_instance_from_path(app_dir)
+    network_cfg = network_cfg_from_path(app_dir, network_config_file)
+    post_function = post_function_from_path(app_dir, post_function_file)
     if log_dir is None:
         log_dir = os.path.join(app_dir, "log")
     log_cfg = LogConfig(app_dir=app_dir, log_dir=log_dir, track_lines=track_lines)
