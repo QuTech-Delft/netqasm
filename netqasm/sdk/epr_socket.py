@@ -34,6 +34,9 @@ class EPRMeasBasis(Enum):
     X = 0
     Y = auto()
     Z = auto()
+    MX = auto()
+    MY = auto()
+    MZ = auto()
 
 
 class EPRSocket(abc.ABC):
@@ -275,6 +278,12 @@ class EPRSocket(abc.ABC):
             rotations_local = (8, 0, 0)
         elif basis_local == EPRMeasBasis.Z:
             rotations_local = (0, 0, 0)
+        elif basis_local == EPRMeasBasis.MX:
+            rotations_local = (0, 8, 0)
+        elif basis_local == EPRMeasBasis.MY:
+            rotations_local = (24, 0, 0)
+        elif basis_local == EPRMeasBasis.MZ:
+            rotations_local = (16, 0, 0)
         elif basis_local is None:
             pass  # use rotations_local argument value
         else:
@@ -286,6 +295,12 @@ class EPRSocket(abc.ABC):
             rotations_remote = (8, 0, 0)
         elif basis_remote == EPRMeasBasis.Z:
             rotations_remote = (0, 0, 0)
+        elif basis_remote == EPRMeasBasis.MX:
+            rotations_remote = (0, 8, 0)
+        elif basis_remote == EPRMeasBasis.MY:
+            rotations_remote = (24, 0, 0)
+        elif basis_remote == EPRMeasBasis.MZ:
+            rotations_remote = (16, 0, 0)
         elif basis_remote is None:
             pass  # use rotations_remote argument value
         else:
