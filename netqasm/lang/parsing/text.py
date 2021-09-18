@@ -467,6 +467,8 @@ _REPLACE_CONSTANTS_EXCEPTION = [
     (GenericInstr.BNE, 2),
     (GenericInstr.BLT, 2),
     (GenericInstr.BGE, 2),
+    (GenericInstr.BREAKPOINT, 0),
+    (GenericInstr.BREAKPOINT, 1),
 ]
 
 for instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
