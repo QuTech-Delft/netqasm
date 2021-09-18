@@ -1518,5 +1518,7 @@ class Builder:
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
     ) -> None:
         self.add_pending_command(
-            ICmd(instruction=GenericInstr.BREAKPOINT, operands=[action.value, role.value])
+            ICmd(
+                instruction=GenericInstr.BREAKPOINT, operands=[action.value, role.value]
+            )
         )
