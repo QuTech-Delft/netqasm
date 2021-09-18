@@ -35,7 +35,7 @@ from netqasm.backend.messages import (
     SubroutineMessage,
 )
 from netqasm.lang import operand
-from netqasm.lang.ir import PreSubroutine
+from netqasm.lang.ir import BreakpointAction, BreakpointRole, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
@@ -784,6 +784,11 @@ class BaseNetQASMConnection(abc.ABC):
                 print(freqs, exp_values, epsilon)
                 return False
         return True
+
+    def insert_breakpoint(
+        self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
+    ) -> None:
+        self._builder.insert_breakpoint(action, role)
 
 
 class DebugConnection(BaseNetQASMConnection):

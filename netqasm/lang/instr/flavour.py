@@ -40,6 +40,7 @@ CORE_INSTRUCTIONS: List[Type[NetQASMInstruction]] = [
     core.QFreeInstruction,
     core.RetRegInstruction,
     core.RetArrInstruction,
+    core.BreakpointInstruction,
 ]
 
 

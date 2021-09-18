@@ -75,6 +75,20 @@ class GenericInstr(Enum):
     # Move source qubit to target qubit (target is overwritten)
     MOV = auto()
 
+    # Breakpoint
+    BREAKPOINT = auto()
+
+
+class BreakpointAction(Enum):
+    NOP = 0
+    DUMP_LOCAL_STATE = 1
+    DUMP_GLOBAL_STATE = 2
+
+
+class BreakpointRole(Enum):
+    CREATE = 0
+    RECEIVE = 1
+
 
 def instruction_to_string(instr):
     if not isinstance(instr, GenericInstr):

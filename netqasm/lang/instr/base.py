@@ -43,7 +43,7 @@ class NetQASMInstruction(ABC):
 
     @classmethod
     @abstractmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Operand]) -> "NetQASMInstruction":
         pass
 
     def writes_to(self) -> List[Register]:
@@ -73,6 +73,35 @@ class NetQASMInstruction(ABC):
 
     def _pretty_print(self):
         return f"{self.__class__}"
+
+
+@dataclass
+class NoOperandInstruction(NetQASMInstruction):
+    """
+    An instruction with no operands.
+    """
+
+    @property
+    def operands(self) -> List[Operand]:
+        return []
+
+    @classmethod
+    def deserialize_from(cls, raw: bytes):
+        c_struct = encoding.NoOperandCommand.from_buffer_copy(raw)
+        assert c_struct.id == cls.id
+        return cls(id=cls.id)
+
+    def serialize(self) -> bytes:
+        c_struct = encoding.NoOperandCommand(id=self.id)
+        return bytes(c_struct)
+
+    @classmethod
+    def from_operands(cls, operands: List[Operand]):
+        assert len(operands) == 0
+        return cls(id=cls.id)
+
+    def _pretty_print(self):
+        return f"{self.mnemonic}"
 
 
 @dataclass
@@ -372,6 +401,46 @@ class ImmInstruction(NetQASMInstruction):
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.imm)}"
+
+
+@dataclass
+class ImmImmInstruction(NetQASMInstruction):
+    """
+    An instruction with 2 Immediate operands.
+    """
+
+    imm0: Immediate = None  # type: ignore
+    imm1: Immediate = None  # type: ignore
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.imm0, self.imm1]
+
+    @classmethod
+    def deserialize_from(cls, raw: bytes):
+        c_struct = encoding.ImmImmCommand.from_buffer_copy(raw)
+        assert c_struct.id == cls.id
+        imm0 = Immediate(value=c_struct.imm0)
+        imm1 = Immediate(value=c_struct.imm1)
+        return cls(imm0=imm0, imm1=imm1)
+
+    def serialize(self) -> bytes:
+        c_struct = encoding.ImmImmCommand(
+            id=self.id, imm0=self.imm0.value, imm1=self.imm1.value
+        )
+        return bytes(c_struct)
+
+    @classmethod
+    def from_operands(cls, operands: List[Operand]):
+        assert len(operands) == 2
+        imm0 = operands[0]
+        imm1 = operands[1]
+        assert isinstance(imm0, int)
+        assert isinstance(imm1, int)
+        return cls(imm0=Immediate(value=imm0), imm1=Immediate(value=imm1))
+
+    def _pretty_print(self):
+        return f"{self.mnemonic} {str(self.imm0)} {str(self.imm1)}"
 
 
 @dataclass
