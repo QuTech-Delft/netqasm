@@ -4,6 +4,17 @@ CHANGELOG
 Upcoming
 --------
 
+2021-09-19 (0.8.0)
+------------------
+- Added breakpoint instruction to NetQASM language.
+- Re-organized examples.
+- Made compatible with SquidASM 0.8.0.
+
+2021-09-10 (0.7.7)
+------------------
+- Fixed bug where registers were not freed after only being used temporarily.
+- Package installation now used `pyproject.toml`.
+
 2021-07-13 (0.7.5)
 ------------------
 - Added support for Remote State Preparation entanglement requests.

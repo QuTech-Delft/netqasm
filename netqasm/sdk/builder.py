@@ -33,6 +33,8 @@ from netqasm.lang.ir import (
     ArrayEntry,
     ArraySlice,
     BranchLabel,
+    BreakpointAction,
+    BreakpointRole,
     GenericInstr,
     ICmd,
     Label,
@@ -1511,3 +1513,12 @@ class Builder:
             loop_register=loop_register,
         )
         self._remove_active_register(register=loop_register)
+
+    def insert_breakpoint(
+        self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
+    ) -> None:
+        self.add_pending_command(
+            ICmd(
+                instruction=GenericInstr.BREAKPOINT, operands=[action.value, role.value]
+            )
+        )

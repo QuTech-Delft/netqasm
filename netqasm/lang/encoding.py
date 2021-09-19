@@ -141,6 +141,10 @@ def add_padding(fields):
     return new_fields
 
 
+class NoOperandCommand(Command):
+    _fields_ = add_padding([])
+
+
 class RegCommand(Command):
     _fields_ = add_padding(
         [
@@ -213,6 +217,15 @@ class ImmCommand(Command):
     _fields_ = add_padding(
         [
             ("imm", INTEGER),
+        ]
+    )
+
+
+class ImmImmCommand(Command):
+    _fields_ = add_padding(
+        [
+            ("imm0", IMMEDIATE),
+            ("imm1", IMMEDIATE),
         ]
     )
 
@@ -326,6 +339,8 @@ COMMANDS = [
     RegRegImmImmCommand,
     RegRegRegCommand,
     ImmCommand,
+    ImmImmCommand,
+    NoOperandCommand,
     RegImmCommand,
     RegRegImmCommand,
     RegEntryCommand,

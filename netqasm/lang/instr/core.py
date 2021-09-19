@@ -559,3 +559,25 @@ class RetRegInstruction(base.RegInstruction):
 class RetArrInstruction(base.AddrInstruction):
     id: int = 40
     mnemonic: str = "ret_arr"
+
+
+@dataclass
+class BreakpointInstruction(base.ImmImmInstruction):
+    id: int = 100
+    mnemonic: str = "breakpoint"
+
+    @property
+    def action(self):
+        return self.imm0
+
+    @action.setter
+    def action(self, new_val):
+        self.imm0 = new_val
+
+    @property
+    def role(self):
+        return self.imm1
+
+    @role.setter
+    def role(self, new_val):
+        self.imm1 = new_val

@@ -1,4 +1,4 @@
-# NetQASM (0.7.7)
+# NetQASM (0.8.0)
 Utilities for writing, compiling, and running quantum network applications.
 
 ## Intro
@@ -41,7 +41,9 @@ They can be run on a simulator using
 netqasm simulate --app-dir netqasm/examples/<app>
 ```
 
-Examples of Python scripts that can run applications can be found in `netqasm/examples/sdk_examples`. These files can be run directly using `python <filename>`.
+Examples of Python scripts that can run applications can be found in `netqasm/examples/sdk_scripts`. These files can be run directly using `python <filename>`.
+
+`netqasm/examples/sdk_compilation` contains SDK scripts that use a debug backend. Running these files does not involve an actual simulation of the application code but can be used to see the NetQASM subroutines that are compiled from the Python application code.
 
 For more information, check the [documentation](#documentation).
 
@@ -71,11 +73,13 @@ For code formatting, `black` and `isort` are used.
 Type hints should be added as much as possible.
 Types are checked using `mypy`.
 
-Before code is merged, make sure that the `make lint` command succeeds, which runs `black`, `isort`, `flake8` and `mypy`.
+Before code is pushed, make sure that the `make lint` command succeeds, which runs `black`, `isort`, `flake8` and `mypy`.
 
 
 # Contributors
 In alphabetical order:
 - Axel Dahlberg
+- Wojciech Kozlowski
 - Martijn Papendrecht
+- Ingmar te Raa
 - Bart van der Vecht (b.vandervecht[at]tudelft.nl)
