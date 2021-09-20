@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-09-20 (0.8.1)
+------------------
+- Added MANIFEST.in file
+
 2021-09-19 (0.8.0)
 ------------------
 - Added breakpoint instruction to NetQASM language.
