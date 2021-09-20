@@ -1,0 +1,8 @@
+include docs/*
+include tests/*
+include Makefile
+include CHANGELOG.md
+include .flake8
+include mypy.ini
+include requirements.txt
+include test_requirements.txt
