@@ -1,5 +1,6 @@
-include docs/*
-include tests/*
+recursive-include docs *
+recursive-include tests *.py
+global-exclude *.py[cod] *.log
 include Makefile
 include CHANGELOG.md
 include .flake8
