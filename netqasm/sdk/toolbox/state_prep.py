@@ -27,7 +27,7 @@ def set_qubit_state(qubit: Qubit, phi: float = 0.0, theta: float = 0.0) -> None:
     qubit.rot_Z(angle=phi)
 
 
-def get_angle_spec_from_float(angle: float, tol: float = 1e-6) -> List[Tuple[int, int]]:
+def get_angle_spec_from_float(angle: float, tol: float = 1e-4) -> List[Tuple[int, int]]:
     r"""Tries to find the shortest sequence of (n, d) such that :math:`abs(\sum_i n_i \pi / 2 ^ {d_i} - angle) < tol`
     This is to find a sequence of rotations for a given angle.
 
@@ -61,4 +61,5 @@ def get_angle_spec_from_float(angle: float, tol: float = 1e-6) -> List[Tuple[int
         while (n_new % 2) == 0:
             n_new, d_new = (int(n_new / 2), d_new - 1)
         nds[i] = (n_new, d_new)
+    nds = [(n, d) for (n, d) in nds if d < 32]
     return nds
