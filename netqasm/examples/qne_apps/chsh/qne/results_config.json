@@ -1,0 +1,45 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "CHSH results",
+            "parameters": {
+                "content": "Alice and Bob used their entangled pair (created through the repeater) to try and win the CHSH game. Let's see if they won!"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Entanglement swap",
+            "parameters": {
+                "content": "- Repeater measurement outcomes:: {{ $.app_repeater.m1 }} and {{ $.app_repeater.m2 }}.\n - Bob corrections: {{ $.app_bob.corrections }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Alice's measurement",
+            "parameters": {
+                "content": "- Basis: {{ $.app_alice.basis }} \n - Outcome: {{ $.app_alice.a }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Bob's measurement",
+            "parameters": {
+                "content": "- Basis: {{ $.app_bob.basis }} \n - Outcome: {{ $.app_bob.b }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Did they win the game?",
+            "parameters": {
+                "content": "{{ $.app_bob.game_won }}!"
+            }
+        }
+    ]
+]

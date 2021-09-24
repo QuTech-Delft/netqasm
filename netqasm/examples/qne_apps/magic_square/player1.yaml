@@ -1,0 +1,5 @@
+row: 0
+strategy:
+    - ['XI', 'XX', 'IX']  # row 0
+    - ['-XZ', 'YY', '-ZX']  # row 1
+    - ['IZ', 'ZZ', 'ZI']  # row 2

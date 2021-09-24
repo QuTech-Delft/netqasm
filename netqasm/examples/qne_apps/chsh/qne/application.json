@@ -1,0 +1,36 @@
+[
+    {
+        "title": "Input bit 'x' for Alice",
+        "slug": "chsh_input_alice_x",
+        "description": "Please specify the input bit 'x' for Alice.",
+        "values": [
+            {
+                "name": "x",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "alice"
+        ]
+    },
+    {
+        "title": "Input bit 'y' for Bob",
+        "slug": "chsh_input_bob_y",
+        "description": "Please specify the input bit 'y' for Bob.",
+        "values": [
+            {
+                "name": "y",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "bob"
+        ]
+    }
+]

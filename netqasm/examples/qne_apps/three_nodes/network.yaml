@@ -1,0 +1,45 @@
+nodes:
+  - name: "delft"
+    gate_fidelity: 0.9
+    qubits:
+      - id: 0
+        t1: 62.3
+        t2: 23.4
+      - id: 1
+        t1: 62.3
+        t2: 23.4
+  - name: "the_hague"
+    gate_fidelity: 0.9
+    qubits:
+      - id: 0
+        t1: 82.3
+        t2: 23.4
+      - id: 1
+        t1: 62.3
+        t2: 23.4
+  - name: "leiden"
+    gate_fidelity: 0.9
+    qubits:
+      - id: 0
+        t1: 62.3
+        t2: 23.4
+      - id: 1
+        t1: 62.3
+        t2: 23.4
+
+links:
+  - name: ch1
+    node_name1: "delft"
+    node_name2: "the_hague"
+    noise_type: Depolarise
+    fidelity: 0.9
+  - name: ch2
+    node_name1: "the_hague"
+    node_name2: "leiden"
+    noise_type: Depolarise
+    fidelity: 0.9
+  - name: ch3
+    node_name1: "leiden"
+    node_name2: "delft"
+    noise_type: Depolarise
+    fidelity: 0.9

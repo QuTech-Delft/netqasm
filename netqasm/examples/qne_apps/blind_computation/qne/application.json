@@ -1,0 +1,104 @@
+[
+    {
+        "title": "alpha",
+        "slug": "blind_computation_input_client_alpha",
+        "description": "Angle alpha chosen by the client.",
+        "values": [
+            {
+                "name": "alpha",
+                "default_value": 0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    },
+    {
+        "title": "beta",
+        "slug": "blind_computation_input_client_beta",
+        "description": "Angle beta chosen by the client.",
+        "values": [
+            {
+                "name": "beta",
+                "default_value": 0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    },
+    {
+        "title": "theta1",
+        "slug": "blind_computation_input_client_theta1",
+        "description": "Angle theta1 chosen by the client.",
+        "values": [
+            {
+                "name": "theta1",
+                "default_value": 0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    },
+    {
+        "title": "theta2",
+        "slug": "blind_computation_input_client_theta2",
+        "description": "Angle theta2 chosen by the client.",
+        "values": [
+            {
+                "name": "theta2",
+                "default_value": 0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    },
+    {
+        "title": "r1",
+        "slug": "blind_computation_input_client_r1",
+        "description": "One-time pad bit r1 chosen by the client.",
+        "values": [
+            {
+                "name": "r1",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    },
+    {
+        "title": "r2",
+        "slug": "blind_computation_input_client_r2",
+        "description": "One-time pad bit r2 chosen by the client.",
+        "values": [
+            {
+                "name": "r2",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 1
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "client"
+        ]
+    }
+]

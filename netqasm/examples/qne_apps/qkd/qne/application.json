@@ -1,0 +1,20 @@
+[
+    {
+        "title": "Number of EPR pairs",
+        "slug": "number_of_epr_pairs",
+        "description": "Please specify the number of EPR pairs to be used.",
+        "values": [
+            {
+                "name": "num_bits",
+                "default_value": 10,
+                "minimum_value": 0,
+                "maximum_value": 1000
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "alice",
+            "bob"
+        ]
+    }
+]
