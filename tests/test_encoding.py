@@ -72,7 +72,7 @@ def test_encode_substitution():
 // Setup classical registers
 set Q0 0
 set R0 0  // loop variable
-array(10) ms!
+array(10) $ms
 
 // Loop entry
 LOOP:
@@ -85,7 +85,7 @@ h Q0
 meas Q0 M0
 
 // Store to array
-store M0 ms![R0]
+store M0 $ms[R0]
 
 qfree Q0
 add R0 R0 1

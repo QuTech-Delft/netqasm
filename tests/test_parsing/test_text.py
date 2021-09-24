@@ -129,7 +129,7 @@ set C10 10
 // Setup classical registers
 set Q0 0
 set R0 0
-array C10 ms!
+array C10 $ms
 
 // Loop entry
 LOOP:
@@ -142,7 +142,7 @@ h Q0
 meas Q0 M0
 
 // Store to array
-store M0 ms![R0]
+store M0 $ms[R0]
 
 qfree Q0
 add R0 R0 C1
