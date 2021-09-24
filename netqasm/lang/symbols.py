@@ -1,7 +1,7 @@
 class Symbols:
     COMMENT_START = "//"
     BRANCH_END = ":"
-    MACRO_END = "!"
+    MACRO_START = "$"
     ADDRESS_START = "@"
     ARGS_BRACKETS = "()"
     ARGS_DELIM = ","
