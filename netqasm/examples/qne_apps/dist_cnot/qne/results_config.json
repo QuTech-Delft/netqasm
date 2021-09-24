@@ -26,6 +26,15 @@
     ],
     [
         {
+            "output_type": "text",
+            "title": "Are the final states entangled?",
+            "parameters": {
+                "content": "{{ $.app_controller.entangled_text }}"
+            }
+        }
+    ],
+    [
+        {
             "output_type": "quantum-state",
             "title": "Controller final state",
             "parameters": {

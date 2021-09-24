@@ -9,6 +9,7 @@ from netqasm.sdk.toolbox import set_qubit_state
 
 
 def main(app_config=None, phi=0.0, theta=0.0):
+    # Inputs are coefficients of pi, e.g. phi=0.5 -> angle 0.5*pi
     phi *= math.pi
     theta *= math.pi
 
@@ -53,6 +54,8 @@ def main(app_config=None, phi=0.0, theta=0.0):
 
     socket.send_structured(StructuredMessage("Corrections", (m1, m2)))
 
+    # Send information about the original state to the other side,
+    # just for visualizations purposes in QNE.
     if get_simulator() == Simulator.NETSQUID:
         socket.send_silent(str((phi, theta)))
 

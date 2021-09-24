@@ -57,6 +57,8 @@ def receive_bb84_states(conn, epr_socket, socket, target, n):
             q.H()
         m = q.measure()
         conn.flush()
+        # Synchronize with the other node so that entanglement operations
+        # appear more cleanly in the logs (not needed in principle).
         socket.recv_silent()
         socket.send_silent("")
         bit_flips[i] = int(m)
