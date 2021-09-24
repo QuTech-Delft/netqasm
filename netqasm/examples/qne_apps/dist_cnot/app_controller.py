@@ -1,6 +1,6 @@
 import math
 
-from numpy import linalg, ndarray
+from numpy import linalg
 
 from netqasm.logging.output import get_new_app_logger
 from netqasm.runtime.settings import Simulator, get_simulator
@@ -80,9 +80,15 @@ def main(app_config=None, phi=0.0, theta=0.0):
             final_dm = get_qubit_state(ctrl_qubit, reduced_dm=True)
 
             if linalg.matrix_rank(final_dm) != 1:
-                entangled_text = "The controller's and target's qubits are entangled so their individual states cannot be shown."
+                entangled_text = (
+                    "The controller's and target's qubits are entangled "
+                    "so their individual states cannot be shown."
+                )
             else:
-                entangled_text = "The controller's and target's qubits are *not* entangled. Their final states are displayed below."
+                entangled_text = (
+                    "The controller's and target's qubits are *not* "
+                    "entangled. Their final states are displayed below."
+                )
         else:
             original_dm = None
             final_dm = None
