@@ -10,7 +10,7 @@ def test():
 
 // Setup classical registers
 set Q0 0
-array 10 ms!
+array 10 $ms
 set R0 0
 
 // Loop entry
@@ -24,7 +24,7 @@ h Q0
 meas Q0 M0
 
 // Store to array
-store M0 ms![R0]
+store M0 $ms[R0]
 
 qfree Q0
 add R0 R0 1

@@ -1,10 +1,10 @@
 # NETQASM 0.0
 # APPID 0
 # DEFINE i R0
-set i! 0
+set $i 0
 LOOP:
-beq i! 10 EXIT
-add i! i! 1
+beq $i 10 EXIT
+add $i $i 1
 jmp LOOP
 EXIT:
-ret_reg i!
+ret_reg $i
