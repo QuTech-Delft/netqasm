@@ -1,0 +1,52 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Distributed CNOT results",
+            "parameters": {
+                "content": "The controller and target node tried to do a CNOT between their two qubits. See below the result."
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "Controller original state",
+            "parameters": {
+                "density_matrix": "$.app_controller.original_state"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Target original state",
+            "parameters": {
+                "density_matrix": "$.app_target.original_state"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Are the final states entangled?",
+            "parameters": {
+                "content": "{{ $.app_controller.entangled_text }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "Controller final state",
+            "parameters": {
+                "density_matrix": "$.app_controller.final_state"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Target final state",
+            "parameters": {
+                "density_matrix": "$.app_target.final_state"
+            }
+        }
+    ]
+]

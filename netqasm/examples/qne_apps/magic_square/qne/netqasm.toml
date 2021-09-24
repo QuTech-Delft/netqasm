@@ -1,0 +1,13 @@
+[application]
+name = "Magic Square game"
+slug = 'magic-square-game'
+authors = ["My Name <my.name@email.com>"]
+version = "1"
+description = "Description of the application"
+
+[network]
+qne-networks = ["randstad"]
+
+
+
+

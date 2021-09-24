@@ -39,7 +39,7 @@ def main(app_config=None):
             dm = get_qubit_state(epr)
             print(f"`receiver` recieved the teleported state {dm}")
 
-            # Reconstruct the original qubit to compare with the received one.
+            # Reconstruct the original qubit to compare with the received one
             # NOTE only to check simulation results, normally the Sender does not
             # need to send the phi and theta values!
             msg = socket.recv_silent()  # don't log this

@@ -1,0 +1,45 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "State Teleportation results",
+            "parameters": {
+                "content": "The sender just tried to teleport a qubit to the receiver. Here we check what is the result!"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Corrections",
+            "parameters": {
+                "content": "- Sender outcome m1 = {{ $.app_sender.m1 }}. Receiver correction: {{ $.app_receiver.correction1 }}\n- Sender outcome m2 = {{ $.app_sender.m2 }}. Receiver correction: {{ $.app_receiver.correction2 }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "State to be teleported",
+            "parameters": {
+                "density_matrix": "$.app_receiver.original_state"
+            }
+        },
+        {
+            "output_type": "quantum-state",
+            "title": "Final state at Receiver",
+            "parameters": {
+                "density_matrix": "$.app_receiver.received_state"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Fidelity",
+            "parameters": {
+                "content": "{{ $.app_receiver.fidelity }}"
+            }
+        }
+    ]
+]

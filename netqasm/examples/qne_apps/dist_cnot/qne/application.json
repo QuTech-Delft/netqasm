@@ -1,0 +1,48 @@
+[
+    {
+        "title": "Input state of Controller",
+        "slug": "input_state_controller",
+        "description": "The qubit state the Controller starts with.",
+        "values": [
+            {
+                "name": "phi",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            },
+            {
+                "name": "theta",
+                "default_value": 0.0,
+                "minimum_value": 0.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "qubit",
+        "roles": [
+            "controller"
+        ]
+    },
+    {
+        "title": "Input state of Target",
+        "slug": "input_state_target",
+        "description": "The qubit state the Target starts with.",
+        "values": [
+            {
+                "name": "phi",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            },
+            {
+                "name": "theta",
+                "default_value": 0.0,
+                "minimum_value": 0.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "qubit",
+        "roles": [
+            "target"
+        ]
+    }
+]
