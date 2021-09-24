@@ -1,0 +1,82 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "QKD results",
+            "parameters": {
+                "content": "Here we see an overview of all measurements, outcomes, and comparisons Alice and Bob made throughout the protocol. Finally, we show their raw keys. If there was not too much noise, it can be made into a secret key!"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "table",
+            "title": "Alice's results",
+            "parameters": {
+                "data": "$.app_alice.table",
+                "headers": [
+                    "Pair index",
+                    "Measurement basis",
+                    "Same basis as Bob",
+                    "Measurement outcome",
+                    "Same outcome as Bob"
+                ]
+            }
+        },
+        {
+            "output_type": "table",
+            "title": "Bob's results",
+            "parameters": {
+                "data": "$.app_bob.table",
+                "headers": [
+                    "Pair index",
+                    "Measurement basis",
+                    "Same basis as Alice",
+                    "Measurement outcome",
+                    "Same outcome as Alice"
+                ]
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Alice's statistics",
+            "parameters": {
+                "content": "Alice measured {{ $.app_alice.x_basis_count }} times in the X basis and {{ $.app_alice.z_basis_count }} in the Z basis."
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Bob's statistics",
+            "parameters": {
+                "content": "Bob measured {{ $.app_bob.x_basis_count }} times in the X basis and {{ $.app_bob.z_basis_count }} in the Z basis."
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "General statistics",
+            "parameters": {
+                "content": "- Number of pairs measured in the same basis: {{ $.app_alice.same_basis_count }}\n- Number of pairs chosen to compare measurement outcomes for: {{ $.app_alice.outcome_comparison_count }}\n- Number of different measurement outcomes among the pairs chosen to compare: {{ $.app_alice.diff_outcome_count }}\n- QBER: {{ $.app_alice.qber }}. *QBER is the Quantum Bit Error Rate. It is the fraction of compared measurement outcomes that are not equal, even though they result from measurements in the same basis.* \n- Key rate potential: {{ $.app_alice.key_rate_potential }}. *Rate of secure key that can in theory be extracted from the raw key (after more classical post-processing). The rate is 'length of secure key' divided by 'length of raw key'.*"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Alice's raw key",
+            "parameters": {
+                "content": "{{ $.app_alice.raw_key }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Bob's raw key",
+            "parameters": {
+                "content": "{{ $.app_bob.raw_key }}"
+            }
+        }
+    ]
+]

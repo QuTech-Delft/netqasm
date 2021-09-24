@@ -482,13 +482,13 @@ class BaseNetQASMConnection(abc.ABC):
         if subroutine is None:
             return
 
-        self._commit_subroutine(
+        self.commit_subroutine(
             presubroutine=subroutine,
             block=block,
             callback=callback,
         )
 
-    def _commit_subroutine(
+    def commit_subroutine(
         self,
         presubroutine: PreSubroutine,
         block: bool = True,

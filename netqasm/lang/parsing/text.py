@@ -21,6 +21,18 @@ T_Cmd = Union[ICmd, BranchLabel]
 T_ParsedValue = Union[int, Register, Label]
 
 
+def parse_text_presubroutine(text: str) -> PreSubroutine:
+    """
+    Convert a text representation of a subroutine into a PreSubroutine object.
+    """
+    preamble_lines, body_lines_with_macros = _split_preamble_body(text)
+    preamble_data = _parse_preamble(preamble_lines)
+    body_lines = _apply_macros(
+        body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE]
+    )
+    return _create_subroutine(preamble_data, body_lines)
+
+
 def parse_text_subroutine(
     subroutine: str,
     assign_branch_labels=True,
@@ -34,12 +46,7 @@ def parse_text_subroutine(
     Internally, first a `PreSubroutine` object is created, consisting of `ICmd`s.
     This is then converted into a `Subroutine` using `assemble_subroutine`.
     """
-    preamble_lines, body_lines_with_macros = _split_preamble_body(subroutine)
-    preamble_data = _parse_preamble(preamble_lines)
-    body_lines = _apply_macros(
-        body_lines_with_macros, preamble_data[Symbols.PREAMBLE_DEFINE]
-    )
-    pre_subroutine = _create_subroutine(preamble_data, body_lines)
+    pre_subroutine = parse_text_presubroutine(subroutine)
     assembled_subroutine = assemble_subroutine(
         pre_subroutine=pre_subroutine,
         assign_branch_labels=assign_branch_labels,
@@ -315,7 +322,7 @@ def _apply_macros(body_lines, macros) -> List[str]:
     body = "\n".join(body_lines)
     for macro_key, macro_value in macros:
         macro_value = macro_value.strip(Symbols.PREAMBLE_DEFINE_BRACKETS)
-        body = body.replace(f"{macro_key}{Symbols.MACRO_END}", macro_value)
+        body = body.replace(f"{Symbols.MACRO_START}{macro_key}", macro_value)
     return list(body.split("\n"))
 
 

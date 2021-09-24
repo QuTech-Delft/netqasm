@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-09-24 (0.8.3)
+------------------
+- Added QNE-specific apps to `netqasm/examples/qne_apps`.
+
 2021-09-20 (0.8.2)
 ------------------
 - Small fix in MANIFEST.in file

@@ -1,0 +1,41 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "The two players just performed measurements on their qubits. Here we can see what their results are and if the intersection between the row of Player 1 and the column of Player 2 are indeed the same!",
+            "parameters": {
+                "content": "Magic Square"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Row of player 1",
+            "parameters": {
+                "content": "{{ $.app_player1.row }}"
+            }
+        },
+        {
+            "output_type": "text",
+            "title": "Column of player 2",
+            "parameters": {
+                "content": "{{ $.app_player2.col }}"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "table",
+            "title": "Filled-in square",
+            "parameters": {
+                "data": "$.app_player2.square",
+                "headers": [
+                    "",
+                    "",
+                    ""
+                ]
+            }
+        }
+    ]
+]

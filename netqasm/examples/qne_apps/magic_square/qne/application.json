@@ -1,0 +1,36 @@
+[
+    {
+        "title": "Player 1: row number",
+        "slug": "magic_square_input_player1_row",
+        "description": "Please specify which row should be filled in by Player 1.",
+        "values": [
+            {
+                "name": "row",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 2
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "player1"
+        ]
+    },
+    {
+        "title": "Player 2: column number",
+        "slug": "magic_square_input_player2_col",
+        "description": "Please specify which column should be filled in by Player 2.",
+        "values": [
+            {
+                "name": "col",
+                "default_value": 0,
+                "minimum_value": 0,
+                "maximum_value": 2
+            }
+        ],
+        "input_type": "number",
+        "roles": [
+            "player2"
+        ]
+    }
+]

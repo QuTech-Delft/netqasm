@@ -1,0 +1,38 @@
+[
+    [
+        {
+            "output_type": "text",
+            "title": "Description of Blind Computation",
+            "parameters": {
+                "content": "Blind computation of H Rz(alpha) H Rz(beta) |+>"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "quantum-state",
+            "title": "Final state at Receiver",
+            "parameters": {
+                "density_matrix": "$.app_server.final_state"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Angles sent to the server",
+            "parameters": {
+                "content": "- delta1: {{ $.app_client.delta1 }} pi\n - delta2: {{ $.app_client.delta2 }} pi"
+            }
+        }
+    ],
+    [
+        {
+            "output_type": "text",
+            "title": "Measurement outcomes",
+            "parameters": {
+                "content": "- p1: {{ $.app_client.p1 }}\n - p2: {{ $.app_client.p2 }}\n - m1: {{ $.app_client.m1 }}\n - m2: {{ $.app_client.m2 }}"
+            }
+        }
+    ]
+]

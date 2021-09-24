@@ -1,0 +1,25 @@
+[
+    {
+        "title": "Qubit state of Sender",
+        "slug": "qubit_state_sender",
+        "description": "...",
+        "values": [
+            {
+                "name": "phi",
+                "default_value": 0.0,
+                "minimum_value": -1.0,
+                "maximum_value": 1.0
+            },
+            {
+                "name": "theta",
+                "default_value": 0.0,
+                "minimum_value": 0.0,
+                "maximum_value": 1.0
+            }
+        ],
+        "input_type": "qubit",
+        "roles": [
+            "Sender"
+        ]
+    }
+]

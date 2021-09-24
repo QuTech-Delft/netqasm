@@ -1,0 +1,9 @@
+[application]
+name = "CHSH"
+slug = "chsh"
+authors = ["My Name <my.name@email.com>"]
+version = "0.1.0"
+description = "Description of the application"
+
+[network]
+qne-networks = ["randstad"]

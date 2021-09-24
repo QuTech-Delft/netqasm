@@ -1,0 +1,6 @@
+[application]
+name = "BB84 Illustration"
+slug = 'bb84-illustration'
+authors = ["My Name <my.name@email.com>"]
+version = "101"
+description = "Description of the application"

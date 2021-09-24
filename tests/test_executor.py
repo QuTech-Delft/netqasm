@@ -20,16 +20,16 @@ from netqasm.sdk.shared_memory import SharedMemoryManager
         # DEFINE op h
         # DEFINE q Q0
         # DEFINE m M0
-        set q! 0
-        qalloc q!
-        init q!
-        op! q! // this is a comment
-        meas q! m!
+        set $q 0
+        qalloc $q
+        init $q
+        $op $q // this is a comment
+        meas $q $m
         // this is also a comment
-        beq m! 0 EXIT
-        x q!
+        beq $m 0 EXIT
+        x $q
         EXIT:
-        qfree q!
+        qfree $q
         """,
             Register(RegisterName.M, 0),
             0,
@@ -39,10 +39,10 @@ from netqasm.sdk.shared_memory import SharedMemoryManager
         # NETQASM 1.0
         # APPID 0
         # DEFINE i R0
-        set i! 0
+        set $i 0
         LOOP:
-        beq i! 10 EXIT
-        add i! i! 1
+        beq $i 10 EXIT
+        add $i $i 1
         beq 0 0 LOOP
         EXIT:
         """,
@@ -120,10 +120,10 @@ if __name__ == "__main__":
         # NETQASM 1.0
         # APPID 0
         # DEFINE i R0
-        set i! 0
+        set $i 0
         LOOP:
-        beq i! 10 EXIT
-        add i! i! 1
+        beq $i 10 EXIT
+        add $i $i 1
         beq 0 0 LOOP
         EXIT:
         """
