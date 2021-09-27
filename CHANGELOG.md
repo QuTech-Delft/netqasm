@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-09-27 (0.8.4)
+------------------
+- Updated QKD app config.
+
 2021-09-24 (0.8.3)
 ------------------
 - Added QNE-specific apps to `netqasm/examples/qne_apps`.

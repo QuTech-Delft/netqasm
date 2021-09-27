@@ -7,8 +7,8 @@
             {
                 "name": "num_bits",
                 "default_value": 10,
-                "minimum_value": 0,
-                "maximum_value": 1000
+                "minimum_value": 1,
+                "maximum_value": 150
             }
         ],
         "input_type": "number",
