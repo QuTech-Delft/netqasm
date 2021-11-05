@@ -23,7 +23,7 @@ def bloch_sphere_rep(mat):
 
     # Compute polar coordinates
     r = np.linalg.norm([ax, ay, az])
-    assert abs(r - 1) < 0.001, "mat not normalized"
+    assert r < 1.001, "mat not normalized"
     if r == 0:
         return (0, 0, 0)
     theta = np.arccos(az / r)
