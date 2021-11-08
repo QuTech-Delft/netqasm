@@ -1,13 +1,13 @@
 import json
-import random
 import math
+import random
 from dataclasses import dataclass
 from typing import Optional
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk import EPRSocket
-from netqasm.sdk.external import NetQASMConnection, Socket
 from netqasm.sdk.classical_communication.message import StructuredMessage
+from netqasm.sdk.external import NetQASMConnection, Socket
 
 logger = get_netqasm_logger()
 
@@ -36,14 +36,14 @@ def send_single_msg(socket, msg):
 def sendClassicalAssured(socket, data):
     data = json.dumps(data)
     send_single_msg(socket, data)
-    while recv_single_msg(socket) != 'ACK':
+    while recv_single_msg(socket) != "ACK":
         pass
 
 
 def recvClassicalAssured(socket):
     data = recv_single_msg(socket)
     data = json.loads(data)
-    send_single_msg(socket, 'ACK')
+    send_single_msg(socket, "ACK")
     return data
 
 
@@ -57,6 +57,8 @@ def receive_bb84_states(conn, epr_socket, socket, target, n):
             q.H()
         m = q.measure()
         conn.flush()
+        # Synchronize with the other node so that entanglement operations
+        # appear more cleanly in the logs (not needed in principle).
         socket.recv_silent()
         socket.send_silent("")
         bit_flips[i] = int(m)
@@ -72,7 +74,7 @@ def filter_bases(socket, pairs_info):
 
     for (i, basis), (remote_i, remote_basis) in zip(bases, remote_bases):
         assert i == remote_i
-        pairs_info[i].same_basis = (basis == remote_basis)
+        pairs_info[i].same_basis = basis == remote_basis
 
     return pairs_info
 
@@ -80,7 +82,7 @@ def filter_bases(socket, pairs_info):
 def estimate_error_rate(socket, pairs_info, num_test_bits):
     test_indices = socket.recv_structured().payload
     for pair in pairs_info:
-        pair.test_outcome = (pair.index in test_indices)
+        pair.test_outcome = pair.index in test_indices
 
     test_outcomes = [(i, pairs_info[i].outcome) for i in test_indices]
 
@@ -104,7 +106,7 @@ def estimate_error_rate(socket, pairs_info, num_test_bits):
 
 
 def extract_key(x, r):
-    return (sum([xj*rj for xj, rj in zip(x, r)]) % 2)
+    return sum([xj * rj for xj, rj in zip(x, r)]) % 2
 
 
 @dataclass
@@ -152,7 +154,9 @@ def main(app_config=None, num_bits=100):
         epr_sockets=[epr_socket],
     )
     with bob:
-        bit_flips, basis_flips = receive_bb84_states(bob, epr_socket, socket, "alice", num_bits)
+        bit_flips, basis_flips = receive_bb84_states(
+            bob, epr_socket, socket, "alice", num_bits
+        )
 
     outcomes = [int(b) for b in bit_flips]
     bases = [int(b) for b in basis_flips]
@@ -162,11 +166,13 @@ def main(app_config=None, num_bits=100):
 
     pairs_info = []
     for i in range(num_bits):
-        pairs_info.append(PairInfo(
-            index=i,
-            basis=int(basis_flips[i]),
-            outcome=int(bit_flips[i]),
-        ))
+        pairs_info.append(
+            PairInfo(
+                index=i,
+                basis=int(basis_flips[i]),
+                outcome=int(bit_flips[i]),
+            )
+        )
 
     socket.send(ALL_MEASURED)
     pairs_info = filter_bases(socket, pairs_info)
@@ -174,13 +180,17 @@ def main(app_config=None, num_bits=100):
     pairs_info, error_rate = estimate_error_rate(socket, pairs_info, num_test_bits)
     logger.info(f"bob error_rate: {error_rate}")
 
-    raw_key = [pair.outcome for pair in pairs_info if not pair.test_outcome]
-    logger.info(f"alice raw key: {raw_key}")
+    raw_key = [
+        pair.outcome for pair in pairs_info if pair.same_basis and not pair.test_outcome
+    ]
+    logger.info(f"bob raw key: {raw_key}")
 
     if len(raw_key) == 0:
         raw_key_text = "empty - there were not enough outcomes left"
     else:
         raw_key_text = str(raw_key)
+
+    print(f"bob   raw key: {raw_key}")
 
     # Return data.
 
@@ -188,15 +198,17 @@ def main(app_config=None, num_bits=100):
     for pair in pairs_info:
         basis = "X" if pair.basis == 1 else "Z"
         check = pair.same_outcome if pair.test_outcome else "-"
-        table.append(
-            [pair.index, basis, pair.same_basis, pair.outcome, check]
-        )
+        table.append([pair.index, basis, pair.same_basis, pair.outcome, check])
 
     x_basis_count = sum(pair.basis for pair in pairs_info)
     z_basis_count = num_bits - x_basis_count
     same_basis_count = sum(pair.same_basis for pair in pairs_info)
-    outcome_comparison_count = sum(pair.test_outcome for pair in pairs_info if pair.same_basis)
-    diff_outcome_count = outcome_comparison_count - sum(pair.same_outcome for pair in pairs_info if pair.test_outcome)
+    outcome_comparison_count = sum(
+        pair.test_outcome for pair in pairs_info if pair.same_basis
+    )
+    diff_outcome_count = outcome_comparison_count - sum(
+        pair.same_outcome for pair in pairs_info if pair.test_outcome
+    )
     if outcome_comparison_count == 0:
         qber = 1
     else:
@@ -212,34 +224,26 @@ def main(app_config=None, num_bits=100):
         #   - Measurement outcome ("0" or "1")
         #   - Outcome same as Alice ("True", "False" or "-")
         #       ("-" is when outcomes are not compared)
-        'table': table,
-
+        "table": table,
         # Number of times measured in the X basis.
-        'x_basis_count': x_basis_count,
-
+        "x_basis_count": x_basis_count,
         # Number of times measured in the Z basis.
-        'z_basis_count': z_basis_count,
-
+        "z_basis_count": z_basis_count,
         # Number of times measured in the same basis as Alice.
-        'same_basis_count': same_basis_count,
-
+        "same_basis_count": same_basis_count,
         # Number of pairs chosen to compare measurement outcomes for.
-        'outcome_comparison_count': outcome_comparison_count,
-
+        "outcome_comparison_count": outcome_comparison_count,
         # Number of compared outcomes with equal values.
-        'diff_outcome_count': diff_outcome_count,
-
+        "diff_outcome_count": diff_outcome_count,
         # Estimated Quantum Bit Error Rate (QBER).
-        'qber': qber,
-
+        "qber": qber,
         # Rate of secure key that can in theory be extracted from the raw key.
-        'key_rate_potential': key_rate_potential,
-
+        "key_rate_potential": key_rate_potential,
         # Raw key.
         # ('Result' of this application. In practice, there'll be post-processing to produce secure shared key.)
-        'raw_key': raw_key_text
+        "raw_key": raw_key_text,
     }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

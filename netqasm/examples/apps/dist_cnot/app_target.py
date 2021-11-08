@@ -1,11 +1,16 @@
-from netqasm.sdk import EPRSocket, Qubit
-from netqasm.sdk.toolbox import set_qubit_state
-from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
-from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm
+import math
+
 from netqasm.logging.output import get_new_app_logger
+from netqasm.sdk import EPRSocket, Qubit
+from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
+from netqasm.sdk.toolbox import set_qubit_state
+from netqasm.sdk.toolbox.sim_states import qubit_from, to_dm
 
 
 def main(app_config=None, phi=0.0, theta=0.0):
+    phi *= math.pi
+    theta *= math.pi
+
     log_config = app_config.log_config
 
     # socket for creating an EPR pair with Controller
@@ -20,10 +25,11 @@ def main(app_config=None, phi=0.0, theta=0.0):
     target = NetQASMConnection(
         app_name=app_config.app_name,
         log_config=app_config.log_config,
-        epr_sockets=[controller_epr]
+        epr_sockets=[controller_epr],
     )
 
     with target:
+        app_logger.log("Creating EPR pair with controller...")
         # create one EPR pair with Controller
         epr = controller_epr.recv(1)[0]
 
@@ -36,6 +42,8 @@ def main(app_config=None, phi=0.0, theta=0.0):
         # let back-end execute the quantum operations above
         target.flush()
         app_logger.log("Initialized target qubit")
+
+        class_socket.send_silent("")
 
         # wait for Controller's measurement outcome
         m = class_socket.recv()
@@ -70,7 +78,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
         final_dm = get_qubit_state(target_qubit, reduced_dm=True)
 
     return {
-        'epr_meas': int(epr_meas),
-        'original_state': original_dm.tolist(),
-        'final_state': final_dm if final_dm is None else final_dm.tolist(),
+        "epr_meas": int(epr_meas),
+        "original_state": original_dm.tolist(),
+        "final_state": final_dm if final_dm is None else final_dm.tolist(),
     }
