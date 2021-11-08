@@ -1,4 +1,4 @@
-NetQASM (0.5.4)
+NetQASM (0.5.5)
 =====================================================
 
 Welcome to NetQASM's README.
