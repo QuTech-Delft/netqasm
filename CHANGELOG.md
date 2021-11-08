@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-11-08 (0.5.5)
+------------------
+- Updated source files to be the ones in the QNE backend database.
+- Fix various bugs.
+
 2021-03-11 (0.5.4)
 ------------------
 - Various updates to example application sources and configurations.
