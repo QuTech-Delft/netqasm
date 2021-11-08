@@ -97,9 +97,9 @@ class Arrays:
     ) -> None:
         address, index = self._extract_key(key)
         if isinstance(index, int):
-            assert isinstance(value, int)
-            _assert_within_width(value, ADDRESS_BITS)
-            _assert_within_width(index, ADDRESS_BITS)
+            if isinstance(value, int):
+                _assert_within_width(value, ADDRESS_BITS)
+                _assert_within_width(index, ADDRESS_BITS)
         elif isinstance(index, slice):
             self._assert_list(value)
             if index.start is not None:
