@@ -4,6 +4,10 @@ CHANGELOG
 Upcoming
 --------
 
+2021-11-08 (0.8.5)
+------------------
+- Fixed bug in Bloch sphere representation calculation.
+
 2021-09-27 (0.8.4)
 ------------------
 - Updated QKD app config.
