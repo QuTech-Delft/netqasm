@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = "netqasm"
-copyright = "2019, Axel Dahlberg"
-author = "Axel Dahlberg"
+copyright = "2021, QuTech"
+author = "QuTech"
 
 # The full version, including alpha/beta/rc tags
 release = "0.8.5"
