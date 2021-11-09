@@ -11,4 +11,6 @@ jobs:
     - uses: actions/setup-python@master
       with:
         python-version: 3.8
-    - run: make lint
+    - run: |
+        make install
+        make lint
