@@ -50,7 +50,7 @@ always_document_param_types = True
 extlinks = {
     "netsquid": ("https://netsquid.org/%s", ""),
     "simulaqron": ("http://www.simulaqron.org/%s", ""),
-    "squidasm": ("https://gitlab.com/softwarequtech/netqasm/squidasm/%s", ""),
+    "squidasm": ("https://github.com/QuTech-Delft/squidasm/%s", ""),
     "network-layer": ("https://arxiv.org/abs/2010.02575/%s", ""),
     "repcode": ("https://en.wikipedia.org/wiki/Quantum_error_correction/%s", ""),
     "netqasm-paper": (

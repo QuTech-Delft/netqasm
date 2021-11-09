@@ -33,7 +33,7 @@ Currently supported simulators  are:
 
 .. _NetSquid: https://netsquid.org/
 .. _SimulaQron: http://www.simulaqron.org/
-.. _SquidASM: https://gitlab.com/softwarequtech/netqasm/squidasm
+.. _SquidASM: https://github.com/QuTech-Delft/squidasm
 
 From source
 -----------

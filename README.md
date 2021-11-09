@@ -59,10 +59,6 @@ Currently support for:
 * [`simulaqron`](http://www.simulaqron.org/)
 
 
-## Syntax
-There is a syntax file for vim in [`syntax/vim/nqasm.vim`](https://gitlab.tudelft.nl/qinc-wehner/NetQASM/NetQASM/blob/master/syntax/vim/nqasm.vim) to highlight NetQASM.
-
-
 ## Architecture
 See [the architecture document](./netqasm/ARCH.md).
 
