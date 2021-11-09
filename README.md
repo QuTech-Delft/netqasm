@@ -12,6 +12,13 @@ or on a hardware backend consisting of real implementations of quantum network c
 
 ## Installation
 
+### From PyPI
+NetQASM is available as [a package on PyPI](https://pypi.org/project/netqasm/) and can be installed with
+```
+pip install netqasm
+```
+
+### From source
 To install the package:
 ```sh
 make install
@@ -59,9 +66,6 @@ Currently support for:
 * [`simulaqron`](http://www.simulaqron.org/)
 
 
-## Architecture
-See [the architecture document](./netqasm/ARCH.md).
-
 
 ## Development
 
@@ -75,6 +79,7 @@ Before code is pushed, make sure that the `make lint` command succeeds, which ru
 # Contributors
 In alphabetical order:
 - Axel Dahlberg
+- Carlo Delle Donne
 - Wojciech Kozlowski
 - Martijn Papendrecht
 - Ingmar te Raa
