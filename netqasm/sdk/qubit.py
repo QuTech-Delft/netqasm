@@ -11,8 +11,8 @@ from netqasm.lang.ir import GenericInstr
 from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
-    from netqasm.qlink_compat import LinkLayerOKTypeK
-    from netqasm.sdk.connection import BaseNetQASMConnection
+    from netqasm import qlink_compat
+    from netqasm.sdk import connection
 
 
 class QubitNotActiveError(MemoryError):
@@ -42,9 +42,9 @@ class Qubit:
 
     def __init__(
         self,
-        conn: BaseNetQASMConnection,
+        conn: connection.BaseNetQASMConnection,
         add_new_command: bool = True,
-        ent_info: Optional[LinkLayerOKTypeK] = None,
+        ent_info: Optional[qlink_compat.LinkLayerOKTypeK] = None,
         virtual_address: Optional[int] = None,
     ):
         """Qubit constructor. This is the standard way to allocate a new qubit in
@@ -58,7 +58,7 @@ class Qubit:
         :param virtual_address: explicit virtual ID to use for this qubit. If None,
             a free ID is automatically chosen.
         """
-        self._conn: BaseNetQASMConnection = conn
+        self._conn: connection.BaseNetQASMConnection = conn
         if virtual_address is None:
             self._qubit_id: int = self._conn._builder.new_qubit_id()
         else:
@@ -70,7 +70,7 @@ class Qubit:
         self._active: bool = False
         self._activate()
 
-        self._ent_info: Optional[LinkLayerOKTypeK] = ent_info
+        self._ent_info: Optional[qlink_compat.LinkLayerOKTypeK] = ent_info
 
         self._remote_ent_node: Optional[str] = None
 
@@ -81,7 +81,7 @@ class Qubit:
             return "Not active qubit"
 
     @property
-    def connection(self) -> BaseNetQASMConnection:
+    def connection(self) -> connection.BaseNetQASMConnection:
         """Get the NetQASM connection of this qubit"""
         return self._conn
 
@@ -125,7 +125,7 @@ class Qubit:
             self._conn._builder.active_qubits.remove(self)
 
     @property
-    def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
+    def entanglement_info(self) -> Optional[qlink_compat.LinkLayerOKTypeK]:
         """Get information about the successful link layer request that resulted in
         this qubit."""
         return self._ent_info
@@ -351,21 +351,21 @@ class FutureQubit(Qubit):
     represent the qubits that will be available when EPR generation has finished.
     """
 
-    def __init__(self, conn: BaseNetQASMConnection, future_id: Future):
+    def __init__(self, conn: connection.BaseNetQASMConnection, future_id: Future):
         """FutureQubit constructor. Typically not used directly.
 
         :param conn: connection through which subroutines are sent that contain this
             qubit
         :param future_id: the virtual ID this qubit will have
         """
-        self._conn: BaseNetQASMConnection = conn
+        self._conn: connection.BaseNetQASMConnection = conn
 
         self.qubit_id: Future = future_id
 
         self._activate()
 
     @property
-    def entanglement_info(self) -> Optional[LinkLayerOKTypeK]:
+    def entanglement_info(self) -> Optional[qlink_compat.LinkLayerOKTypeK]:
         raise NotImplementedError(
             "Cannot access entanglement info of a future qubit yet"
         )

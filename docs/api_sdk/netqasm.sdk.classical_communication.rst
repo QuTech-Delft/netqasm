@@ -10,7 +10,7 @@ netqasm.sdk.classical_communication.broadcast_channel
    :show-inheritance:
 
 netqasm.sdk.classical_communication.thread_socket.broadcast_channel
------------------------------------------------------
+-------------------------------------------------------------------
 
 .. automodule:: netqasm.sdk.classical_communication.thread_socket.broadcast_channel
    :members:
@@ -34,7 +34,7 @@ netqasm.sdk.classical_communication.socket
    :show-inheritance:
 
 netqasm.sdk.classical_communication.thread_socket.socket
--------------------------------------------
+----------------------------------------------------------
 
 .. automodule:: netqasm.sdk.classical_communication.thread_socket.socket
    :members:
@@ -42,7 +42,7 @@ netqasm.sdk.classical_communication.thread_socket.socket
    :show-inheritance:
 
 netqasm.sdk.classical_communication.thread_socket.socket_hub
--------------------------------------------
+-------------------------------------------------------------
 
 .. automodule:: netqasm.sdk.classical_communication.thread_socket.socket_hub
    :members:

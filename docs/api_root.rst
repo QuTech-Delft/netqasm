@@ -5,7 +5,6 @@ netqasm package
    :caption: Subpackages
 
    netqasm.backend
-   netqasm.examples
    netqasm.lang
    netqasm.logging
    netqasm.runtime

@@ -8,7 +8,7 @@ from netqasm.lang.symbols import Symbols
 from netqasm.util.string import rspaces
 
 if TYPE_CHECKING:
-    from netqasm.util.log import HostLine
+    from netqasm.util import log
 
 from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Register
 
@@ -143,7 +143,7 @@ class ICmd:
     instruction: GenericInstr
     args: List[int] = None  # type: ignore
     operands: List[T_OperandUnion] = None  # type: ignore
-    lineno: Optional[HostLine] = None
+    lineno: Optional[log.HostLine] = None
 
     def __post_init__(self):
         if self.args is None:
@@ -176,7 +176,7 @@ class ICmd:
 @dataclass
 class BranchLabel:
     name: str
-    lineno: Optional[HostLine] = None
+    lineno: Optional[log.HostLine] = None
 
     def _assert_types(self):
         assert isinstance(self.name, str)

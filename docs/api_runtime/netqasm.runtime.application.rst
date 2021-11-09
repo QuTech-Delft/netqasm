@@ -1,5 +1,5 @@
 netqasm\.runtime\.application
----------------------------
+-----------------------------
 
 .. automodule:: netqasm.runtime.application
    :members:

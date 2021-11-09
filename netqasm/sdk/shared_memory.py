@@ -4,16 +4,13 @@ the quantum node controller.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from netqasm.lang import operand
 from netqasm.lang.encoding import ADDRESS_BITS, REG_INDEX_BITS, RegisterName
 from netqasm.lang.ir import Symbols
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.runtime.settings import get_is_using_hardware
-
-if TYPE_CHECKING:
-    from netqasm.lang.operand import ArrayEntry
 
 
 def _assert_within_width(value: int, width: int) -> None:
@@ -69,7 +66,7 @@ class Arrays:
         self._arrays: Dict[int, List[Optional[int]]] = {}
 
     # TODO add test for this
-    def _get_active_values(self) -> List[Tuple[ArrayEntry, int]]:
+    def _get_active_values(self) -> List[Tuple[operand.ArrayEntry, int]]:
         values = []
         for address, array in self._arrays.items():
             for index, value in enumerate(array):
@@ -79,7 +76,7 @@ class Arrays:
                     f"{Symbols.ADDRESS_START}{address}"
                     f"{Symbols.INDEX_BRACKETS[0]}{index}{Symbols.INDEX_BRACKETS[1]}"
                 )
-                if not isinstance(address_entry, ArrayEntry):
+                if not isinstance(address_entry, operand.ArrayEntry):
                     raise RuntimeError(
                         f"Something went wrong: address_entry should be "
                         f"ArrayEntry but it is {type(address_entry)}"
@@ -264,9 +261,9 @@ class SharedMemory:
 
     def _get_active_values(
         self,
-    ) -> List[Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]]:
+    ) -> List[Union[Tuple[operand.Register, int], Tuple[operand.ArrayEntry, int]]]:
         all_values: List[
-            Union[Tuple[operand.Register, int], Tuple[ArrayEntry, int]]
+            Union[Tuple[operand.Register, int], Tuple[operand.ArrayEntry, int]]
         ] = []
         for reg_name, reg in self._registers.items():
             act_reg_values = reg._get_active_values()

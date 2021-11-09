@@ -61,7 +61,7 @@ T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 # Imports that are only needed for type checking
 if TYPE_CHECKING:
-    from netqasm.sdk.epr_socket import EPRSocket
+    from netqasm.sdk import epr_socket as esck
 
 
 class BaseNetQASMConnection(abc.ABC):
@@ -95,7 +95,7 @@ class BaseNetQASMConnection(abc.ABC):
         app_id: Optional[int] = None,
         max_qubits: int = 5,
         log_config: LogConfig = None,
-        epr_sockets: Optional[List[EPRSocket]] = None,
+        epr_sockets: Optional[List[esck.EPRSocket]] = None,
         compiler: Optional[Type[SubroutineCompiler]] = None,
         return_arrays: bool = True,
         _init_app: bool = True,
@@ -432,7 +432,7 @@ class BaseNetQASMConnection(abc.ABC):
         while self.shared_memory is None:
             pass
 
-    def _setup_epr_sockets(self, epr_sockets: Optional[List[EPRSocket]]) -> None:
+    def _setup_epr_sockets(self, epr_sockets: Optional[List[esck.EPRSocket]]) -> None:
         """Send messages to the quantum node controller to open EPR sockets."""
         if epr_sockets is None:
             return

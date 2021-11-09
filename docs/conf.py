@@ -47,6 +47,8 @@ autodoc_member_order = "bysource"
 # autoclass_content = 'both'
 always_document_param_types = True
 
+# set_type_checking_flag = True
+
 extlinks = {
     "netsquid": ("https://netsquid.org/%s", ""),
     "simulaqron": ("http://www.simulaqron.org/%s", ""),

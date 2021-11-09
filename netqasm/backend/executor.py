@@ -58,7 +58,7 @@ from netqasm.util.error import NotAllocatedError
 
 # Imports that are only needed for type checking
 if TYPE_CHECKING:
-    from netqasm.lang.subroutine import Subroutine
+    from netqasm.lang import subroutine as subrt_module
 
 # Type definitions
 T_UnitModule = List[Optional[int]]
@@ -156,7 +156,7 @@ class Executor:
         self._program_counters: Dict[int, int] = defaultdict(int)
 
         # Keep track of what subroutines are currently handled
-        self._subroutines: Dict[int, Subroutine] = {}
+        self._subroutines: Dict[int, subrt_module.Subroutine] = {}
 
         # Keep track of which subroutine in the order
         self._next_subroutine_id: int = 0
@@ -398,14 +398,16 @@ class Executor:
 
         return epr_response_handlers
 
-    def consume_execute_subroutine(self, subroutine: Subroutine) -> None:
+    def consume_execute_subroutine(self, subroutine: subrt_module.Subroutine) -> None:
         """Consume the generator returned by `execute_subroutine`.
 
         :param subroutine: subroutine to execute
         """
         list(self.execute_subroutine(subroutine=subroutine))
 
-    def execute_subroutine(self, subroutine: Subroutine) -> Generator[Any, None, None]:
+    def execute_subroutine(
+        self, subroutine: subrt_module.Subroutine
+    ) -> Generator[Any, None, None]:
         """Execute a NetQASM subroutine.
 
         This is a generator to allow simulators to yield at certain points during execution,

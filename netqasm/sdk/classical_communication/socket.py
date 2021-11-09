@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 from netqasm.sdk.classical_communication.message import StructuredMessage
 
 if TYPE_CHECKING:
-    from netqasm.sdk.config import LogConfig
+    from netqasm.sdk import config
 
 
 class Socket(abc.ABC):
@@ -55,7 +55,7 @@ class Socket(abc.ABC):
         socket_id: int = 0,
         timeout: Optional[float] = None,
         use_callbacks: bool = False,
-        log_config: Optional[LogConfig] = None,
+        log_config: Optional[config.LogConfig] = None,
     ):
         """Socket constructor.
 

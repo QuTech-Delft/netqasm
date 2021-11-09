@@ -73,11 +73,11 @@ T_LinkLayerOkList = Union[
 T_PostRoutine = Callable[
     ["Builder", Union[FutureQubit, List[Future]], operand.Register], None
 ]
-T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
-T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
+T_BranchRoutine = Callable[["connection.BaseNetQASMConnection"], None]
+T_LoopRoutine = Callable[["connection.BaseNetQASMConnection"], None]
 
 if TYPE_CHECKING:
-    from .connection import BaseNetQASMConnection
+    from . import connection
 
 
 @dataclass

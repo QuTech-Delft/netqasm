@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 from netqasm.sdk.qubit import Qubit
 
 if TYPE_CHECKING:
-    from netqasm.sdk.classical_communication.socket import Socket
-    from netqasm.sdk.epr_socket import EPRSocket
-    from netqasm.sdk.futures import Future, RegFuture
+    from netqasm.sdk import epr_socket as esck
+    from netqasm.sdk import futures
+    from netqasm.sdk.classical_communication import socket
 
 
 class _Role(Enum):
@@ -18,12 +18,12 @@ class _Role(Enum):
 
 
 def create_ghz(
-    down_epr_socket: Optional[EPRSocket] = None,
-    up_epr_socket: Optional[EPRSocket] = None,
-    down_socket: Optional[Socket] = None,
-    up_socket: Optional[Socket] = None,
+    down_epr_socket: Optional[esck.EPRSocket] = None,
+    up_epr_socket: Optional[esck.EPRSocket] = None,
+    down_socket: Optional[socket.Socket] = None,
+    up_socket: Optional[socket.Socket] = None,
     do_corrections: bool = False,
-) -> Tuple[Qubit, Union[Future, RegFuture, int]]:
+) -> Tuple[Qubit, Union[futures.Future, futures.RegFuture, int]]:
     r"""Local protocol to create a GHZ state between mutliples nodes.
 
     EPR pairs are generated in a line and turned into a GHZ state by performing half of a Bell measurement.
@@ -52,10 +52,10 @@ def create_ghz(
 
     Parameters
     ----------
-    down_epr_socket : :class:`.sdk.epr_socket.EPRSocket`
-        The EPRSocket to be used for receiving EPR pairs from downstream.
-    up_epr_socket : :class:`.sdk.epr_socket.EPRSocket`
-        The EPRSocket to be used for create EPR pairs upstream.
+    down_epr_socket : :class:`.sdk.epr_socket.esck.EPRSocket`
+        The esck.EPRSocket to be used for receiving EPR pairs from downstream.
+    up_epr_socket : :class:`.sdk.epr_socket.esck.EPRSocket`
+        The esck.EPRSocket to be used for create EPR pairs upstream.
     down_socket : :class:`.sdk.classical_communication.socket.Socket`
         The classical socket to be used for sending corrections, if `do_corrections = True`.
     up_socket : :class:`.sdk.classical_communication.socket.Socket`

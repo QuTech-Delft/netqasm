@@ -16,8 +16,8 @@ from netqasm.typedefs import T_Cmd
 from netqasm.util.log import HostLine
 
 if TYPE_CHECKING:
-    from netqasm.lang.ir import T_OperandUnion
-    from netqasm.sdk.connection import BaseNetQASMConnection
+    from netqasm.lang import ir
+    from netqasm.sdk import connection as sdkconn
 
 # Generic type for classical values (that may only get a value at runtime).
 T_CValue = Union[int, "Future", "RegFuture"]
@@ -146,9 +146,9 @@ class BaseFuture(int):
     def __new__(cls, *args, **kwargs):
         return int.__new__(cls, 0)
 
-    def __init__(self, connection: BaseNetQASMConnection):
+    def __init__(self, connection: sdkconn.BaseNetQASMConnection):
         self._value: Optional[int] = None
-        self._connection: BaseNetQASMConnection = connection
+        self._connection: sdkconn.BaseNetQASMConnection = connection
 
     def __repr__(self):
         return f"{self.__class__} with value={self.value}"
@@ -247,7 +247,7 @@ class Future(BaseFuture):
 
     def __init__(
         self,
-        connection: BaseNetQASMConnection,
+        connection: sdkconn.BaseNetQASMConnection,
         address: int,
         index: Union[int, Future, operand.Register],
     ):
@@ -316,7 +316,7 @@ class Future(BaseFuture):
         else:
             raise NotImplementedError("for type {type(other)}")
 
-        add_operands: List[T_OperandUnion] = [
+        add_operands: List[ir.T_OperandUnion] = [
             tmp_register,
             tmp_register,
             other_operand,
@@ -400,7 +400,9 @@ class RegFuture(BaseFuture):
     """
 
     def __init__(
-        self, connection: BaseNetQASMConnection, reg: Optional[operand.Register] = None
+        self,
+        connection: sdkconn.BaseNetQASMConnection,
+        reg: Optional[operand.Register] = None,
     ):
         """RegFuture constructor. Typically not used directly.
 
@@ -470,7 +472,7 @@ class RegFuture(BaseFuture):
         else:
             raise NotImplementedError("for type {type(other)}")
 
-        add_operands: List[T_OperandUnion] = [
+        add_operands: List[ir.T_OperandUnion] = [
             self.reg,
             self.reg,
             other_operand,
@@ -512,7 +514,7 @@ class Array:
 
     def __init__(
         self,
-        connection: BaseNetQASMConnection,
+        connection: sdkconn.BaseNetQASMConnection,
         length: int,
         address: int,
         init_values: Optional[List[Optional[int]]] = None,
@@ -531,7 +533,7 @@ class Array:
                 raise TypeError("Array needs to consist of int's or None's")
             length = len(init_values)
         assert isinstance(length, int) and length > 0, f"{length} is not a valid length"
-        self._connection: BaseNetQASMConnection = connection
+        self._connection: sdkconn.BaseNetQASMConnection = connection
         self._length: int = length
         self._address: int = address
         self._init_values: Optional[List[Optional[int]]] = init_values
@@ -660,9 +662,9 @@ class _Context:
     def EXIT_METH(self):
         pass
 
-    def __init__(self, connection: BaseNetQASMConnection, **kwargs):
+    def __init__(self, connection: sdkconn.BaseNetQASMConnection, **kwargs):
         self._id: int = self._get_id()
-        self._connection: BaseNetQASMConnection = connection
+        self._connection: sdkconn.BaseNetQASMConnection = connection
         self._kwargs = kwargs
 
     def _get_id(self) -> int:
@@ -689,7 +691,7 @@ class _IfContext(_Context):
 
     def __init__(
         self,
-        connection: BaseNetQASMConnection,
+        connection: sdkconn.BaseNetQASMConnection,
         condition: GenericInstr,
         a: Optional[T_CValue],
         b: Optional[T_CValue],
@@ -708,7 +710,10 @@ class _ForEachContext(_Context):
     EXIT_METH = "_exit_foreach_context"
 
     def __init__(
-        self, connection: BaseNetQASMConnection, array: Array, return_index: bool
+        self,
+        connection: sdkconn.BaseNetQASMConnection,
+        array: Array,
+        return_index: bool,
     ):
         super().__init__(
             connection=connection,

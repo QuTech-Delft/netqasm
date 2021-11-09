@@ -8,8 +8,8 @@ from ..broadcast_channel import BroadcastChannelBySockets
 from .socket import ThreadSocket
 
 if TYPE_CHECKING:
-    from ..socket import Socket
+    from .. import socket
 
 
 class ThreadBroadcastChannel(BroadcastChannelBySockets):
-    _socket_class: Type[Socket] = ThreadSocket
+    _socket_class: Type[socket.Socket] = ThreadSocket

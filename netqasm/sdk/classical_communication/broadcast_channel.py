@@ -11,7 +11,7 @@ from timeit import default_timer as timer
 from typing import TYPE_CHECKING, List, Optional, Tuple, Type
 
 if TYPE_CHECKING:
-    from .socket import Socket
+    from . import socket
 
 
 class BroadcastChannel(abc.ABC):
@@ -91,7 +91,7 @@ class BroadcastChannelBySockets(BroadcastChannel):
 
     @property
     @abc.abstractmethod
-    def _socket_class(self) -> Type[Socket]:
+    def _socket_class(self) -> Type[socket.Socket]:
         pass
 
     def send(self, msg: str) -> None:

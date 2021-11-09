@@ -23,7 +23,7 @@ from netqasm.sdk.builder import EntRequestParams
 from .qubit import Qubit
 
 if TYPE_CHECKING:
-    from netqasm.sdk.connection import BaseNetQASMConnection
+    from netqasm.sdk import connection
 
 T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
@@ -90,7 +90,7 @@ class EPRSocket(abc.ABC):
         :param min_fidelity: minimum desired fidelity for EPR pairs generated over this
             socket, in percentages (i.e. range 0-100). Defaults to 100.
         """
-        self._conn: Optional[BaseNetQASMConnection] = None
+        self._conn: Optional[connection.BaseNetQASMConnection] = None
         self._remote_app_name: str = remote_app_name
         self._remote_node_id: Optional[
             int
@@ -113,14 +113,14 @@ class EPRSocket(abc.ABC):
         )
 
     @property
-    def conn(self) -> BaseNetQASMConnection:
+    def conn(self) -> connection.BaseNetQASMConnection:
         """Get the underlying :class:`NetQASMConnection`"""
         if self._conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
         return self._conn
 
     @conn.setter
-    def conn(self, conn: BaseNetQASMConnection):
+    def conn(self, conn: connection.BaseNetQASMConnection):
         self._conn = conn
         self._remote_node_id = self._get_node_id(app_name=self._remote_app_name)
 

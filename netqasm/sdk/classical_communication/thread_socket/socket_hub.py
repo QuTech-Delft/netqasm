@@ -18,11 +18,7 @@ from netqasm.logging.glob import get_netqasm_logger
 if TYPE_CHECKING:
     import logging
 
-    from netqasm.sdk.classical_communication.message import StructuredMessage
-    from netqasm.sdk.classical_communication.thread_socket import ThreadSocket
-    from netqasm.sdk.classical_communication.thread_socket.socket import (
-        T_ThreadSocketKey,
-    )
+    from netqasm.sdk.classical_communication import message, thread_socket
 
 
 class _SocketHub:
@@ -41,20 +37,27 @@ class _SocketHub:
         # but it is the task of the other end to remote it from the _remote_sockets.
         # This is to prevent a connection from opening and closing on one side before
         # the sides notices and waits for ever.
-        self._open_sockets: Set[T_ThreadSocketKey] = set()
-        self._remote_sockets: Set[T_ThreadSocketKey] = set()
+        self._open_sockets: Set[thread_socket.socket.T_ThreadSocketKey] = set()
+        self._remote_sockets: Set[thread_socket.socket.T_ThreadSocketKey] = set()
 
         self._messages: Dict[
-            T_ThreadSocketKey, List[Union[str, StructuredMessage]]
+            thread_socket.socket.T_ThreadSocketKey,
+            List[Union[str, message.StructuredMessage]],
         ] = defaultdict(list)
-        self._recv_callbacks: Dict[T_ThreadSocketKey, WeakMethod] = {}
-        self._conn_lost_callbacks: Dict[T_ThreadSocketKey, WeakMethod] = {}
+        self._recv_callbacks: Dict[
+            thread_socket.socket.T_ThreadSocketKey, WeakMethod
+        ] = {}
+        self._conn_lost_callbacks: Dict[
+            thread_socket.socket.T_ThreadSocketKey, WeakMethod
+        ] = {}
 
         self._lock: Lock = Lock()
 
         self._logger: logging.Logger = get_netqasm_logger(self.__class__.__name__)
 
-    def connect(self, socket: ThreadSocket, timeout: Optional[float] = None) -> None:
+    def connect(
+        self, socket: thread_socket.ThreadSocket, timeout: Optional[float] = None
+    ) -> None:
         """Connects a socket to another"""
         self._open_sockets.add(socket.key)
         self._remote_sockets.add(socket.key)
@@ -62,15 +65,15 @@ class _SocketHub:
 
         self._wait_for_remote(socket, timeout=timeout)
 
-    def _add_callbacks(self, socket: ThreadSocket) -> None:
+    def _add_callbacks(self, socket: thread_socket.ThreadSocket) -> None:
         if socket.use_callbacks:
             self._recv_callbacks[socket.key] = WeakMethod(socket.recv_callback)  # type: ignore
             self._conn_lost_callbacks[socket.key] = WeakMethod(socket.conn_lost_callback)  # type: ignore
 
-    def is_connected(self, socket: ThreadSocket) -> bool:
+    def is_connected(self, socket: thread_socket.ThreadSocket) -> bool:
         return all(key in self._open_sockets for key in [socket.key, socket.remote_key])
 
-    def disconnect(self, socket: ThreadSocket) -> None:
+    def disconnect(self, socket: thread_socket.ThreadSocket) -> None:
         """Disconnect a socket"""
         with self._lock:
             conn_lost_callback = self._conn_lost_callbacks.get(socket.remote_key)
@@ -93,7 +96,7 @@ class _SocketHub:
             self._conn_lost_callbacks.pop(socket.key, None)
 
     def _wait_for_remote(
-        self, socket: ThreadSocket, timeout: Optional[float] = None
+        self, socket: thread_socket.ThreadSocket, timeout: Optional[float] = None
     ) -> None:
         """Wait for a remote socket to become active"""
         t_start = timer()
@@ -123,7 +126,11 @@ class _SocketHub:
             )
             sleep(self.__class__._CONNECT_SLEEP_TIME)
 
-    def send(self, socket: ThreadSocket, msg: Union[str, StructuredMessage]) -> None:
+    def send(
+        self,
+        socket: thread_socket.ThreadSocket,
+        msg: Union[str, message.StructuredMessage],
+    ) -> None:
         """Send a message using a given socket"""
         recv_callback = self._recv_callbacks.get(socket.remote_key)
         if recv_callback is not None:
@@ -147,8 +154,11 @@ class _SocketHub:
                 self._messages[socket.remote_key].append(msg)
 
     def recv(
-        self, socket: ThreadSocket, block: bool = True, timeout: Optional[float] = None
-    ) -> Union[str, StructuredMessage]:
+        self,
+        socket: thread_socket.ThreadSocket,
+        block: bool = True,
+        timeout: Optional[float] = None,
+    ) -> Union[str, message.StructuredMessage]:
         """Recv a message to a given socket"""
         t_start = timer()
         while True:
