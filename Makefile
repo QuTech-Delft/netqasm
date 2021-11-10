@@ -82,6 +82,6 @@ _clean_dist:
 verify: clean test-deps python-deps lint tests examples _verified
 
 _verified:
-	@echo "The snippet is verified :)"
+	@echo "Everything OK!"
 
 .PHONY: clean lint test-deps python-deps tests verify bdist deploy-bdist _clean_dist install open-cov-report examples docs
