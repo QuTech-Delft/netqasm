@@ -12,7 +12,7 @@ from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
     from netqasm import qlink_compat
-    from netqasm.sdk import connection
+    from netqasm.sdk import connection as sdkconn
 
 
 class QubitNotActiveError(MemoryError):
@@ -42,7 +42,7 @@ class Qubit:
 
     def __init__(
         self,
-        conn: connection.BaseNetQASMConnection,
+        conn: sdkconn.BaseNetQASMConnection,
         add_new_command: bool = True,
         ent_info: Optional[qlink_compat.LinkLayerOKTypeK] = None,
         virtual_address: Optional[int] = None,
@@ -58,7 +58,7 @@ class Qubit:
         :param virtual_address: explicit virtual ID to use for this qubit. If None,
             a free ID is automatically chosen.
         """
-        self._conn: connection.BaseNetQASMConnection = conn
+        self._conn: sdkconn.BaseNetQASMConnection = conn
         if virtual_address is None:
             self._qubit_id: int = self._conn._builder.new_qubit_id()
         else:
@@ -81,7 +81,7 @@ class Qubit:
             return "Not active qubit"
 
     @property
-    def connection(self) -> connection.BaseNetQASMConnection:
+    def connection(self) -> sdkconn.BaseNetQASMConnection:
         """Get the NetQASM connection of this qubit"""
         return self._conn
 
@@ -351,14 +351,14 @@ class FutureQubit(Qubit):
     represent the qubits that will be available when EPR generation has finished.
     """
 
-    def __init__(self, conn: connection.BaseNetQASMConnection, future_id: Future):
+    def __init__(self, conn: sdkconn.BaseNetQASMConnection, future_id: Future):
         """FutureQubit constructor. Typically not used directly.
 
         :param conn: connection through which subroutines are sent that contain this
             qubit
         :param future_id: the virtual ID this qubit will have
         """
-        self._conn: connection.BaseNetQASMConnection = conn
+        self._conn: sdkconn.BaseNetQASMConnection = conn
 
         self.qubit_id: Future = future_id
 
