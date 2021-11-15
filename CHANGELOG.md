@@ -4,6 +4,11 @@ CHANGELOG
 Upcoming
 --------
 
+2021-11-15 (0.8.6)
+------------------
+- Explicitly use MIT license
+- Reformat some imports for better autodocgen
+
 2021-11-08 (0.8.5)
 ------------------
 - Fixed bug in Bloch sphere representation calculation.
