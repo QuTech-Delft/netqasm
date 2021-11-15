@@ -1,11 +1,11 @@
 {
-    "networks":[
+    "networks": [
         "randstad",
         "the-netherlands",
         "europe"
     ],
-    "roles":[
-        "Alice",
-        "Bob"
+    "roles": [
+        "alice",
+        "bob"
     ]
 }
