@@ -214,6 +214,8 @@ def main(app_config=None, num_bits=100):
     else:
         qber = (diff_outcome_count) / outcome_comparison_count
     key_rate_potential = 1 - 2 * h(qber)
+    if key_rate_potential < 0:
+        key_rate_potential = 0
 
     return {
         # Table with one row per generated pair.
