@@ -1,6 +1,7 @@
 import math
 
 from netqasm.logging.output import get_new_app_logger
+from netqasm.runtime.settings import Simulator, get_simulator
 from netqasm.sdk import EPRSocket, Qubit
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 from netqasm.sdk.toolbox import set_qubit_state
@@ -44,47 +45,45 @@ def main(app_config=None, phi=0.0, theta=0.0):
         target.flush()
         app_logger.log("Initialized target qubit")
 
-        print("target: sending silent...")
-        class_socket.send_silent("hello")
-        print("target: sent silent")
+        class_socket.send_silent("sync")
 
         # wait for Controller's measurement outcome
-        print("target: receiving silent...")
         m = class_socket.recv()
-        print("target: received silent")
 
-        # # if outcome = 1, apply an X gate on the local EPR half
-        # if m == "1":
-        #     app_logger.log("Outcome = 1, so doing X correction")
-        #     epr.X()
-        # else:
-        #     app_logger.log("Outcome = 0, no correction needed")
+        # if outcome = 1, apply an X gate on the local EPR half
+        if m == "1":
+            app_logger.log("Outcome = 1, so doing X correction")
+            epr.X()
+        else:
+            app_logger.log("Outcome = 0, no correction needed")
 
-        # # At this point, `epr` is correlated with the control qubit on Controller's side.
-        # # (If Controller's control was in a superposition, `epr` is now entangled with it.)
-        # # Use `epr` as the control of a local CNOT on the target qubit.
-        # epr.cnot(target_qubit)
+        # At this point, `epr` is correlated with the control qubit on Controller's side.
+        # (If Controller's control was in a superposition, `epr` is now entangled with it.)
+        # Use `epr` as the control of a local CNOT on the target qubit.
+        epr.cnot(target_qubit)
 
-        # target.flush()
+        target.flush()
 
-        # # undo any potential entanglement between `epr` and Controller's control qubit
-        # app_logger.log("Undo entanglement between control and EPR qubit")
-        # epr.H()
-        # epr_meas = epr.measure()
-        # target.flush()
+        # undo any potential entanglement between `epr` and Controller's control qubit
+        app_logger.log("Undo entanglement between control and EPR qubit")
+        epr.H()
+        epr_meas = epr.measure()
+        target.flush()
 
-        # # Controller will do a controlled-Z based on the outcome to undo the entanglement
-        # class_socket.send(str(epr_meas))
+        # Controller will do a controlled-Z based on the outcome to undo the entanglement
+        class_socket.send(str(epr_meas))
 
-        # # Wait for an ack before exiting
-        # assert class_socket.recv_silent() == "ACK"
+        # Wait for an ack before exiting
+        assert class_socket.recv_silent() == "ACK"
 
-        # original_dm = to_dm(qubit_from(phi, theta))
-        # final_dm = get_qubit_state(target_qubit, reduced_dm=True)
-        # print(bloch_sphere_rep(final_dm))
-
-    # return {
-    #     "epr_meas": int(epr_meas),
-    #     "original_state": original_dm.tolist(),
-    #     "final_state": final_dm if final_dm is None else final_dm.tolist(),
-    # }
+        if get_simulator() == Simulator.NETSQUID:
+            original_dm = to_dm(qubit_from(phi, theta))
+            final_dm = get_qubit_state(target_qubit, reduced_dm=True)
+            print(bloch_sphere_rep(final_dm))
+            return {
+                "epr_meas": int(epr_meas),
+                "original_state": original_dm.tolist(),
+                "final_state": final_dm if final_dm is None else final_dm.tolist(),
+            }
+        else:
+            return {"epr_meas": int(epr_meas)}
