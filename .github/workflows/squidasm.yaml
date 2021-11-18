@@ -1,9 +1,22 @@
-
 name: SquidASM backend tests
 
 on: push
 
 jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions/setup-python@master
+      with:
+        python-version: 3.8
+    - name: Install netqasm
+      run: make install
+    - name: Install squidasm
+      run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
+    - name: Run tests
+      run: make external-tests
   examples:
     name: Run examples
     runs-on: ubuntu-latest
