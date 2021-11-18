@@ -1,6 +1,7 @@
 import math
 
 from netqasm.logging.output import get_new_app_logger
+from netqasm.runtime.settings import Simulator, get_simulator
 from netqasm.sdk import EPRSocket, Qubit
 from netqasm.sdk.external import NetQASMConnection, Socket, get_qubit_state
 from netqasm.sdk.toolbox import set_qubit_state
@@ -44,7 +45,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
         target.flush()
         app_logger.log("Initialized target qubit")
 
-        class_socket.send_silent("")
+        class_socket.send_silent("sync")
 
         # wait for Controller's measurement outcome
         m = class_socket.recv()
@@ -75,12 +76,14 @@ def main(app_config=None, phi=0.0, theta=0.0):
         # Wait for an ack before exiting
         assert class_socket.recv_silent() == "ACK"
 
-        original_dm = to_dm(qubit_from(phi, theta))
-        final_dm = get_qubit_state(target_qubit, reduced_dm=True)
-        print(bloch_sphere_rep(final_dm))
-
-    return {
-        "epr_meas": int(epr_meas),
-        "original_state": original_dm.tolist(),
-        "final_state": final_dm if final_dm is None else final_dm.tolist(),
-    }
+        if get_simulator() == Simulator.NETSQUID:
+            original_dm = to_dm(qubit_from(phi, theta))
+            final_dm = get_qubit_state(target_qubit, reduced_dm=True)
+            print(bloch_sphere_rep(final_dm))
+            return {
+                "epr_meas": int(epr_meas),
+                "original_state": original_dm.tolist(),
+                "final_state": final_dm if final_dm is None else final_dm.tolist(),
+            }
+        else:
+            return {"epr_meas": int(epr_meas)}

@@ -60,7 +60,7 @@ def receive_bb84_states(conn, epr_socket, socket, target, n):
         # Synchronize with the other node so that entanglement operations
         # appear more cleanly in the logs (not needed in principle).
         socket.recv_silent()
-        socket.send_silent("")
+        socket.send_silent("sync")
         bit_flips[i] = int(m)
 
     return bit_flips, basis_flips
