@@ -4,13 +4,17 @@
 Utilities for writing, compiling, and running quantum network applications.
 
 ## Intro
-NetQASM is an instruction set architecture that allows one to interface with quantum network controllers and run applications on a quantum network.
+NetQASM is an instruction set architecture that allows one to interface with quantum network controllers and run applications on a quantum network. Applications may be written directly in the NetQASM language, which resembles assembly code. However, this package also provides an SDK which allows writing application code in Python.
+For the paper introducing NetQASM, see [here](https://arxiv.org/abs/2111.09823).
 
-Applications may be written directly in the NetQASM language, which resembles assembly code. However, this package also provides an SDK which allows writing application code in Python.
+Applications written with this SDK may be run on a simulator backend, like [SquidASM](https://github.com/QuTech-Delft/squidasm) or [SimulaQron](https://github.com/SoftwareQuTech/SimulaQron). In the future, these same applications may be run on a hardware backend consisting of real implementations of quantum network controllers.
 
-Applications written with this SDK may be run on a simulator backend, like `squidasm`,
-or on a hardware backend consisting of real implementations of quantum network controllers, like QNodeOS.
+This NetQASM Python library is used by the [QNE ADK](https://github.com/QuTech-Delft/qne-adk), which allows interaction with the [Quantum Network Explorer](https://www.quantum-network.com/). When developing applications specifically for the QNE platform, it is recommended to use the [QNE ADK](https://github.com/QuTech-Delft/qne-adk).
+For more generic application development, this NetQASM package can be used directly.
 
+
+## Prerequisites
+This package has only been tested on Linux, specifically Ubuntu. On Windows, [WSL](https://docs.microsoft.com/en-us/windows/wsl/) may be used.
 
 ## Installation
 
@@ -21,6 +25,8 @@ pip install netqasm
 ```
 
 ### From source
+First clone this repository and `cd` into it.
+
 To install the package:
 ```sh
 make install
@@ -32,8 +38,10 @@ make verify
 ```
 
 ## Documentation
-See the [docs README](./docs/README.md) for information about building and rendering docs.
+The documentation is hosted on [Read the Docs](https://netqasm.readthedocs.io/en/latest/).
 
+The documentation source lives in [the docs directory](./docs).
+See the [docs README](./docs/README.md) for information about building and rendering docs.
 
 
 ## Examples
@@ -41,10 +49,10 @@ Example applications can be found in `netqasm/examples`.
 
 Applications can be run in two ways:
 - From the command line, using `netqasm simulate`. 
-  This requires the application code to be organized in a directory with a specific format (see the `Application file structure` page in the docs).
+  This requires the application code to be organized in a directory with a specific format (see the [Application file structure](https://netqasm.readthedocs.io/en/latest/quickstart/file_structure.html) page in the docs).
 - By running a Python script that contains code to start the application.
 
-Examples of applications organized in a directory can be found in `netqasm/examples/apps`.
+Examples of applications organized in a directory can be found in `netqasm/examples/apps` and `netqasm/examples/qne_apps`.
 They can be run on a simulator using
 ```sh
 netqasm simulate --app-dir netqasm/examples/<app>
@@ -54,7 +62,7 @@ Examples of Python scripts that can run applications can be found in `netqasm/ex
 
 `netqasm/examples/sdk_compilation` contains SDK scripts that use a debug backend. Running these files does not involve an actual simulation of the application code but can be used to see the NetQASM subroutines that are compiled from the Python application code.
 
-For more information, check the [documentation](#documentation).
+For more information, check the [documentation](https://netqasm.readthedocs.io/en/latest/).
 
 
 ## CLI
@@ -62,18 +70,19 @@ Once installed, `netqasm` can be used as a command-line interface (CLI) to perfo
 
 See `netqasm --help` and `netqasm <command> --help` for the options.
 
-For example you can use the `--simulator=<simulator>` to specify the simulator.
-Currently support for:
-* [`netsquid`](https://netsquid.org/)
-* [`simulaqron`](http://www.simulaqron.org/)
+For example, you can use the `--simulator=<simulator>` to specify which simulator to use.
+Currently there is support for:
+* [SquidASM](https://github.com/QuTech-Delft/squidasm), which internally uses [NetSquid](https://netsquid.org/)
+* [SimulaQron](http://www.simulaqron.org/)
+
+We note that SquidASM is the recommended (and also default) simulator since it is generally faster than SimulaQron and can also simulate noise much more accurately.
 
 
 
 ## Development
-
-For code formatting, `black` and `isort` are used.
+For code formatting, [`black`](https://github.com/psf/black) and [`isort`](https://github.com/PyCQA/isort) are used.
 Type hints should be added as much as possible.
-Types are checked using `mypy`.
+Types are checked using [`mypy`](https://github.com/python/mypy).
 
 Before code is pushed, make sure that the `make lint` command succeeds, which runs `black`, `isort`, `flake8` and `mypy`.
 
