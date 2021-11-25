@@ -185,7 +185,9 @@ class EPRSocket(abc.ABC):
         lead to its creation, and can be accessed by its `entanglement_info` property.
 
         A typical example for just generating one pair with another node would be:
+
         .. code-block::
+
             q = epr_socket.create()[0]
             # `q` can now be used as a normal qubit
 
@@ -197,7 +199,9 @@ class EPRSocket(abc.ABC):
 
         An example for generating 10 pairs with another node that are immediately
         measured:
+
         .. code-block::
+
             # list of Futures that become defined when subroutine is flushed
             outcomes = []
             with NetQASMConnection("alice", epr_sockets=[epr_socket]):
@@ -207,6 +211,7 @@ class EPRSocket(abc.ABC):
 
         For "Measure Directly"-type requests, the basis to measure in can also be
         specified. There are 3 ways to specify a basis:
+
         * using one of the `EPRMeasBasis` variants
         * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
           and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
@@ -230,7 +235,9 @@ class EPRSocket(abc.ABC):
         freeing up) each qubit before the next pair is generated.
 
         For example:
+
         .. code-block::
+
             outcomes = alice.new_array(num)
 
             def post_create(conn, q, pair):

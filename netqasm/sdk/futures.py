@@ -594,6 +594,7 @@ class Array:
         No classical communication is allowed.
 
         Example:
+
         .. code-block::
 
             with NetQASMConnection(app_name="alice") as alice:
@@ -627,6 +628,7 @@ class Array:
         No classical communication is allowed.
 
         Example:
+
         .. code-block::
 
             with NetQASMConnection(app_name="alice") as alice:

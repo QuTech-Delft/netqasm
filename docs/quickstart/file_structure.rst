@@ -16,7 +16,7 @@ An application directory consists of the following files:
   There should be one file for each 'role' involved in the networked application.
 * **Application input**. Each role can have a YAML file specifying the inputs to the application.
   Each role has its own local inputs.
-  Names correspond the roles in the application. For example, the role 'sender' has an input file ``sender.YAML``.
+  Names correspond to the roles in the application. For example, the role 'sender' has an input file ``sender.yaml``.
 * **Network configuration**. A single YAML file ``network.yaml`` specifying characteristics of the simulated network.
   See below for a detailed description of the expected format.
 * **Role-network mapping**. Roles are logical concepts related to the application, and not directly tied to a physical (simulated) node.

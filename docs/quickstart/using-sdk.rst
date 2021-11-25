@@ -45,8 +45,7 @@ Open the file ``app_alice.py`` in your favorite editor/IDE and add the following
    load different classes depending on its value. What this allows us to do is to simulate an
    application on different simulators, without changing anything, even imports.
 
-What this code does is to setup a connection to the underlying (simulated) ``QNodeOS`` which can handle the NetQASM-instructions.
-More information about ``QNodeOS`` can be found :qnodeos:`here <>`.
+What this code does is to setup a connection to the underlying (simulated) quantum node controller called QNodeOS, which can handle the NetQASM-instructions.
 You can already run this application by doing ``netqasm simulate``, and if everything was correct you will see the message being printed.
 
 In the context of the connection, we can now create a qubit
@@ -161,7 +160,7 @@ Run it a few times to see the different outcomes.
 
    It is important to understand how the execution happens when running the application.
    Try adding some print statements in the application, turn on ``INFO``-logging and see if you
-   can understand why the print-statements and logging-statements are in the other you see.
+   can understand why the print-statements and logging-statements are in the order you see.
 
 Creating entanglement between nodes
 -----------------------------------
@@ -196,7 +195,10 @@ Consider the following code-example for the node with role ``alice``:
        # Print the outcome
        print(f"alice's outcome is: {m}")
 
-The code for ``bob`` will be very similar, with the only difference being that ``bob`` `receives` an entangled pair by calling ``recv`` on the EPR socket object:
+The code for ``bob`` will be very similar, with the only difference being that
+``bob`` `receives` an entangled pair by calling ``recv`` on the EPR socket
+object. Create a new file ``app_bob.py`` in the same directory as
+``app_alice.py``:
 
 .. code-block::
    :emphasize-lines: 16
@@ -225,6 +227,13 @@ The code for ``bob`` will be very similar, with the only difference being that `
 
 Running this application files using ``netqasm simulate`` prints the outcomes of the two nodes.
 Since by default no noise is used, their outcomes will always be equal.
+
+
+.. note::
+
+   You may see a warning coming from NetSquid saying ``WARNING: a [sic] expression handler missing``.
+   This seems to be a bug relating to NetSquid and is outside the control of ``netqasm`` but should not impact
+   the simulation of our application.
 
 .. tip::
 
@@ -496,12 +505,12 @@ You can see that independently on which qubit the bit-flip might occur, ``alice`
 
 However, there is something we can still improve.
 Namely, we can avoid the call to ``flush`` and instead make use of classical logic in ``NetQASM`` and let this be handled by ``QNodeOS``.
-The reason we would want to do this is that whenever a ``flush`` happens, extra communication between the ``Host`` and ``QNodeOS`` is needed, see our :netqasm-paper:`paper <>` for more details.
+The reason we would want to do this is that whenever a ``flush`` happens, extra communication between the ``application layer`` and ``QNodeOS`` is needed, see our `paper <https://arxiv.org/abs/2111.09823>`_ for more details.
 We can see this happen if we increase the logging.
 Run the above example by ``netqasm simulate --log-level=INFO``, which will produce a lot of logging.
 Importantly, you can see that ``alice`` submits two subroutines to ``QNodeOS`` and not only one.
 
-In the next part we look at how to use simple built-in classical logic in ``NetQASM`` to minimize the communication needed between the ``Host`` and ``QNodeOS``.
+In the next part we look at how to use simple built-in classical logic in ``NetQASM`` to minimize the communication needed between the ``application layer`` and ``QNodeOS``.
 
 Simple classical logic
 ----------------------
@@ -531,7 +540,7 @@ We can rewrite the function to instead do:
            with s2.if_eq(1):  # outcomes (1, 1) error on second qubit
                logical_qubit[1].X()
 
-If you now run the application with the update function and with ``INFO`` logging, you will see that ``alice`` only uses one subroutine.
+If you now run the application with the updated function and with ``INFO`` logging, you will see that ``alice`` only uses one subroutine.
 What happens under the hood, is that these if-statements are compiled into branching instructions in the ``NetQASM``-language.
 
 .. note::
@@ -541,11 +550,11 @@ What happens under the hood, is that these if-statements are compiled into branc
 
 
 .. tip::
-   Checkout the documentation for :class:`~.Future`.
+   Check aout the documentation for :class:`~.Future`.
    This is what's returned when measuring a qubit and on which one can apply simple logical statements such as :meth:`~.Future.if_eq`.
-   Could you instead for example use the methods :meth:`~.Future.if_ez` and :meth:`~.Future.if_nz`.
+   You can also for example use the methods :meth:`~.Future.if_ez` and :meth:`~.Future.if_nz`.
 
 As a next step, you can read more about how to configure the simulation of the application, what network to use, noise etc, in the section :ref:`file-structure`.
 In :ref:`sdk-objects` the main functions and classes to be used are documented.
-For the full API of the package, refer to :ref:`api`.
+For the full API of the package, refer to the API Reference.
 Enjoy programming applications for a quantum internet!
