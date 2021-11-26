@@ -45,7 +45,7 @@ Open the file ``app_alice.py`` in your favorite editor/IDE and add the following
    load different classes depending on its value. What this allows us to do is to simulate an
    application on different simulators, without changing anything, even imports.
 
-What this code does is to setup a connection to the underlying (simulated) quantum node controller called QNodeOS, which can handle the NetQASM-instructions.
+What this code does is to setup a connection to the underlying (simulated) quantum node controller called ``QNodeOS``, which can handle the NetQASM-instructions.
 You can already run this application by doing ``netqasm simulate``, and if everything was correct you will see the message being printed.
 
 In the context of the connection, we can now create a qubit
@@ -229,17 +229,11 @@ Running this application files using ``netqasm simulate`` prints the outcomes of
 Since by default no noise is used, their outcomes will always be equal.
 
 
-.. note::
-
-   You may see a warning coming from NetSquid saying ``WARNING: a [sic] expression handler missing``.
-   This seems to be a bug relating to NetSquid and is outside the control of ``netqasm`` but should not impact
-   the simulation of our application.
-
 .. tip::
 
-   Checkout the documentation of :class:`~.EPRSocket` to see what arguments :meth:`~.EPRSocket.create` and :meth:`~.EPRSocket.recv` can take.
+   Check out the documentation of :class:`~.EPRSocket` to see what arguments :meth:`~.EPRSocket.create` and :meth:`~.EPRSocket.recv` can take.
    For example you will see that a number of pairs can be specified, which is why these methods return a list of :class:`~.qubit.Qubit`-objects.
-   Also checkout the methods :meth:`~.EPRSocket.create_context` and :meth:`~.EPRSocket.recv_context()`, which allows to specify what to do whenever a pair is generated, using a context.
+   Also check out the methods :meth:`~.EPRSocket.create_context` and :meth:`~.EPRSocket.recv_context()`, which allows to specify what to do whenever a pair is generated, using a context.
 
 Adding classical communication
 ------------------------------
@@ -550,7 +544,7 @@ What happens under the hood, is that these if-statements are compiled into branc
 
 
 .. tip::
-   Check aout the documentation for :class:`~.Future`.
+   Check out the documentation for :class:`~.Future`.
    This is what's returned when measuring a qubit and on which one can apply simple logical statements such as :meth:`~.Future.if_eq`.
    You can also for example use the methods :meth:`~.Future.if_ez` and :meth:`~.Future.if_nz`.
 
