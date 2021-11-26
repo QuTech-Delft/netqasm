@@ -25,10 +25,11 @@ pip install netqasm
 ```
 
 ### From source
-First clone this repository and `cd` into it.
+Clone this repository run the install script:
 
-To install the package:
-```sh
+```
+git clone https://github.com/QuTech-Delft/netqasm
+cd netqasm
 make install
 ```
 
