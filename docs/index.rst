@@ -26,3 +26,9 @@ Welcome to netqasm's and its SDK's documentation!
    :caption: API reference
 
    api_root
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Known issues
+
+   known_issues

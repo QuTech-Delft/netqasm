@@ -563,6 +563,7 @@ class BaseNetQASMConnection(abc.ABC):
         (compiled) code that is inside the context.
 
         Example:
+
         .. code-block::
 
             with NetQASMConnection(app_name="alice") as alice:
