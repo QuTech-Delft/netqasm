@@ -4,14 +4,15 @@ from scipy import linalg
 from netqasm.lang.ir import GenericInstr
 
 # Single-qubit gates
+f = np.sqrt(1 / 2)
 X = np.array([[0, 1], [1, 0]])
 Y = np.array([[0, -1j], [1j, 0]])
 Z = np.array([[1, 0], [0, -1]])
 PAULIS = [X, Y, Z]
-H = (X + Z) / np.sqrt(2)
-K = (Y + Z) / np.sqrt(2)
+H = (X + Z) * f
+K = (Y + Z) * f
 S = np.array([[1, 0], [0, 1j]])
-T = np.array([[1, 0], [0, (1 + 1j) / np.sqrt(2)]])
+T = np.array([[1, 0], [0, (1 + 1j) * f]])
 # Two-qubit gates
 CNOT = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
 CPHASE = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]])
