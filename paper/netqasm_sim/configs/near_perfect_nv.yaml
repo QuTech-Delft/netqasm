@@ -1,0 +1,55 @@
+qdevice_cfg: &qdevice_cfg
+  num_qubits: 3
+  
+  electron_init_depolar_prob: 0
+  electron_single_qubit_depolar_prob: 0.0
+
+  prob_error_0: 0
+  prob_error_1: 0
+  carbon_init_depolar_prob: 0
+  carbon_z_rot_depolar_prob: 0
+  ec_gate_depolar_prob: 0
+
+  electron_T1: 3_600_000_000_000
+  electron_T2: 1_460_000_000
+  
+  carbon_T1: 36_000_000_000_000
+  carbon_T2: 1_000_000_000
+
+  carbon_init: 310_000
+  carbon_rot_x: 500_000
+  carbon_rot_y: 500_000
+  carbon_rot_z: 5
+  electron_init: 2_000
+  electron_rot_x: 5
+  electron_rot_y: 5
+  electron_rot_z: 5
+  ec_controlled_dir_x: 500_000
+  ec_controlled_dir_y: 500_000
+  measure: 3_700
+
+stacks:
+  - name: client
+    qdevice_typ: nv
+    qdevice_cfg: 
+      <<: *qdevice_cfg
+    classical_cfg:
+      host_qnos_latency: 1e5
+  - name: server
+    qdevice_typ: nv
+    qdevice_cfg: 
+      <<: *qdevice_cfg
+    classical_cfg:
+      host_qnos_latency: 1e5
+  
+link_cfg: &link_cfg
+  fidelity: 0.9
+  prob_success: 0.5
+  t_cycle: 1.e+4
+
+links:
+  - stack1: client
+    stack2: server
+    typ: depolarise
+    cfg:
+      <<: *link_cfg

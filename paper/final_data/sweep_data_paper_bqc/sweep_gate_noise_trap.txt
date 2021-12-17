@@ -1,0 +1,7 @@
+num: 500
+config: near_perfect_nv
+sweep values: linspace(0.02, 0.1, 8)
+avg over
+    theta1: 0, PI
+    theta2: 0, PI
+    dummy: 1

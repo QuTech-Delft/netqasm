@@ -1,0 +1,5 @@
+num: 100
+config: teleport_cfg1
+sweep range: linspace(0, 1_000_000, 10)
+average over
+    all 6 pauli states    
