@@ -296,7 +296,9 @@ class Future(BaseFuture):
             other = parse_register(other)
 
         # Store self in a temporary register
-        tmp_register = self._connection._builder._get_inactive_register(activate=True)
+        tmp_register = self._connection._builder._mem_mgr.get_inactive_register(
+            activate=True
+        )
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
@@ -305,7 +307,7 @@ class Future(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._builder._get_inactive_register(
+            other_operand = self._connection._builder._mem_mgr.get_inactive_register(
                 activate=True
             )
             other_tmp_register = other_operand
@@ -364,7 +366,7 @@ class Future(BaseFuture):
                 raise RuntimeError(
                     "Future-index must be from the same connection as the future itself"
                 )
-            tmp_register = self._connection._builder._get_inactive_register()
+            tmp_register = self._connection._builder._mem_mgr.get_inactive_register()
             # NOTE this might be many commands if the index is a future with a future index etc
             with self._connection._builder._activate_register(tmp_register):
                 access_index_cmds = self._index._get_access_commands(
@@ -461,7 +463,7 @@ class RegFuture(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._builder._get_inactive_register(
+            other_operand = self._connection._builder._mem_mgr.get_inactive_register(
                 activate=True
             )
             other_tmp_register = other_operand

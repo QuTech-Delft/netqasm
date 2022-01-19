@@ -181,6 +181,15 @@ class MemoryManager:
     def reset_registers_to_return(self) -> None:
         self._registers_to_return = []
 
+    def get_inactive_register(self, activate: bool = False) -> operand.Register:
+        for i in range(2 ** REG_INDEX_BITS):
+            register = parse_register(f"R{i}")
+            if not self.is_reg_active(register):
+                if activate:
+                    self.add_active_reg(register)
+                return register
+        raise RuntimeError("could not find an available loop register")
+
     def get_new_array_address(self) -> int:
         if len(self._used_array_addresses) > 0:
             # last element is always the highest address
@@ -301,7 +310,7 @@ class Builder:
         return array
 
     def new_register(self, init_value: int = 0) -> RegFuture:
-        reg = self._get_inactive_register(activate=True)
+        reg = self._mem_mgr.get_inactive_register(activate=True)
         self.add_pending_command(
             ICmd(instruction=GenericInstr.SET, operands=[reg, init_value])
         )
@@ -367,7 +376,7 @@ class Builder:
                 length = len(init_vals)
                 if length > 1 and init_vals.count(init_vals[0]) == length:
                     # Ad-hoc optimization: if all values are the same, put the initialization commands in a loop
-                    loop_register = self._get_inactive_register()
+                    loop_register = self._mem_mgr.get_inactive_register()
 
                     def init_array_elt(conn):
                         conn._builder.add_pending_command(
@@ -738,7 +747,7 @@ class Builder:
         post_routine: T_PostRoutine,
     ) -> None:
 
-        loop_register = self._get_inactive_register()
+        loop_register = self._mem_mgr.get_inactive_register()
 
         def post_loop(conn):
             # Wait for each pair individually
@@ -767,9 +776,9 @@ class Builder:
         """Wait for the correct slice of the entanglement info array for the given pair"""
         # NOTE arr_start should be pair * OK_FIELDS and
         # arr_stop should be (pair + 1) * OK_FIELDS
-        arr_start = self._get_inactive_register(activate=True)
-        tmp = self._get_inactive_register(activate=True)
-        arr_stop = self._get_inactive_register(activate=True)
+        arr_start = self._mem_mgr.get_inactive_register(activate=True)
+        tmp = self._mem_mgr.get_inactive_register(activate=True)
+        arr_stop = self._mem_mgr.get_inactive_register(activate=True)
         created_regs = [arr_start, tmp, arr_stop]
 
         for reg in created_regs:
@@ -970,7 +979,7 @@ class Builder:
         if qubit_ids_array is None:
             raise RuntimeError("qubit_ids_array is None")
         pre_commands = self._pop_pending_commands()
-        loop_register = self._get_inactive_register(activate=True)
+        loop_register = self._mem_mgr.get_inactive_register(activate=True)
         pair = loop_register
         if tp == EPRType.K:
             q_id = qubit_ids_array.get_future_index(pair)
@@ -1253,7 +1262,7 @@ class Builder:
         for x in [a, b]:
             if isinstance(x, Future):
                 # Register for checking branching based on condition
-                reg = self._get_inactive_register(activate=True)
+                reg = self._mem_mgr.get_inactive_register(activate=True)
                 # Load values
                 address_entry = parse_address(
                     f"{Symbols.ADDRESS_START}{x._address}[{x._index}]"
@@ -1375,7 +1384,7 @@ class Builder:
         self, loop_register: Optional[operand.Register], activate: bool = False
     ) -> operand.Register:
         if loop_register is None:
-            loop_register = self._get_inactive_register(activate=activate)
+            loop_register = self._mem_mgr.get_inactive_register(activate=activate)
         else:
             if isinstance(loop_register, operand.Register):
                 pass
@@ -1391,15 +1400,6 @@ class Builder:
                 )
         # self._add_active_register(loop_register)
         return loop_register
-
-    def _get_inactive_register(self, activate: bool = False) -> operand.Register:
-        for i in range(2 ** REG_INDEX_BITS):
-            register = parse_register(f"R{i}")
-            if not self._mem_mgr.is_reg_active(register):
-                if activate:
-                    self._mem_mgr.add_active_reg(register)
-                return register
-        raise RuntimeError("could not find an available loop register")
 
     @contextmanager
     def _activate_register(self, register: operand.Register) -> Iterator[None]:
@@ -1529,7 +1529,7 @@ class Builder:
         self, context_id: int, array: Array, return_index: bool
     ) -> Union[Tuple[operand.Register, Future], Future]:
         pre_commands = self._pop_pending_commands()
-        loop_register = self._get_inactive_register(activate=True)
+        loop_register = self._mem_mgr.get_inactive_register(activate=True)
 
         # NOTE (BUG): the below assignment is NOT consistent with the type of _pre_context_commands
         # It works (maybe?) because the values are pushed only temporarily
