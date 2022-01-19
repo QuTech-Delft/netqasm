@@ -410,7 +410,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         :return: list of active qubits
         """
-        return self._builder.active_qubits
+        return self._builder._mem_mgr.get_active_qubits()
 
     def _init_new_app(self, max_qubits: int) -> None:
         """Send a message to the quantum node controller to register a new application.

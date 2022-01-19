@@ -116,13 +116,13 @@ class Qubit:
 
     def _activate(self) -> None:
         self._active = True
-        if self not in self._conn._builder.active_qubits:
-            self._conn._builder.active_qubits.append(self)
+        if not self._conn._builder._mem_mgr.is_qubit_active(self):
+            self._conn._builder._mem_mgr.activate_qubit(self)
 
     def _deactivate(self) -> None:
         self._active = False
-        if self in self._conn._builder.active_qubits:
-            self._conn._builder.active_qubits.remove(self)
+        if self._conn._builder._mem_mgr.is_qubit_active(self):
+            self._conn._builder._mem_mgr.deactivate_qubit(self)
 
     @property
     def entanglement_info(self) -> Optional[qlink_compat.LinkLayerOKTypeK]:

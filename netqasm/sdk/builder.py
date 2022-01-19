@@ -97,11 +97,40 @@ class EntRequestParams:
 
 class MemoryManager:
     def __init__(self) -> None:
+        # All qubits active for this connection
+        self._active_qubits: List[Qubit] = []
+
         # Registers for looping etc.
         # These are registers that are for example currently hold data and should
         # not be used for something else.
         # For example a register used for looping.
         self._active_registers: Set[operand.Register] = set()
+
+        self._used_array_addresses: List[int] = []
+
+    def inactivate_qubits(self) -> None:
+        while len(self._active_qubits) > 0:
+            q = self._active_qubits.pop()
+            q.active = False
+
+    def get_active_qubits(self) -> List[Qubit]:
+        return self._active_qubits
+
+    def is_qubit_active(self, q: Qubit) -> bool:
+        return q in self._active_qubits
+
+    def activate_qubit(self, q: Qubit) -> None:
+        self._active_qubits.append(q)
+
+    def deactivate_qubit(self, q: Qubit) -> None:
+        self._active_qubits.remove(q)
+
+    def get_new_qubit_address(self) -> int:
+        qubit_addresses_in_use = [q.qubit_id for q in self._active_qubits]
+        for address in count(0):
+            if address not in qubit_addresses_in_use:
+                return address
+        raise RuntimeError("Could not get new qubit address")
 
     def is_reg_active(self, reg: operand.Register) -> bool:
         return reg in self._active_registers
@@ -113,6 +142,15 @@ class MemoryManager:
 
     def remove_active_reg(self, reg: operand.Register) -> None:
         self._active_registers.remove(reg)
+
+    def get_new_array_address(self) -> int:
+        if len(self._used_array_addresses) > 0:
+            # last element is always the highest address
+            address = self._used_array_addresses[-1] + 1
+        else:
+            address = 0
+        self._used_array_addresses.append(address)
+        return address
 
 
 class Builder:
@@ -150,11 +188,6 @@ class Builder:
         """
         self._connection = connection
         self._app_id = app_id
-
-        # All qubits active for this connection
-        self.active_qubits: List[Qubit] = []
-
-        self._used_array_addresses: List[int] = []
 
         self._used_meas_registers: Dict[operand.Register, bool] = {
             operand.Register(RegisterName.M, i): False for i in range(16)
@@ -205,17 +238,15 @@ class Builder:
         self._app_id = id
 
     def inactivate_qubits(self) -> None:
-        while len(self.active_qubits) > 0:
-            q = self.active_qubits.pop()
-            q.active = False
+        self._mem_mgr.inactivate_qubits()
 
     def new_qubit_id(self) -> int:
-        return self._get_new_qubit_address()
+        return self._mem_mgr.get_new_qubit_address()
 
     def new_array(
         self, length: int = 1, init_values: Optional[List[Optional[int]]] = None
     ) -> Array:
-        address = self._get_new_array_address()
+        address = self._mem_mgr.get_new_array_address()
         lineno = self._line_tracker.get_line()
         array = Array(
             connection=self._connection,
@@ -451,16 +482,16 @@ class Builder:
 
     def _add_move_qubit_commands(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
-        assert target not in [q.qubit_id for q in self.active_qubits]
+        assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
         self.add_new_qubit_commands(target)
         self.add_two_qubit_commands(GenericInstr.MOV, source, target)
         self.add_qfree_commands(source)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
         if self._compiler == NVSubroutineCompiler:
-            for q in self.active_qubits:
+            for q in self._mem_mgr.get_active_qubits():
                 # Find a free qubit
-                new_virtual_address = self._get_new_qubit_address()
+                new_virtual_address = self._mem_mgr.get_new_qubit_address()
                 if q.qubit_id == virtual_address:
                     # Virtual address is already used. Move it to the new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
@@ -1094,22 +1125,6 @@ class Builder:
         return self._handle_request(
             instruction=GenericInstr.RECV_EPR, tp=tp, params=params
         )
-
-    def _get_new_qubit_address(self) -> int:
-        qubit_addresses_in_use = [q.qubit_id for q in self.active_qubits]
-        for address in count(0):
-            if address not in qubit_addresses_in_use:
-                return address
-        raise RuntimeError("Could not get new qubit address")
-
-    def _get_new_array_address(self) -> int:
-        if len(self._used_array_addresses) > 0:
-            # last element is always the highest address
-            address = self._used_array_addresses[-1] + 1
-        else:
-            address = 0
-        self._used_array_addresses.append(address)
-        return address
 
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
