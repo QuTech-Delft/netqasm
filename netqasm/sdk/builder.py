@@ -95,6 +95,26 @@ class EntRequestParams:
     rotations_remote: Tuple[int, int, int] = (0, 0, 0)
 
 
+class MemoryManager:
+    def __init__(self) -> None:
+        # Registers for looping etc.
+        # These are registers that are for example currently hold data and should
+        # not be used for something else.
+        # For example a register used for looping.
+        self._active_registers: Set[operand.Register] = set()
+
+    def is_reg_active(self, reg: operand.Register) -> bool:
+        return reg in self._active_registers
+
+    def add_active_reg(self, reg: operand.Register) -> None:
+        if reg in self._active_registers:
+            raise ValueError(f"Register {reg} is already active")
+        self._active_registers.add(reg)
+
+    def remove_active_reg(self, reg: operand.Register) -> None:
+        self._active_registers.remove(reg)
+
+
 class Builder:
     """Object that transforms Python script code into `PreSubroutine`s.
 
@@ -103,12 +123,6 @@ class Builder:
     assembled into a PreSubroutine. When the connectin flushes, the PreSubroutine is
     is compiled into a NetQASM subroutine.
     """
-
-    ENT_INFO = {
-        EPRType.K: LinkLayerOKTypeK,
-        EPRType.M: LinkLayerOKTypeM,
-        EPRType.R: LinkLayerOKTypeR,
-    }
 
     def __init__(
         self,
@@ -150,11 +164,7 @@ class Builder:
 
         self._max_qubits: int = max_qubits
 
-        # Registers for looping etc.
-        # These are registers that are for example currently hold data and should
-        # not be used for something else.
-        # For example a register used for looping.
-        self._active_registers: Set[operand.Register] = set()
+        self._mem_mgr: MemoryManager = MemoryManager()
 
         # Arrays to return
         self._arrays_to_return: List[Array] = []
@@ -748,7 +758,7 @@ class Builder:
         self.add_pending_command(wait_cmd)
 
         for reg in created_regs:
-            self._remove_active_register(register=reg)
+            self._mem_mgr.remove_active_reg(reg)
 
     def _handle_request(
         self,
@@ -932,7 +942,7 @@ class Builder:
             step=1,
             loop_register=loop_register,
         )
-        self._remove_active_register(register=loop_register)
+        self._mem_mgr.remove_active_reg(loop_register)
 
     def _assert_epr_args(
         self,
@@ -1233,7 +1243,7 @@ class Builder:
         for val in cond_values:
             if isinstance(val, operand.Register):
                 if not val.name == RegisterName.M:  # M-registers are never temporary
-                    self._remove_active_register(register=val)
+                    self._mem_mgr.remove_active_reg(val)
 
         exit = BranchLabel(exit_label)
         if_end = [exit]
@@ -1264,7 +1274,7 @@ class Builder:
                 step=step,
                 loop_register=loop_register_result,
             )
-            self._remove_active_register(register=loop_register_result)
+            self._mem_mgr.remove_active_reg(loop_register_result)
 
     def loop_body(
         self,
@@ -1330,7 +1340,7 @@ class Builder:
                 raise ValueError(
                     f"not a valid loop_register with type {type(loop_register)}"
                 )
-            if loop_register in self._active_registers:
+            if self._mem_mgr.is_reg_active(loop_register):
                 raise ValueError(
                     "Register used for looping should not already be active"
                 )
@@ -1340,29 +1350,21 @@ class Builder:
     def _get_inactive_register(self, activate: bool = False) -> operand.Register:
         for i in range(2 ** REG_INDEX_BITS):
             register = parse_register(f"R{i}")
-            if register not in self._active_registers:
+            if not self._mem_mgr.is_reg_active(register):
                 if activate:
-                    self._add_active_register(register=register)
+                    self._mem_mgr.add_active_reg(register)
                 return register
         raise RuntimeError("could not find an available loop register")
 
     @contextmanager
     def _activate_register(self, register: operand.Register) -> Iterator[None]:
         try:
-            self._add_active_register(register=register)
+            self._mem_mgr.add_active_reg(register)
             yield
         except Exception as err:
             raise err
         finally:
-            self._remove_active_register(register=register)
-
-    def _add_active_register(self, register: operand.Register) -> None:
-        if register in self._active_registers:
-            raise ValueError(f"Register {register} is already active")
-        self._active_registers.add(register)
-
-    def _remove_active_register(self, register: operand.Register) -> None:
-        self._active_registers.remove(register)
+            self._mem_mgr.remove_active_reg(register)
 
     def _get_loop_commands(
         self,
@@ -1512,7 +1514,7 @@ class Builder:
             step=1,
             loop_register=loop_register,
         )
-        self._remove_active_register(register=loop_register)
+        self._mem_mgr.remove_active_reg(loop_register)
 
     def insert_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE

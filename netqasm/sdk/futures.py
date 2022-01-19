@@ -340,9 +340,9 @@ class Future(BaseFuture):
             + store_commands
         )
 
-        self._connection._builder._remove_active_register(tmp_register)
+        self._connection._builder._mem_mgr.remove_active_reg(tmp_register)
         if other_tmp_register is not None:
-            self._connection._builder._remove_active_register(other_tmp_register)
+            self._connection._builder._mem_mgr.remove_active_reg(other_tmp_register)
 
         self._connection._builder.add_pending_commands(commands)
 
@@ -497,7 +497,7 @@ class RegFuture(BaseFuture):
         )
 
         if other_tmp_register is not None:
-            self._connection._builder._remove_active_register(other_tmp_register)
+            self._connection._builder._mem_mgr.remove_active_reg(other_tmp_register)
 
         self._connection._builder.add_pending_commands(commands)
 

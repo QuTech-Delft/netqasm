@@ -1,11 +1,12 @@
+import math
 from enum import Enum, auto
-from lib2to3.pgen2.token import OP
 from operator import ne
 from typing import List, Optional, Type, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger, set_log_level
 from netqasm.sdk.connection import DebugConnection
+from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.qubit import Qubit
 
 logger = get_netqasm_logger()
@@ -188,7 +189,47 @@ def test_loop():
     )
 
 
+def test_create_epr():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr = epr_socket.create()[0]
+
+        epr.rot_Z(angle=math.pi)
+        epr.H()
+
+        _ = epr.measure(store_array=False)
+
+        subroutine = conn._builder._pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.ARRAY,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.ROT_Z,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.H,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.RET_ARR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.RET_REG,
+        ]
+    )
+
+
 if __name__ == "__main__":
-    set_log_level("DEBUG")
-    test_simple()
-    test_loop()
+    # set_log_level("DEBUG")
+    # test_simple()
+    # test_loop()
+    test_create_epr()
