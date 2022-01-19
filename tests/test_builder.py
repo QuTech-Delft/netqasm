@@ -189,6 +189,6 @@ def test_loop():
 
 
 if __name__ == "__main__":
-    # set_log_level("DEBUG")
-    # test_simple()
+    set_log_level("DEBUG")
+    test_simple()
     test_loop()
