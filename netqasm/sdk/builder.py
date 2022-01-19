@@ -106,7 +106,17 @@ class MemoryManager:
         # For example a register used for looping.
         self._active_registers: Set[operand.Register] = set()
 
+        self._used_meas_registers: Dict[operand.Register, bool] = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
+
+        # Registers to return
+        self._registers_to_return: List[operand.Register] = []
+
         self._used_array_addresses: List[int] = []
+
+        # Arrays to return
+        self._arrays_to_return: List[Array] = []
 
     def inactivate_qubits(self) -> None:
         while len(self._active_qubits) > 0:
@@ -143,6 +153,34 @@ class MemoryManager:
     def remove_active_reg(self, reg: operand.Register) -> None:
         self._active_registers.remove(reg)
 
+    def meas_reg_set_used(self, reg: operand.Register) -> None:
+        self._used_meas_registers[reg] = True
+
+    def meas_reg_set_unused(self, reg: operand.Register) -> None:
+        self._used_meas_registers[reg] = False
+
+    def get_new_meas_outcome_reg(self) -> operand.Register:
+        # Find the next unused M-register.
+        for reg, used in self._used_meas_registers.items():
+            if not used:
+                self._used_meas_registers[reg] = True
+                return reg
+        raise RuntimeError("Ran out of M-registers")
+
+    def reset_used_meas_registers(self) -> None:
+        self._used_meas_registers = {
+            operand.Register(RegisterName.M, i): False for i in range(16)
+        }
+
+    def add_reg_to_return(self, reg: operand.Register) -> None:
+        self._registers_to_return.append(reg)
+
+    def get_registers_to_return(self) -> List[operand.Register]:
+        return self._registers_to_return
+
+    def reset_registers_to_return(self) -> None:
+        self._registers_to_return = []
+
     def get_new_array_address(self) -> int:
         if len(self._used_array_addresses) > 0:
             # last element is always the highest address
@@ -151,6 +189,20 @@ class MemoryManager:
             address = 0
         self._used_array_addresses.append(address)
         return address
+
+    def add_array_to_return(self, array: Array) -> None:
+        self._arrays_to_return.append(array)
+
+    def get_arrays_to_return(self) -> List[Array]:
+        return self._arrays_to_return
+
+    def reset_arrays_to_return(self) -> None:
+        self._arrays_to_return = []
+
+    def reset(self) -> None:
+        self.reset_arrays_to_return()
+        self.reset_registers_to_return()
+        self.reset_used_meas_registers()
 
 
 class Builder:
@@ -189,24 +241,14 @@ class Builder:
         self._connection = connection
         self._app_id = app_id
 
-        self._used_meas_registers: Dict[operand.Register, bool] = {
-            operand.Register(RegisterName.M, i): False for i in range(16)
-        }
-
         self._pending_commands: List[T_Cmd] = []
 
         self._max_qubits: int = max_qubits
 
         self._mem_mgr: MemoryManager = MemoryManager()
 
-        # Arrays to return
-        self._arrays_to_return: List[Array] = []
-
         # If False, don't return arrays even if they are used in a subroutine
         self._return_arrays: bool = return_arrays
-
-        # Registers to return
-        self._registers_to_return: List[operand.Register] = []
 
         # Storing commands before an conditional statement
         self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
@@ -255,7 +297,7 @@ class Builder:
             init_values=init_values,
             lineno=lineno,
         )
-        self._arrays_to_return.append(array)
+        self._mem_mgr.add_array_to_return(array)
         return array
 
     def new_register(self, init_value: int = 0) -> RegFuture:
@@ -263,7 +305,7 @@ class Builder:
         self.add_pending_command(
             ICmd(instruction=GenericInstr.SET, operands=[reg, init_value])
         )
-        self._registers_to_return.append(reg)
+        self._mem_mgr.add_reg_to_return(reg)
         return RegFuture(connection=self._connection, reg=reg)
 
     def add_pending_commands(self, commands: List[T_Cmd]) -> None:
@@ -291,7 +333,7 @@ class Builder:
 
     def _add_ret_reg_commands(self) -> None:
         ret_reg_instrs: List[T_Cmd] = []
-        for reg in self._registers_to_return:
+        for reg in self._mem_mgr.get_registers_to_return():
             ret_reg_instrs.append(
                 ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
             )
@@ -307,7 +349,7 @@ class Builder:
     def _get_array_commands(self) -> Tuple[List[T_Cmd], List[T_Cmd]]:
         init_arrays: List[T_Cmd] = []
         return_arrays: List[T_Cmd] = []
-        for array in self._arrays_to_return:
+        for array in self._mem_mgr.get_arrays_to_return():
             # ICmd for initialising the array
             init_arrays.append(
                 ICmd(
@@ -510,7 +552,7 @@ class Builder:
             if not isinstance(qubit_id, Future):
                 if qubit_id != 0:
                     self._free_up_qubit(virtual_address=0)
-        outcome_reg = self._get_new_meas_outcome_reg()
+        outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         meas_command = ICmd(
             instruction=GenericInstr.MEAS,
@@ -528,23 +570,15 @@ class Builder:
         if future is not None:
             if isinstance(future, Future):
                 outcome_commands = future._get_store_commands(outcome_reg)
-                self._used_meas_registers[outcome_reg] = False
+                self._mem_mgr.meas_reg_set_unused(outcome_reg)
             elif isinstance(future, RegFuture):
                 future.reg = outcome_reg
-                self._registers_to_return.append(outcome_reg)
+                self._mem_mgr.add_reg_to_return(outcome_reg)
                 outcome_commands = []
             else:
                 outcome_commands = []
         commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
         self.add_pending_commands(commands)
-
-    def _get_new_meas_outcome_reg(self) -> operand.Register:
-        # Find the next unused M-register.
-        for reg, used in self._used_meas_registers.items():
-            if not used:
-                self._used_meas_registers[reg] = True
-                return reg
-        raise RuntimeError("Ran out of M-registers")
 
     def add_new_qubit_commands(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
@@ -1129,11 +1163,7 @@ class Builder:
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
         #     raise RuntimeError("Should not have active registers left when flushing")
-        self._arrays_to_return = []
-        self._registers_to_return = []
-        self._used_meas_registers = {
-            operand.Register(RegisterName.M, i): False for i in range(16)
-        }
+        self._mem_mgr.reset()
         self._pre_context_commands = {}
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
