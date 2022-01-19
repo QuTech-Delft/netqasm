@@ -294,7 +294,7 @@ class Builder:
     def new_qubit_id(self) -> int:
         return self._mem_mgr.get_new_qubit_address()
 
-    def new_array(
+    def alloc_array(
         self, length: int = 1, init_values: Optional[List[Optional[int]]] = None
     ) -> Array:
         address = self._mem_mgr.get_new_array_address()
@@ -333,14 +333,14 @@ class Builder:
     def _pop_pending_subroutine(self) -> Optional[PreSubroutine]:
         # Add commands for initialising and returning arrays
         self._add_array_commands()
-        self._add_ret_reg_commands()
+        self._command_ret_reg()
         subroutine = None
         if len(self._pending_commands) > 0:
             commands = self._pop_pending_commands()
             subroutine = self._subroutine_from_commands(commands)
         return subroutine
 
-    def _add_ret_reg_commands(self) -> None:
+    def _command_ret_reg(self) -> None:
         ret_reg_instrs: List[T_Cmd] = []
         for reg in self._mem_mgr.get_registers_to_return():
             ret_reg_instrs.append(
@@ -454,7 +454,7 @@ class Builder:
     def committed_subroutines(self) -> List[Subroutine]:
         return self._committed_subroutines
 
-    def add_single_qubit_rotation_commands(
+    def command_single_qubit_rotation(
         self,
         instruction: GenericInstr,
         virtual_qubit_id: int,
@@ -465,7 +465,7 @@ class Builder:
         if angle is not None:
             nds = get_angle_spec_from_float(angle=angle)
             for n, d in nds:
-                self.add_single_qubit_rotation_commands(
+                self.command_single_qubit_rotation(
                     instruction=instruction,
                     virtual_qubit_id=virtual_qubit_id,
                     n=n,
@@ -482,7 +482,7 @@ class Builder:
         commands: List[T_Cmd] = set_commands + [rot_command]
         self.add_pending_commands(commands)
 
-    def add_single_qubit_commands(self, instr: GenericInstr, qubit_id: int) -> None:
+    def command_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
         qubit_command = ICmd(
@@ -515,7 +515,7 @@ class Builder:
             )
         return register, set_reg_cmds
 
-    def add_two_qubit_commands(
+    def command_two_qubit(
         self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
     ) -> None:
         register1, set_commands1 = self._get_set_qubit_reg_commands(
@@ -531,12 +531,12 @@ class Builder:
         commands = set_commands1 + set_commands2 + [qubit_command]
         self.add_pending_commands(commands=commands)
 
-    def _add_move_qubit_commands(self, source: int, target: int) -> None:
+    def command_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
         assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
-        self.add_new_qubit_commands(target)
-        self.add_two_qubit_commands(GenericInstr.MOV, source, target)
-        self.add_qfree_commands(source)
+        self.command_new_qubit(target)
+        self.command_two_qubit(GenericInstr.MOV, source, target)
+        self.command_qfree(source)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
         if self._compiler == NVSubroutineCompiler:
@@ -546,13 +546,13 @@ class Builder:
                 if q.qubit_id == virtual_address:
                     # Virtual address is already used. Move it to the new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
-                    self._add_move_qubit_commands(
+                    self.command_move_qubit(
                         source=virtual_address, target=new_virtual_address
                     )
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
-    def add_measure_commands(
+    def command_measure(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
     ) -> None:
         if self._compiler == NVSubroutineCompiler:
@@ -589,7 +589,7 @@ class Builder:
         commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
         self.add_pending_commands(commands)
 
-    def add_new_qubit_commands(self, qubit_id: int) -> None:
+    def command_new_qubit(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qalloc_command = ICmd(
             instruction=GenericInstr.QALLOC,
@@ -602,7 +602,7 @@ class Builder:
         commands = set_commands + [qalloc_command, init_command]
         self.add_pending_commands(commands)
 
-    def add_init_qubit_commands(self, qubit_id: int) -> None:
+    def command_init_qubit(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         init_command = ICmd(
             instruction=GenericInstr.INIT,
@@ -611,7 +611,7 @@ class Builder:
         commands = set_commands + [init_command]
         self.add_pending_commands(commands)
 
-    def add_qfree_commands(self, qubit_id: int) -> None:
+    def command_qfree(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qfree_command = ICmd(
             instruction=GenericInstr.QFREE,
@@ -679,9 +679,9 @@ class Builder:
                 arg = arg.value
             create_args.append(arg)
         # TODO don't create a new array if already created from previous command
-        return self.new_array(init_values=create_args)
+        return self.alloc_array(init_values=create_args)
 
-    def _add_epr_commands(
+    def command_epr(
         self,
         instruction: GenericInstr,
         qubit_ids_array: Optional[Array],
@@ -873,7 +873,7 @@ class Builder:
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
-            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+            qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
         elif tp == EPRType.M or (
             tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
         ):
@@ -885,7 +885,7 @@ class Builder:
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
-        self._add_epr_commands(
+        self.command_epr(
             instruction=instruction,
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
@@ -950,7 +950,7 @@ class Builder:
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
-            qubit_ids_array = self.new_array(init_values=virtual_qubit_ids)  # type: ignore
+            qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
         elif tp == EPRType.M or (
             tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
         ):
@@ -968,7 +968,7 @@ class Builder:
                 "EPR generation as a context is only allowed for K type requests"
             )
 
-        self._add_epr_commands(
+        self.command_epr(
             instruction=instruction,
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
@@ -1041,12 +1041,12 @@ class Builder:
 
     def _create_ent_results_array(self, number: int, tp: EPRType) -> Array:
         if tp == EPRType.K:
-            ent_results_array = self.new_array(length=OK_FIELDS_K * number)
+            ent_results_array = self.alloc_array(length=OK_FIELDS_K * number)
         elif tp == EPRType.M:
-            ent_results_array = self.new_array(length=OK_FIELDS_M * number)
+            ent_results_array = self.alloc_array(length=OK_FIELDS_M * number)
         elif tp == EPRType.R:
             # NOTE: also for R-type request we use the LinkLayerOkTypeM type
-            ent_results_array = self.new_array(length=OK_FIELDS_M * number)
+            ent_results_array = self.alloc_array(length=OK_FIELDS_M * number)
         else:
             raise ValueError(f"Unsupported Create type: {tp}")
         return ent_results_array

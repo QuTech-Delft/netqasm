@@ -538,7 +538,7 @@ class BaseNetQASMConnection(abc.ABC):
             have the same length as `length`.
         :return: a handle to the array that can be used in application code
         """
-        return self._builder.new_array(length, init_values)
+        return self._builder.alloc_array(length, init_values)
 
     def loop(
         self,
