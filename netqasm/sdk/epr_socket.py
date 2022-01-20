@@ -8,9 +8,9 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
-from netqasm.lang.ir import GenericInstr
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.qlink_compat import (
+    EPRRole,
     EPRType,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
@@ -504,7 +504,6 @@ class EPRSocket(abc.ABC):
         :param sequential: whether to generate pairs sequentially, defaults to False
         """
         try:
-            instruction = GenericInstr.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -513,7 +512,7 @@ class EPRSocket(abc.ABC):
                 output,
                 pair,
             ) = self.conn._builder._pre_epr_context(
-                instruction=instruction,
+                role=EPRRole.CREATE,
                 tp=EPRType.K,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
@@ -624,7 +623,6 @@ class EPRSocket(abc.ABC):
     ):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
-            instruction = GenericInstr.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -633,7 +631,7 @@ class EPRSocket(abc.ABC):
                 output,
                 pair,
             ) = self.conn._builder._pre_epr_context(
-                instruction=instruction,
+                role=EPRRole.RECV,
                 tp=EPRType.K,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,

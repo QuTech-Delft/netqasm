@@ -437,7 +437,6 @@ class Builder:
 
     def command_epr(
         self,
-        instruction: Optional[GenericInstr],
         qubit_ids_array: Optional[Array],
         ent_results_array: Array,
         wait_all: bool,
@@ -446,21 +445,10 @@ class Builder:
         role: EPRRole = EPRRole.CREATE,
         **kwargs,
     ) -> None:
-        # TODO: remove instruction parameter and this compatibilty code
-        if instruction is None:
-            instruction = (
-                GenericInstr.CREATE_EPR
-                if role == EPRRole.CREATE
-                else GenericInstr.RECV_EPR
-            )
-        assert instruction in [GenericInstr.CREATE_EPR, GenericInstr.RECV_EPR]
-
         qubit_ids_array_address: Union[int, operand.Register]
         epr_cmd_operands: List[T_OperandUnion]
 
-        if tp == EPRType.K or (
-            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
-        ):
+        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
             assert qubit_ids_array is not None
             qubit_ids_array_address = qubit_ids_array.address
         else:
@@ -468,24 +456,26 @@ class Builder:
             # constant register for now
             qubit_ids_array_address = operand.Register(RegisterName.C, 0)
 
-        if instruction == GenericInstr.CREATE_EPR:
+        if role == EPRRole.CREATE:
             create_args_array = self._build_epr_create_args(tp, params)
             epr_cmd_operands = [
                 qubit_ids_array_address,
                 create_args_array.address,
                 ent_results_array.address,
             ]
-        elif instruction == GenericInstr.RECV_EPR:
+        else:
             epr_cmd_operands = [
                 qubit_ids_array_address,
                 ent_results_array.address,
             ]
-        else:
-            raise ValueError(f"Not an epr instruction {instruction}")
 
         # epr command
+        instr = {
+            EPRRole.CREATE: GenericInstr.CREATE_EPR,
+            EPRRole.RECV: GenericInstr.RECV_EPR,
+        }[role]
         epr_cmd = ICmd(
-            instruction=instruction,
+            instruction=instr,
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,
         )
@@ -600,7 +590,7 @@ class Builder:
 
     def _handle_request(
         self,
-        instruction: GenericInstr,
+        role: EPRRole,
         tp: EPRType,
         params: EntRequestParams,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
@@ -629,18 +619,14 @@ class Builder:
         # T_LinkLayerOkType objects.
         result_futures: Union[List[Qubit], T_LinkLayerOkList]
 
-        if tp == EPRType.K or (
-            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
-        ):
+        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
             result_futures = self._get_qubit_futures_array(
                 params.number, params.sequential, ent_results_array
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
             qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M or (
-            tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
-        ):
+        elif tp == EPRType.M or (tp == EPRType.R and role == EPRRole.CREATE):
             result_futures = self._get_meas_dir_futures_array(
                 params.number, ent_results_array
             )
@@ -650,12 +636,12 @@ class Builder:
 
         # Construct and add the NetQASM instructions
         self.command_epr(
-            instruction=instruction,
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
             tp=tp,
             params=params,
+            role=role,
         )
 
         # Construct and add NetQASM instructions for post routine
@@ -701,7 +687,6 @@ class Builder:
         # Construct and add the NetQASM instructions
         self.command_epr(
             qubit_ids_array=qubit_ids_array,
-            instruction=None,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
             tp=EPRType.K,
@@ -723,7 +708,7 @@ class Builder:
 
     def _pre_epr_context(
         self,
-        instruction: GenericInstr,
+        role: EPRRole,
         tp: EPRType,
         params: EntRequestParams,
     ) -> Tuple[
@@ -757,18 +742,14 @@ class Builder:
         # For M-type requests, these are T_LinkLayerOkTypeM objects.
         result_futures: Union[List[Qubit], T_LinkLayerOkList]
 
-        if tp == EPRType.K or (
-            tp == EPRType.R and instruction == GenericInstr.RECV_EPR
-        ):
+        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
             result_futures = self._get_qubit_futures_array(
                 params.number, params.sequential, ent_results_array
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
             virtual_qubit_ids = [q.qubit_id for q in result_futures]
             qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M or (
-            tp == EPRType.R and instruction == GenericInstr.CREATE_EPR
-        ):
+        elif tp == EPRType.M or (tp == EPRType.R and role == EPRRole.CREATE):
             result_futures = self._get_meas_dir_futures_array(
                 params.number, ent_results_array
             )
@@ -784,12 +765,12 @@ class Builder:
             )
 
         self.command_epr(
-            instruction=instruction,
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=False,
             tp=tp,
             params=params,
+            role=role,
         )
         if qubit_ids_array is None:
             raise RuntimeError("qubit_ids_array is None")
@@ -1535,9 +1516,7 @@ class Builder:
                 f"remote_node_id should be an int, not of type {type(params.remote_node_id)}"
             )
 
-        return self._handle_request(
-            instruction=GenericInstr.CREATE_EPR, tp=tp, params=params
-        )
+        return self._handle_request(role=EPRRole.CREATE, tp=tp, params=params)
 
     def sdk_recv_epr(
         self,
@@ -1545,6 +1524,4 @@ class Builder:
         params: EntRequestParams,
     ) -> Union[List[Qubit], T_LinkLayerOkList]:
         """Receives EPR pair with a remote node"""
-        return self._handle_request(
-            instruction=GenericInstr.RECV_EPR, tp=tp, params=params
-        )
+        return self._handle_request(role=EPRRole.RECV, tp=tp, params=params)
