@@ -711,14 +711,14 @@ class Builder:
         role: EPRRole,
         params: EntRequestParams,
     ) -> List[LinkLayerOKTypeM]:
-        self._check_epr_args(tp=EPRType.K, params=params)
+        self._check_epr_args(tp=EPRType.M, params=params)
 
         # Setup NetQASM arrays and SDK handles.
 
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
         ent_results_array = self._create_ent_results_array(
-            number=params.number, tp=EPRType.K
+            number=params.number, tp=EPRType.M
         )
 
         # M-type requests do not need an array for IDs for the generated qubits.
