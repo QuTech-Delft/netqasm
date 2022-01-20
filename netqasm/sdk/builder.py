@@ -435,63 +435,6 @@ class Builder:
         # TODO don't create a new array if already created from previous command
         return self.alloc_array(init_values=create_args)
 
-    def command_epr(
-        self,
-        qubit_ids_array: Optional[Array],
-        ent_results_array: Array,
-        wait_all: bool,
-        tp: EPRType,
-        params: EntRequestParams,
-        role: EPRRole = EPRRole.CREATE,
-        **kwargs,
-    ) -> None:
-        qubit_ids_array_address: Union[int, operand.Register]
-        epr_cmd_operands: List[T_OperandUnion]
-
-        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
-            assert qubit_ids_array is not None
-            qubit_ids_array_address = qubit_ids_array.address
-        else:
-            # NOTE since this argument won't be used just set it to some
-            # constant register for now
-            qubit_ids_array_address = operand.Register(RegisterName.C, 0)
-
-        if role == EPRRole.CREATE:
-            create_args_array = self._build_epr_create_args(tp, params)
-            epr_cmd_operands = [
-                qubit_ids_array_address,
-                create_args_array.address,
-                ent_results_array.address,
-            ]
-        else:
-            epr_cmd_operands = [
-                qubit_ids_array_address,
-                ent_results_array.address,
-            ]
-
-        # epr command
-        instr = {
-            EPRRole.CREATE: GenericInstr.CREATE_EPR,
-            EPRRole.RECV: GenericInstr.RECV_EPR,
-        }[role]
-        epr_cmd = ICmd(
-            instruction=instr,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,
-        )
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
-        self.add_pending_commands(commands)
-
     def _add_post_commands(
         self,
         qubit_ids: Optional[Array],
@@ -587,171 +530,6 @@ class Builder:
 
         for reg in created_regs:
             self._mem_mgr.remove_active_reg(reg)
-
-    def _handle_request(
-        self,
-        role: EPRRole,
-        tp: EPRType,
-        params: EntRequestParams,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        self._assert_epr_args(
-            number=params.number,
-            post_routine=params.post_routine,
-            sequential=params.sequential,
-            tp=tp,
-        )
-        # NOTE the `output` is either a list of qubits or a list of entanglement information
-        # depending on the type of the request.
-
-        # Setup NetQASM arrays and SDK handles.
-
-        # Entanglement results array.
-        # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(number=params.number, tp=tp)
-
-        # K-type requests and receivers of R-type requests need to specify an array
-        # with qubit IDs for the generated qubits.
-        qubit_ids_array: Optional[Array]
-
-        # SDK handles to result values. For K-type requests and receivers of R-type
-        # requests, these are Qubit objects.
-        # For M-type requests and senders of R-type requests, these are
-        # T_LinkLayerOkType objects.
-        result_futures: Union[List[Qubit], T_LinkLayerOkList]
-
-        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
-            result_futures = self._get_qubit_futures_array(
-                params.number, params.sequential, ent_results_array
-            )
-            assert all(isinstance(q, Qubit) for q in result_futures)
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]
-            qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M or (tp == EPRType.R and role == EPRRole.CREATE):
-            result_futures = self._get_meas_dir_futures_array(
-                params.number, ent_results_array
-            )
-            qubit_ids_array = None
-
-        wait_all = params.post_routine is None
-
-        # Construct and add the NetQASM instructions
-        self.command_epr(
-            qubit_ids_array=qubit_ids_array,
-            ent_results_array=ent_results_array,
-            wait_all=wait_all,
-            tp=tp,
-            params=params,
-            role=role,
-        )
-
-        # Construct and add NetQASM instructions for post routine
-        if params.post_routine:
-            self._add_post_commands(
-                qubit_ids_array,
-                params.number,
-                ent_results_array,
-                tp,
-                params.post_routine,
-            )
-
-        return result_futures
-
-    def command_epr_keep(
-        self,
-        role: EPRRole,
-        params: EntRequestParams,
-    ) -> List[Qubit]:
-        self._check_epr_args(tp=EPRType.K, params=params)
-
-        # Setup NetQASM arrays and SDK handles.
-
-        # Entanglement results array.
-        # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
-            number=params.number, tp=EPRType.K
-        )
-
-        # K-type requests need to specify an array with IDs for the generated qubits.
-        qubit_ids_array: Optional[Array]
-
-        # SDK handles to result values (Qubit objects).
-        qubit_futures: List[Qubit] = self._get_qubit_futures_array(
-            params.number, params.sequential, ent_results_array
-        )
-        assert all(isinstance(q, Qubit) for q in qubit_futures)
-        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
-        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
-
-        wait_all = params.post_routine is None
-
-        # Construct and add the NetQASM instructions
-        self.command_epr(
-            qubit_ids_array=qubit_ids_array,
-            ent_results_array=ent_results_array,
-            wait_all=wait_all,
-            tp=EPRType.K,
-            params=params,
-            role=role,
-        )
-
-        # Construct and add NetQASM instructions for post routine
-        if params.post_routine:
-            self._add_post_commands(
-                qubit_ids_array,
-                params.number,
-                ent_results_array,
-                EPRType.K,
-                params.post_routine,
-            )
-
-        return qubit_futures
-
-    def command_epr_measure(
-        self,
-        role: EPRRole,
-        params: EntRequestParams,
-    ) -> List[LinkLayerOKTypeM]:
-        self._check_epr_args(tp=EPRType.M, params=params)
-
-        # Setup NetQASM arrays and SDK handles.
-
-        # Entanglement results array.
-        # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
-            number=params.number, tp=EPRType.M
-        )
-
-        # M-type requests do not need an array for IDs for the generated qubits.
-        qubit_ids_array: Optional[Array] = None
-
-        # SDK handles to result values (LinkLayerOkTypeM objects).
-        result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
-            params.number, ent_results_array
-        )
-
-        wait_all = params.post_routine is None
-
-        # Construct and add the NetQASM instructions
-        self.command_epr(
-            qubit_ids_array=qubit_ids_array,
-            ent_results_array=ent_results_array,
-            wait_all=wait_all,
-            tp=EPRType.M,
-            params=params,
-            role=role,
-        )
-
-        # Construct and add NetQASM instructions for post routine
-        if params.post_routine:
-            self._add_post_commands(
-                qubit_ids_array,
-                params.number,
-                ent_results_array,
-                EPRType.M,
-                params.post_routine,
-            )
-
-        return result_futures
 
     def _pre_epr_context(
         self,
@@ -1409,7 +1187,7 @@ class Builder:
             )
         )
 
-    def command_single_qubit_rotation(
+    def _build_cmds_single_qubit_rotation(
         self,
         instruction: GenericInstr,
         virtual_qubit_id: int,
@@ -1437,7 +1215,7 @@ class Builder:
         commands: List[T_Cmd] = set_commands + [rot_command]
         self.add_pending_commands(commands)
 
-    def command_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
+    def _build_cmds_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
         register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         # Construct the qubit command
         qubit_command = ICmd(
@@ -1447,7 +1225,7 @@ class Builder:
         commands: List[T_Cmd] = set_commands + [qubit_command]
         self.add_pending_commands(commands)
 
-    def command_two_qubit(
+    def _build_cmds_two_qubit(
         self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
     ) -> None:
         register1, set_commands1 = self._get_set_qubit_reg_commands(
@@ -1463,14 +1241,14 @@ class Builder:
         commands = set_commands1 + set_commands2 + [qubit_command]
         self.add_pending_commands(commands=commands)
 
-    def command_move_qubit(self, source: int, target: int) -> None:
+    def _build_cmds_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
         assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
         self.command_new_qubit(target)
         self.command_two_qubit(GenericInstr.MOV, source, target)
         self.command_qfree(source)
 
-    def command_measure(
+    def _build_cmds_measure(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
     ) -> None:
         if self._compiler == NVSubroutineCompiler:
@@ -1507,7 +1285,7 @@ class Builder:
         commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
         self.add_pending_commands(commands)
 
-    def command_new_qubit(self, qubit_id: int) -> None:
+    def _build_cmds_new_qubit(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qalloc_command = ICmd(
             instruction=GenericInstr.QALLOC,
@@ -1520,7 +1298,7 @@ class Builder:
         commands = set_commands + [qalloc_command, init_command]
         self.add_pending_commands(commands)
 
-    def command_init_qubit(self, qubit_id: int) -> None:
+    def _build_cmds_init_qubit(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         init_command = ICmd(
             instruction=GenericInstr.INIT,
@@ -1529,7 +1307,7 @@ class Builder:
         commands = set_commands + [init_command]
         self.add_pending_commands(commands)
 
-    def command_qfree(self, qubit_id: int) -> None:
+    def _build_cmds_qfree(self, qubit_id: int) -> None:
         qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
         qfree_command = ICmd(
             instruction=GenericInstr.QFREE,
@@ -1537,6 +1315,170 @@ class Builder:
         )
         commands = set_commands + [qfree_command]
         self.add_pending_commands(commands)
+
+    def _build_cmds_epr_keep(
+        self,
+        role: EPRRole,
+        params: EntRequestParams,
+    ) -> List[Qubit]:
+        self._check_epr_args(tp=EPRType.K, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.K
+        )
+
+        # K-type requests need to specify an array with IDs for the generated qubits.
+        qubit_ids_array: Optional[Array]
+
+        # SDK handles to result values (Qubit objects).
+        qubit_futures: List[Qubit] = self._get_qubit_futures_array(
+            params.number, params.sequential, ent_results_array
+        )
+        assert all(isinstance(q, Qubit) for q in qubit_futures)
+        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
+        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.K,
+            params=params,
+            role=role,
+        )
+
+        # Construct and add NetQASM instructions for post routine
+        if params.post_routine:
+            self._add_post_commands(
+                qubit_ids_array,
+                params.number,
+                ent_results_array,
+                EPRType.K,
+                params.post_routine,
+            )
+
+        return qubit_futures
+
+    def _build_cmds_epr_measure(
+        self,
+        role: EPRRole,
+        params: EntRequestParams,
+    ) -> List[LinkLayerOKTypeM]:
+        self._check_epr_args(tp=EPRType.M, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.M
+        )
+
+        # M-type requests do not need an array for IDs for the generated qubits.
+        qubit_ids_array: Optional[Array] = None
+
+        # SDK handles to result values (LinkLayerOkTypeM objects).
+        result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
+            params.number, ent_results_array
+        )
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.M,
+            params=params,
+            role=role,
+        )
+
+        return result_futures
+
+    def _build_cmds_epr_rsp_create(
+        self,
+        params: EntRequestParams,
+    ) -> List[LinkLayerOKTypeM]:
+        self._check_epr_args(tp=EPRType.R, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.R
+        )
+
+        # Creators of R-type requests do not need an array for IDs for the
+        # generated qubits.
+        qubit_ids_array: Optional[Array] = None
+
+        # SDK handles to result values (LinkLayerOkTypeM objects).
+        result_futures = self._get_meas_dir_futures_array(
+            params.number, ent_results_array
+        )
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.R,
+            params=params,
+            role=EPRRole.CREATE,
+        )
+
+        return result_futures
+
+    def _build_cmds_epr_rsp_recv(
+        self,
+        params: EntRequestParams,
+    ) -> List[Qubit]:
+        self._check_epr_args(tp=EPRType.R, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.K  # Keep since we are receiving RSP
+        )
+
+        qubit_ids_array: Optional[Array] = None
+
+        # SDK handles to result values (Qubit objects).
+        qubit_futures = self._get_qubit_futures_array(
+            params.number, params.sequential, ent_results_array
+        )
+        assert all(isinstance(q, Qubit) for q in qubit_futures)
+
+        # Receivers of R-type requests need an array for IDs for the generated qubits.
+        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
+        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.R,
+            params=params,
+            role=EPRRole.RECV,
+        )
+
+        return qubit_futures
 
     def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
         return self.command_epr_keep(role=EPRRole.CREATE, params=params)
@@ -1552,26 +1494,8 @@ class Builder:
     def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
         return self.command_epr_measure(role=EPRRole.RECV, params=params)
 
-    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeR]:
-        return self.sdk_create_epr(tp=EPRType.R, params=params)  # type: ignore
+    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
+        return self.command_epr_rsp_create(params=params)
 
-    def sdk_create_epr(
-        self,
-        tp: EPRType,
-        params: EntRequestParams,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        if not isinstance(params.remote_node_id, int):
-            raise TypeError(
-                f"remote_node_id should be an int, not of type {type(params.remote_node_id)}"
-            )
-
-        return self._handle_request(role=EPRRole.CREATE, tp=tp, params=params)
-
-    def sdk_recv_epr(
-        self,
-        tp: EPRType,
-        params: EntRequestParams,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        return self._handle_request(role=EPRRole.RECV, tp=tp, params=params)
+    def sdk_recv_epr_rsp(self, params: EntRequestParams) -> List[Qubit]:
+        return self.command_epr_rsp_recv(params=params)
