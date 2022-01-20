@@ -159,13 +159,74 @@ class EPRSocket(abc.ABC):
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
     ) -> List[Qubit]:
-        return self.create(  # type: ignore
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=EPRType.K,
-            time_unit=time_unit,
-            max_time=max_time,
+        """Ask the network stack to generate EPR pairs with the remote node and keep
+        them in memory.
+
+        A `create_keep` operation must always be matched by a `recv_keep` operation on
+        the remote node.
+
+        If `sequential` is False (default), this operation returns a list of Qubit
+        objects representing the local qubits that are each one half of the generated
+        pairs. These qubits can then be manipulated locally just like locally
+        initialized qubits, by e.g. applying gates or measuring them.
+        Each qubit also contains information about the entanglement generation that
+        lead to its creation, and can be accessed by its `entanglement_info` property.
+
+        A typical example for just generating one pair with another node would be:
+
+        .. code-block::
+
+            q = epr_socket.create_keep()[0]
+            # `q` can now be used as a normal qubit
+
+        If `sequential` is False (default), the all requested EPR pairs are generated
+        at once, before returning the results (qubits or entanglement info objects).
+
+        If `sequential` is True, a callback function (`post_routine`) should be
+        specified. After generating one EPR pair, this callback will be called, before
+        generating the next pair. This method can e.g. be used to generate many EPR
+        pairs (more than the number of physical qubits available), by measuring (and
+        freeing up) each qubit before the next pair is generated.
+
+        For example:
+
+        .. code-block::
+
+            outcomes = alice.new_array(num)
+
+            def post_create(conn, q, pair):
+                q.H()
+                outcome = outcomes.get_future_index(pair)
+                q.measure(outcome)
+            epr_socket.create_keep(number=num, post_routine=post_create, sequential=True)
+
+
+        :param number: number of EPR pairs to generate, defaults to 1
+        :param post_routine: callback function for each genated pair. Only used if
+            `sequential` is True.
+            The callback should take three arguments `(conn, q, pair)` where
+            * `conn` is the connection (e.g. `self`)
+            * `q` is the entangled qubit (of type `FutureQubit`)
+            * `pair` is a register holding which pair is handled (0, 1, ...)
+        :param sequential: whether to use callbacks after each pair, defaults to False
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
+        :return: list of qubits created
+        """
+
+        return self.conn._builder.sdk_create_epr_keep(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
+            ),
         )
 
     def create_measure(
@@ -345,6 +406,21 @@ class EPRSocket(abc.ABC):
         :return: For K-type requests: list of qubits created. For M-type requests:
             list of entanglement info objects per created pair.
         """
+
+        self._logger.warning(
+            "EPRSocket.create() is deprecated. Use one of "
+            "create_keep, create_measure, or create_rsp instead."
+        )
+
+        if tp == EPRType.K:
+            print("using new create_keep function")
+            return self.create_keep(
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
+            )
 
         # TODO: don't hard-code the assumption that rotation values are in multiples
         #       of pi/16
