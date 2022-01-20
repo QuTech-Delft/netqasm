@@ -639,7 +639,6 @@ class EPRSocket(abc.ABC):
                 pair,
             ) = self.conn._builder._pre_epr_context(
                 role=EPRRole.CREATE,
-                tp=EPRType.K,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
                     epr_socket_id=self._epr_socket_id,
@@ -813,7 +812,6 @@ class EPRSocket(abc.ABC):
                 pair,
             ) = self.conn._builder._pre_epr_context(
                 role=EPRRole.RECV,
-                tp=EPRType.K,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
                     epr_socket_id=self._epr_socket_id,

@@ -534,15 +534,8 @@ class Builder:
     def _pre_epr_context(
         self,
         role: EPRRole,
-        tp: EPRType,
         params: EntRequestParams,
-    ) -> Tuple[
-        List[T_Cmd],
-        operand.Register,
-        Array,
-        Union[List[Qubit], T_LinkLayerOkList, FutureQubit],
-        operand.Register,
-    ]:
+    ) -> Tuple[List[T_Cmd], operand.Register, Array, FutureQubit, operand.Register]:
         # NOTE since this is in a context there will be a post_routine
         # TODO Fix weird handling of post_routine parameter here
         def dummy():
@@ -552,70 +545,44 @@ class Builder:
             number=params.number,
             post_routine=dummy,  # type: ignore
             sequential=params.sequential,
-            tp=tp,
         )
-
-        # NetQASM array for entanglement request parameters.
-        # create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
 
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._alloc_ent_results_array(number=params.number, tp=tp)
-
-        # K-type requests need to specify an array with qubit IDs for the generated
-        # qubits.
-        qubit_ids_array: Optional[Array]
-
-        # SDK handles to result values. For K-type requests, these are Qubit objects.
-        # For M-type requests, these are T_LinkLayerOkTypeM objects.
-        result_futures: Union[List[Qubit], T_LinkLayerOkList]
-
-        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
-            result_futures = self._get_qubit_futures(
-                params.number, params.sequential, ent_results_array
-            )
-            assert all(isinstance(q, Qubit) for q in result_futures)
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]
-            qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
-        elif tp == EPRType.M or (tp == EPRType.R and role == EPRRole.CREATE):
-            result_futures = self._get_meas_dir_futures_array(
-                params.number, ent_results_array
-            )
-            qubit_ids_array = None
-
-        output: Union[List[Qubit], T_LinkLayerOkList, FutureQubit] = result_futures
-
-        if tp == EPRType.K:
-            virtual_qubit_ids = [q.qubit_id for q in result_futures]  # type: ignore
-        else:
-            raise ValueError(
-                "EPR generation as a context is only allowed for K type requests"
-            )
-
-        self._build_cmds_epr(
-            qubit_ids_array=qubit_ids_array,
-            ent_results_array=ent_results_array,
-            wait_all=False,
-            tp=tp,
-            params=params,
-            role=role,
+        ent_results_array = self._alloc_ent_results_array(
+            number=params.number, tp=EPRType.K
         )
-        if qubit_ids_array is None:
-            raise RuntimeError("qubit_ids_array is None")
+
+        qubit_futures = self._get_qubit_futures(
+            params.number, params.sequential, ent_results_array
+        )
+        assert all(isinstance(q, Qubit) for q in qubit_futures)
+
+        # NetQASM array with IDs for the generated qubits.
+        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
+        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
+
+        # Construct and add the NetQASM instructions
+        if role == EPRRole.CREATE:
+            # NetQASM array for entanglement request parameters.
+            create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
+
+            self._build_cmds_epr_create_keep(
+                create_args_array, qubit_ids_array, ent_results_array, False, params
+            )
+        else:
+            self._build_cmds_epr_recv_keep(
+                qubit_ids_array, ent_results_array, False, params
+            )
+
         pre_commands = self._pop_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         pair = loop_register
-        if tp == EPRType.K:
-            q_id = qubit_ids_array.get_future_index(pair)
-            q = FutureQubit(conn=self._connection, future_id=q_id)
-            output = q
-        # elif tp == EPRType.M:
-        #     slc = slice(pair * OK_FIELDS, (pair + 1) * OK_FIELDS)
-        #     ent_info_slice = ent_results_array.get_future_slice(slc)
-        #     output = ent_info_slice
-        else:
-            raise NotImplementedError
-        return pre_commands, loop_register, ent_results_array, output, pair
+
+        q_id = qubit_ids_array.get_future_index(pair)
+        q = FutureQubit(conn=self._connection, future_id=q_id)
+
+        return pre_commands, loop_register, ent_results_array, q, pair
 
     def _post_epr_context(
         self,
@@ -647,9 +614,7 @@ class Builder:
         number: int,
         post_routine: Optional[T_PostRoutine],
         sequential: bool,
-        tp: EPRType,
     ) -> None:
-        assert isinstance(tp, EPRType), "tp is not an EPRType"
         if sequential and number > 1:
             if post_routine is None:
                 raise ValueError(
@@ -657,7 +622,7 @@ class Builder:
                     "a post_routine needs to be specified which consumes the "
                     "generated pair as they come in."
                 )
-        if tp == EPRType.K and not sequential and number > self._max_qubits:
+        if not sequential and number > self._max_qubits:
             raise ValueError(
                 f"When not using sequential mode for K type, the number of pairs {number} cannot be "
                 f"greater than the maximum number of qubits specified ({self._max_qubits})."
@@ -1602,13 +1567,13 @@ class Builder:
         virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
         qubit_ids_array: Array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
 
-        # NetQASM array for entanglement request parameters.
-        create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
-
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
         if role == EPRRole.CREATE:
+            # NetQASM array for entanglement request parameters.
+            create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
+
             self._build_cmds_epr_create_keep(
                 create_args_array, qubit_ids_array, ent_results_array, wait_all, params
             )
@@ -1644,9 +1609,6 @@ class Builder:
             number=params.number, tp=EPRType.M
         )
 
-        # NetQASM array for entanglement request parameters.
-        create_args_array: Array = self._alloc_epr_create_args(EPRType.M, params)
-
         # SDK handles to result values (LinkLayerOkTypeM objects).
         result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
             params.number, ent_results_array
@@ -1656,6 +1618,9 @@ class Builder:
 
         # Construct and add the NetQASM instructions
         if role == EPRRole.CREATE:
+            # NetQASM array for entanglement request parameters.
+            create_args_array: Array = self._alloc_epr_create_args(EPRType.M, params)
+
             self._build_cmds_epr_create_measure(
                 create_args_array, ent_results_array, wait_all, params
             )
