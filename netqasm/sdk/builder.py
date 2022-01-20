@@ -374,7 +374,7 @@ class Builder:
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
-    def _build_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
+    def _alloc_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
         create_kwargs: Dict[str, Any] = {}
         create_kwargs["type"] = tp
         create_kwargs["number"] = params.number
@@ -555,9 +555,12 @@ class Builder:
             tp=tp,
         )
 
+        # NetQASM array for entanglement request parameters.
+        # create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
+
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(number=params.number, tp=tp)
+        ent_results_array = self._alloc_ent_results_array(number=params.number, tp=tp)
 
         # K-type requests need to specify an array with qubit IDs for the generated
         # qubits.
@@ -568,7 +571,7 @@ class Builder:
         result_futures: Union[List[Qubit], T_LinkLayerOkList]
 
         if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
-            result_futures = self._get_qubit_futures_array(
+            result_futures = self._get_qubit_futures(
                 params.number, params.sequential, ent_results_array
             )
             assert all(isinstance(q, Qubit) for q in result_futures)
@@ -681,7 +684,7 @@ class Builder:
                 f"({self._max_qubits})."
             )
 
-    def _create_ent_results_array(self, number: int, tp: EPRType) -> Array:
+    def _alloc_ent_results_array(self, number: int, tp: EPRType) -> Array:
         if tp == EPRType.K:
             ent_results_array = self.alloc_array(length=OK_FIELDS_K * number)
         elif tp == EPRType.M:
@@ -700,7 +703,7 @@ class Builder:
             num_pairs=number, ent_results_array=ent_results_array
         )
 
-    def _get_qubit_futures_array(
+    def _get_qubit_futures(
         self, number: int, sequential: bool, ent_results_array: Array
     ) -> List[Qubit]:
         ent_info_slices = self._create_ent_info_k_slices(
@@ -1338,7 +1341,7 @@ class Builder:
             qubit_ids_array_address = operand.Register(RegisterName.C, 0)
 
         if role == EPRRole.CREATE:
-            create_args_array = self._build_epr_create_args(tp, params)
+            create_args_array = self._alloc_epr_create_args(tp, params)
             epr_cmd_operands = [
                 qubit_ids_array_address,
                 create_args_array.address,
@@ -1373,7 +1376,41 @@ class Builder:
         commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
         self.add_pending_commands(commands)
 
-    def _build_cmds_epr_keep(
+    def _build_cmds_epr_create_keep(
+        self,
+        create_args_array: Array,
+        qubit_ids_array: Array,
+        ent_results_array: Array,
+        wait_all: bool,
+        params: EntRequestParams,
+        **kwargs,
+    ) -> None:
+        epr_cmd_operands = [
+            qubit_ids_array.address,
+            create_args_array.address,
+            ent_results_array.address,
+        ]
+
+        # epr command
+        epr_cmd = ICmd(
+            instruction=GenericInstr.CREATE_EPR,
+            args=[params.remote_node_id, params.epr_socket_id],
+            operands=epr_cmd_operands,  # type: ignore
+        )
+        self.add_pending_command(epr_cmd)
+
+        # wait
+        arr_slice = ArraySlice(
+            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+        )
+        if wait_all:
+            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
+        else:
+            wait_cmds = []
+
+        self.add_pending_commands(wait_cmds)  # type: ignore
+
+    def sdk_epr_keep(
         self,
         role: EPRRole,
         params: EntRequestParams,
@@ -1382,22 +1419,24 @@ class Builder:
 
         # Setup NetQASM arrays and SDK handles.
 
-        # Entanglement results array.
+        # NetQASM array for entanglement request parameters.
+        # create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
+
+        # NetQASM array for entanglement results.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
+        ent_results_array: Array = self._alloc_ent_results_array(
             number=params.number, tp=EPRType.K
         )
 
-        # K-type requests need to specify an array with IDs for the generated qubits.
-        qubit_ids_array: Optional[Array]
-
         # SDK handles to result values (Qubit objects).
-        qubit_futures: List[Qubit] = self._get_qubit_futures_array(
+        qubit_futures: List[Qubit] = self._get_qubit_futures(
             params.number, params.sequential, ent_results_array
         )
         assert all(isinstance(q, Qubit) for q in qubit_futures)
+
+        # NetQASM array with IDs for the generated qubits.
         virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
-        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
+        qubit_ids_array: Array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
 
         wait_all = params.post_routine is None
 
@@ -1423,7 +1462,7 @@ class Builder:
 
         return qubit_futures
 
-    def _build_cmds_epr_measure(
+    def sdk_epr_measure(
         self,
         role: EPRRole,
         params: EntRequestParams,
@@ -1432,9 +1471,12 @@ class Builder:
 
         # Setup NetQASM arrays and SDK handles.
 
+        # NetQASM array for entanglement request parameters.
+        # create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
+
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
+        ent_results_array = self._alloc_ent_results_array(
             number=params.number, tp=EPRType.M
         )
 
@@ -1460,7 +1502,7 @@ class Builder:
 
         return result_futures
 
-    def _build_cmds_epr_rsp_create(
+    def sdk_epr_rsp_create(
         self,
         params: EntRequestParams,
     ) -> List[LinkLayerOKTypeM]:
@@ -1468,9 +1510,12 @@ class Builder:
 
         # Setup NetQASM arrays and SDK handles.
 
+        # NetQASM array for entanglement request parameters.
+        # create_args_array: Array = self._alloc_epr_create_args(EPRType.R, params)
+
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
+        ent_results_array = self._alloc_ent_results_array(
             number=params.number, tp=EPRType.R
         )
 
@@ -1497,7 +1542,7 @@ class Builder:
 
         return result_futures
 
-    def _build_cmds_epr_rsp_recv(
+    def sdk_epr_rsp_recv(
         self,
         params: EntRequestParams,
     ) -> List[Qubit]:
@@ -1505,16 +1550,19 @@ class Builder:
 
         # Setup NetQASM arrays and SDK handles.
 
+        # NetQASM array for entanglement request parameters.
+        # create_args_array: Array = self._alloc_epr_create_args(EPRType.R, params)
+
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
-        ent_results_array = self._create_ent_results_array(
+        ent_results_array = self._alloc_ent_results_array(
             number=params.number, tp=EPRType.K  # Keep since we are receiving RSP
         )
 
         qubit_ids_array: Optional[Array] = None
 
         # SDK handles to result values (Qubit objects).
-        qubit_futures = self._get_qubit_futures_array(
+        qubit_futures = self._get_qubit_futures(
             params.number, params.sequential, ent_results_array
         )
         assert all(isinstance(q, Qubit) for q in qubit_futures)
@@ -1538,21 +1586,15 @@ class Builder:
         return qubit_futures
 
     def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
-        return self._build_cmds_epr_keep(role=EPRRole.CREATE, params=params)
+        return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
-        return self._build_cmds_epr_keep(role=EPRRole.RECV, params=params)
+        return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
     ) -> List[LinkLayerOKTypeM]:
-        return self._build_cmds_epr_measure(role=EPRRole.CREATE, params=params)
+        return self.sdk_epr_measure(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
-        return self._build_cmds_epr_measure(role=EPRRole.RECV, params=params)
-
-    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
-        return self._build_cmds_epr_rsp_create(params=params)
-
-    def sdk_recv_epr_rsp(self, params: EntRequestParams) -> List[Qubit]:
-        return self._build_cmds_epr_rsp_recv(params=params)
+        return self.sdk_epr_measure(role=EPRRole.RECV, params=params)

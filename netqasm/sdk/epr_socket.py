@@ -426,7 +426,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
 
-        return self.conn._builder.sdk_create_epr_rsp(
+        return self.conn._builder.sdk_epr_rsp_create(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -742,7 +742,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn._builder.sdk_recv_epr_rsp(
+        return self.conn._builder.sdk_epr_rsp_recv(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
