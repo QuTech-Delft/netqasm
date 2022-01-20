@@ -232,8 +232,6 @@ class EPRSocket(abc.ABC):
     def create_measure(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
-        sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
         basis_local: EPRMeasBasis = None,
@@ -243,19 +241,118 @@ class EPRSocket(abc.ABC):
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
     ) -> List[LinkLayerOKTypeM]:
-        return self.create(  # type: ignore
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=EPRType.M,
-            time_unit=time_unit,
-            max_time=max_time,
-            basis_local=basis_local,
-            basis_remote=basis_remote,
-            rotations_local=rotations_local,
-            rotations_remote=rotations_remote,
-            random_basis_local=random_basis_local,
-            random_basis_remote=random_basis_remote,
+        """Ask the network stack to generate EPR pairs with the remote node and
+        measure them immediately (on both nodes).
+
+        A `create_measure` operation must always be matched by a `recv_measure`
+        operation on the remote node.
+
+        This operation returns a list of Linklayer response objects. These objects
+        contain information about the entanglement generation and includes the
+        measurement outcome and basis used. Note that all values are `Future` objects.
+        This means that the current subroutine must be flushed before the values
+        become defined.
+
+        An example for generating 10 pairs with another node that are immediately
+        measured:
+
+        .. code-block::
+
+            # list of Futures that become defined when subroutine is flushed
+            outcomes = []
+            with NetQASMConnection("alice", epr_sockets=[epr_socket]):
+                ent_infos = epr_socket.create(number=10, tp=EPRType.M)
+                for ent_info in ent_infos:
+                    outcomes.append(ent_info.measurement_outcome)
+
+        The basis to measure in can also be specified. There are 3 ways to specify a
+        basis:
+
+        * using one of the `EPRMeasBasis` variants
+        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
+          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+          means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
+          applied to the qubit.
+        * using one of the `RandomBasis` variants, in which case one of the bases of
+          that variant is chosen at random just before measuring
+
+        NOTE: the node that initiates the entanglement generation, i.e. the one that
+        calls `create` on its EPR socket, also controls the measurement bases of the
+        receiving node (by setting e.g. `rotations_remote`). The receiving node cannot
+        change this.
+
+        :param number: number of EPR pairs to generate, defaults to 1
+        :param tp: type of entanglement generation, defaults to EPRType.K. Note that
+            corresponding `recv` of the remote node's EPR socket must specify the
+            same type.
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
+        :param basis_local: basis to measure in on this node for M-type requests
+        :param basis_remote: basis to measure in on the remote node for M-type requests
+        :param rotations_local: rotations to apply before measuring on this node
+            (for M-type requests)
+        :param rotations_remote: rotations to apply before measuring on remote node
+            (for M-type requests)
+        :param random_basis_local: random bases to choose from when measuring on this
+            node (for M-type requests)
+        :param random_basis_remote: random bases to choose from when measuring on
+            the remote node (for M-type requests)
+        :return: list of entanglement info objects per created pair.
+        """
+
+        # TODO: don't hard-code the assumption that rotation values are in multiples
+        #       of pi/16
+        if basis_local == EPRMeasBasis.X:
+            rotations_local = (0, 24, 0)
+        elif basis_local == EPRMeasBasis.Y:
+            rotations_local = (8, 0, 0)
+        elif basis_local == EPRMeasBasis.Z:
+            rotations_local = (0, 0, 0)
+        elif basis_local == EPRMeasBasis.MX:
+            rotations_local = (0, 8, 0)
+        elif basis_local == EPRMeasBasis.MY:
+            rotations_local = (24, 0, 0)
+        elif basis_local == EPRMeasBasis.MZ:
+            rotations_local = (16, 0, 0)
+        elif basis_local is None:
+            pass  # use rotations_local argument value
+        else:
+            raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
+
+        if basis_remote == EPRMeasBasis.X:
+            rotations_remote = (0, 24, 0)
+        elif basis_remote == EPRMeasBasis.Y:
+            rotations_remote = (8, 0, 0)
+        elif basis_remote == EPRMeasBasis.Z:
+            rotations_remote = (0, 0, 0)
+        elif basis_remote == EPRMeasBasis.MX:
+            rotations_remote = (0, 8, 0)
+        elif basis_remote == EPRMeasBasis.MY:
+            rotations_remote = (24, 0, 0)
+        elif basis_remote == EPRMeasBasis.MZ:
+            rotations_remote = (16, 0, 0)
+        elif basis_remote is None:
+            pass  # use rotations_remote argument value
+        else:
+            raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
+
+        return self.conn._builder.sdk_create_epr_measure(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+                time_unit=time_unit,
+                max_time=max_time,
+                random_basis_local=random_basis_local,
+                random_basis_remote=random_basis_remote,
+                rotations_local=rotations_local,
+                rotations_remote=rotations_remote,
+            ),
         )
 
     def create_rsp(
@@ -420,6 +517,19 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
+            )
+        elif tp == EPRType.M:
+            print("using new create_measure function")
+            return self.create_measure(
+                number=number,
+                time_unit=time_unit,
+                max_time=max_time,
+                basis_local=basis_local,
+                basis_remote=basis_remote,
+                rotations_local=rotations_local,
+                rotations_remote=rotations_remote,
+                random_basis_local=random_basis_local,
+                random_basis_remote=random_basis_remote,
             )
 
         # TODO: don't hard-code the assumption that rotation values are in multiples

@@ -706,6 +706,53 @@ class Builder:
 
         return qubit_futures
 
+    def command_epr_measure(
+        self,
+        role: EPRRole,
+        params: EntRequestParams,
+    ) -> List[LinkLayerOKTypeM]:
+        self._check_epr_args(tp=EPRType.K, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.K
+        )
+
+        # M-type requests do not need an array for IDs for the generated qubits.
+        qubit_ids_array: Optional[Array] = None
+
+        # SDK handles to result values (LinkLayerOkTypeM objects).
+        result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
+            params.number, ent_results_array
+        )
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.M,
+            params=params,
+            role=role,
+        )
+
+        # Construct and add NetQASM instructions for post routine
+        if params.post_routine:
+            self._add_post_commands(
+                qubit_ids_array,
+                params.number,
+                ent_results_array,
+                EPRType.M,
+                params.post_routine,
+            )
+
+        return result_futures
+
     def _pre_epr_context(
         self,
         role: EPRRole,
@@ -870,7 +917,7 @@ class Builder:
 
     def _get_meas_dir_futures_array(
         self, number: int, ent_results_array: Array
-    ) -> T_LinkLayerOkList:
+    ) -> List[LinkLayerOKTypeM]:
         return self._create_ent_info_m_slices(
             num_pairs=number, ent_results_array=ent_results_array
         )
@@ -1500,7 +1547,10 @@ class Builder:
     def sdk_create_epr_measure(
         self, params: EntRequestParams
     ) -> List[LinkLayerOKTypeM]:
-        return self.sdk_create_epr(tp=EPRType.M, params=params)  # type: ignore
+        return self.command_epr_measure(role=EPRRole.CREATE, params=params)
+
+    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
+        return self.command_epr_measure(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeR]:
         return self.sdk_create_epr(tp=EPRType.R, params=params)  # type: ignore
