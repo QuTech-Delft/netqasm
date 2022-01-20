@@ -282,9 +282,6 @@ class EPRSocket(abc.ABC):
         change this.
 
         :param number: number of EPR pairs to generate, defaults to 1
-        :param tp: type of entanglement generation, defaults to EPRType.K. Note that
-            corresponding `recv` of the remote node's EPR socket must specify the
-            same type.
         :param time_unit: which time unit to use for the `max_time` parameter
         :param max_time: maximum number of time units (see `time_unit`) the Host is
             willing to wait for entanglement generation of a single pair. If generation
@@ -650,24 +647,63 @@ class EPRSocket(abc.ABC):
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
     ) -> List[Qubit]:
-        return self.recv(  # type: ignore
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=EPRType.K,
+        """Ask the network stack to wait for the remote node to generate EPR pairs,
+        which are kept in memory.
+
+        A `recv_keep` operation must always be matched by a `create_keep` operation on
+        the remote node. The number of generated pairs must also match.
+
+        For more information see the documentation of `create_keep`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :param post_routine: callback function used when `sequential` is True
+        :param sequential: whether to call the callback after each pair generation,
+            defaults to False
+        :return: list of qubits created
+        """
+
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        return self.conn._builder.sdk_recv_epr_keep(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+            ),
         )
 
     def recv_measure(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
-        sequential: bool = False,
     ) -> List[LinkLayerOKTypeM]:
-        return self.recv(  # type: ignore
-            number=number,
-            post_routine=post_routine,
-            sequential=sequential,
-            tp=EPRType.M,
+        """Ask the network stack to wait for the remote node to generate EPR pairs,
+        which are immediately measured (on both nodes).
+
+        A `recv_measure` operation must always be matched by a `create_measure`
+        operation on the remote node. The number and type of generation must also match.
+
+        For more information see the documentation of `create_measure`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :param post_routine: callback function used when `sequential` is True
+        :param sequential: whether to call the callback after each pair generation,
+            defaults to False
+        :return: list of entanglement info objects per created pair.
+        """
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        return self.conn._builder.sdk_recv_epr_measure(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+            ),
         )
 
     def recv_rsp(
@@ -710,6 +746,21 @@ class EPRSocket(abc.ABC):
         :return: For K-type requests: list of qubits created. For M-type requests:
             list of entanglement info objects per created pair.
         """
+        self._logger.warning(
+            "EPRSocket.recv() is deprecated. Use one of "
+            "recv_keep, recv_measure, or recv_rsp instead."
+        )
+
+        if tp == EPRType.K:
+            print("using new recv_keep function")
+            return self.recv_keep(
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+            )
+        elif tp == EPRType.M:
+            print("using new recv_measure function")
+            return self.recv_measure(number=number)
 
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
