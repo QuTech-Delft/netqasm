@@ -794,9 +794,7 @@ class EPRSocket(abc.ABC):
             return self.recv_measure(number=number)
         elif tp == EPRType.R:
             return self.recv_rsp(number=number)
-
-        if self.conn is None:
-            raise RuntimeError("EPRSocket does not have an open connection")
+        assert False
 
     @contextmanager
     def recv_context(

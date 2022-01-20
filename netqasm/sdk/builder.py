@@ -368,7 +368,7 @@ class Builder:
                 if q.qubit_id == virtual_address:
                     # Virtual address is already used. Move it to the new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
-                    self.command_move_qubit(
+                    self._build_cmds_move_qubit(
                         source=virtual_address, target=new_virtual_address
                     )
                     # From now on, the original qubit should be referred to with the new virtual address.
@@ -589,7 +589,7 @@ class Builder:
                 "EPR generation as a context is only allowed for K type requests"
             )
 
-        self.command_epr(
+        self._build_cmds_epr(
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=False,
@@ -1198,7 +1198,7 @@ class Builder:
         if angle is not None:
             nds = get_angle_spec_from_float(angle=angle)
             for n, d in nds:
-                self.command_single_qubit_rotation(
+                self._build_cmds_single_qubit_rotation(
                     instruction=instruction,
                     virtual_qubit_id=virtual_qubit_id,
                     n=n,
@@ -1244,9 +1244,9 @@ class Builder:
     def _build_cmds_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
         assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
-        self.command_new_qubit(target)
-        self.command_two_qubit(GenericInstr.MOV, source, target)
-        self.command_qfree(source)
+        self._build_cmds_new_qubit(target)
+        self._build_cmds_two_qubit(GenericInstr.MOV, source, target)
+        self._build_cmds_qfree(source)
 
     def _build_cmds_measure(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
@@ -1316,6 +1316,63 @@ class Builder:
         commands = set_commands + [qfree_command]
         self.add_pending_commands(commands)
 
+    def _build_cmds_epr(
+        self,
+        qubit_ids_array: Optional[Array],
+        ent_results_array: Array,
+        wait_all: bool,
+        tp: EPRType,
+        params: EntRequestParams,
+        role: EPRRole = EPRRole.CREATE,
+        **kwargs,
+    ) -> None:
+        qubit_ids_array_address: Union[int, operand.Register]
+        epr_cmd_operands: List[T_OperandUnion]
+
+        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
+            assert qubit_ids_array is not None
+            qubit_ids_array_address = qubit_ids_array.address
+        else:
+            # NOTE since this argument won't be used just set it to some
+            # constant register for now
+            qubit_ids_array_address = operand.Register(RegisterName.C, 0)
+
+        if role == EPRRole.CREATE:
+            create_args_array = self._build_epr_create_args(tp, params)
+            epr_cmd_operands = [
+                qubit_ids_array_address,
+                create_args_array.address,
+                ent_results_array.address,
+            ]
+        else:
+            epr_cmd_operands = [
+                qubit_ids_array_address,
+                ent_results_array.address,
+            ]
+
+        # epr command
+        instr = {
+            EPRRole.CREATE: GenericInstr.CREATE_EPR,
+            EPRRole.RECV: GenericInstr.RECV_EPR,
+        }[role]
+        epr_cmd = ICmd(
+            instruction=instr,
+            args=[params.remote_node_id, params.epr_socket_id],
+            operands=epr_cmd_operands,
+        )
+
+        # wait
+        arr_slice = ArraySlice(
+            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+        )
+        if wait_all:
+            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
+        else:
+            wait_cmds = []
+
+        commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
+        self.add_pending_commands(commands)
+
     def _build_cmds_epr_keep(
         self,
         role: EPRRole,
@@ -1345,7 +1402,7 @@ class Builder:
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
-        self.command_epr(
+        self._build_cmds_epr(
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
@@ -1392,7 +1449,7 @@ class Builder:
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
-        self.command_epr(
+        self._build_cmds_epr(
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
@@ -1429,7 +1486,7 @@ class Builder:
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
-        self.command_epr(
+        self._build_cmds_epr(
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
@@ -1469,7 +1526,7 @@ class Builder:
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
-        self.command_epr(
+        self._build_cmds_epr(
             qubit_ids_array=qubit_ids_array,
             ent_results_array=ent_results_array,
             wait_all=wait_all,
@@ -1481,21 +1538,21 @@ class Builder:
         return qubit_futures
 
     def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
-        return self.command_epr_keep(role=EPRRole.CREATE, params=params)
+        return self._build_cmds_epr_keep(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
-        return self.command_epr_keep(role=EPRRole.RECV, params=params)
+        return self._build_cmds_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
     ) -> List[LinkLayerOKTypeM]:
-        return self.command_epr_measure(role=EPRRole.CREATE, params=params)
+        return self._build_cmds_epr_measure(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
-        return self.command_epr_measure(role=EPRRole.RECV, params=params)
+        return self._build_cmds_epr_measure(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
-        return self.command_epr_rsp_create(params=params)
+        return self._build_cmds_epr_rsp_create(params=params)
 
     def sdk_recv_epr_rsp(self, params: EntRequestParams) -> List[Qubit]:
-        return self.command_epr_rsp_recv(params=params)
+        return self._build_cmds_epr_rsp_recv(params=params)
