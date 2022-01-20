@@ -1,10 +1,9 @@
 import math
 from enum import Enum, auto
-from operator import ne
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
-from netqasm.logging.glob import get_netqasm_logger, set_log_level
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.qubit import Qubit
@@ -20,7 +19,9 @@ class PatternWildcard(Enum):
 
 class PatternMatcher:
     def __init__(
-        self, commands: List[ICmd], pattern: List[Union[GenericInstr, PatternWildcard]]
+        self,
+        commands: List[Union[ICmd, BranchLabel]],
+        pattern: List[Union[GenericInstr, PatternWildcard]],
     ) -> None:
         self._commands = commands
         self._pattern = pattern

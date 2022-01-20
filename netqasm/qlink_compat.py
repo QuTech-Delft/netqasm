@@ -13,6 +13,11 @@ class EPRType(Enum):
     R = auto()
 
 
+class EPRRole(Enum):
+    CREATE = 0
+    RECV = auto()
+
+
 # Supported request types (create and keep, measure directly, and remote state preparation)
 class RequestType(Enum):
     K = EPRType.K.value

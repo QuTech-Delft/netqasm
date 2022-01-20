@@ -27,7 +27,7 @@ from typing import (
 from netqasm import NETQASM_VERSION
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
-from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
+from netqasm.lang.encoding import RegisterName
 from netqasm.lang.ir import (
     Address,
     ArrayEntry,
@@ -51,6 +51,7 @@ from netqasm.lang.parsing.text import (
 )
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import (
+    EPRRole,
     EPRType,
     LinkLayerCreate,
     LinkLayerOKTypeK,
@@ -62,6 +63,7 @@ from netqasm.qlink_compat import (
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
+from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.typedefs import T_Cmd
@@ -93,125 +95,6 @@ class EntRequestParams:
     random_basis_remote: Optional[RandomBasis] = None
     rotations_local: Tuple[int, int, int] = (0, 0, 0)
     rotations_remote: Tuple[int, int, int] = (0, 0, 0)
-
-
-class MemoryManager:
-    def __init__(self) -> None:
-        # All qubits active for this connection
-        self._active_qubits: List[Qubit] = []
-
-        # Registers for looping etc.
-        # These are registers that are for example currently hold data and should
-        # not be used for something else.
-        # For example a register used for looping.
-        self._active_registers: Set[operand.Register] = set()
-
-        self._used_meas_registers: Dict[operand.Register, bool] = {
-            operand.Register(RegisterName.M, i): False for i in range(16)
-        }
-
-        # Registers to return
-        self._registers_to_return: List[operand.Register] = []
-
-        self._used_array_addresses: List[int] = []
-
-        # Arrays to return
-        self._arrays_to_return: List[Array] = []
-
-    def inactivate_qubits(self) -> None:
-        while len(self._active_qubits) > 0:
-            q = self._active_qubits.pop()
-            q.active = False
-
-    def get_active_qubits(self) -> List[Qubit]:
-        return self._active_qubits
-
-    def is_qubit_active(self, q: Qubit) -> bool:
-        return q in self._active_qubits
-
-    def activate_qubit(self, q: Qubit) -> None:
-        self._active_qubits.append(q)
-
-    def deactivate_qubit(self, q: Qubit) -> None:
-        self._active_qubits.remove(q)
-
-    def get_new_qubit_address(self) -> int:
-        qubit_addresses_in_use = [q.qubit_id for q in self._active_qubits]
-        for address in count(0):
-            if address not in qubit_addresses_in_use:
-                return address
-        raise RuntimeError("Could not get new qubit address")
-
-    def is_reg_active(self, reg: operand.Register) -> bool:
-        return reg in self._active_registers
-
-    def add_active_reg(self, reg: operand.Register) -> None:
-        if reg in self._active_registers:
-            raise ValueError(f"Register {reg} is already active")
-        self._active_registers.add(reg)
-
-    def remove_active_reg(self, reg: operand.Register) -> None:
-        self._active_registers.remove(reg)
-
-    def meas_reg_set_used(self, reg: operand.Register) -> None:
-        self._used_meas_registers[reg] = True
-
-    def meas_reg_set_unused(self, reg: operand.Register) -> None:
-        self._used_meas_registers[reg] = False
-
-    def get_new_meas_outcome_reg(self) -> operand.Register:
-        # Find the next unused M-register.
-        for reg, used in self._used_meas_registers.items():
-            if not used:
-                self._used_meas_registers[reg] = True
-                return reg
-        raise RuntimeError("Ran out of M-registers")
-
-    def reset_used_meas_registers(self) -> None:
-        self._used_meas_registers = {
-            operand.Register(RegisterName.M, i): False for i in range(16)
-        }
-
-    def add_reg_to_return(self, reg: operand.Register) -> None:
-        self._registers_to_return.append(reg)
-
-    def get_registers_to_return(self) -> List[operand.Register]:
-        return self._registers_to_return
-
-    def reset_registers_to_return(self) -> None:
-        self._registers_to_return = []
-
-    def get_inactive_register(self, activate: bool = False) -> operand.Register:
-        for i in range(2 ** REG_INDEX_BITS):
-            register = parse_register(f"R{i}")
-            if not self.is_reg_active(register):
-                if activate:
-                    self.add_active_reg(register)
-                return register
-        raise RuntimeError("could not find an available loop register")
-
-    def get_new_array_address(self) -> int:
-        if len(self._used_array_addresses) > 0:
-            # last element is always the highest address
-            address = self._used_array_addresses[-1] + 1
-        else:
-            address = 0
-        self._used_array_addresses.append(address)
-        return address
-
-    def add_array_to_return(self, array: Array) -> None:
-        self._arrays_to_return.append(array)
-
-    def get_arrays_to_return(self) -> List[Array]:
-        return self._arrays_to_return
-
-    def reset_arrays_to_return(self) -> None:
-        self._arrays_to_return = []
-
-    def reset(self) -> None:
-        self.reset_arrays_to_return()
-        self.reset_registers_to_return()
-        self.reset_used_meas_registers()
 
 
 class Builder:
@@ -454,44 +337,6 @@ class Builder:
     def committed_subroutines(self) -> List[Subroutine]:
         return self._committed_subroutines
 
-    def command_single_qubit_rotation(
-        self,
-        instruction: GenericInstr,
-        virtual_qubit_id: int,
-        n: int = 0,
-        d: int = 0,
-        angle: Optional[float] = None,
-    ) -> None:
-        if angle is not None:
-            nds = get_angle_spec_from_float(angle=angle)
-            for n, d in nds:
-                self.command_single_qubit_rotation(
-                    instruction=instruction,
-                    virtual_qubit_id=virtual_qubit_id,
-                    n=n,
-                    d=d,
-                )
-            return
-        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
-            raise ValueError(f"{n} * pi / 2 ^ {d} is not a valid angle specification")
-        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
-        rot_command = ICmd(
-            instruction=instruction,
-            operands=[register, n, d],
-        )
-        commands: List[T_Cmd] = set_commands + [rot_command]
-        self.add_pending_commands(commands)
-
-    def command_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
-        register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        # Construct the qubit command
-        qubit_command = ICmd(
-            instruction=instr,
-            operands=[register],
-        )
-        commands: List[T_Cmd] = set_commands + [qubit_command]
-        self.add_pending_commands(commands)
-
     def _get_set_qubit_reg_commands(
         self, q_address: Union[Future, int], reg_index: int = 0
     ) -> Tuple[operand.Register, List[T_Cmd]]:
@@ -515,29 +360,6 @@ class Builder:
             )
         return register, set_reg_cmds
 
-    def command_two_qubit(
-        self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
-    ) -> None:
-        register1, set_commands1 = self._get_set_qubit_reg_commands(
-            control_qubit_id, reg_index=0
-        )
-        register2, set_commands2 = self._get_set_qubit_reg_commands(
-            target_qubit_id, reg_index=1
-        )
-        qubit_command = ICmd(
-            instruction=instr,
-            operands=[register1, register2],
-        )
-        commands = set_commands1 + set_commands2 + [qubit_command]
-        self.add_pending_commands(commands=commands)
-
-    def command_move_qubit(self, source: int, target: int) -> None:
-        # Moves a qubit from one position to another (assumes that target is free)
-        assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
-        self.command_new_qubit(target)
-        self.command_two_qubit(GenericInstr.MOV, source, target)
-        self.command_qfree(source)
-
     def _free_up_qubit(self, virtual_address: int) -> None:
         if self._compiler == NVSubroutineCompiler:
             for q in self._mem_mgr.get_active_qubits():
@@ -551,74 +373,6 @@ class Builder:
                     )
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
-
-    def command_measure(
-        self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
-    ) -> None:
-        if self._compiler == NVSubroutineCompiler:
-            # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
-            # So, if this qubit is already in use, we need to move it away first.
-            if not isinstance(qubit_id, Future):
-                if qubit_id != 0:
-                    self._free_up_qubit(virtual_address=0)
-        outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        meas_command = ICmd(
-            instruction=GenericInstr.MEAS,
-            operands=[qubit_reg, outcome_reg],
-        )
-        if not inplace:
-            free_commands = [
-                ICmd(
-                    instruction=GenericInstr.QFREE,
-                    operands=[qubit_reg],
-                )
-            ]
-        else:
-            free_commands = []
-        if future is not None:
-            if isinstance(future, Future):
-                outcome_commands = future._get_store_commands(outcome_reg)
-                self._mem_mgr.meas_reg_set_unused(outcome_reg)
-            elif isinstance(future, RegFuture):
-                future.reg = outcome_reg
-                self._mem_mgr.add_reg_to_return(outcome_reg)
-                outcome_commands = []
-            else:
-                outcome_commands = []
-        commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
-        self.add_pending_commands(commands)
-
-    def command_new_qubit(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qalloc_command = ICmd(
-            instruction=GenericInstr.QALLOC,
-            operands=[qubit_reg],
-        )
-        init_command = ICmd(
-            instruction=GenericInstr.INIT,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [qalloc_command, init_command]
-        self.add_pending_commands(commands)
-
-    def command_init_qubit(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        init_command = ICmd(
-            instruction=GenericInstr.INIT,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [init_command]
-        self.add_pending_commands(commands)
-
-    def command_qfree(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
-        qfree_command = ICmd(
-            instruction=GenericInstr.QFREE,
-            operands=[qubit_reg],
-        )
-        commands = set_commands + [qfree_command]
-        self.add_pending_commands(commands)
 
     def _build_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
         create_kwargs: Dict[str, Any] = {}
@@ -683,14 +437,24 @@ class Builder:
 
     def command_epr(
         self,
-        instruction: GenericInstr,
+        instruction: Optional[GenericInstr],
         qubit_ids_array: Optional[Array],
         ent_results_array: Array,
         wait_all: bool,
         tp: EPRType,
         params: EntRequestParams,
+        role: EPRRole = EPRRole.CREATE,
         **kwargs,
     ) -> None:
+        # TODO: remove instruction parameter and this compatibilty code
+        if instruction is None:
+            instruction = (
+                GenericInstr.CREATE_EPR
+                if role == EPRRole.CREATE
+                else GenericInstr.RECV_EPR
+            )
+        assert instruction in [GenericInstr.CREATE_EPR, GenericInstr.RECV_EPR]
+
         qubit_ids_array_address: Union[int, operand.Register]
         epr_cmd_operands: List[T_OperandUnion]
 
@@ -906,6 +670,57 @@ class Builder:
 
         return result_futures
 
+    def command_epr_keep(
+        self,
+        role: EPRRole,
+        params: EntRequestParams,
+    ) -> List[Qubit]:
+        self._check_epr_args(tp=EPRType.K, params=params)
+
+        # Setup NetQASM arrays and SDK handles.
+
+        # Entanglement results array.
+        # This will be filled in by the quantum node controller.
+        ent_results_array = self._create_ent_results_array(
+            number=params.number, tp=EPRType.K
+        )
+
+        # K-type requests need to specify an array with IDs for the generated qubits.
+        qubit_ids_array: Optional[Array]
+
+        # SDK handles to result values (Qubit objects).
+        qubit_futures: List[Qubit] = self._get_qubit_futures_array(
+            params.number, params.sequential, ent_results_array
+        )
+        assert all(isinstance(q, Qubit) for q in qubit_futures)
+        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
+        qubit_ids_array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
+
+        wait_all = params.post_routine is None
+
+        # Construct and add the NetQASM instructions
+        self.command_epr(
+            qubit_ids_array=qubit_ids_array,
+            instruction=None,
+            ent_results_array=ent_results_array,
+            wait_all=wait_all,
+            tp=EPRType.K,
+            params=params,
+            role=role,
+        )
+
+        # Construct and add NetQASM instructions for post routine
+        if params.post_routine:
+            self._add_post_commands(
+                qubit_ids_array,
+                params.number,
+                ent_results_array,
+                EPRType.K,
+                params.post_routine,
+            )
+
+        return qubit_futures
+
     def _pre_epr_context(
         self,
         instruction: GenericInstr,
@@ -1039,6 +854,27 @@ class Builder:
                 f"greater than the maximum number of qubits specified ({self._max_qubits})."
             )
 
+    def _check_epr_args(self, tp: EPRType, params: EntRequestParams) -> None:
+        assert isinstance(tp, EPRType), "tp is not an EPRType"
+        if params.sequential and params.number > 1:
+            if params.post_routine is None:
+                raise ValueError(
+                    "When using sequential mode with more than one pair "
+                    "a post_routine needs to be specified which consumes the "
+                    "generated pair as they come in."
+                )
+        if (
+            tp == EPRType.K
+            and not params.sequential
+            and params.number > self._max_qubits
+        ):
+            raise ValueError(
+                f"When not using sequential mode for K type, the number of pairs "
+                f"{params.number} cannot be "
+                f"greater than the maximum number of qubits specified "
+                f"({self._max_qubits})."
+            )
+
     def _create_ent_results_array(self, number: int, tp: EPRType) -> Array:
         if tp == EPRType.K:
             ent_results_array = self.alloc_array(length=OK_FIELDS_K * number)
@@ -1143,31 +979,6 @@ class Builder:
             qubits.append(qubit)
 
         return qubits
-
-    def create_epr(
-        self,
-        tp: EPRType,
-        params: EntRequestParams,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        if not isinstance(params.remote_node_id, int):
-            raise TypeError(
-                f"remote_node_id should be an int, not of type {type(params.remote_node_id)}"
-            )
-
-        return self._handle_request(
-            instruction=GenericInstr.CREATE_EPR, tp=tp, params=params
-        )
-
-    def recv_epr(
-        self,
-        tp: EPRType,
-        params: EntRequestParams,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
-        """Receives EPR pair with a remote node"""
-        return self._handle_request(
-            instruction=GenericInstr.RECV_EPR, tp=tp, params=params
-        )
 
     def _reset(self) -> None:
         # if len(self._active_registers) > 0:
@@ -1568,4 +1379,172 @@ class Builder:
             ICmd(
                 instruction=GenericInstr.BREAKPOINT, operands=[action.value, role.value]
             )
+        )
+
+    def command_single_qubit_rotation(
+        self,
+        instruction: GenericInstr,
+        virtual_qubit_id: int,
+        n: int = 0,
+        d: int = 0,
+        angle: Optional[float] = None,
+    ) -> None:
+        if angle is not None:
+            nds = get_angle_spec_from_float(angle=angle)
+            for n, d in nds:
+                self.command_single_qubit_rotation(
+                    instruction=instruction,
+                    virtual_qubit_id=virtual_qubit_id,
+                    n=n,
+                    d=d,
+                )
+            return
+        if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
+            raise ValueError(f"{n} * pi / 2 ^ {d} is not a valid angle specification")
+        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
+        rot_command = ICmd(
+            instruction=instruction,
+            operands=[register, n, d],
+        )
+        commands: List[T_Cmd] = set_commands + [rot_command]
+        self.add_pending_commands(commands)
+
+    def command_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
+        register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        # Construct the qubit command
+        qubit_command = ICmd(
+            instruction=instr,
+            operands=[register],
+        )
+        commands: List[T_Cmd] = set_commands + [qubit_command]
+        self.add_pending_commands(commands)
+
+    def command_two_qubit(
+        self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
+    ) -> None:
+        register1, set_commands1 = self._get_set_qubit_reg_commands(
+            control_qubit_id, reg_index=0
+        )
+        register2, set_commands2 = self._get_set_qubit_reg_commands(
+            target_qubit_id, reg_index=1
+        )
+        qubit_command = ICmd(
+            instruction=instr,
+            operands=[register1, register2],
+        )
+        commands = set_commands1 + set_commands2 + [qubit_command]
+        self.add_pending_commands(commands=commands)
+
+    def command_move_qubit(self, source: int, target: int) -> None:
+        # Moves a qubit from one position to another (assumes that target is free)
+        assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
+        self.command_new_qubit(target)
+        self.command_two_qubit(GenericInstr.MOV, source, target)
+        self.command_qfree(source)
+
+    def command_measure(
+        self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
+    ) -> None:
+        if self._compiler == NVSubroutineCompiler:
+            # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
+            # So, if this qubit is already in use, we need to move it away first.
+            if not isinstance(qubit_id, Future):
+                if qubit_id != 0:
+                    self._free_up_qubit(virtual_address=0)
+        outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        meas_command = ICmd(
+            instruction=GenericInstr.MEAS,
+            operands=[qubit_reg, outcome_reg],
+        )
+        if not inplace:
+            free_commands = [
+                ICmd(
+                    instruction=GenericInstr.QFREE,
+                    operands=[qubit_reg],
+                )
+            ]
+        else:
+            free_commands = []
+        if future is not None:
+            if isinstance(future, Future):
+                outcome_commands = future._get_store_commands(outcome_reg)
+                self._mem_mgr.meas_reg_set_unused(outcome_reg)
+            elif isinstance(future, RegFuture):
+                future.reg = outcome_reg
+                self._mem_mgr.add_reg_to_return(outcome_reg)
+                outcome_commands = []
+            else:
+                outcome_commands = []
+        commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
+        self.add_pending_commands(commands)
+
+    def command_new_qubit(self, qubit_id: int) -> None:
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qalloc_command = ICmd(
+            instruction=GenericInstr.QALLOC,
+            operands=[qubit_reg],
+        )
+        init_command = ICmd(
+            instruction=GenericInstr.INIT,
+            operands=[qubit_reg],
+        )
+        commands = set_commands + [qalloc_command, init_command]
+        self.add_pending_commands(commands)
+
+    def command_init_qubit(self, qubit_id: int) -> None:
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        init_command = ICmd(
+            instruction=GenericInstr.INIT,
+            operands=[qubit_reg],
+        )
+        commands = set_commands + [init_command]
+        self.add_pending_commands(commands)
+
+    def command_qfree(self, qubit_id: int) -> None:
+        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qfree_command = ICmd(
+            instruction=GenericInstr.QFREE,
+            operands=[qubit_reg],
+        )
+        commands = set_commands + [qfree_command]
+        self.add_pending_commands(commands)
+
+    def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+        return self.command_epr_keep(role=EPRRole.CREATE, params=params)
+
+    def sdk_recv_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+        return self.command_epr_keep(role=EPRRole.RECV, params=params)
+
+    def sdk_create_epr_measure(
+        self, params: EntRequestParams
+    ) -> List[LinkLayerOKTypeM]:
+        return self.sdk_create_epr(tp=EPRType.M, params=params)  # type: ignore
+
+    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[LinkLayerOKTypeR]:
+        return self.sdk_create_epr(tp=EPRType.R, params=params)  # type: ignore
+
+    def sdk_create_epr(
+        self,
+        tp: EPRType,
+        params: EntRequestParams,
+    ) -> Union[List[Qubit], T_LinkLayerOkList]:
+        """Receives EPR pair with a remote node"""
+        if not isinstance(params.remote_node_id, int):
+            raise TypeError(
+                f"remote_node_id should be an int, not of type {type(params.remote_node_id)}"
+            )
+
+        return self._handle_request(
+            instruction=GenericInstr.CREATE_EPR, tp=tp, params=params
+        )
+
+    def sdk_recv_epr(
+        self,
+        tp: EPRType,
+        params: EntRequestParams,
+    ) -> Union[List[Qubit], T_LinkLayerOkList]:
+        """Receives EPR pair with a remote node"""
+        return self._handle_request(
+            instruction=GenericInstr.RECV_EPR, tp=tp, params=params
         )

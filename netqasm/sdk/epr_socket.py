@@ -151,6 +151,75 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
+    def create_keep(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+    ) -> List[Qubit]:
+        return self.create(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.K,
+            time_unit=time_unit,
+            max_time=max_time,
+        )
+
+    def create_measure(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+        basis_local: EPRMeasBasis = None,
+        basis_remote: EPRMeasBasis = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+        random_basis_remote: Optional[RandomBasis] = None,
+    ) -> List[LinkLayerOKTypeM]:
+        return self.create(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.M,
+            time_unit=time_unit,
+            max_time=max_time,
+            basis_local=basis_local,
+            basis_remote=basis_remote,
+            rotations_local=rotations_local,
+            rotations_remote=rotations_remote,
+            random_basis_local=random_basis_local,
+            random_basis_remote=random_basis_remote,
+        )
+
+    def create_rsp(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+        basis_local: EPRMeasBasis = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+    ) -> List[LinkLayerOKTypeR]:
+        return self.create(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.R,
+            time_unit=time_unit,
+            max_time=max_time,
+            basis_local=basis_local,
+            rotations_local=rotations_local,
+            random_basis_local=random_basis_local,
+        )
+
     def create(
         self,
         number: int = 1,
@@ -313,7 +382,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self.conn._builder.create_epr(  # type: ignore
+        return self.conn._builder.sdk_create_epr(  # type: ignore
             tp=tp,
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
@@ -390,6 +459,45 @@ class EPRSocket(abc.ABC):
                 pair=pair,
             )
 
+    def recv_keep(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+    ) -> List[Qubit]:
+        return self.recv(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.K,
+        )
+
+    def recv_measure(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+    ) -> List[LinkLayerOKTypeM]:
+        return self.recv(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.M,
+        )
+
+    def recv_rsp(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+    ) -> List[LinkLayerOKTypeR]:
+        return self.recv(  # type: ignore
+            number=number,
+            post_routine=post_routine,
+            sequential=sequential,
+            tp=EPRType.R,
+        )
+
     def recv(
         self,
         number: int = 1,
@@ -421,7 +529,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn._builder.recv_epr(
+        return self.conn._builder.sdk_recv_epr(
             tp=tp,
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
