@@ -71,12 +71,13 @@ class PatternMatcher:
         ), "wildcard at end of pattern not allowed"
 
         next_pat = self._pattern[self._pat_idx + 1]
-        assert isinstance(next_pat, GenericInstr) or isinstance(
-            next_pat, BranchLabel
+        assert (
+            isinstance(next_pat, GenericInstr)
+            or next_pat == PatternWildcard.BRANCH_LABEL
         ), "wildcard directly after ANY_ZERO_OR_MORE not allowed"
 
         cmd = self._commands[self._cmd_idx]
-        if isinstance(next_pat, BranchLabel):
+        if next_pat == PatternWildcard.BRANCH_LABEL:
             if isinstance(cmd, ICmd):
                 logger.debug("\tmatching BranchLabel after * wildcard")
                 self._pat_idx += 2
@@ -229,8 +230,32 @@ def test_create_epr():
     )
 
 
+def test_branching():
+    with DebugConnection("Alice") as conn:
+
+        def if_true(conn):
+            q = Qubit(conn)
+            m = q.measure()
+
+        conn.if_eq(42, 42, if_true)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     # test_simple()
     # test_loop()
-    test_create_epr()
+    # test_create_epr()
+    test_branching()

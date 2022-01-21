@@ -644,29 +644,29 @@ class Builder:
 
     def sdk_if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
-        self._handle_if(GenericInstr.BEQ, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BEQ, a, b, body)
 
     def sdk_if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != b"""
-        self._handle_if(GenericInstr.BNE, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BNE, a, b, body)
 
     def sdk_if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a < b"""
-        self._handle_if(GenericInstr.BLT, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BLT, a, b, body)
 
     def sdk_if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a >= b"""
-        self._handle_if(GenericInstr.BGE, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BGE, a, b, body)
 
     def sdk_if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == 0"""
-        self._handle_if(GenericInstr.BEZ, a, b=None, body=body)
+        self._build_cmds_if_stmt(GenericInstr.BEZ, a, b=None, body=body)
 
     def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._handle_if(GenericInstr.BNZ, a, b=None, body=body)
+        self._build_cmds_if_stmt(GenericInstr.BNZ, a, b=None, body=body)
 
-    def _handle_if(
+    def _build_cmds_if_stmt(
         self,
         condition: GenericInstr,
         a: Optional[T_CValue],
@@ -675,8 +675,14 @@ class Builder:
     ) -> None:
         """Used to build effective if-statements"""
         current_commands = self.subrt_pop_pending_commands()
+
+        # evaluate body (will add pending commands)
         body(self._connection)
+
+        # get those commands
         body_commands = self.subrt_pop_pending_commands()
+
+        # combine existing commands with body commands and branch instructions
         self._add_if_statement_commands(
             pre_commands=current_commands,
             body_commands=body_commands,
@@ -696,14 +702,14 @@ class Builder:
         if len(body_commands) == 0:
             self.subrt_add_pending_commands(commands=pre_commands)
             return
-        branch_instruction = flip_branch_instr(condition)
+        negated_predicate = flip_branch_instr(condition)
         # Construct a list of all commands to see what branch labels are already used
         all_commands = pre_commands + body_commands
         # We also need to check any existing other pre context commands if they are nested
         for pre_context_cmds in self._pre_context_commands.values():
             all_commands += pre_context_cmds
         if_start, if_end = self._get_branch_commands(
-            branch_instruction=branch_instruction,
+            branch_instruction=negated_predicate,
             a=a,
             b=b,
             current_branch_variables=self._used_branch_variables,
