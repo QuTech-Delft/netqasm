@@ -215,7 +215,7 @@ class Builder:
 
     def _pop_pending_subroutine(self) -> Optional[PreSubroutine]:
         # Add commands for initialising and returning arrays
-        self._add_array_commands()
+        self._build_cmds_allocated_arrays()
         self._command_ret_reg()
         subroutine = None
         if len(self._pending_commands) > 0:
@@ -230,80 +230,6 @@ class Builder:
                 ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
             )
         self.add_pending_commands(commands=ret_reg_instrs)
-
-    def _add_array_commands(self) -> None:
-        current_commands = self._pop_pending_commands()
-        array_commands = self._get_array_commands()
-        init_arrays, return_arrays = array_commands
-        commands: List[T_Cmd] = init_arrays + current_commands + return_arrays  # type: ignore
-        self.add_pending_commands(commands=commands)
-
-    def _get_array_commands(self) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        init_arrays: List[T_Cmd] = []
-        return_arrays: List[T_Cmd] = []
-        for array in self._mem_mgr.get_arrays_to_return():
-            # ICmd for initialising the array
-            init_arrays.append(
-                ICmd(
-                    instruction=GenericInstr.ARRAY,
-                    operands=[
-                        len(array),
-                        Address(array.address),
-                    ],
-                    lineno=array.lineno,
-                )
-            )
-            # Populate the array if needed
-            init_vals = array._init_values
-            if init_vals is not None:
-                length = len(init_vals)
-                if length > 1 and init_vals.count(init_vals[0]) == length:
-                    # Ad-hoc optimization: if all values are the same, put the initialization commands in a loop
-                    loop_register = self._mem_mgr.get_inactive_register()
-
-                    def init_array_elt(conn):
-                        conn._builder.add_pending_command(
-                            ICmd(
-                                instruction=GenericInstr.STORE,
-                                operands=[
-                                    init_vals[0],
-                                    ArrayEntry(Address(array.address), loop_register),
-                                ],
-                                lineno=array.lineno,
-                            )
-                        )
-
-                    self.loop_body(
-                        init_array_elt, stop=length, loop_register=loop_register
-                    )
-                    init_arrays += self._pop_pending_commands()
-                else:
-                    for i, value in enumerate(init_vals):
-                        if value is None:
-                            continue
-                        else:
-                            init_arrays.append(
-                                ICmd(
-                                    instruction=GenericInstr.STORE,
-                                    operands=[
-                                        value,
-                                        ArrayEntry(Address(array.address), i),
-                                    ],
-                                    lineno=array.lineno,
-                                )
-                            )
-            # ICmd for returning the array by the end of the subroutine
-            if self._return_arrays:
-                return_arrays.append(
-                    ICmd(
-                        instruction=GenericInstr.RET_ARR,
-                        operands=[
-                            Address(array.address),
-                        ],
-                        lineno=array.lineno,
-                    )
-                )
-        return init_arrays, return_arrays
 
     def _subroutine_from_commands(self, commands: List[T_Cmd]) -> PreSubroutine:
         # Build sub-routine
@@ -337,28 +263,19 @@ class Builder:
     def committed_subroutines(self) -> List[Subroutine]:
         return self._committed_subroutines
 
-    def _get_set_qubit_reg_commands(
-        self, q_address: Union[Future, int], reg_index: int = 0
-    ) -> Tuple[operand.Register, List[T_Cmd]]:
-        # Set the register with the qubit address
-        register = operand.Register(RegisterName.Q, reg_index)
-        if isinstance(q_address, Future):
-            set_reg_cmds = q_address._get_load_commands(register)
-        elif isinstance(q_address, int):
+    def _get_qubit_register(self, reg_index: int = 0) -> operand.Register:
+        return operand.Register(RegisterName.Q, reg_index)
+
+    def _build_cmds_set_register_value(
+        self, register: operand.Register, value: Union[Future, int]
+    ) -> None:
+        if isinstance(value, Future):
+            set_reg_cmds = value._get_load_commands(register)
+        elif isinstance(value, int):
             set_reg_cmds = [
-                ICmd(
-                    instruction=GenericInstr.SET,
-                    operands=[
-                        register,
-                        q_address,
-                    ],
-                )
+                ICmd(instruction=GenericInstr.SET, operands=[register, value])
             ]
-        else:
-            raise NotImplementedError(
-                "Setting qubit reg for other types not yet implemented"
-            )
-        return register, set_reg_cmds
+        self.add_pending_commands(set_reg_cmds)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
         if self._compiler == NVSubroutineCompiler:
@@ -1175,39 +1092,36 @@ class Builder:
             return
         if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
             raise ValueError(f"{n} * pi / 2 ^ {d} is not a valid angle specification")
-        register, set_commands = self._get_set_qubit_reg_commands(virtual_qubit_id)
+        register = self._get_qubit_register()
+        self._build_cmds_set_register_value(register, virtual_qubit_id)
         rot_command = ICmd(
             instruction=instruction,
             operands=[register, n, d],
         )
-        commands: List[T_Cmd] = set_commands + [rot_command]
-        self.add_pending_commands(commands)
+        self.add_pending_command(rot_command)
 
     def _build_cmds_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
-        register, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        register = self._get_qubit_register()
+        self._build_cmds_set_register_value(register, qubit_id)
         # Construct the qubit command
         qubit_command = ICmd(
             instruction=instr,
             operands=[register],
         )
-        commands: List[T_Cmd] = set_commands + [qubit_command]
-        self.add_pending_commands(commands)
+        self.add_pending_command(qubit_command)
 
     def _build_cmds_two_qubit(
         self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
     ) -> None:
-        register1, set_commands1 = self._get_set_qubit_reg_commands(
-            control_qubit_id, reg_index=0
-        )
-        register2, set_commands2 = self._get_set_qubit_reg_commands(
-            target_qubit_id, reg_index=1
-        )
+        register1 = self._get_qubit_register(0)
+        self._build_cmds_set_register_value(register1, control_qubit_id)
+        register2 = self._get_qubit_register(1)
+        self._build_cmds_set_register_value(register2, target_qubit_id)
         qubit_command = ICmd(
             instruction=instr,
             operands=[register1, register2],
         )
-        commands = set_commands1 + set_commands2 + [qubit_command]
-        self.add_pending_commands(commands=commands)
+        self.add_pending_command(qubit_command)
 
     def _build_cmds_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
@@ -1226,7 +1140,8 @@ class Builder:
                 if qubit_id != 0:
                     self._free_up_qubit(virtual_address=0)
         outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qubit_reg = self._get_qubit_register()
+        self._build_cmds_set_register_value(qubit_reg, qubit_id)
         meas_command = ICmd(
             instruction=GenericInstr.MEAS,
             operands=[qubit_reg, outcome_reg],
@@ -1250,11 +1165,12 @@ class Builder:
                 outcome_commands = []
             else:
                 outcome_commands = []
-        commands = set_commands + [meas_command] + free_commands + outcome_commands  # type: ignore
-        self.add_pending_commands(commands)
+        commands = [meas_command] + free_commands + outcome_commands  # type: ignore
+        self.add_pending_commands(commands)  # type: ignore
 
     def _build_cmds_new_qubit(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qubit_reg = self._get_qubit_register()
+        self._build_cmds_set_register_value(qubit_reg, qubit_id)
         qalloc_command = ICmd(
             instruction=GenericInstr.QALLOC,
             operands=[qubit_reg],
@@ -1263,26 +1179,94 @@ class Builder:
             instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
-        commands = set_commands + [qalloc_command, init_command]
-        self.add_pending_commands(commands)
+        commands = [qalloc_command, init_command]
+        self.add_pending_commands(commands)  # type: ignore
 
     def _build_cmds_init_qubit(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qubit_reg = self._get_qubit_register()
+        self._build_cmds_set_register_value(qubit_reg, qubit_id)
         init_command = ICmd(
             instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
-        commands = set_commands + [init_command]
-        self.add_pending_commands(commands)
+        self.add_pending_command(init_command)
 
     def _build_cmds_qfree(self, qubit_id: int) -> None:
-        qubit_reg, set_commands = self._get_set_qubit_reg_commands(qubit_id)
+        qubit_reg = self._get_qubit_register()
+        self._build_cmds_set_register_value(qubit_reg, qubit_id)
         qfree_command = ICmd(
             instruction=GenericInstr.QFREE,
             operands=[qubit_reg],
         )
-        commands = set_commands + [qfree_command]
+        self.add_pending_command(qfree_command)
+
+    def _build_cmds_allocated_arrays(self) -> None:
+        current_commands = self._pop_pending_commands()
+
+        for array in self._mem_mgr.get_arrays_to_return():
+            self._build_cmds_init_array(array)
+        self.add_pending_commands(current_commands)
+
+        if self._return_arrays:
+            for array in self._mem_mgr.get_arrays_to_return():
+                self._build_cmds_return_array(array)
+
+    def _build_cmds_init_array(self, array: Array) -> None:
+        commands: List[T_Cmd] = []
+
+        array_cmd = ICmd(
+            instruction=GenericInstr.ARRAY,
+            operands=[len(array), Address(array.address)],
+            lineno=array.lineno,
+        )
+        commands.append(array_cmd)
+
+        init_vals = array._init_values
+        if init_vals is not None:
+            length = len(init_vals)
+            if (
+                length > 1
+                and init_vals[0] is not None
+                and init_vals.count(init_vals[0]) == length
+            ):
+                # Ad-hoc optimization: if all values are the same, put the initialization commands in a loop
+                loop_register = self._mem_mgr.get_inactive_register()
+
+                store_cmd = ICmd(
+                    instruction=GenericInstr.STORE,
+                    operands=[
+                        init_vals[0],
+                        ArrayEntry(Address(array.address), loop_register),
+                    ],
+                    lineno=array.lineno,
+                )
+
+                def init_array_elt(conn):
+                    conn._builder.add_pending_command(store_cmd)
+
+                self.loop_body(init_array_elt, stop=length, loop_register=loop_register)
+                commands += self._pop_pending_commands()
+            else:
+                for i, value in enumerate(init_vals):
+                    if value is None:
+                        continue
+                    else:
+                        store_cmd = ICmd(
+                            instruction=GenericInstr.STORE,
+                            operands=[value, ArrayEntry(Address(array.address), i)],
+                            lineno=array.lineno,
+                        )
+                        commands.append(store_cmd)
         self.add_pending_commands(commands)
+
+    def _build_cmds_return_array(self, array: Array) -> None:
+        self.add_pending_command(
+            ICmd(
+                instruction=GenericInstr.RET_ARR,
+                operands=[Address(array.address)],
+                lineno=array.lineno,
+            )
+        )
 
     def _build_cmds_epr(
         self,
