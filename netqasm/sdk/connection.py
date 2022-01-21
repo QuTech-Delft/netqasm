@@ -478,7 +478,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param callback: if `block` is False, this callback is called when the quantum
             node controller sends the subroutine results.
         """
-        subroutine = self._builder._pop_pending_subroutine()
+        subroutine = self._builder.subrt_pop_pending_subroutine()
         if subroutine is None:
             return
 

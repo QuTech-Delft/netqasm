@@ -346,7 +346,7 @@ class Future(BaseFuture):
         if other_tmp_register is not None:
             self._connection._builder._mem_mgr.remove_active_reg(other_tmp_register)
 
-        self._connection._builder.add_pending_commands(commands)
+        self._connection._builder.subrt_add_pending_commands(commands)
 
     def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(GenericInstr.LOAD, register)
@@ -501,7 +501,7 @@ class RegFuture(BaseFuture):
         if other_tmp_register is not None:
             self._connection._builder._mem_mgr.remove_active_reg(other_tmp_register)
 
-        self._connection._builder.add_pending_commands(commands)
+        self._connection._builder.subrt_add_pending_commands(commands)
 
 
 class Array:

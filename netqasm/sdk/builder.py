@@ -194,58 +194,46 @@ class Builder:
 
     def new_register(self, init_value: int = 0) -> RegFuture:
         reg = self._mem_mgr.get_inactive_register(activate=True)
-        self.add_pending_command(
+        self.subrt_add_pending_command(
             ICmd(instruction=GenericInstr.SET, operands=[reg, init_value])
         )
         self._mem_mgr.add_reg_to_return(reg)
         return RegFuture(connection=self._connection, reg=reg)
 
-    def add_pending_commands(self, commands: List[T_Cmd]) -> None:
+    def subrt_add_pending_commands(self, commands: List[T_Cmd]) -> None:
         calling_lineno = self._line_tracker.get_line()
         for command in commands:
             if command.lineno is None:
                 command.lineno = calling_lineno
-            self.add_pending_command(command)
+            self.subrt_add_pending_command(command)
 
-    def add_pending_command(self, command: T_Cmd) -> None:
+    def subrt_add_pending_command(self, command: T_Cmd) -> None:
         assert isinstance(command, ICmd) or isinstance(command, BranchLabel)
         if command.lineno is None:
             command.lineno = self._line_tracker.get_line()
         self._pending_commands.append(command)
 
-    def _pop_pending_subroutine(self) -> Optional[PreSubroutine]:
+    def subrt_pop_pending_commands(self) -> List[T_Cmd]:
+        commands = self._pending_commands
+        self._pending_commands = []
+        return commands
+
+    def subrt_pop_pending_subroutine(self) -> Optional[PreSubroutine]:
         # Add commands for initialising and returning arrays
         self._build_cmds_allocated_arrays()
-        self._command_ret_reg()
-        subroutine = None
+        self._build_cmds_return_registers()
         if len(self._pending_commands) > 0:
-            commands = self._pop_pending_commands()
-            subroutine = self._subroutine_from_commands(commands)
-        return subroutine
-
-    def _command_ret_reg(self) -> None:
-        ret_reg_instrs: List[T_Cmd] = []
-        for reg in self._mem_mgr.get_registers_to_return():
-            ret_reg_instrs.append(
-                ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
-            )
-        self.add_pending_commands(commands=ret_reg_instrs)
-
-    def _subroutine_from_commands(self, commands: List[T_Cmd]) -> PreSubroutine:
-        # Build sub-routine
-        metadata = self._get_metadata()
-        return PreSubroutine(**metadata, commands=commands)  # type: ignore
+            commands = self.subrt_pop_pending_commands()
+            metadata = self._get_metadata()
+            return PreSubroutine(**metadata, commands=commands)
+        else:
+            return None
 
     def _get_metadata(self) -> Dict:
         return {
             "netqasm_version": NETQASM_VERSION,
             "app_id": self.app_id,
         }
-
-    def _pop_pending_commands(self) -> List[T_Cmd]:
-        commands = self._pending_commands
-        self._pending_commands = []
-        return commands
 
     def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Convert a PreSubroutine into a Subroutine."""
@@ -265,17 +253,6 @@ class Builder:
 
     def _get_qubit_register(self, reg_index: int = 0) -> operand.Register:
         return operand.Register(RegisterName.Q, reg_index)
-
-    def _build_cmds_set_register_value(
-        self, register: operand.Register, value: Union[Future, int]
-    ) -> None:
-        if isinstance(value, Future):
-            set_reg_cmds = value._get_load_commands(register)
-        elif isinstance(value, int):
-            set_reg_cmds = [
-                ICmd(instruction=GenericInstr.SET, operands=[register, value])
-            ]
-        self.add_pending_commands(set_reg_cmds)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
         if self._compiler == NVSubroutineCompiler:
@@ -396,7 +373,7 @@ class Builder:
         created_regs = [arr_start, tmp, arr_stop]
 
         for reg in created_regs:
-            self.add_pending_command(
+            self.subrt_add_pending_command(
                 ICmd(
                     instruction=GenericInstr.SET,
                     operands=[reg, 0],
@@ -406,7 +383,7 @@ class Builder:
         # Multiply pair * OK_FIELDS
         # TODO use loop context
         def add_arr_start(conn):
-            self.add_pending_command(
+            self.subrt_add_pending_command(
                 ICmd(
                     instruction=GenericInstr.ADD,
                     operands=[arr_start, arr_start, pair],
@@ -416,7 +393,7 @@ class Builder:
         self.loop_body(add_arr_start, stop=OK_FIELDS_K)
 
         # Let tmp be pair + 1
-        self.add_pending_command(
+        self.subrt_add_pending_command(
             ICmd(
                 instruction=GenericInstr.ADD,
                 operands=[tmp, pair, 1],
@@ -426,7 +403,7 @@ class Builder:
         # Multiply (tmp = pair + 1) * OK_FIELDS
         # TODO use loop context
         def add_arr_stop(conn):
-            self.add_pending_command(
+            self.subrt_add_pending_command(
                 ICmd(
                     instruction=GenericInstr.ADD,
                     operands=[arr_stop, arr_stop, tmp],
@@ -443,7 +420,7 @@ class Builder:
                 )
             ],
         )
-        self.add_pending_command(wait_cmd)
+        self.subrt_add_pending_command(wait_cmd)
 
         for reg in created_regs:
             self._mem_mgr.remove_active_reg(reg)
@@ -492,7 +469,7 @@ class Builder:
                 qubit_ids_array, ent_results_array, False, params
             )
 
-        pre_commands = self._pop_pending_commands()
+        pre_commands = self.subrt_pop_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         pair = loop_register
 
@@ -509,12 +486,12 @@ class Builder:
         ent_results_array: Array,
         pair: operand.Register,
     ) -> None:
-        body_commands = self._pop_pending_commands()
+        body_commands = self.subrt_pop_pending_commands()
         self._add_wait_for_ent_info_cmd(
             ent_results_array=ent_results_array,
             pair=pair,
         )
-        wait_cmds = self._pop_pending_commands()
+        wait_cmds = self.subrt_pop_pending_commands()
         body_commands = wait_cmds + body_commands
         self._add_loop_commands(
             pre_commands=pre_commands,
@@ -709,9 +686,9 @@ class Builder:
         body: T_BranchRoutine,
     ) -> None:
         """Used to build effective if-statements"""
-        current_commands = self._pop_pending_commands()
+        current_commands = self.subrt_pop_pending_commands()
         body(self._connection)
-        body_commands = self._pop_pending_commands()
+        body_commands = self.subrt_pop_pending_commands()
         self._add_if_statement_commands(
             pre_commands=current_commands,
             body_commands=body_commands,
@@ -729,7 +706,7 @@ class Builder:
         b: Optional[T_CValue],
     ) -> None:
         if len(body_commands) == 0:
-            self.add_pending_commands(commands=pre_commands)
+            self.subrt_add_pending_commands(commands=pre_commands)
             return
         branch_instruction = flip_branch_instr(condition)
         # Construct a list of all commands to see what branch labels are already used
@@ -745,7 +722,7 @@ class Builder:
         )
         commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
-        self.add_pending_commands(commands=commands)
+        self.subrt_add_pending_commands(commands=commands)
 
     def _get_branch_commands(
         self,
@@ -815,13 +792,13 @@ class Builder:
         loop_register: Optional[operand.Register] = None,
     ) -> Iterator[operand.Register]:
         try:
-            pre_commands = self._pop_pending_commands()
+            pre_commands = self.subrt_pop_pending_commands()
             loop_register_result = self._handle_loop_register(
                 loop_register, activate=True
             )
             yield loop_register_result
         finally:
-            body_commands = self._pop_pending_commands()
+            body_commands = self.subrt_pop_pending_commands()
             self._add_loop_commands(
                 pre_commands=pre_commands,
                 body_commands=body_commands,
@@ -845,10 +822,10 @@ class Builder:
         """
         loop_register = self._handle_loop_register(loop_register)
 
-        pre_commands = self._pop_pending_commands()
+        pre_commands = self.subrt_pop_pending_commands()
         with self._activate_register(loop_register):
             body(self._connection)
-        body_commands = self._pop_pending_commands()
+        body_commands = self.subrt_pop_pending_commands()
         self._add_loop_commands(
             pre_commands=pre_commands,
             body_commands=body_commands,
@@ -868,7 +845,7 @@ class Builder:
         loop_register: operand.Register,
     ) -> None:
         if len(body_commands) == 0:
-            self.add_pending_commands(commands=pre_commands)
+            self.subrt_add_pending_commands(commands=pre_commands)
             return
         current_registers = get_current_registers(body_commands)
         loop_start, loop_end = self._get_loop_commands(
@@ -880,7 +857,7 @@ class Builder:
         )
         commands = pre_commands + loop_start + body_commands + loop_end
 
-        self.add_pending_commands(commands=commands)
+        self.subrt_add_pending_commands(commands=commands)
 
     def _handle_loop_register(
         self, loop_register: Optional[operand.Register], activate: bool = False
@@ -1005,7 +982,7 @@ class Builder:
         a: Optional[T_CValue],
         b: Optional[T_CValue],
     ) -> None:
-        pre_commands = self._pop_pending_commands()
+        pre_commands = self.subrt_pop_pending_commands()
         self._pre_context_commands[context_id] = pre_commands
 
     def _exit_if_context(
@@ -1015,7 +992,7 @@ class Builder:
         a: Optional[T_CValue],
         b: Optional[T_CValue],
     ) -> None:
-        body_commands = self._pop_pending_commands()
+        body_commands = self.subrt_pop_pending_commands()
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
@@ -1030,7 +1007,7 @@ class Builder:
     def _enter_foreach_context(
         self, context_id: int, array: Array, return_index: bool
     ) -> Union[Tuple[operand.Register, Future], Future]:
-        pre_commands = self._pop_pending_commands()
+        pre_commands = self.subrt_pop_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
 
         # NOTE (BUG): the below assignment is NOT consistent with the type of _pre_context_commands
@@ -1044,7 +1021,7 @@ class Builder:
     def _exit_foreach_context(
         self, context_id: int, array: Array, return_index: bool
     ) -> None:
-        body_commands = self._pop_pending_commands()
+        body_commands = self.subrt_pop_pending_commands()
         pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
             context_id, None  # type: ignore
         )
@@ -1066,7 +1043,7 @@ class Builder:
     def insert_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
     ) -> None:
-        self.add_pending_command(
+        self.subrt_add_pending_command(
             ICmd(
                 instruction=GenericInstr.BREAKPOINT, operands=[action.value, role.value]
             )
@@ -1098,7 +1075,7 @@ class Builder:
             instruction=instruction,
             operands=[register, n, d],
         )
-        self.add_pending_command(rot_command)
+        self.subrt_add_pending_command(rot_command)
 
     def _build_cmds_single_qubit(self, instr: GenericInstr, qubit_id: int) -> None:
         register = self._get_qubit_register()
@@ -1108,7 +1085,7 @@ class Builder:
             instruction=instr,
             operands=[register],
         )
-        self.add_pending_command(qubit_command)
+        self.subrt_add_pending_command(qubit_command)
 
     def _build_cmds_two_qubit(
         self, instr: GenericInstr, control_qubit_id: int, target_qubit_id: int
@@ -1121,7 +1098,7 @@ class Builder:
             instruction=instr,
             operands=[register1, register2],
         )
-        self.add_pending_command(qubit_command)
+        self.subrt_add_pending_command(qubit_command)
 
     def _build_cmds_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
@@ -1166,7 +1143,7 @@ class Builder:
             else:
                 outcome_commands = []
         commands = [meas_command] + free_commands + outcome_commands  # type: ignore
-        self.add_pending_commands(commands)  # type: ignore
+        self.subrt_add_pending_commands(commands)  # type: ignore
 
     def _build_cmds_new_qubit(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1180,7 +1157,7 @@ class Builder:
             operands=[qubit_reg],
         )
         commands = [qalloc_command, init_command]
-        self.add_pending_commands(commands)  # type: ignore
+        self.subrt_add_pending_commands(commands)  # type: ignore
 
     def _build_cmds_init_qubit(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1189,7 +1166,7 @@ class Builder:
             instruction=GenericInstr.INIT,
             operands=[qubit_reg],
         )
-        self.add_pending_command(init_command)
+        self.subrt_add_pending_command(init_command)
 
     def _build_cmds_qfree(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1198,14 +1175,14 @@ class Builder:
             instruction=GenericInstr.QFREE,
             operands=[qubit_reg],
         )
-        self.add_pending_command(qfree_command)
+        self.subrt_add_pending_command(qfree_command)
 
     def _build_cmds_allocated_arrays(self) -> None:
-        current_commands = self._pop_pending_commands()
+        current_commands = self.subrt_pop_pending_commands()
 
         for array in self._mem_mgr.get_arrays_to_return():
             self._build_cmds_init_array(array)
-        self.add_pending_commands(current_commands)
+        self.subrt_add_pending_commands(current_commands)
 
         if self._return_arrays:
             for array in self._mem_mgr.get_arrays_to_return():
@@ -1242,10 +1219,10 @@ class Builder:
                 )
 
                 def init_array_elt(conn):
-                    conn._builder.add_pending_command(store_cmd)
+                    conn._builder.subrt_add_pending_command(store_cmd)
 
                 self.loop_body(init_array_elt, stop=length, loop_register=loop_register)
-                commands += self._pop_pending_commands()
+                commands += self.subrt_pop_pending_commands()
             else:
                 for i, value in enumerate(init_vals):
                     if value is None:
@@ -1257,16 +1234,35 @@ class Builder:
                             lineno=array.lineno,
                         )
                         commands.append(store_cmd)
-        self.add_pending_commands(commands)
+        self.subrt_add_pending_commands(commands)
+
+    def _build_cmds_set_register_value(
+        self, register: operand.Register, value: Union[Future, int]
+    ) -> None:
+        if isinstance(value, Future):
+            set_reg_cmds = value._get_load_commands(register)
+        elif isinstance(value, int):
+            set_reg_cmds = [
+                ICmd(instruction=GenericInstr.SET, operands=[register, value])
+            ]
+        self.subrt_add_pending_commands(set_reg_cmds)
 
     def _build_cmds_return_array(self, array: Array) -> None:
-        self.add_pending_command(
+        self.subrt_add_pending_command(
             ICmd(
                 instruction=GenericInstr.RET_ARR,
                 operands=[Address(array.address)],
                 lineno=array.lineno,
             )
         )
+
+    def _build_cmds_return_registers(self) -> None:
+        ret_reg_instrs: List[T_Cmd] = []
+        for reg in self._mem_mgr.get_registers_to_return():
+            ret_reg_instrs.append(
+                ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
+            )
+        self.subrt_add_pending_commands(commands=ret_reg_instrs)
 
     def _build_cmds_epr(
         self,
@@ -1323,7 +1319,7 @@ class Builder:
             wait_cmds = []
 
         commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
-        self.add_pending_commands(commands)
+        self.subrt_add_pending_commands(commands)
 
     def _build_cmds_epr_create_keep(
         self,
@@ -1346,7 +1342,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1357,7 +1353,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_keep(
         self,
@@ -1378,7 +1374,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1389,7 +1385,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_create_measure(
         self,
@@ -1413,7 +1409,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1424,7 +1420,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_measure(
         self,
@@ -1446,7 +1442,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1457,7 +1453,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_create_rsp(
         self,
@@ -1481,7 +1477,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1492,7 +1488,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_rsp(
         self,
@@ -1513,7 +1509,7 @@ class Builder:
             args=[params.remote_node_id, params.epr_socket_id],
             operands=epr_cmd_operands,  # type: ignore
         )
-        self.add_pending_command(epr_cmd)
+        self.subrt_add_pending_command(epr_cmd)
 
         # wait
         arr_slice = ArraySlice(
@@ -1524,7 +1520,7 @@ class Builder:
         else:
             wait_cmds = []
 
-        self.add_pending_commands(wait_cmds)  # type: ignore
+        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def sdk_epr_keep(
         self,

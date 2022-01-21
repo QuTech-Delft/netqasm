@@ -140,7 +140,7 @@ def test_simple():
         q1.X()
         q2.H()
 
-        subroutine = conn._builder._pop_pending_subroutine()
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -171,7 +171,7 @@ def test_loop():
         with conn.loop(2):
             q.H()
 
-        subroutine = conn._builder._pop_pending_subroutine()
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -206,7 +206,7 @@ def test_create_epr():
 
         _ = epr.measure(store_array=False)
 
-        subroutine = conn._builder._pop_pending_subroutine()
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
