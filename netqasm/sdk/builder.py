@@ -235,7 +235,7 @@ class Builder:
             "app_id": self.app_id,
         }
 
-    def _pre_process_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
+    def subrt_compile_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Convert a PreSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
@@ -253,20 +253,6 @@ class Builder:
 
     def _get_qubit_register(self, reg_index: int = 0) -> operand.Register:
         return operand.Register(RegisterName.Q, reg_index)
-
-    def _free_up_qubit(self, virtual_address: int) -> None:
-        if self._compiler == NVSubroutineCompiler:
-            for q in self._mem_mgr.get_active_qubits():
-                # Find a free qubit
-                new_virtual_address = self._mem_mgr.get_new_qubit_address()
-                if q.qubit_id == virtual_address:
-                    # Virtual address is already used. Move it to the new virtual address.
-                    # NOTE: this assumes that the new virtual address is *not* currently used.
-                    self._build_cmds_move_qubit(
-                        source=virtual_address, target=new_virtual_address
-                    )
-                    # From now on, the original qubit should be referred to with the new virtual address.
-                    q.qubit_id = new_virtual_address
 
     def _alloc_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
         create_kwargs: Dict[str, Any] = {}
@@ -493,7 +479,7 @@ class Builder:
         )
         wait_cmds = self.subrt_pop_pending_commands()
         body_commands = wait_cmds + body_commands
-        self._add_loop_commands(
+        self._build_cmds_loop(
             pre_commands=pre_commands,
             body_commands=body_commands,
             stop=number,
@@ -637,7 +623,9 @@ class Builder:
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
                     virtual_address = 0
-                    self._free_up_qubit(virtual_address=virtual_address)
+                    self._build_cmds_free_up_qubit_location(
+                        virtual_address=virtual_address
+                    )
                 qubit = Qubit(
                     self._connection,
                     add_new_command=False,
@@ -654,27 +642,27 @@ class Builder:
         self._mem_mgr.reset()
         self._pre_context_commands = {}
 
-    def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
         self._handle_if(GenericInstr.BEQ, a, b, body)
 
-    def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != b"""
         self._handle_if(GenericInstr.BNE, a, b, body)
 
-    def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a < b"""
         self._handle_if(GenericInstr.BLT, a, b, body)
 
-    def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a >= b"""
         self._handle_if(GenericInstr.BGE, a, b, body)
 
-    def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == 0"""
         self._handle_if(GenericInstr.BEZ, a, b=None, body=body)
 
-    def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
         self._handle_if(GenericInstr.BNZ, a, b=None, body=body)
 
@@ -732,7 +720,7 @@ class Builder:
         current_branch_variables: List[str],
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
-        exit_label = self._find_unused_variable(
+        exit_label = self._get_unused_label(
             start_with="IF_EXIT", current_variables=current_branch_variables
         )
         self._used_branch_variables.append(exit_label)
@@ -793,13 +781,11 @@ class Builder:
     ) -> Iterator[operand.Register]:
         try:
             pre_commands = self.subrt_pop_pending_commands()
-            loop_register_result = self._handle_loop_register(
-                loop_register, activate=True
-            )
+            loop_register_result = self._get_loop_register(loop_register, activate=True)
             yield loop_register_result
         finally:
             body_commands = self.subrt_pop_pending_commands()
-            self._add_loop_commands(
+            self._build_cmds_loop(
                 pre_commands=pre_commands,
                 body_commands=body_commands,
                 stop=stop,
@@ -820,13 +806,13 @@ class Builder:
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
         """
-        loop_register = self._handle_loop_register(loop_register)
+        loop_register = self._get_loop_register(loop_register)
 
         pre_commands = self.subrt_pop_pending_commands()
         with self._activate_register(loop_register):
             body(self._connection)
         body_commands = self.subrt_pop_pending_commands()
-        self._add_loop_commands(
+        self._build_cmds_loop(
             pre_commands=pre_commands,
             body_commands=body_commands,
             stop=stop,
@@ -835,7 +821,7 @@ class Builder:
             loop_register=loop_register,
         )
 
-    def _add_loop_commands(
+    def _build_cmds_loop(
         self,
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
@@ -859,25 +845,24 @@ class Builder:
 
         self.subrt_add_pending_commands(commands=commands)
 
-    def _handle_loop_register(
-        self, loop_register: Optional[operand.Register], activate: bool = False
+    def _get_loop_register(
+        self,
+        register: Optional[Union[operand.Register, str]],
+        activate: bool = False,
     ) -> operand.Register:
-        if loop_register is None:
-            loop_register = self._mem_mgr.get_inactive_register(activate=activate)
+        if register is None:
+            return self._mem_mgr.get_inactive_register(activate=activate)
+
+        assert isinstance(register, operand.Register) or isinstance(
+            register, str
+        ), f"not a valid loop_register with type {type(register)}"
+        if isinstance(register, str):
+            loop_register = parse_register(register)
         else:
-            if isinstance(loop_register, operand.Register):
-                pass
-            elif isinstance(loop_register, str):
-                loop_register = parse_register(loop_register)
-            else:
-                raise ValueError(
-                    f"not a valid loop_register with type {type(loop_register)}"
-                )
-            if self._mem_mgr.is_reg_active(loop_register):
-                raise ValueError(
-                    "Register used for looping should not already be active"
-                )
-        # self._add_active_register(loop_register)
+            loop_register = register
+
+        if self._mem_mgr.is_reg_active(loop_register):
+            raise ValueError("Register used for looping should not already be active")
         return loop_register
 
     @contextmanager
@@ -898,10 +883,10 @@ class Builder:
         current_registers: Set[str],
         loop_register: operand.Register,
     ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        entry_label = self._find_unused_variable(
+        entry_label = self._get_unused_label(
             start_with="LOOP", current_variables=self._used_branch_variables
         )
-        exit_label = self._find_unused_variable(
+        exit_label = self._get_unused_label(
             start_with="LOOP_EXIT", current_variables=self._used_branch_variables
         )
         self._used_branch_variables.append(entry_label)
@@ -960,7 +945,7 @@ class Builder:
         return entry_loop, exit_loop
 
     @staticmethod
-    def _find_unused_variable(
+    def _get_unused_label(
         start_with: str = "", current_variables: Optional[List[str]] = None
     ) -> str:
         current_variables_set: Set[str] = set([])
@@ -1030,7 +1015,7 @@ class Builder:
 
         # NOTE (BUG): see NOTE (BUG) in _enter_foreach_context
         pre_commands, loop_register = pre_context_commands  # type: ignore
-        self._add_loop_commands(
+        self._build_cmds_loop(
             pre_commands=pre_commands,
             body_commands=body_commands,
             stop=len(array),
@@ -1040,7 +1025,7 @@ class Builder:
         )
         self._mem_mgr.remove_active_reg(loop_register)
 
-    def insert_breakpoint(
+    def _build_cmds_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
     ) -> None:
         self.subrt_add_pending_command(
@@ -1115,7 +1100,7 @@ class Builder:
             # So, if this qubit is already in use, we need to move it away first.
             if not isinstance(qubit_id, Future):
                 if qubit_id != 0:
-                    self._free_up_qubit(virtual_address=0)
+                    self._build_cmds_free_up_qubit_location(virtual_address=0)
         outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
@@ -1263,6 +1248,20 @@ class Builder:
                 ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
             )
         self.subrt_add_pending_commands(commands=ret_reg_instrs)
+
+    def _build_cmds_free_up_qubit_location(self, virtual_address: int) -> None:
+        if self._compiler == NVSubroutineCompiler:
+            for q in self._mem_mgr.get_active_qubits():
+                # Find a free qubit
+                new_virtual_address = self._mem_mgr.get_new_qubit_address()
+                if q.qubit_id == virtual_address:
+                    # Virtual address is already used. Move it to the new virtual address.
+                    # NOTE: this assumes that the new virtual address is *not* currently used.
+                    self._build_cmds_move_qubit(
+                        source=virtual_address, target=new_virtual_address
+                    )
+                    # From now on, the original qubit should be referred to with the new virtual address.
+                    q.qubit_id = new_virtual_address
 
     def _build_cmds_epr(
         self,

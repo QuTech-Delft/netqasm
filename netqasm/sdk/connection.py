@@ -503,7 +503,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        subroutine = self._builder._pre_process_subroutine(presubroutine)
+        subroutine = self._builder.subrt_compile_subroutine(presubroutine)
         self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
         # Commit the subroutine to the quantum device
@@ -618,7 +618,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_eq(a, b, body)
+        self._builder.sdk_if_eq(a, b, body)
 
     def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a != b.
@@ -632,7 +632,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ne(a, b, body)
+        self._builder.sdk_if_ne(a, b, body)
 
     def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a < b.
@@ -646,7 +646,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_lt(a, b, body)
+        self._builder.sdk_if_lt(a, b, body)
 
     def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a > b.
@@ -660,7 +660,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ge(a, b, body)
+        self._builder.sdk_if_ge(a, b, body)
 
     def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == 0.
@@ -673,7 +673,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param a: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ez(a, body)
+        self._builder.sdk_if_ez(a, body)
 
     def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a != 0.
@@ -686,7 +686,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param a: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_nz(a, body)
+        self._builder.sdk_if_nz(a, body)
 
     def tomography(
         self,
@@ -789,7 +789,7 @@ class BaseNetQASMConnection(abc.ABC):
     def insert_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
     ) -> None:
-        self._builder.insert_breakpoint(action, role)
+        self._builder._build_cmds_breakpoint(action, role)
 
 
 class DebugConnection(BaseNetQASMConnection):
