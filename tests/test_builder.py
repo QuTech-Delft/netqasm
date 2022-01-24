@@ -235,9 +235,14 @@ def test_branching():
 
         def if_true(conn):
             q = Qubit(conn)
-            m = q.measure()
+            _ = q.measure()
 
         conn.if_eq(42, 42, if_true)
+
+        q2 = Qubit(conn)
+        m2 = q2.measure()
+        with m2.if_ne(0):
+            _ = Qubit(conn)
 
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
@@ -247,6 +252,18 @@ def test_branching():
     assert inspector.match_pattern(
         [
             GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.LOAD,
+            GenericInstr.BEQ,
             PatternWildcard.ANY_ZERO_OR_MORE,
             PatternWildcard.BRANCH_LABEL,
         ]

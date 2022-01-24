@@ -97,6 +97,23 @@ class EntRequestParams:
     rotations_remote: Tuple[int, int, int] = (0, 0, 0)
 
 
+class LabelManager:
+    def __init__(self) -> None:
+        self._labels: Set[str] = set()
+
+    def new_label(self, start_with: str = "") -> str:
+        if start_with not in self._labels:
+            self._labels.add(start_with)
+            return start_with
+        else:
+            for i in count(1):
+                name = f"{start_with}{i}"
+                if name not in self._labels:
+                    self._labels.add(name)
+                    return name
+            assert False, "should never be reached"
+
+
 class Builder:
     """Object that transforms Python script code into `PreSubroutine`s.
 
@@ -145,7 +162,7 @@ class Builder:
         # Storing commands before an conditional statement
         self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
 
-        self._used_branch_variables: List[str] = []
+        self._label_mgr = LabelManager()
 
         # Can be set to false for e.g. debugging, not exposed to user atm
         self._clear_app_on_exit: bool = True
@@ -683,7 +700,7 @@ class Builder:
         body_commands = self.subrt_pop_pending_commands()
 
         # combine existing commands with body commands and branch instructions
-        self._add_if_statement_commands(
+        self._build_cmds_condition(
             pre_commands=current_commands,
             body_commands=body_commands,
             condition=condition,
@@ -691,7 +708,7 @@ class Builder:
             b=b,
         )
 
-    def _add_if_statement_commands(
+    def _build_cmds_condition(
         self,
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
@@ -712,7 +729,6 @@ class Builder:
             branch_instruction=negated_predicate,
             a=a,
             b=b,
-            current_branch_variables=self._used_branch_variables,
         )
         commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
@@ -723,13 +739,9 @@ class Builder:
         branch_instruction: GenericInstr,
         a: Optional[T_CValue],
         b: Optional[T_CValue],
-        current_branch_variables: List[str],
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
-        exit_label = self._get_unused_label(
-            start_with="IF_EXIT", current_variables=current_branch_variables
-        )
-        self._used_branch_variables.append(exit_label)
+        exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
         cond_values: List[T_OperandUnion] = []
         if_start = []
         for x in [a, b]:
@@ -742,10 +754,7 @@ class Builder:
                 )
                 load = ICmd(
                     instruction=GenericInstr.LOAD,
-                    operands=[
-                        reg,
-                        address_entry,
-                    ],
+                    operands=[reg, address_entry],
                 )
                 cond_values.append(reg)
                 if_start.append(load)
@@ -758,11 +767,7 @@ class Builder:
                 raise TypeError(f"Cannot do conditional statement with type {type(x)}")
         branch = ICmd(
             instruction=branch_instruction,
-            operands=[
-                cond_values[0],
-                cond_values[1],
-                Label(exit_label),
-            ],
+            operands=[cond_values[0], cond_values[1], Label(exit_label)],
         )
         if_start.append(branch)
 
@@ -889,14 +894,8 @@ class Builder:
         current_registers: Set[str],
         loop_register: operand.Register,
     ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        entry_label = self._get_unused_label(
-            start_with="LOOP", current_variables=self._used_branch_variables
-        )
-        exit_label = self._get_unused_label(
-            start_with="LOOP_EXIT", current_variables=self._used_branch_variables
-        )
-        self._used_branch_variables.append(entry_label)
-        self._used_branch_variables.append(exit_label)
+        entry_label = self._label_mgr.new_label(start_with="LOOP")
+        exit_label = self._label_mgr.new_label(start_with="LOOP_EXIT")
 
         entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
             start=start,
@@ -950,22 +949,6 @@ class Builder:
         ]
         return entry_loop, exit_loop
 
-    @staticmethod
-    def _get_unused_label(
-        start_with: str = "", current_variables: Optional[List[str]] = None
-    ) -> str:
-        current_variables_set: Set[str] = set([])
-        if current_variables is not None:
-            current_variables_set = set(current_variables)
-        if start_with not in current_variables_set:
-            return start_with
-        else:
-            for i in count(1):
-                var_name = f"{start_with}{i}"
-                if var_name not in current_variables_set:
-                    return var_name
-            raise RuntimeError("Could not find unused variable")
-
     def _enter_if_context(
         self,
         context_id: int,
@@ -987,7 +970,7 @@ class Builder:
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
-        self._add_if_statement_commands(
+        self._build_cmds_condition(
             pre_commands=pre_context_commands,
             body_commands=body_commands,
             condition=condition,

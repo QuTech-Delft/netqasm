@@ -39,3 +39,7 @@ def test_nested_loop():
         ]
     )
     simulate_application(app_instance, use_app_config=False, enable_logging=False)
+
+
+if __name__ == "__main__":
+    test_nested_loop()
