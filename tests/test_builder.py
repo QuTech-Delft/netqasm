@@ -78,7 +78,7 @@ class PatternMatcher:
 
         cmd = self._commands[self._cmd_idx]
         if next_pat == PatternWildcard.BRANCH_LABEL:
-            if isinstance(cmd, ICmd):
+            if isinstance(cmd, BranchLabel):
                 logger.debug("\tmatching BranchLabel after * wildcard")
                 self._pat_idx += 2
         elif isinstance(next_pat, GenericInstr):
@@ -300,10 +300,43 @@ def test_looping():
     )
 
 
+def test_futures():
+    with DebugConnection("Alice") as conn:
+
+        q = Qubit(conn)
+        m = q.measure()
+        with m.if_ne(0):
+            _ = Qubit(conn)
+        with m.if_ez():
+            _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.LOAD,
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.LOAD,
+            GenericInstr.BNZ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     # test_simple()
     # test_create_epr()
     # test_branching()
-    test_loop_context()
-    test_looping()
+    # test_loop_context()
+    # test_looping()
+    test_futures()

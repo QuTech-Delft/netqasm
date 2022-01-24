@@ -108,6 +108,54 @@ class LabelManager:
             assert False, "should never be reached"
 
 
+class SdkIfContext:
+    def __init__(
+        self,
+        id: int,
+        builder: Builder,
+        condition: GenericInstr,
+        a: Optional[T_CValue],
+        b: Optional[T_CValue],
+    ):
+        self._id = id
+        self._builder = builder
+        self._condition = condition
+        self._a = a
+        self._b = b
+
+    def __enter__(self):
+        return self._builder.if_context_enter(context_id=self._id)
+
+    def __exit__(self, *args, **kwargs):
+        return self._builder.if_context_exit(
+            context_id=self._id, condition=self._condition, a=self._a, b=self._b
+        )
+
+
+class SdkForEachContext:
+    def __init__(
+        self,
+        id: int,
+        builder: Builder,
+        array: Array,
+        return_index: bool,
+    ):
+        self._id = id
+        self._builder = builder
+        self._array = array
+        self._return_index = return_index
+
+    def __enter__(self):
+        return self._builder._foreach_context_enter(
+            context_id=self._id, array=self._array, return_index=self._return_index
+        )
+
+    def __exit__(self, *args, **kwargs):
+        return self._builder._foreach_context_exit(
+            context_id=self._id, array=self._array
+        )
+
+
 class Builder:
     """Object that transforms Python script code into `PreSubroutine`s.
 
@@ -153,6 +201,7 @@ class Builder:
         # If False, don't return arrays even if they are used in a subroutine
         self._return_arrays: bool = return_arrays
 
+        self._next_context_id: int = 0
         # Storing commands before an conditional statement
         self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
 
@@ -737,7 +786,17 @@ class Builder:
 
         return if_start, if_end
 
-    def _get_loop_register(
+    @contextmanager
+    def _activate_register(self, register: operand.Register) -> Iterator[None]:
+        try:
+            self._mem_mgr.add_active_reg(register)
+            yield
+        except Exception as err:
+            raise err
+        finally:
+            self._mem_mgr.remove_active_reg(register)
+
+    def _loop_get_register(
         self,
         register: Optional[Union[operand.Register, str]],
         activate: bool = False,
@@ -757,17 +816,7 @@ class Builder:
             raise ValueError("Register used for looping should not already be active")
         return loop_register
 
-    @contextmanager
-    def _activate_register(self, register: operand.Register) -> Iterator[None]:
-        try:
-            self._mem_mgr.add_active_reg(register)
-            yield
-        except Exception as err:
-            raise err
-        finally:
-            self._mem_mgr.remove_active_reg(register)
-
-    def _get_loop_entry_commands(
+    def _loop_get_entry_commands(
         self,
         start: int,
         stop: int,
@@ -784,9 +833,8 @@ class Builder:
             ),
         ]
 
-    def _get_loop_exit_commands(
+    def _loop_get_exit_commands(
         self,
-        start: int,
         step: int,
         entry_label: str,
         exit_label: str,
@@ -801,27 +849,33 @@ class Builder:
             BranchLabel(exit_label),
         ]
 
-    def _enter_if_context(
-        self,
-        context_id: int,
-        condition: GenericInstr,
-        a: Optional[T_CValue],
-        b: Optional[T_CValue],
-    ) -> None:
+    def sdk_new_if_context(
+        self, condition: GenericInstr, a: T_CValue, b: Optional[T_CValue]
+    ) -> SdkIfContext:
+        id = self._next_context_id
+        context = SdkIfContext(id=id, builder=self, condition=condition, a=a, b=b)
+        self._next_context_id += 1
+        return context
+
+    def if_context_enter(self, context_id: int) -> None:
         pre_commands = self.subrt_pop_pending_commands()
         self._pre_context_commands[context_id] = pre_commands
 
-    def _exit_if_context(
+    def if_context_exit(
         self,
         context_id: int,
         condition: GenericInstr,
         a: T_CValue,
         b: Optional[T_CValue],
     ) -> None:
+        # pop commands that were added while evaluting the context body
         body_commands = self.subrt_pop_pending_commands()
+
+        # get all commands that were pending before entering this context
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
+
         self._build_cmds_condition(
             pre_commands=pre_context_commands,
             body_commands=body_commands,
@@ -830,7 +884,17 @@ class Builder:
             b=b,
         )
 
-    def _enter_foreach_context(
+    def sdk_new_foreach_context(
+        self, array: Array, return_index: bool
+    ) -> SdkForEachContext:
+        id = self._next_context_id
+        context = SdkForEachContext(
+            id=id, builder=self, array=array, return_index=return_index
+        )
+        self._next_context_id += 1
+        return context
+
+    def _foreach_context_enter(
         self, context_id: int, array: Array, return_index: bool
     ) -> Union[Tuple[operand.Register, Future], Future]:
         pre_commands = self.subrt_pop_pending_commands()
@@ -844,9 +908,7 @@ class Builder:
         else:
             return array.get_future_index(loop_register)
 
-    def _exit_foreach_context(
-        self, context_id: int, array: Array, return_index: bool
-    ) -> None:
+    def _foreach_context_exit(self, context_id: int, array: Array) -> None:
         body_commands = self.subrt_pop_pending_commands()
         pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
             context_id, None  # type: ignore
@@ -854,7 +916,7 @@ class Builder:
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
 
-        # NOTE (BUG): see NOTE (BUG) in _enter_foreach_context
+        # NOTE (BUG): see NOTE (BUG) in _foreach_context_enter
         pre_commands, loop_register = pre_context_commands  # type: ignore
         self._build_cmds_loop(
             pre_commands=pre_commands,
@@ -1375,7 +1437,7 @@ class Builder:
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
         """
-        loop_register = self._get_loop_register(loop_register)
+        loop_register = self._loop_get_register(loop_register)
         pre_commands = self.subrt_pop_pending_commands()
 
         with self._activate_register(loop_register):
@@ -1408,15 +1470,14 @@ class Builder:
         entry_label = self._label_mgr.new_label(start_with="LOOP")
         exit_label = self._label_mgr.new_label(start_with="LOOP_EXIT")
 
-        loop_start = self._get_loop_entry_commands(
+        loop_start = self._loop_get_entry_commands(
             start=start,
             stop=stop,
             entry_label=entry_label,
             exit_label=exit_label,
             loop_register=loop_register,
         )
-        loop_end = self._get_loop_exit_commands(
-            start=start,
+        loop_end = self._loop_get_exit_commands(
             step=step,
             entry_label=entry_label,
             exit_label=exit_label,
@@ -1662,7 +1723,7 @@ class Builder:
     ) -> Iterator[operand.Register]:
         try:
             pre_commands = self.subrt_pop_pending_commands()
-            loop_register_result = self._get_loop_register(loop_register, activate=True)
+            loop_register_result = self._loop_get_register(loop_register, activate=True)
             yield loop_register_result
         finally:
             body_commands = self.subrt_pop_pending_commands()
