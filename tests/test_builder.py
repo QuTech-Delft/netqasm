@@ -244,6 +244,9 @@ def test_branching():
         with m2.if_ne(0):
             _ = Qubit(conn)
 
+        with m2.if_ez():
+            _ = Qubit(conn)
+
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 

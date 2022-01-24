@@ -583,7 +583,7 @@ class BaseNetQASMConnection(abc.ABC):
         """
         # TODO: this returns a method that has a decorator.
         #       Are type hints still correct?
-        return self._builder.loop(stop, start, step, loop_register)  # type: ignore
+        return self._builder.sdk_loop(stop, start, step, loop_register)  # type: ignore
 
     def loop_body(
         self,

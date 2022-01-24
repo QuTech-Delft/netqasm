@@ -39,14 +39,12 @@ from netqasm.lang.ir import (
     ICmd,
     Label,
     PreSubroutine,
-    Symbols,
     T_OperandUnion,
     flip_branch_instr,
 )
 from netqasm.lang.parsing.text import (
     assemble_subroutine,
     get_current_registers,
-    parse_address,
     parse_register,
 )
 from netqasm.lang.subroutine import Subroutine
@@ -686,7 +684,7 @@ class Builder:
     def _build_cmds_if_stmt(
         self,
         condition: GenericInstr,
-        a: Optional[T_CValue],
+        a: T_CValue,
         b: Optional[T_CValue],
         body: T_BranchRoutine,
     ) -> None:
@@ -713,7 +711,7 @@ class Builder:
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
         condition: GenericInstr,
-        a: Optional[T_CValue],
+        a: T_CValue,
         b: Optional[T_CValue],
     ) -> None:
         if len(body_commands) == 0:
@@ -725,57 +723,100 @@ class Builder:
         # We also need to check any existing other pre context commands if they are nested
         for pre_context_cmds in self._pre_context_commands.values():
             all_commands += pre_context_cmds
-        if_start, if_end = self._get_branch_commands(
-            branch_instruction=negated_predicate,
-            a=a,
-            b=b,
-        )
+
+        if negated_predicate in [GenericInstr.BEZ, GenericInstr.BNZ]:
+            if_start, if_end = self._get_branch_commands_single_operand(
+                branch_instruction=negated_predicate, a=a
+            )
+        else:
+            assert b is not None
+            if_start, if_end = self._get_branch_commands(
+                branch_instruction=negated_predicate,
+                a=a,
+                b=b,
+            )
         commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
         self.subrt_add_pending_commands(commands=commands)
 
-    def _get_branch_commands(
+    def _get_condition_operand(
+        self, value: T_CValue
+    ) -> Tuple[List[ICmd], T_OperandUnion]:
+        if isinstance(value, Future):
+            # Register for checking branching based on condition
+            reg = self._mem_mgr.get_inactive_register(activate=True)
+            # Load values
+            address_entry = value.get_address_entry()
+            load = ICmd(instruction=GenericInstr.LOAD, operands=[reg, address_entry])
+            return [load], reg
+        elif isinstance(value, RegFuture):
+            assert value.reg is not None
+            return [], value.reg
+        elif isinstance(value, int):
+            return [], value
+        else:
+            raise TypeError(f"Cannot do conditional statement with type {type(value)}")
+
+    def _get_branch_commands_single_operand(
         self,
         branch_instruction: GenericInstr,
-        a: Optional[T_CValue],
-        b: Optional[T_CValue],
+        a: T_CValue,
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
-        cond_values: List[T_OperandUnion] = []
-        if_start = []
-        for x in [a, b]:
-            if isinstance(x, Future):
-                # Register for checking branching based on condition
-                reg = self._mem_mgr.get_inactive_register(activate=True)
-                # Load values
-                address_entry = parse_address(
-                    f"{Symbols.ADDRESS_START}{x._address}[{x._index}]"
-                )
-                load = ICmd(
-                    instruction=GenericInstr.LOAD,
-                    operands=[reg, address_entry],
-                )
-                cond_values.append(reg)
-                if_start.append(load)
-            elif isinstance(x, RegFuture):
-                assert x.reg is not None
-                cond_values.append(x.reg)
-            elif isinstance(x, int):
-                cond_values.append(x)
-            else:
-                raise TypeError(f"Cannot do conditional statement with type {type(x)}")
+        if_start: List[ICmd] = []
+
+        using_new_temp_reg = False
+
+        cmds, cond_operand = self._get_condition_operand(a)
+        if_start += cmds
+
         branch = ICmd(
             instruction=branch_instruction,
-            operands=[cond_values[0], cond_values[1], Label(exit_label)],
+            operands=[cond_operand, Label(exit_label)],
+        )
+        if_start.append(branch)
+
+        if using_new_temp_reg:
+            assert isinstance(cond_operand, operand.Register)
+            self._mem_mgr.remove_active_reg(cond_operand)
+
+        exit = BranchLabel(exit_label)
+        if_end = [exit]
+
+        return if_start, if_end
+
+    def _get_branch_commands(
+        self,
+        branch_instruction: GenericInstr,
+        a: T_CValue,
+        b: T_CValue,
+    ) -> Tuple[List[ICmd], List[BranchLabel]]:
+        # Exit label
+        exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
+        cond_operands: List[T_OperandUnion] = []
+        if_start: List[ICmd] = []
+
+        temp_regs_to_remove: List[operand.Register] = []
+
+        for x in [a, b]:
+            cmds, cond_operand = self._get_condition_operand(x)
+            if_start += cmds
+            cond_operands.append(cond_operand)
+
+            if isinstance(x, Future):
+                assert isinstance(cond_operand, operand.Register)
+                temp_regs_to_remove.append(cond_operand)
+
+        branch = ICmd(
+            instruction=branch_instruction,
+            operands=[cond_operands[0], cond_operands[1], Label(exit_label)],
         )
         if_start.append(branch)
 
         # Inactivate the temporary registers
-        for val in cond_values:
-            if isinstance(val, operand.Register):
-                if not val.name == RegisterName.M:  # M-registers are never temporary
-                    self._mem_mgr.remove_active_reg(val)
+        for reg in temp_regs_to_remove:
+            self._mem_mgr.remove_active_reg(reg)
 
         exit = BranchLabel(exit_label)
         if_end = [exit]
@@ -783,7 +824,7 @@ class Builder:
         return if_start, if_end
 
     @contextmanager
-    def loop(
+    def sdk_loop(
         self,
         stop: int,
         start: int = 0,
@@ -963,7 +1004,7 @@ class Builder:
         self,
         context_id: int,
         condition: GenericInstr,
-        a: Optional[T_CValue],
+        a: T_CValue,
         b: Optional[T_CValue],
     ) -> None:
         body_commands = self.subrt_pop_pending_commands()

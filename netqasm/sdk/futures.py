@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import operand
 from netqasm.lang.ir import GenericInstr, ICmd, Symbols
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import HostLine
@@ -393,6 +394,9 @@ class Future(BaseFuture):
         )
         commands.append(access_cmd)
         return commands
+
+    def get_address_entry(self) -> Union[Address, ArraySlice, ArrayEntry]:
+        return parse_address(f"{Symbols.ADDRESS_START}{self._address}[{self._index}]")
 
 
 class RegFuture(BaseFuture):
