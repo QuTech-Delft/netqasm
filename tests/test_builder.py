@@ -166,31 +166,6 @@ def test_simple():
     )
 
 
-def test_loop():
-    with DebugConnection("conn") as conn:
-        q = Qubit(conn)
-        with conn.loop(2):
-            q.H()
-
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
-        print(subroutine)
-
-    inspector = PreSubroutineInspector(subroutine)
-    assert inspector.contains_instr(GenericInstr.QALLOC)
-    assert inspector.contains_instr(GenericInstr.SET)
-    assert not inspector.contains_instr(GenericInstr.ROT_X)
-
-    assert inspector.match_pattern(
-        [
-            PatternWildcard.BRANCH_LABEL,
-            GenericInstr.BEQ,
-            PatternWildcard.ANY_ZERO_OR_MORE,
-            GenericInstr.JMP,
-            PatternWildcard.BRANCH_LABEL,
-        ]
-    )
-
-
 def test_create_epr():
     DebugConnection.node_ids = {
         "Alice": 0,
@@ -273,9 +248,62 @@ def test_branching():
     )
 
 
+def test_loop_context():
+    with DebugConnection("conn") as conn:
+        q = Qubit(conn)
+        with conn.loop(2):
+            q.H()
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.contains_instr(GenericInstr.QALLOC)
+    assert inspector.contains_instr(GenericInstr.SET)
+    assert not inspector.contains_instr(GenericInstr.ROT_X)
+
+    assert inspector.match_pattern(
+        [
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_looping():
+    with DebugConnection("Alice") as conn:
+
+        def body(conn: DebugConnection):
+            q = Qubit(conn)
+            _ = q.measure()
+
+        conn.loop_body(body, 42, loop_register="C9")
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.SET,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     # test_simple()
-    # test_loop()
     # test_create_epr()
-    test_branching()
+    # test_branching()
+    test_loop_context()
+    test_looping()

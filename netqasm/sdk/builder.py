@@ -42,11 +42,7 @@ from netqasm.lang.ir import (
     T_OperandUnion,
     flip_branch_instr,
 )
-from netqasm.lang.parsing.text import (
-    assemble_subroutine,
-    get_current_registers,
-    parse_register,
-)
+from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import (
     EPRRole,
@@ -771,68 +767,39 @@ class Builder:
         finally:
             self._mem_mgr.remove_active_reg(register)
 
-    def _get_loop_commands(
+    def _get_loop_entry_commands(
         self,
         start: int,
         stop: int,
-        step: int,
-        current_registers: Set[str],
+        entry_label: str,
+        exit_label: str,
         loop_register: operand.Register,
-    ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        entry_label = self._label_mgr.new_label(start_with="LOOP")
-        exit_label = self._label_mgr.new_label(start_with="LOOP_EXIT")
+    ) -> List[T_Cmd]:
+        return [
+            ICmd(instruction=GenericInstr.SET, operands=[loop_register, start]),
+            BranchLabel(entry_label),
+            ICmd(
+                instruction=GenericInstr.BEQ,
+                operands=[loop_register, stop, Label(exit_label)],
+            ),
+        ]
 
-        entry_loop, exit_loop = self._get_entry_exit_loop_cmds(
-            start=start,
-            stop=stop,
-            step=step,
-            entry_label=entry_label,
-            exit_label=exit_label,
-            loop_register=loop_register,
-        )
-
-        return entry_loop, exit_loop
-
-    @staticmethod
-    def _get_entry_exit_loop_cmds(
+    def _get_loop_exit_commands(
+        self,
         start: int,
-        stop: int,
         step: int,
         entry_label: str,
         exit_label: str,
         loop_register: operand.Register,
-    ) -> Tuple[List[T_Cmd], List[T_Cmd]]:
-        entry_loop: List[T_Cmd] = [
-            ICmd(
-                instruction=GenericInstr.SET,
-                operands=[loop_register, start],
-            ),
-            BranchLabel(entry_label),
-            ICmd(
-                instruction=GenericInstr.BEQ,
-                operands=[
-                    loop_register,
-                    stop,
-                    Label(exit_label),
-                ],
-            ),
-        ]
-        exit_loop: List[T_Cmd] = [
+    ) -> List[T_Cmd]:
+        return [
             ICmd(
                 instruction=GenericInstr.ADD,
-                operands=[
-                    loop_register,
-                    loop_register,
-                    step,
-                ],
+                operands=[loop_register, loop_register, step],
             ),
-            ICmd(
-                instruction=GenericInstr.JMP,
-                operands=[Label(entry_label)],
-            ),
+            ICmd(instruction=GenericInstr.JMP, operands=[Label(entry_label)]),
             BranchLabel(exit_label),
         ]
-        return entry_loop, exit_loop
 
     def _enter_if_context(
         self,
@@ -1437,14 +1404,25 @@ class Builder:
         if len(body_commands) == 0:
             self.subrt_add_pending_commands(commands=pre_commands)
             return
-        current_registers = get_current_registers(body_commands)
-        loop_start, loop_end = self._get_loop_commands(
+
+        entry_label = self._label_mgr.new_label(start_with="LOOP")
+        exit_label = self._label_mgr.new_label(start_with="LOOP_EXIT")
+
+        loop_start = self._get_loop_entry_commands(
             start=start,
             stop=stop,
-            step=step,
-            current_registers=current_registers,
+            entry_label=entry_label,
+            exit_label=exit_label,
             loop_register=loop_register,
         )
+        loop_end = self._get_loop_exit_commands(
+            start=start,
+            step=step,
+            entry_label=entry_label,
+            exit_label=exit_label,
+            loop_register=loop_register,
+        )
+
         commands = pre_commands + loop_start + body_commands + loop_end
 
         self.subrt_add_pending_commands(commands=commands)
