@@ -360,7 +360,7 @@ class Builder:
                 raise NotImplementedError
 
         # TODO use loop context
-        self.loop_body(post_loop, stop=number, loop_register=loop_register)
+        self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
 
     def _add_wait_for_ent_info_cmd(
         self, ent_results_array: Array, pair: operand.Register
@@ -391,7 +391,7 @@ class Builder:
                 )
             )
 
-        self.loop_body(add_arr_start, stop=OK_FIELDS_K)
+        self._build_cmds_loop_body(add_arr_start, stop=OK_FIELDS_K)
 
         # Let tmp be pair + 1
         self.subrt_add_pending_command(
@@ -411,7 +411,7 @@ class Builder:
                 )
             )
 
-        self.loop_body(add_arr_stop, stop=OK_FIELDS_K)
+        self._build_cmds_loop_body(add_arr_stop, stop=OK_FIELDS_K)
 
         wait_cmd = ICmd(
             instruction=GenericInstr.WAIT_ALL,
@@ -657,88 +657,6 @@ class Builder:
         self._mem_mgr.reset()
         self._pre_context_commands = {}
 
-    def sdk_if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a == b"""
-        self._build_cmds_if_stmt(GenericInstr.BEQ, a, b, body)
-
-    def sdk_if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a != b"""
-        self._build_cmds_if_stmt(GenericInstr.BNE, a, b, body)
-
-    def sdk_if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a < b"""
-        self._build_cmds_if_stmt(GenericInstr.BLT, a, b, body)
-
-    def sdk_if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a >= b"""
-        self._build_cmds_if_stmt(GenericInstr.BGE, a, b, body)
-
-    def sdk_if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a == 0"""
-        self._build_cmds_if_stmt(GenericInstr.BEZ, a, b=None, body=body)
-
-    def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
-        """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._build_cmds_if_stmt(GenericInstr.BNZ, a, b=None, body=body)
-
-    def _build_cmds_if_stmt(
-        self,
-        condition: GenericInstr,
-        a: T_CValue,
-        b: Optional[T_CValue],
-        body: T_BranchRoutine,
-    ) -> None:
-        """Used to build effective if-statements"""
-        current_commands = self.subrt_pop_pending_commands()
-
-        # evaluate body (will add pending commands)
-        body(self._connection)
-
-        # get those commands
-        body_commands = self.subrt_pop_pending_commands()
-
-        # combine existing commands with body commands and branch instructions
-        self._build_cmds_condition(
-            pre_commands=current_commands,
-            body_commands=body_commands,
-            condition=condition,
-            a=a,
-            b=b,
-        )
-
-    def _build_cmds_condition(
-        self,
-        pre_commands: List[T_Cmd],
-        body_commands: List[T_Cmd],
-        condition: GenericInstr,
-        a: T_CValue,
-        b: Optional[T_CValue],
-    ) -> None:
-        if len(body_commands) == 0:
-            self.subrt_add_pending_commands(commands=pre_commands)
-            return
-        negated_predicate = flip_branch_instr(condition)
-        # Construct a list of all commands to see what branch labels are already used
-        all_commands = pre_commands + body_commands
-        # We also need to check any existing other pre context commands if they are nested
-        for pre_context_cmds in self._pre_context_commands.values():
-            all_commands += pre_context_cmds
-
-        if negated_predicate in [GenericInstr.BEZ, GenericInstr.BNZ]:
-            if_start, if_end = self._get_branch_commands_single_operand(
-                branch_instruction=negated_predicate, a=a
-            )
-        else:
-            assert b is not None
-            if_start, if_end = self._get_branch_commands(
-                branch_instruction=negated_predicate,
-                a=a,
-                b=b,
-            )
-        commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
-
-        self.subrt_add_pending_commands(commands=commands)
-
     def _get_condition_operand(
         self, value: T_CValue
     ) -> Tuple[List[ICmd], T_OperandUnion]:
@@ -822,80 +740,6 @@ class Builder:
         if_end = [exit]
 
         return if_start, if_end
-
-    @contextmanager
-    def sdk_loop(
-        self,
-        stop: int,
-        start: int = 0,
-        step: int = 1,
-        loop_register: Optional[operand.Register] = None,
-    ) -> Iterator[operand.Register]:
-        try:
-            pre_commands = self.subrt_pop_pending_commands()
-            loop_register_result = self._get_loop_register(loop_register, activate=True)
-            yield loop_register_result
-        finally:
-            body_commands = self.subrt_pop_pending_commands()
-            self._build_cmds_loop(
-                pre_commands=pre_commands,
-                body_commands=body_commands,
-                stop=stop,
-                start=start,
-                step=step,
-                loop_register=loop_register_result,
-            )
-            self._mem_mgr.remove_active_reg(loop_register_result)
-
-    def loop_body(
-        self,
-        body: T_LoopRoutine,
-        stop: int,
-        start: int = 0,
-        step: int = 1,
-        loop_register: Optional[operand.Register] = None,
-    ) -> None:
-        """An effective loop-statement where body is a function executed, a number of times specified
-        by `start`, `stop` and `step`.
-        """
-        loop_register = self._get_loop_register(loop_register)
-
-        pre_commands = self.subrt_pop_pending_commands()
-        with self._activate_register(loop_register):
-            body(self._connection)
-        body_commands = self.subrt_pop_pending_commands()
-        self._build_cmds_loop(
-            pre_commands=pre_commands,
-            body_commands=body_commands,
-            stop=stop,
-            start=start,
-            step=step,
-            loop_register=loop_register,
-        )
-
-    def _build_cmds_loop(
-        self,
-        pre_commands: List[T_Cmd],
-        body_commands: List[T_Cmd],
-        stop: int,
-        start: int,
-        step: int,
-        loop_register: operand.Register,
-    ) -> None:
-        if len(body_commands) == 0:
-            self.subrt_add_pending_commands(commands=pre_commands)
-            return
-        current_registers = get_current_registers(body_commands)
-        loop_start, loop_end = self._get_loop_commands(
-            start=start,
-            stop=stop,
-            step=step,
-            current_registers=current_registers,
-            loop_register=loop_register,
-        )
-        commands = pre_commands + loop_start + body_commands + loop_end
-
-        self.subrt_add_pending_commands(commands=commands)
 
     def _get_loop_register(
         self,
@@ -1236,7 +1080,9 @@ class Builder:
                 def init_array_elt(conn):
                     conn._builder.subrt_add_pending_command(store_cmd)
 
-                self.loop_body(init_array_elt, stop=length, loop_register=loop_register)
+                self._build_cmds_loop_body(
+                    init_array_elt, stop=length, loop_register=loop_register
+                )
                 commands += self.subrt_pop_pending_commands()
             else:
                 for i, value in enumerate(init_vals):
@@ -1551,6 +1397,116 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
+    def _build_cmds_loop_body(
+        self,
+        body: T_LoopRoutine,
+        stop: int,
+        start: int = 0,
+        step: int = 1,
+        loop_register: Optional[Union[operand.Register, str]] = None,
+    ) -> None:
+        """An effective loop-statement where body is a function executed, a number of times specified
+        by `start`, `stop` and `step`.
+        """
+        loop_register = self._get_loop_register(loop_register)
+        pre_commands = self.subrt_pop_pending_commands()
+
+        with self._activate_register(loop_register):
+            # evalute body (will add pending commands)
+            body(self._connection)
+        body_commands = self.subrt_pop_pending_commands()
+
+        self._build_cmds_loop(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            stop=stop,
+            start=start,
+            step=step,
+            loop_register=loop_register,
+        )
+
+    def _build_cmds_loop(
+        self,
+        pre_commands: List[T_Cmd],
+        body_commands: List[T_Cmd],
+        stop: int,
+        start: int,
+        step: int,
+        loop_register: operand.Register,
+    ) -> None:
+        if len(body_commands) == 0:
+            self.subrt_add_pending_commands(commands=pre_commands)
+            return
+        current_registers = get_current_registers(body_commands)
+        loop_start, loop_end = self._get_loop_commands(
+            start=start,
+            stop=stop,
+            step=step,
+            current_registers=current_registers,
+            loop_register=loop_register,
+        )
+        commands = pre_commands + loop_start + body_commands + loop_end
+
+        self.subrt_add_pending_commands(commands=commands)
+
+    def _build_cmds_if_stmt(
+        self,
+        condition: GenericInstr,
+        a: T_CValue,
+        b: Optional[T_CValue],
+        body: T_BranchRoutine,
+    ) -> None:
+        """Used to build effective if-statements"""
+        current_commands = self.subrt_pop_pending_commands()
+
+        # evaluate body (will add pending commands)
+        body(self._connection)
+
+        # get those commands
+        body_commands = self.subrt_pop_pending_commands()
+
+        # combine existing commands with body commands and branch instructions
+        self._build_cmds_condition(
+            pre_commands=current_commands,
+            body_commands=body_commands,
+            condition=condition,
+            a=a,
+            b=b,
+        )
+
+    def _build_cmds_condition(
+        self,
+        pre_commands: List[T_Cmd],
+        body_commands: List[T_Cmd],
+        condition: GenericInstr,
+        a: T_CValue,
+        b: Optional[T_CValue],
+    ) -> None:
+        if len(body_commands) == 0:
+            self.subrt_add_pending_commands(commands=pre_commands)
+            return
+        negated_predicate = flip_branch_instr(condition)
+        # Construct a list of all commands to see what branch labels are already used
+        all_commands = pre_commands + body_commands
+        # We also need to check any existing other pre context commands if they are nested
+        for pre_context_cmds in self._pre_context_commands.values():
+            all_commands += pre_context_cmds
+
+        if negated_predicate in [GenericInstr.BEZ, GenericInstr.BNZ]:
+            if_start, if_end = self._get_branch_commands_single_operand(
+                branch_instruction=negated_predicate, a=a
+            )
+        else:
+            assert b is not None
+            if_start, if_end = self._get_branch_commands(
+                branch_instruction=negated_predicate,
+                a=a,
+                b=b,
+            )
+        commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
+
+        self.subrt_add_pending_commands(commands=commands)
+
     def sdk_epr_keep(
         self,
         role: EPRRole,
@@ -1717,3 +1673,61 @@ class Builder:
 
     def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
+
+    @contextmanager
+    def sdk_loop_context(
+        self,
+        stop: int,
+        start: int = 0,
+        step: int = 1,
+        loop_register: Optional[Union[operand.Register, str]] = None,
+    ) -> Iterator[operand.Register]:
+        try:
+            pre_commands = self.subrt_pop_pending_commands()
+            loop_register_result = self._get_loop_register(loop_register, activate=True)
+            yield loop_register_result
+        finally:
+            body_commands = self.subrt_pop_pending_commands()
+            self._build_cmds_loop(
+                pre_commands=pre_commands,
+                body_commands=body_commands,
+                stop=stop,
+                start=start,
+                step=step,
+                loop_register=loop_register_result,
+            )
+            self._mem_mgr.remove_active_reg(loop_register_result)
+
+    def sdk_loop_body(
+        self,
+        body: T_LoopRoutine,
+        stop: int,
+        start: int = 0,
+        step: int = 1,
+        loop_register: Optional[Union[operand.Register, str]] = None,
+    ):
+        self._build_cmds_loop_body(body, stop, start, step, loop_register)
+
+    def sdk_if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a == b"""
+        self._build_cmds_if_stmt(GenericInstr.BEQ, a, b, body)
+
+    def sdk_if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a != b"""
+        self._build_cmds_if_stmt(GenericInstr.BNE, a, b, body)
+
+    def sdk_if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a < b"""
+        self._build_cmds_if_stmt(GenericInstr.BLT, a, b, body)
+
+    def sdk_if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a >= b"""
+        self._build_cmds_if_stmt(GenericInstr.BGE, a, b, body)
+
+    def sdk_if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a == 0"""
+        self._build_cmds_if_stmt(GenericInstr.BEZ, a, b=None, body=body)
+
+    def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
+        """An effective if-statement where body is a function executing the clause for a != 0"""
+        self._build_cmds_if_stmt(GenericInstr.BNZ, a, b=None, body=body)

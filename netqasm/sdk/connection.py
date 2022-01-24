@@ -583,7 +583,7 @@ class BaseNetQASMConnection(abc.ABC):
         """
         # TODO: this returns a method that has a decorator.
         #       Are type hints still correct?
-        return self._builder.sdk_loop(stop, start, step, loop_register)  # type: ignore
+        return self._builder.sdk_loop_context(stop, start, step, loop_register)  # type: ignore
 
     def loop_body(
         self,
@@ -591,7 +591,7 @@ class BaseNetQASMConnection(abc.ABC):
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[operand.Register] = None,
+        loop_register: Optional[Union[operand.Register, str]] = None,
     ) -> None:
         """Loop code that is defined in a Python function (body).
 
@@ -604,7 +604,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param step: step size of iteration range, defaults to 1
         :param loop_register: specific register to be used for holding the loop index.
         """
-        self._builder.loop_body(body, stop, start, step, loop_register)
+        self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.
