@@ -500,8 +500,8 @@ def test_epr_m():
 
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
-        outcomes = epr_socket.create(tp=EPRType.M)
-        m = outcomes[0][2]
+        outcomes = epr_socket.create_measure()
+        m = outcomes[0].measurement_outcome
         with m.if_eq(0):
             m.add(1)
 

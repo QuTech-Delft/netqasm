@@ -18,7 +18,7 @@ from netqasm.qlink_compat import (
     RandomBasis,
     TimeUnit,
 )
-from netqasm.sdk.builder import EntRequestParams
+from netqasm.sdk.builder import EntRequestParams, EprKeepResult, EprMeasureResult
 
 from .qubit import Qubit
 
@@ -217,7 +217,7 @@ class EPRSocket(abc.ABC):
         :return: list of qubits created
         """
 
-        return self.conn.builder.sdk_create_epr_keep(
+        qubits, _ = self.conn._builder.sdk_create_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -228,6 +228,28 @@ class EPRSocket(abc.ABC):
                 max_time=max_time,
             ),
         )
+        return qubits
+
+    def create_keep_with_info(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        qubits, info = self.conn._builder.sdk_create_epr_keep(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
+            ),
+        )
+        return qubits, info
 
     def get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
         if basis == EPRMeasBasis.X:
@@ -256,7 +278,7 @@ class EPRSocket(abc.ABC):
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         """Ask the network stack to generate EPR pairs with the remote node and
         measure them immediately (on both nodes).
 
@@ -423,12 +445,7 @@ class EPRSocket(abc.ABC):
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         random_basis_remote: Optional[RandomBasis] = None,
-    ) -> Union[
-        List[Qubit],
-        List[LinkLayerOKTypeK],
-        List[LinkLayerOKTypeM],
-        List[LinkLayerOKTypeR],
-    ]:
+    ) -> Union[List[Qubit], List[EprMeasureResult], List[LinkLayerOKTypeM]]:
         """Ask the network stack to generate EPR pairs with the remote node.
 
         A `create` operation must always be matched by a `recv` operation on the remote
@@ -652,7 +669,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn.builder.sdk_recv_epr_keep(
+        qubits, _ = self.conn._builder.sdk_recv_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -661,11 +678,30 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
             ),
         )
+        return qubits
+
+    def recv_keep_with_info(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        qubits, info = self.conn._builder.sdk_recv_epr_keep(
+>>>>>>> Refactor EPR argument handling
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+            ),
+        )
+        return qubits, info
 
     def recv_measure(
         self,
         number: int = 1,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         """Ask the network stack to wait for the remote node to generate EPR pairs,
         which are immediately measured (on both nodes).
 
@@ -726,7 +762,7 @@ class EPRSocket(abc.ABC):
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
-    ) -> Union[List[Qubit], T_LinkLayerOkList]:
+    ) -> Union[List[Qubit], List[EprMeasureResult], List[LinkLayerOKTypeR]]:
         """Ask the network stack to wait for the remote node to generate EPR pairs.
 
         A `recv` operation must always be matched by a `create` operation on the remote

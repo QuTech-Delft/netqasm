@@ -43,6 +43,7 @@ from netqasm.lang.ir import (
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import (
+    BellState,
     EPRRole,
     EPRType,
     LinkLayerOKTypeK,
@@ -92,56 +93,166 @@ class EntRequestParams:
 SER_CREATE_REQUEST_LEN = 20
 
 # Indices of Create Request arguments in serialized NetQASM array
-SER_IDX_TYPE = 0
-SER_IDX_NUMBER = 1
-SER_IDX_RANDOM_BASIS_LOCAL = 2
-SER_IDX_RANDOM_BASIS_REMOTE = 3
-SER_IDX_MINIMUM_FIDELITY = 4
-SER_IDX_TIME_UNIT = 5
-SER_IDX_MAX_TIME = 6
-SER_IDX_PRIORITY = 7
-SER_IDX_ATOMIC = 8
-SER_IDX_CONSECUTIVE = 9
-SER_IDX_PROBABILITY_DIST_LOCAL1 = 10
-SER_IDX_PROBABLIITY_DIST_LOCAL2 = 11
-SER_IDX_PROBABILITY_DIST_REMOTE1 = 12
-SER_IDX_PROBABLIITY_DIST_REMOTE2 = 13
-SER_IDX_ROTATION_X_LOCAL1 = 14
-SER_IDX_ROTATION_Y_LOCAL = 15
-SER_IDX_ROTATION_X_LOCAL2 = 16
-SER_IDX_ROTATION_X_REMOTE1 = 17
-SER_IDX_ROTATION_Y_REMOTE = 18
-SER_IDX_ROTATION_X_REMOTE2 = 19
+SER_CREATE_IDX_TYPE = 0
+SER_CREATE_IDX_NUMBER = 1
+SER_CREATE_IDX_RANDOM_BASIS_LOCAL = 2
+SER_CREATE_IDX_RANDOM_BASIS_REMOTE = 3
+SER_CREATE_IDX_MINIMUM_FIDELITY = 4
+SER_CREATE_IDX_TIME_UNIT = 5
+SER_CREATE_IDX_MAX_TIME = 6
+SER_CREATE_IDX_PRIORITY = 7
+SER_CREATE_IDX_ATOMIC = 8
+SER_CREATE_IDX_CONSECUTIVE = 9
+SER_CREATE_IDX_PROBABILITY_DIST_LOCAL1 = 10
+SER_CREATE_IDX_PROBABLIITY_DIST_LOCAL2 = 11
+SER_CREATE_IDX_PROBABILITY_DIST_REMOTE1 = 12
+SER_CREATE_IDX_PROBABLIITY_DIST_REMOTE2 = 13
+SER_CREATE_IDX_ROTATION_X_LOCAL1 = 14
+SER_CREATE_IDX_ROTATION_Y_LOCAL = 15
+SER_CREATE_IDX_ROTATION_X_LOCAL2 = 16
+SER_CREATE_IDX_ROTATION_X_REMOTE1 = 17
+SER_CREATE_IDX_ROTATION_Y_REMOTE = 18
+SER_CREATE_IDX_ROTATION_X_REMOTE2 = 19
+
+# Length of NetQASM array for EPR Keep results.
+SER_RESULT_KEEP_LEN = 10
+
+# Indices of EPR Keep results in serialized NetQASM array
+SER_RESPONSE_KEEP_IDX_TYPE = 0
+SER_RESPONSE_KEEP_IDX_CREATE_ID = 1
+SER_RESPONSE_KEEP_IDX_LOGICAL_QUBIT_ID = 2
+SER_RESPONSE_KEEP_IDX_DIRECTONIALITY_FLAG = 3
+SER_RESPONSE_KEEP_IDX_SEQUENCE_NUMBER = 4
+SER_RESPONSE_KEEP_IDX_PURPOSE_ID = 5
+SER_RESPONSE_KEEP_IDX_REMOTE_NODE_ID = 6
+SER_RESPONSE_KEEP_IDX_GOODNESS = 7
+SER_RESPONSE_KEEP_IDX_GOODNESS_TIME = 8
+SER_RESPONSE_KEEP_IDX_BELL_STATE = 9
+
+# Length of NetQASM array for EPR Measure results.
+SER_RESULT_MEASURE_LEN = 10
+
+# Indices of EPR Measure results in serialized NetQASM array
+SER_RESPONSE_MEASURE_IDX_TYPE = 0
+SER_RESPONSE_MEASURE_IDX_CREATE_ID = 1
+SER_RESPONSE_MEASURE_IDX_MEASUREMENT_OUTCOME = 2
+SER_RESPONSE_MEASURE_IDX_MEASUREMENT_BASIS = 3
+SER_RESPONSE_MEASURE_IDX_DIRECTONIALITY_FLAG = 4
+SER_RESPONSE_MEASURE_IDX_SEQUENCE_NUMBER = 5
+SER_RESPONSE_MEASURE_IDX_PURPOSE_ID = 6
+SER_RESPONSE_MEASURE_IDX_REMOTE_NODE_ID = 7
+SER_RESPONSE_MEASURE_IDX_GOODNESS = 8
+SER_RESPONSE_MEASURE_IDX_BELL_STATE = 9
 
 
 def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[int]]:
     array: List[Optional[int]] = [None for i in range(SER_CREATE_REQUEST_LEN)]
 
-    array[SER_IDX_TYPE] = tp.value
-    array[SER_IDX_NUMBER] = params.number
+    array[SER_CREATE_IDX_TYPE] = tp.value
+    array[SER_CREATE_IDX_NUMBER] = params.number
 
     # Only when max_time is 0, explicitly initialize the relavant array elements.
     # If it is max_time 0, these array element will be None.
-    if params.max_time is not 0:
-        array[SER_IDX_TIME_UNIT] = params.time_unit.value
-        array[SER_IDX_MAX_TIME] = params.max_time
+    if params.max_time != 0:
+        array[SER_CREATE_IDX_TIME_UNIT] = params.time_unit.value
+        array[SER_CREATE_IDX_MAX_TIME] = params.max_time
 
     if tp == EPRType.M or tp == EPRType.R:
         # Only write when non-zero.
         if params.rotations_local != (0, 0, 0):
-            array[SER_IDX_ROTATION_X_LOCAL1] = params.rotations_local[0]
-            array[SER_IDX_ROTATION_Y_LOCAL] = params.rotations_local[1]
-            array[SER_IDX_ROTATION_X_LOCAL2] = params.rotations_local[2]
+            array[SER_CREATE_IDX_ROTATION_X_LOCAL1] = params.rotations_local[0]
+            array[SER_CREATE_IDX_ROTATION_Y_LOCAL] = params.rotations_local[1]
+            array[SER_CREATE_IDX_ROTATION_X_LOCAL2] = params.rotations_local[2]
         if params.rotations_remote != (0, 0, 0):
-            array[SER_IDX_ROTATION_X_REMOTE1] = params.rotations_remote[0]
-            array[SER_IDX_ROTATION_Y_REMOTE] = params.rotations_remote[1]
-            array[SER_IDX_ROTATION_X_REMOTE2] = params.rotations_remote[2]
+            array[SER_CREATE_IDX_ROTATION_X_REMOTE1] = params.rotations_remote[0]
+            array[SER_CREATE_IDX_ROTATION_Y_REMOTE] = params.rotations_remote[1]
+            array[SER_CREATE_IDX_ROTATION_X_REMOTE2] = params.rotations_remote[2]
         if params.random_basis_local:
-            array[SER_IDX_RANDOM_BASIS_LOCAL] = params.random_basis_local.value
+            array[SER_CREATE_IDX_RANDOM_BASIS_LOCAL] = params.random_basis_local.value
         if params.random_basis_remote:
-            array[SER_IDX_RANDOM_BASIS_REMOTE] = params.random_basis_remote.value
+            array[SER_CREATE_IDX_RANDOM_BASIS_REMOTE] = params.random_basis_remote.value
 
     return array
+
+
+def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepResult]:
+    assert len(array) == num_pairs * SER_RESULT_KEEP_LEN
+    results: List[EprKeepResult] = []
+    for i in range(num_pairs):
+        base = i * SER_RESULT_KEEP_LEN
+        results.append(
+            EprKeepResult(
+                qubit_id=array.get_future_index(
+                    base + SER_RESPONSE_KEEP_IDX_LOGICAL_QUBIT_ID
+                ),
+                remote_node_id=array.get_future_index(
+                    base + SER_RESPONSE_KEEP_IDX_REMOTE_NODE_ID
+                ),
+                generation_duration=array.get_future_index(
+                    base + SER_RESPONSE_KEEP_IDX_GOODNESS
+                ),
+                raw_bell_state=array.get_future_index(
+                    base + SER_RESPONSE_KEEP_IDX_BELL_STATE
+                ),
+            )
+        )
+    return results
+
+
+def deserialize_epr_measure_results(
+    num_pairs: int, array: Array
+) -> List[EprMeasureResult]:
+    assert len(array) == num_pairs * SER_RESULT_MEASURE_LEN
+    results: List[EprMeasureResult] = []
+    for i in range(num_pairs):
+        base = i * SER_RESULT_MEASURE_LEN
+        results.append(
+            EprMeasureResult(
+                measurement_outcome=array.get_future_index(
+                    base + SER_RESPONSE_MEASURE_IDX_MEASUREMENT_OUTCOME
+                ),
+                measurement_basis=array.get_future_index(
+                    base + SER_RESPONSE_MEASURE_IDX_MEASUREMENT_BASIS
+                ),
+                remote_node_id=array.get_future_index(
+                    base + SER_RESPONSE_MEASURE_IDX_REMOTE_NODE_ID
+                ),
+                generation_duration=array.get_future_index(
+                    base + SER_RESPONSE_MEASURE_IDX_GOODNESS
+                ),
+                raw_bell_state=array.get_future_index(
+                    base + SER_RESPONSE_MEASURE_IDX_BELL_STATE
+                ),
+            )
+        )
+    return results
+
+
+@dataclass
+class EprKeepResult:
+    qubit_id: Future
+    remote_node_id: Future
+    generation_duration: Future
+    raw_bell_state: Future
+
+    @property
+    def bell_state(self) -> BellState:
+        assert self.raw_bell_state.value is not None
+        return BellState(self.raw_bell_state.value)
+
+
+@dataclass
+class EprMeasureResult:
+    measurement_outcome: Future
+    measurement_basis: Future
+    remote_node_id: Future
+    generation_duration: Future
+    raw_bell_state: Future
+
+    @property
+    def bell_state(self) -> BellState:
+        assert self.raw_bell_state.value is not None
+        return BellState(self.raw_bell_state.value)
 
 
 class LabelManager:
@@ -379,7 +490,7 @@ class Builder:
             length=len(serialized_args), init_values=serialized_args
         )
 
-    def _add_post_commands(
+    def _build_cmds_post_epr(
         self,
         qubit_ids: Optional[Array],
         number: int,
@@ -1531,7 +1642,7 @@ class Builder:
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> List[Qubit]:
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         self._check_epr_args(tp=EPRType.K, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1569,7 +1680,7 @@ class Builder:
 
         # Construct and add NetQASM instructions for post routine
         if params.post_routine:
-            self._add_post_commands(
+            self._build_cmds_post_epr(
                 qubit_ids_array,
                 params.number,
                 ent_results_array,
@@ -1577,13 +1688,14 @@ class Builder:
                 params.post_routine,
             )
 
-        return qubit_futures
+        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
+        return qubit_futures, epr_results
 
     def sdk_epr_measure(
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         self._check_epr_args(tp=EPRType.M, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1594,10 +1706,10 @@ class Builder:
             number=params.number, tp=EPRType.M
         )
 
-        # SDK handles to result values (LinkLayerOkTypeM objects).
-        result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
-            params.number, ent_results_array
-        )
+        # # SDK handles to result values (LinkLayerOkTypeM objects).
+        # result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
+        #     params.number, ent_results_array
+        # )
 
         wait_all = params.post_routine is None
 
@@ -1612,7 +1724,8 @@ class Builder:
         else:
             self._build_cmds_epr_recv_measure(ent_results_array, wait_all, params)
 
-        return result_futures
+        results = deserialize_epr_measure_results(params.number, ent_results_array)
+        return results
 
     def sdk_epr_rsp_create(
         self,
@@ -1680,18 +1793,22 @@ class Builder:
 
         return qubit_futures
 
-    def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+    def sdk_create_epr_keep(
+        self, params: EntRequestParams
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
-    def sdk_recv_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+    def sdk_recv_epr_keep(
+        self, params: EntRequestParams
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         return self.sdk_epr_measure(role=EPRRole.CREATE, params=params)
 
-    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
+    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[EprMeasureResult]:
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
 
     @contextmanager

@@ -82,7 +82,7 @@ def create_ghz(
         m = 0
     else:
         assert down_epr_socket is not None
-        q = down_epr_socket.recv()[0]
+        q = down_epr_socket.recv_keep()[0]
         assert isinstance(q, Qubit)
         conn = down_epr_socket.conn
         if up_epr_socket is None:

@@ -401,6 +401,26 @@ def test_nested():
     )
 
 
+def test_epr_keep_info():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        eprs, infos = epr_socket.create_keep_with_info()
+        epr, info = eprs[0], infos[0]
+
+        _ = epr.measure(store_array=False)
+        with info.generation_duration.if_ge(1337):
+            _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+
 def test_try():
     with DebugConnection("Alice") as conn:
 
@@ -422,3 +442,4 @@ if __name__ == "__main__":
     test_futures()
     test_nested()
     test_try()
+    test_epr_keep_info()
