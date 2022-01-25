@@ -292,17 +292,6 @@ def test_epr():
             instructions.vanilla.GateHInstruction(
                 reg=Register(RegisterName.Q, 0),
             ),
-            # free qubit
-            # NOTE qubits are now freed when application ends
-            # without explicit qfree for each
-            # Command(instruction=Instruction.SET, operands=[
-            #     Register(RegisterName.Q, 0),
-            #     0,
-            # ]),
-            # Command(instruction=Instruction.QFREE, operands=[
-            #     Register(RegisterName.Q, 0),
-            # ]),
-            # return cmds
             instructions.core.RetArrInstruction(
                 address=Address(0),
             ),
@@ -314,14 +303,16 @@ def test_epr():
             ),
         ],
     )
+    print("ACTUAL")
+    print(subroutine)
+    print("EXPECTED")
+    print(expected)
     for i, command in enumerate(subroutine.commands):
         print(repr(command))
         expected_command = expected.commands[i]
         print(repr(expected_command))
         print()
         assert command == expected_command
-    print(subroutine)
-    print(expected)
     assert subroutine == expected
 
 
@@ -1010,8 +1001,8 @@ def test_epr_max_time():
 if __name__ == "__main__":
     # test_simple()
     # test_rotations()
-    # test_epr()
+    test_epr()
     # test_two_epr()
-    test_epr_m()
+    # test_epr_m()
     # test_epr_r_create()
     # test_epr_r_receive()

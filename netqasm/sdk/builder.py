@@ -8,11 +8,9 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import Enum
 from itertools import count
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
     Dict,
     Iterator,
@@ -47,7 +45,6 @@ from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import (
     EPRRole,
     EPRType,
-    LinkLayerCreate,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
     LinkLayerOKTypeR,
@@ -89,6 +86,62 @@ class EntRequestParams:
     random_basis_remote: Optional[RandomBasis] = None
     rotations_local: Tuple[int, int, int] = (0, 0, 0)
     rotations_remote: Tuple[int, int, int] = (0, 0, 0)
+
+
+# Length of NetQASM array for serialized Create Requests.
+SER_CREATE_REQUEST_LEN = 20
+
+# Indices of Create Request arguments in serialized NetQASM array
+SER_IDX_TYPE = 0
+SER_IDX_NUMBER = 1
+SER_IDX_RANDOM_BASIS_LOCAL = 2
+SER_IDX_RANDOM_BASIS_REMOTE = 3
+SER_IDX_MINIMUM_FIDELITY = 4
+SER_IDX_TIME_UNIT = 5
+SER_IDX_MAX_TIME = 6
+SER_IDX_PRIORITY = 7
+SER_IDX_ATOMIC = 8
+SER_IDX_CONSECUTIVE = 9
+SER_IDX_PROBABILITY_DIST_LOCAL1 = 10
+SER_IDX_PROBABLIITY_DIST_LOCAL2 = 11
+SER_IDX_PROBABILITY_DIST_REMOTE1 = 12
+SER_IDX_PROBABLIITY_DIST_REMOTE2 = 13
+SER_IDX_ROTATION_X_LOCAL1 = 14
+SER_IDX_ROTATION_Y_LOCAL = 15
+SER_IDX_ROTATION_X_LOCAL2 = 16
+SER_IDX_ROTATION_X_REMOTE1 = 17
+SER_IDX_ROTATION_Y_REMOTE = 18
+SER_IDX_ROTATION_X_REMOTE2 = 19
+
+
+def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[int]]:
+    array: List[Optional[int]] = [None for i in range(SER_CREATE_REQUEST_LEN)]
+
+    array[SER_IDX_TYPE] = tp.value
+    array[SER_IDX_NUMBER] = params.number
+
+    # Only when max_time is 0, explicitly initialize the relavant array elements.
+    # If it is max_time 0, these array element will be None.
+    if params.max_time is not 0:
+        array[SER_IDX_TIME_UNIT] = params.time_unit.value
+        array[SER_IDX_MAX_TIME] = params.max_time
+
+    if tp == EPRType.M or tp == EPRType.R:
+        # Only write when non-zero.
+        if params.rotations_local != (0, 0, 0):
+            array[SER_IDX_ROTATION_X_LOCAL1] = params.rotations_local[0]
+            array[SER_IDX_ROTATION_Y_LOCAL] = params.rotations_local[1]
+            array[SER_IDX_ROTATION_X_LOCAL2] = params.rotations_local[2]
+        if params.rotations_remote != (0, 0, 0):
+            array[SER_IDX_ROTATION_X_REMOTE1] = params.rotations_remote[0]
+            array[SER_IDX_ROTATION_Y_REMOTE] = params.rotations_remote[1]
+            array[SER_IDX_ROTATION_X_REMOTE2] = params.rotations_remote[2]
+        if params.random_basis_local:
+            array[SER_IDX_RANDOM_BASIS_LOCAL] = params.random_basis_local.value
+        if params.random_basis_remote:
+            array[SER_IDX_RANDOM_BASIS_REMOTE] = params.random_basis_remote.value
+
+    return array
 
 
 class LabelManager:
@@ -321,65 +374,10 @@ class Builder:
         return operand.Register(RegisterName.Q, reg_index)
 
     def _alloc_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
-        create_kwargs: Dict[str, Any] = {}
-        create_kwargs["type"] = tp
-        create_kwargs["number"] = params.number
-        if params.max_time != 0:  # if 0, don't need to set value explicitly
-            create_kwargs["time_unit"] = params.time_unit.value
-            create_kwargs["max_time"] = params.max_time
-        # TODO currently this give 50 / 50 since with the current link layer
-        # This should change and not be hardcoded here
-        if params.random_basis_local is not None:
-            # NOTE Currently there is not value one can set to specify
-            # a uniform distribution for three bases. This needs to be changed
-            # in the underlying link layer/network stack
-            assert params.random_basis_local in [
-                RandomBasis.XZ,
-                RandomBasis.CHSH,
-            ], "Can only random measure in one of two bases for now"
-            create_kwargs["random_basis_local"] = params.random_basis_local
-            create_kwargs["probability_dist_local1"] = 128
-        if params.random_basis_remote is not None:
-            assert params.random_basis_remote in [
-                RandomBasis.XZ,
-                RandomBasis.CHSH,
-            ], "Can only random measure in one of two bases for now"
-            create_kwargs["random_basis_remote"] = params.random_basis_remote
-            create_kwargs["probability_dist_remote1"] = 128
-
-        if tp == EPRType.M or tp == EPRType.R:
-            rotx1_local, roty_local, rotx2_local = params.rotations_local
-            rotx1_remote, roty_remote, rotx2_remote = params.rotations_remote
-
-            if params.rotations_local != (
-                0,
-                0,
-                0,
-            ):  # instructions for explicitly setting to zero are redundant
-                create_kwargs["rotation_X_local1"] = rotx1_local
-                create_kwargs["rotation_Y_local"] = roty_local
-                create_kwargs["rotation_X_local2"] = rotx2_local
-
-            if params.rotations_remote != (
-                0,
-                0,
-                0,
-            ):  # instructions for explicitly setting to zero are redundant
-                create_kwargs["rotation_X_remote1"] = rotx1_remote
-                create_kwargs["rotation_Y_remote"] = roty_remote
-                create_kwargs["rotation_X_remote2"] = rotx2_remote
-
-        create_args = []
-        # NOTE we don't include the two first args since these are remote_node_id
-        # and epr_socket_id which come as registers
-        for field in LinkLayerCreate._fields[2:]:
-            arg = create_kwargs.get(field)
-            # If Enum, use its value
-            if isinstance(arg, Enum):
-                arg = arg.value
-            create_args.append(arg)
-        # TODO don't create a new array if already created from previous command
-        return self.alloc_array(init_values=create_args)
+        serialized_args = serialize_request(tp, params)
+        return self.alloc_array(
+            length=len(serialized_args), init_values=serialized_args
+        )
 
     def _add_post_commands(
         self,
@@ -1786,16 +1784,3 @@ class Builder:
             body_commands = self.subrt_pop_all_pending_commands()
             commands = pre_commands + body_commands
             self.subrt_add_pending_commands(commands)
-
-    # @contextmanager
-    # def sdk_future_if_context(
-    #     self,
-    #     max_tries: int = 1,
-    # ) -> None:
-    #     try:
-    #         pre_commands = self.subrt_pop_all_pending_commands()
-    #         yield
-    #     finally:
-    #         body_commands = self.subrt_pop_all_pending_commands()
-    #         commands = pre_commands + body_commands
-    #         self.subrt_add_pending_commands(commands)
