@@ -332,6 +332,86 @@ def test_futures():
     )
 
 
+def test_nested():
+    with DebugConnection("Alice") as conn:
+
+        q = Qubit(conn)
+        m = q.measure()
+        with m.if_eq(0):
+            with m.if_eq(1):
+                _ = Qubit(conn)
+
+        with conn.loop(2):
+            with conn.loop(3):
+                _ = Qubit(conn)
+
+        with conn.loop(2):
+            with m.if_eq(0):
+                _ = Qubit(conn)
+
+        with m.if_eq(0):
+            with conn.loop(2):
+                _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+
+    assert inspector.match_pattern(
+        [
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # IF_EXIT
+            PatternWildcard.BRANCH_LABEL,  # IF_EXIT1
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # LOOP1
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # LOOP
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,  # LOOP_EXIT
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,  # LOOP_EXIT1
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # LOOP2
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # IF_EXIT2
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,  # LOOP_EXIT2
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,  # LOOP3
+            GenericInstr.BEQ,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,  # LOOP_EXIT3
+            PatternWildcard.BRANCH_LABEL,  # IF_EXIT3
+        ]
+    )
+
+
+def test_try():
+    with DebugConnection("Alice") as conn:
+
+        with conn.try_until_success(max_tries=1):
+            q = Qubit(conn)
+            q.measure()
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     # test_simple()
@@ -339,4 +419,6 @@ if __name__ == "__main__":
     # test_branching()
     # test_loop_context()
     # test_looping()
-    test_futures()
+    # test_futures()
+    # test_nested()
+    test_try()

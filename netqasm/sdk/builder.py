@@ -284,12 +284,12 @@ class Builder:
         self._build_cmds_return_registers()
         if len(self._pending_commands) > 0:
             commands = self.subrt_pop_pending_commands()
-            metadata = self._get_metadata()
+            metadata = self.subrt_get_metadata()
             return PreSubroutine(**metadata, commands=commands)
         else:
             return None
 
-    def _get_metadata(self) -> Dict:
+    def subrt_get_metadata(self) -> Dict:
         return {
             "netqasm_version": NETQASM_VERSION,
             "app_id": self.app_id,
@@ -849,14 +849,6 @@ class Builder:
             BranchLabel(exit_label),
         ]
 
-    def sdk_new_if_context(
-        self, condition: GenericInstr, a: T_CValue, b: Optional[T_CValue]
-    ) -> SdkIfContext:
-        id = self._next_context_id
-        context = SdkIfContext(id=id, builder=self, condition=condition, a=a, b=b)
-        self._next_context_id += 1
-        return context
-
     def if_context_enter(self, context_id: int) -> None:
         pre_commands = self.subrt_pop_pending_commands()
         self._pre_context_commands[context_id] = pre_commands
@@ -883,16 +875,6 @@ class Builder:
             a=a,
             b=b,
         )
-
-    def sdk_new_foreach_context(
-        self, array: Array, return_index: bool
-    ) -> SdkForEachContext:
-        id = self._next_context_id
-        context = SdkForEachContext(
-            id=id, builder=self, array=array, return_index=return_index
-        )
-        self._next_context_id += 1
-        return context
 
     def _foreach_context_enter(
         self, context_id: int, array: Array, return_index: bool
@@ -1770,3 +1752,47 @@ class Builder:
     def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
         self._build_cmds_if_stmt(GenericInstr.BNZ, a, b=None, body=body)
+
+    def sdk_new_if_context(
+        self, condition: GenericInstr, a: T_CValue, b: Optional[T_CValue]
+    ) -> SdkIfContext:
+        id = self._next_context_id
+        context = SdkIfContext(id=id, builder=self, condition=condition, a=a, b=b)
+        self._next_context_id += 1
+        return context
+
+    def sdk_new_foreach_context(
+        self, array: Array, return_index: bool
+    ) -> SdkForEachContext:
+        id = self._next_context_id
+        context = SdkForEachContext(
+            id=id, builder=self, array=array, return_index=return_index
+        )
+        self._next_context_id += 1
+        return context
+
+    @contextmanager
+    def sdk_try_context(
+        self,
+        max_tries: int = 1,
+    ) -> Iterator[None]:
+        try:
+            pre_commands = self.subrt_pop_pending_commands()
+            yield
+        finally:
+            body_commands = self.subrt_pop_pending_commands()
+            commands = pre_commands + body_commands
+            self.subrt_add_pending_commands(commands)
+
+    # @contextmanager
+    # def sdk_future_if_context(
+    #     self,
+    #     max_tries: int = 1,
+    # ) -> None:
+    #     try:
+    #         pre_commands = self.subrt_pop_pending_commands()
+    #         yield
+    #     finally:
+    #         body_commands = self.subrt_pop_pending_commands()
+    #         commands = pre_commands + body_commands
+    #         self.subrt_add_pending_commands(commands)

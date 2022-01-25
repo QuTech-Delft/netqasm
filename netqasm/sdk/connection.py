@@ -688,6 +688,10 @@ class BaseNetQASMConnection(abc.ABC):
         """
         self._builder.sdk_if_nz(a, body)
 
+    def try_until_success(self, max_tries: int = 1) -> Iterator[None]:
+        """TODO docstring"""
+        return self._builder.sdk_try_context(max_tries)  # type: ignore
+
     def tomography(
         self,
         preparation: Callable[[BaseNetQASMConnection], Qubit],
