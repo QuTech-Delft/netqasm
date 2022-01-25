@@ -246,6 +246,10 @@ class BaseNetQASMConnection(abc.ABC):
     def network_info(self) -> Type[NetworkInfo]:
         return self._get_network_info()
 
+    @property
+    def builder(self) -> Builder:
+        return self._builder
+
     @classmethod
     def get_app_ids(cls) -> Dict[str, List[int]]:
         return cls._app_ids

@@ -92,6 +92,8 @@ class EntRequestParams:
 
 
 class LabelManager:
+    """Simple manager class for providing unique branch labels."""
+
     def __init__(self) -> None:
         self._labels: Set[str] = set()
 
@@ -109,6 +111,8 @@ class LabelManager:
 
 
 class SdkIfContext:
+    """Context object for if statements in SDK code such as `with conn.if_eq()`."""
+
     def __init__(
         self,
         id: int,
@@ -133,6 +137,8 @@ class SdkIfContext:
 
 
 class SdkForEachContext:
+    """Context object for foreach statements in SDK code such as `with conn.foreach()`."""
+
     def __init__(
         self,
         id: int,

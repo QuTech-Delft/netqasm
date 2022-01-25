@@ -13,6 +13,7 @@ from netqasm.sdk.futures import Future, RegFuture
 if TYPE_CHECKING:
     from netqasm import qlink_compat
     from netqasm.sdk import connection as sdkconn
+    from netqasm.sdk.builder import Builder
 
 
 class QubitNotActiveError(MemoryError):
@@ -60,12 +61,12 @@ class Qubit:
         """
         self._conn: sdkconn.BaseNetQASMConnection = conn
         if virtual_address is None:
-            self._qubit_id: int = self._conn._builder.new_qubit_id()
+            self._qubit_id: int = self.builder.new_qubit_id()
         else:
             self._qubit_id = virtual_address
 
         if add_new_command:
-            self._conn._builder._build_cmds_new_qubit(qubit_id=self.qubit_id)
+            self.builder._build_cmds_new_qubit(qubit_id=self.qubit_id)
 
         self._active: bool = False
         self._activate()
@@ -84,6 +85,11 @@ class Qubit:
     def connection(self) -> sdkconn.BaseNetQASMConnection:
         """Get the NetQASM connection of this qubit"""
         return self._conn
+
+    @property
+    def builder(self) -> Builder:
+        """Get the Builder of this qubit's connection"""
+        return self.connection.builder
 
     @property
     def qubit_id(self) -> int:
@@ -116,13 +122,13 @@ class Qubit:
 
     def _activate(self) -> None:
         self._active = True
-        if not self._conn._builder._mem_mgr.is_qubit_active(self):
-            self._conn._builder._mem_mgr.activate_qubit(self)
+        if not self.builder._mem_mgr.is_qubit_active(self):
+            self.builder._mem_mgr.activate_qubit(self)
 
     def _deactivate(self) -> None:
         self._active = False
-        if self._conn._builder._mem_mgr.is_qubit_active(self):
-            self._conn._builder._mem_mgr.deactivate_qubit(self)
+        if self.builder._mem_mgr.is_qubit_active(self):
+            self.builder._mem_mgr.deactivate_qubit(self)
 
     @property
     def entanglement_info(self) -> Optional[qlink_compat.LinkLayerOKTypeK]:
@@ -176,12 +182,12 @@ class Qubit:
 
         if future is None:
             if store_array:
-                array = self._conn._builder.alloc_array(1)
+                array = self.builder.alloc_array(1)
                 future = array.get_future_index(0)
             else:
                 future = RegFuture(self._conn)
 
-        self._conn._builder._build_cmds_measure(
+        self.builder._build_cmds_measure(
             qubit_id=self.qubit_id,
             future=future,
             inplace=inplace,
@@ -194,19 +200,19 @@ class Qubit:
 
     def X(self) -> None:
         """Apply an X gate on the qubit."""
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.X, qubit_id=self.qubit_id
         )
 
     def Y(self) -> None:
         """Apply a Y gate on the qubit."""
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.Y, qubit_id=self.qubit_id
         )
 
     def Z(self) -> None:
         """Apply a Z gate on the qubit."""
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.Z, qubit_id=self.qubit_id
         )
 
@@ -215,13 +221,13 @@ class Qubit:
 
         A T gate is a Z-rotation with angle pi/4.
         """
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.T, qubit_id=self.qubit_id
         )
 
     def H(self) -> None:
         """Apply a Hadamard gate on the qubit."""
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.H, qubit_id=self.qubit_id
         )
 
@@ -230,7 +236,7 @@ class Qubit:
 
         A K gate moves the |0> state to +|i> (positive Y) and vice versa.
         """
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.K, qubit_id=self.qubit_id
         )
 
@@ -239,7 +245,7 @@ class Qubit:
 
         An S gate is a Z-rotation with angle pi/2.
         """
-        self._conn._builder._build_cmds_single_qubit(
+        self.builder._build_cmds_single_qubit(
             instr=GenericInstr.S, qubit_id=self.qubit_id
         )
 
@@ -256,7 +262,7 @@ class Qubit:
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """
-        self._conn._builder._build_cmds_single_qubit_rotation(
+        self.builder._build_cmds_single_qubit_rotation(
             instruction=GenericInstr.ROT_X,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -277,7 +283,7 @@ class Qubit:
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """
-        self._conn._builder._build_cmds_single_qubit_rotation(
+        self.builder._build_cmds_single_qubit_rotation(
             instruction=GenericInstr.ROT_Y,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -298,7 +304,7 @@ class Qubit:
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """
-        self._conn._builder._build_cmds_single_qubit_rotation(
+        self.builder._build_cmds_single_qubit_rotation(
             instruction=GenericInstr.ROT_Z,
             virtual_qubit_id=self.qubit_id,
             n=n,
@@ -311,7 +317,7 @@ class Qubit:
 
         :param target: target qubit. Should have the same connection as this qubit.
         """
-        self._conn._builder._build_cmds_two_qubit(
+        self.builder._build_cmds_two_qubit(
             instr=GenericInstr.CNOT,
             control_qubit_id=self.qubit_id,
             target_qubit_id=target.qubit_id,
@@ -322,7 +328,7 @@ class Qubit:
 
         :param target: target qubit. Should have the same connection as this qubit.
         """
-        self._conn._builder._build_cmds_two_qubit(
+        self.builder._build_cmds_two_qubit(
             instr=GenericInstr.CPHASE,
             control_qubit_id=self.qubit_id,
             target_qubit_id=target.qubit_id,
@@ -330,7 +336,7 @@ class Qubit:
 
     def reset(self) -> None:
         r"""Reset the qubit to the state \|0>."""
-        self._conn._builder._build_cmds_init_qubit(qubit_id=self.qubit_id)
+        self.builder._build_cmds_init_qubit(qubit_id=self.qubit_id)
 
     def free(self) -> None:
         """
@@ -338,7 +344,7 @@ class Qubit:
 
         After freeing, the underlying physical qubit can be used to store another state.
         """
-        self._conn._builder._build_cmds_qfree(qubit_id=self.qubit_id)
+        self.builder._build_cmds_qfree(qubit_id=self.qubit_id)
 
 
 class FutureQubit(Qubit):

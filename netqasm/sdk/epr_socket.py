@@ -217,7 +217,7 @@ class EPRSocket(abc.ABC):
         :return: list of qubits created
         """
 
-        return self.conn._builder.sdk_create_epr_keep(
+        return self.conn.builder.sdk_create_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -334,7 +334,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
 
-        return self.conn._builder.sdk_create_epr_measure(
+        return self.conn.builder.sdk_create_epr_measure(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -426,7 +426,7 @@ class EPRSocket(abc.ABC):
         else:
             raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
 
-        return self.conn._builder.sdk_epr_rsp_create(
+        return self.conn.builder.sdk_epr_rsp_create(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -637,7 +637,7 @@ class EPRSocket(abc.ABC):
                 ent_results_array,
                 output,
                 pair,
-            ) = self.conn._builder._pre_epr_context(
+            ) = self.conn.builder._pre_epr_context(
                 role=EPRRole.CREATE,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
@@ -651,7 +651,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._builder._post_epr_context(
+            self.conn.builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
@@ -683,7 +683,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn._builder.sdk_recv_epr_keep(
+        return self.conn.builder.sdk_recv_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -714,7 +714,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn._builder.sdk_recv_epr_measure(
+        return self.conn.builder.sdk_recv_epr_measure(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -741,7 +741,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn._builder.sdk_epr_rsp_recv(
+        return self.conn.builder.sdk_epr_rsp_recv(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -810,7 +810,7 @@ class EPRSocket(abc.ABC):
                 ent_results_array,
                 output,
                 pair,
-            ) = self.conn._builder._pre_epr_context(
+            ) = self.conn.builder._pre_epr_context(
                 role=EPRRole.RECV,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
@@ -822,7 +822,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._builder._post_epr_context(
+            self.conn.builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,

@@ -141,7 +141,7 @@ def test_simple():
         q1.X()
         q2.H()
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -182,7 +182,7 @@ def test_create_epr():
 
         _ = epr.measure(store_array=False)
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -222,7 +222,7 @@ def test_branching():
         with m2.if_ez():
             _ = Qubit(conn)
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -254,7 +254,7 @@ def test_loop_context():
         with conn.loop(2):
             q.H()
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -282,7 +282,7 @@ def test_looping():
 
         conn.loop_body(body, 42, loop_register="C9")
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -310,7 +310,7 @@ def test_futures():
         with m.if_ez():
             _ = Qubit(conn)
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -353,7 +353,7 @@ def test_nested():
             with conn.loop(2):
                 _ = Qubit(conn)
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
     inspector = PreSubroutineInspector(subroutine)
@@ -408,7 +408,7 @@ def test_try():
             q = Qubit(conn)
             q.measure()
 
-        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
 
@@ -416,9 +416,9 @@ if __name__ == "__main__":
     # set_log_level("DEBUG")
     # test_simple()
     # test_create_epr()
-    # test_branching()
+    test_branching()
     # test_loop_context()
     # test_looping()
     # test_futures()
     # test_nested()
-    test_try()
+    # test_try()
