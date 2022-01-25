@@ -711,13 +711,6 @@ class Builder:
             raise ValueError(f"Unsupported Create type: {tp}")
         return ent_results_array
 
-    def _get_meas_dir_futures_array(
-        self, number: int, ent_results_array: Array
-    ) -> List[LinkLayerOKTypeM]:
-        return self._create_ent_info_m_slices(
-            num_pairs=number, ent_results_array=ent_results_array
-        )
-
     def _get_qubit_futures(
         self, number: int, sequential: bool, ent_results_array: Array
     ) -> List[Qubit]:
@@ -739,18 +732,6 @@ class Builder:
                 slice(i * OK_FIELDS_K, (i + 1) * OK_FIELDS_K)
             )
             ent_info_slice = LinkLayerOKTypeK(*ent_info_slice_futures)
-            ent_info_slices.append(ent_info_slice)
-        return ent_info_slices
-
-    def _create_ent_info_m_slices(
-        self, num_pairs: int, ent_results_array: Array
-    ) -> List[LinkLayerOKTypeM]:
-        ent_info_slices = []
-        for i in range(num_pairs):
-            ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
-                slice(i * OK_FIELDS_M, (i + 1) * OK_FIELDS_M)
-            )
-            ent_info_slice = LinkLayerOKTypeM(*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
@@ -1706,11 +1687,6 @@ class Builder:
             number=params.number, tp=EPRType.M
         )
 
-        # # SDK handles to result values (LinkLayerOkTypeM objects).
-        # result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
-        #     params.number, ent_results_array
-        # )
-
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
@@ -1730,7 +1706,7 @@ class Builder:
     def sdk_epr_rsp_create(
         self,
         params: EntRequestParams,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1744,11 +1720,6 @@ class Builder:
         # NetQASM array for entanglement request parameters.
         create_args_array: Array = self._alloc_epr_create_args(EPRType.R, params)
 
-        # SDK handles to result values (LinkLayerOkTypeM objects).
-        result_futures = self._get_meas_dir_futures_array(
-            params.number, ent_results_array
-        )
-
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
@@ -1756,12 +1727,12 @@ class Builder:
             create_args_array, ent_results_array, wait_all, params
         )
 
-        return result_futures
+        return deserialize_epr_measure_results(params.number, ent_results_array)
 
     def sdk_epr_rsp_recv(
         self,
         params: EntRequestParams,
-    ) -> List[Qubit]:
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1791,7 +1762,8 @@ class Builder:
             qubit_ids_array, ent_results_array, wait_all, params
         )
 
-        return qubit_futures
+        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
+        return qubit_futures, epr_results
 
     def sdk_create_epr_keep(
         self, params: EntRequestParams

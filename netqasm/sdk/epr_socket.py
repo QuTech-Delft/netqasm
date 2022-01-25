@@ -365,7 +365,7 @@ class EPRSocket(abc.ABC):
         basis_local: EPRMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
         """Ask the network stack to do remote preparation with the remote node.
 
         A `create_rsp` operation must always be matched by a `recv_erp` operation
@@ -745,7 +745,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        return self.conn.builder.sdk_epr_rsp_recv(
+        qubits, _ = self.conn.builder.sdk_epr_rsp_recv(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -754,6 +754,25 @@ class EPRSocket(abc.ABC):
                 sequential=False,
             ),
         )
+        return qubits
+
+    def recv_rsp_with_info(
+        self,
+        number: int = 1,
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        qubits, infos = self.conn.builder.sdk_epr_rsp_recv(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+            ),
+        )
+        return qubits, infos
 
     def recv(
         self,
