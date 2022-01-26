@@ -1673,3 +1673,26 @@ class Builder:
             body_commands = self.subrt_pop_all_pending_commands()
             commands = pre_commands + body_commands
             self.subrt_add_pending_commands(commands)
+
+    @contextmanager
+    def sdk_create_epr_context(
+        self, params: EntRequestParams
+    ) -> Iterator[Tuple[FutureQubit, RegFuture]]:
+        try:
+            (
+                pre_commands,
+                loop_register,
+                ent_results_array,
+                output,
+                pair,
+            ) = self._pre_epr_context(role=EPRRole.CREATE, params=params)
+            pair_future = RegFuture(self._connection, pair)
+            yield output, pair_future
+        finally:
+            self._post_epr_context(
+                pre_commands=pre_commands,
+                number=params.number,
+                loop_register=loop_register,
+                ent_results_array=ent_results_array,
+                pair=pair,
+            )

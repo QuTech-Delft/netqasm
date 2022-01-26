@@ -421,6 +421,25 @@ def test_epr_keep_info():
         print(subroutine)
 
 
+def test_epr_context():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+
+        with epr_socket.create_context(5) as (qubit, index):
+            with index.if_eq(1337):
+                qubit.H()
+            _ = qubit.measure()
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+
 def test_try():
     with DebugConnection("Alice") as conn:
 
@@ -443,3 +462,4 @@ if __name__ == "__main__":
     test_nested()
     test_try()
     test_epr_keep_info()
+    test_epr_context()

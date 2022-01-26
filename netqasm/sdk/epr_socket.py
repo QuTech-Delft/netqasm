@@ -6,7 +6,7 @@ import abc
 import logging
 from contextlib import contextmanager
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, ContextManager, List, Optional, Tuple, Union
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.qlink_compat import (
@@ -19,8 +19,9 @@ from netqasm.qlink_compat import (
     TimeUnit,
 )
 from netqasm.sdk.builder import EntRequestParams, EprKeepResult, EprMeasureResult
+from netqasm.sdk.futures import RegFuture
 
-from .qubit import Qubit
+from .qubit import FutureQubit, Qubit
 
 if TYPE_CHECKING:
     from netqasm.sdk import connection
@@ -587,14 +588,13 @@ class EPRSocket(abc.ABC):
             )
         assert False
 
-    @contextmanager
     def create_context(
         self,
         number: int = 1,
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-    ):
+    ) -> ContextManager[Tuple[FutureQubit, RegFuture]]:
         """Create a context that is executed for each generated EPR pair consecutively.
 
         Creates EPR pairs with a remote node and handles each pair by
@@ -615,35 +615,17 @@ class EPRSocket(abc.ABC):
         :param number: number of EPR pairs to generate, defaults to 1
         :param sequential: whether to generate pairs sequentially, defaults to False
         """
-        try:
-            # NOTE loop_register is the register used for looping over the generated pairs
-            (
-                pre_commands,
-                loop_register,
-                ent_results_array,
-                output,
-                pair,
-            ) = self.conn.builder._pre_epr_context(
-                role=EPRRole.CREATE,
-                params=EntRequestParams(
-                    remote_node_id=self.remote_node_id,
-                    epr_socket_id=self._epr_socket_id,
-                    number=number,
-                    post_routine=None,
-                    sequential=sequential,
-                    time_unit=time_unit,
-                    max_time=max_time,
-                ),
-            )
-            yield output, pair
-        finally:
-            self.conn.builder._post_epr_context(
-                pre_commands=pre_commands,
+        return self.conn.builder.sdk_create_epr_context(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
                 number=number,
-                loop_register=loop_register,
-                ent_results_array=ent_results_array,
-                pair=pair,
+                post_routine=None,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
             )
+        )
 
     def recv_keep(
         self,
