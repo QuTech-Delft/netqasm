@@ -239,7 +239,7 @@ class Future(BaseFuture):
         self,
         connection: sdkconn.BaseNetQASMConnection,
         address: int,
-        index: Union[int, Future, operand.Register],
+        index: Union[int, Future, operand.Register, RegFuture],
     ):
         """Future constructor. Typically not used directly.
 
@@ -250,7 +250,7 @@ class Future(BaseFuture):
         """
         super().__init__(connection=connection)
         self._address: int = address
-        self._index: Union[int, Future, operand.Register] = index
+        self._index: Union[int, Future, operand.Register, RegFuture] = index
 
     def __str__(self) -> str:
         value = self.value
@@ -361,6 +361,11 @@ class Future(BaseFuture):
                 )
             commands += access_index_cmds
             index: Union[int, operand.Register] = tmp_register
+        elif isinstance(self._index, RegFuture):
+            assert (
+                self._index.reg is not None
+            ), "Trying to use RegFuture that has no value yet"
+            index = self._index.reg
         elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
@@ -551,7 +556,9 @@ class Array:
     def builder(self) -> Builder:
         return self._connection.builder
 
-    def get_future_index(self, index: Union[int, str, operand.Register]) -> Future:
+    def get_future_index(
+        self, index: Union[int, str, operand.Register, RegFuture]
+    ) -> Future:
         """Get a Future representing a particular array element"""
         if isinstance(index, str):
             index = parse_register(index)
