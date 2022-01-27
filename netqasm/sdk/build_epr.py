@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from netqasm.qlink_compat import BellState, EPRType, RandomBasis, TimeUnit
-from netqasm.sdk.buildtypes import T_PostRoutine
+from netqasm.sdk.build_types import T_PostRoutine
 from netqasm.sdk.futures import Array, Future
 
 

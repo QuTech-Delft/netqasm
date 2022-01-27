@@ -31,15 +31,7 @@ from netqasm.lang.ir import (
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
-from netqasm.sdk.buildtypes import (
-    T_BranchRoutine,
-    T_LinkLayerOkList,
-    T_LoopRoutine,
-    T_PostRoutine,
-)
-from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
-from netqasm.sdk.config import LogConfig
-from netqasm.sdk.eprbuild import (
+from netqasm.sdk.build_epr import (
     EntRequestParams,
     EprKeepResult,
     EprMeasureResult,
@@ -47,6 +39,14 @@ from netqasm.sdk.eprbuild import (
     deserialize_epr_measure_results,
     serialize_request,
 )
+from netqasm.sdk.build_types import (
+    T_BranchRoutine,
+    T_LinkLayerOkList,
+    T_LoopRoutine,
+    T_PostRoutine,
+)
+from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
+from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit
@@ -1003,7 +1003,7 @@ class Builder:
         self, register: operand.Register, value: Union[Future, int]
     ) -> None:
         if isinstance(value, Future):
-            set_reg_cmds = value._get_load_commands(register)
+            set_reg_cmds = value.get_load_commands(register)
         elif isinstance(value, int):
             set_reg_cmds = [
                 ICmd(instruction=GenericInstr.SET, operands=[register, value])

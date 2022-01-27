@@ -287,7 +287,7 @@ class Future(BaseFuture):
 
         # Store self in a temporary register
         tmp_register = self.builder._mem_mgr.get_inactive_register(activate=True)
-        load_commands = self._get_load_commands(tmp_register)
+        load_commands = self.get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
         other_tmp_register: Optional[operand.Register] = None
@@ -297,7 +297,7 @@ class Future(BaseFuture):
         if isinstance(other, Future):
             other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
-            load_commands += other._get_load_commands(other_tmp_register)
+            load_commands += other.get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
         elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
@@ -334,7 +334,7 @@ class Future(BaseFuture):
 
         self.builder.subrt_add_pending_commands(commands)
 
-    def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
+    def get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(GenericInstr.LOAD, register)
 
     def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
@@ -459,7 +459,7 @@ class RegFuture(BaseFuture):
         if isinstance(other, Future):
             other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
-            load_commands += other._get_load_commands(other_tmp_register)
+            load_commands += other.get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
         elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
