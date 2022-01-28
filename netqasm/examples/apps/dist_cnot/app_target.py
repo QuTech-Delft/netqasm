@@ -19,7 +19,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
 
     with target:
         # create one EPR pair with Controller
-        epr = controller_epr.recv(1)[0]
+        epr = controller_epr.recv_keep(1)[0]
 
         # initialize target qubit of the distributed CNOT
         target_qubit = Qubit(target)

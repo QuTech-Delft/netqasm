@@ -41,7 +41,7 @@ def main(app_config=None, x=0):
 
     with alice:
         # Create EPR pair with Bob, through the repeater.
-        epr = epr_socket.create()[0]
+        epr = epr_socket.create_keep()[0]
         alice.flush()
 
         # Wait for Bob to receive entanglement through repeater.

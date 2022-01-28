@@ -303,16 +303,14 @@ def test_epr():
             ),
         ],
     )
-    print("ACTUAL")
-    print(subroutine)
-    print("EXPECTED")
-    print(expected)
     for i, command in enumerate(subroutine.commands):
         print(repr(command))
         expected_command = expected.commands[i]
         print(repr(expected_command))
         print()
         assert command == expected_command
+    print(subroutine)
+    print(expected)
     assert subroutine == expected
 
 
@@ -999,10 +997,10 @@ def test_epr_max_time():
 
 
 if __name__ == "__main__":
-    # test_simple()
-    # test_rotations()
+    test_simple()
+    test_rotations()
     test_epr()
-    # test_two_epr()
-    # test_epr_m()
-    # test_epr_r_create()
-    # test_epr_r_receive()
+    test_two_epr()
+    test_epr_m()
+    test_epr_r_create()
+    test_epr_r_receive()

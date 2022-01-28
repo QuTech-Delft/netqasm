@@ -35,7 +35,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
     with controller:
         app_logger.log("Creating EPR pair with target...")
         # create one EPR pair with target
-        epr = target_epr.create(1)[0]
+        epr = target_epr.create_keep(1)[0]
 
         # initialize control qubit of the distributed CNOT
         controller.flush()

@@ -1,5 +1,4 @@
 from netqasm.logging.glob import set_log_level
-from netqasm.qlink_compat import EPRType, LinkLayerOKTypeM
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
 
@@ -12,7 +11,7 @@ DebugConnection.node_ids = {
 def main(no_output=False):
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
-        m: LinkLayerOKTypeM = epr_socket.create(tp=EPRType.R)[0]
+        m = epr_socket.create_rsp()[0]
         print(m.measurement_outcome)
 
     if no_output:

@@ -421,6 +421,21 @@ def test_epr_keep_info():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
 
 def test_epr_context():
     DebugConnection.node_ids = {
@@ -440,6 +455,25 @@ def test_epr_context():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.BNE,
+            GenericInstr.LOAD,
+            GenericInstr.H,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
 
 def test_epr_context_future_index():
     DebugConnection.node_ids = {
@@ -458,6 +492,24 @@ def test_epr_context_future_index():
 
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
 
 
 def test_epr_post():
@@ -482,6 +534,27 @@ def test_epr_post():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.H,
+            GenericInstr.ADD,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
 
 def test_try():
     with DebugConnection("Alice") as conn:
@@ -492,6 +565,18 @@ def test_try():
 
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+        ]
+    )
 
 
 if __name__ == "__main__":

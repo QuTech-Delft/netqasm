@@ -52,7 +52,7 @@ def receive_bb84_states(conn, epr_socket, socket, target, n):
     basis_flips = [random.randint(0, 1) for _ in range(n)]
 
     for i in range(n):
-        q = epr_socket.recv(1)[0]
+        q = epr_socket.recv_keep(1)[0]
         if basis_flips[i]:
             q.H()
         m = q.measure()

@@ -17,7 +17,7 @@ def teleport_state(epr_socket, theta):
     The resulting state on the server's side is actually
     Rz(theta + m*pi) |+>, for the client's measurement outcome `m`.
     """
-    epr = epr_socket.create()[0]
+    epr = epr_socket.create_keep()[0]
     m = measXY(epr, theta)
     return m
 
@@ -26,7 +26,7 @@ def recv_teleported_state(epr_socket):
     """Let the client teleport a state to the server.
     The client will do a suitable measurement on her side.
     """
-    return epr_socket.recv()[0]
+    return epr_socket.recv_keep()[0]
 
 
 def send_meas_cmd(socket, phi):

@@ -34,7 +34,7 @@ def main(app_config=None, phi=0.0, theta=0.0):
         set_qubit_state(q, phi, theta)
 
         # Create EPR pairs
-        epr = epr_socket.create()[0]
+        epr = epr_socket.create_keep()[0]
 
         # Teleport
         q.cnot(epr)
