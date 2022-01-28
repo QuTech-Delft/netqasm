@@ -229,6 +229,22 @@ class EPRSocket(abc.ABC):
             ),
         )
 
+    def get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
+        if basis == EPRMeasBasis.X:
+            return (0, 24, 0)
+        elif basis == EPRMeasBasis.Y:
+            return (8, 0, 0)
+        elif basis == EPRMeasBasis.Z:
+            return (0, 0, 0)
+        elif basis == EPRMeasBasis.MX:
+            return (0, 8, 0)
+        elif basis == EPRMeasBasis.MY:
+            return (24, 0, 0)
+        elif basis == EPRMeasBasis.MZ:
+            return (16, 0, 0)
+        else:
+            assert False, f"invalid EPRMeasBasis {basis}"
+
     def create_measure(
         self,
         number: int = 1,
@@ -298,41 +314,10 @@ class EPRSocket(abc.ABC):
         :return: list of entanglement info objects per created pair.
         """
 
-        # TODO: don't hard-code the assumption that rotation values are in multiples
-        #       of pi/16
-        if basis_local == EPRMeasBasis.X:
-            rotations_local = (0, 24, 0)
-        elif basis_local == EPRMeasBasis.Y:
-            rotations_local = (8, 0, 0)
-        elif basis_local == EPRMeasBasis.Z:
-            rotations_local = (0, 0, 0)
-        elif basis_local == EPRMeasBasis.MX:
-            rotations_local = (0, 8, 0)
-        elif basis_local == EPRMeasBasis.MY:
-            rotations_local = (24, 0, 0)
-        elif basis_local == EPRMeasBasis.MZ:
-            rotations_local = (16, 0, 0)
-        elif basis_local is None:
-            pass  # use rotations_local argument value
-        else:
-            raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
-
-        if basis_remote == EPRMeasBasis.X:
-            rotations_remote = (0, 24, 0)
-        elif basis_remote == EPRMeasBasis.Y:
-            rotations_remote = (8, 0, 0)
-        elif basis_remote == EPRMeasBasis.Z:
-            rotations_remote = (0, 0, 0)
-        elif basis_remote == EPRMeasBasis.MX:
-            rotations_remote = (0, 8, 0)
-        elif basis_remote == EPRMeasBasis.MY:
-            rotations_remote = (24, 0, 0)
-        elif basis_remote == EPRMeasBasis.MZ:
-            rotations_remote = (16, 0, 0)
-        elif basis_remote is None:
-            pass  # use rotations_remote argument value
-        else:
-            raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
+        if basis_local is not None:
+            rotations_local = self.get_rotations_from_basis(basis_local)
+        if basis_remote is not None:
+            rotations_remote = self.get_rotations_from_basis(basis_remote)
 
         return self.conn.builder.sdk_create_epr_measure(
             params=EntRequestParams(
@@ -407,24 +392,8 @@ class EPRSocket(abc.ABC):
         :return: list of entanglement info objects per created pair.
         """
 
-        # TODO: don't hard-code the assumption that rotation values are in multiples
-        #       of pi/16
-        if basis_local == EPRMeasBasis.X:
-            rotations_local = (0, 24, 0)
-        elif basis_local == EPRMeasBasis.Y:
-            rotations_local = (8, 0, 0)
-        elif basis_local == EPRMeasBasis.Z:
-            rotations_local = (0, 0, 0)
-        elif basis_local == EPRMeasBasis.MX:
-            rotations_local = (0, 8, 0)
-        elif basis_local == EPRMeasBasis.MY:
-            rotations_local = (24, 0, 0)
-        elif basis_local == EPRMeasBasis.MZ:
-            rotations_local = (16, 0, 0)
-        elif basis_local is None:
-            pass  # use rotations_local argument value
-        else:
-            raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
+        if basis_local is not None:
+            rotations_local = self.get_rotations_from_basis(basis_local)
 
         return self.conn.builder.sdk_epr_rsp_create(
             params=EntRequestParams(
