@@ -106,8 +106,8 @@ class LabelManager:
                 name = f"{start_with}{i}"
                 if name not in self._labels:
                     self._labels.add(name)
-                    return name
-            assert False, "should never be reached"
+                    break
+            return name
 
 
 class SdkIfContext:
@@ -118,21 +118,21 @@ class SdkIfContext:
         id: int,
         builder: Builder,
         condition: GenericInstr,
-        a: Optional[T_CValue],
-        b: Optional[T_CValue],
+        op0: Optional[T_CValue],
+        op1: Optional[T_CValue],
     ):
         self._id = id
         self._builder = builder
         self._condition = condition
-        self._a = a
-        self._b = b
+        self._op0 = op0
+        self._op1 = op1
 
     def __enter__(self):
         return self._builder.if_context_enter(context_id=self._id)
 
     def __exit__(self, *args, **kwargs):
         return self._builder.if_context_exit(
-            context_id=self._id, condition=self._condition, a=self._a, b=self._b
+            context_id=self._id, condition=self._condition, op0=self._op0, op1=self._op1
         )
 
 
@@ -729,7 +729,7 @@ class Builder:
     def _get_branch_commands_single_operand(
         self,
         branch_instruction: GenericInstr,
-        a: T_CValue,
+        op: T_CValue,
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
@@ -737,7 +737,7 @@ class Builder:
 
         using_new_temp_reg = False
 
-        cmds, cond_operand = self._get_condition_operand(a)
+        cmds, cond_operand = self._get_condition_operand(op)
         if_start += cmds
 
         branch = ICmd(
@@ -758,8 +758,8 @@ class Builder:
     def _get_branch_commands(
         self,
         branch_instruction: GenericInstr,
-        a: T_CValue,
-        b: T_CValue,
+        op0: T_CValue,
+        op1: T_CValue,
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
@@ -768,7 +768,7 @@ class Builder:
 
         temp_regs_to_remove: List[operand.Register] = []
 
-        for x in [a, b]:
+        for x in [op0, op1]:
             cmds, cond_operand = self._get_condition_operand(x)
             if_start += cmds
             cond_operands.append(cond_operand)
@@ -863,8 +863,8 @@ class Builder:
         self,
         context_id: int,
         condition: GenericInstr,
-        a: T_CValue,
-        b: Optional[T_CValue],
+        op0: T_CValue,
+        op1: Optional[T_CValue],
     ) -> None:
         # pop commands that were added while evaluting the context body
         body_commands = self.subrt_pop_pending_commands()
@@ -878,8 +878,8 @@ class Builder:
             pre_commands=pre_context_commands,
             body_commands=body_commands,
             condition=condition,
-            a=a,
-            b=b,
+            op0=op0,
+            op1=op1,
         )
 
     def _foreach_context_enter(
@@ -1479,8 +1479,8 @@ class Builder:
     def _build_cmds_if_stmt(
         self,
         condition: GenericInstr,
-        a: T_CValue,
-        b: Optional[T_CValue],
+        op0: T_CValue,
+        op1: Optional[T_CValue],
         body: T_BranchRoutine,
     ) -> None:
         """Used to build effective if-statements"""
@@ -1497,8 +1497,8 @@ class Builder:
             pre_commands=current_commands,
             body_commands=body_commands,
             condition=condition,
-            a=a,
-            b=b,
+            op0=op0,
+            op1=op1,
         )
 
     def _build_cmds_condition(
@@ -1506,8 +1506,8 @@ class Builder:
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
         condition: GenericInstr,
-        a: T_CValue,
-        b: Optional[T_CValue],
+        op0: T_CValue,
+        op1: Optional[T_CValue],
     ) -> None:
         if len(body_commands) == 0:
             self.subrt_add_pending_commands(commands=pre_commands)
@@ -1521,14 +1521,14 @@ class Builder:
 
         if negated_predicate in [GenericInstr.BEZ, GenericInstr.BNZ]:
             if_start, if_end = self._get_branch_commands_single_operand(
-                branch_instruction=negated_predicate, a=a
+                branch_instruction=negated_predicate, op=op0
             )
         else:
-            assert b is not None
+            assert op1 is not None
             if_start, if_end = self._get_branch_commands(
                 branch_instruction=negated_predicate,
-                a=a,
-                b=b,
+                op0=op0,
+                op1=op1,
             )
         commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
@@ -1735,35 +1735,37 @@ class Builder:
     ):
         self._build_cmds_loop_body(body, stop, start, step, loop_register)
 
-    def sdk_if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_eq(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == b"""
-        self._build_cmds_if_stmt(GenericInstr.BEQ, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BEQ, op0, op1, body)
 
-    def sdk_if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ne(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != b"""
-        self._build_cmds_if_stmt(GenericInstr.BNE, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BNE, op0, op1, body)
 
-    def sdk_if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_lt(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a < b"""
-        self._build_cmds_if_stmt(GenericInstr.BLT, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BLT, op0, op1, body)
 
-    def sdk_if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ge(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a >= b"""
-        self._build_cmds_if_stmt(GenericInstr.BGE, a, b, body)
+        self._build_cmds_if_stmt(GenericInstr.BGE, op0, op1, body)
 
-    def sdk_if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_ez(self, op0: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a == 0"""
-        self._build_cmds_if_stmt(GenericInstr.BEZ, a, b=None, body=body)
+        self._build_cmds_if_stmt(GenericInstr.BEZ, op0, op1=None, body=body)
 
-    def sdk_if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
+    def sdk_if_nz(self, op0: T_CValue, body: T_BranchRoutine) -> None:
         """An effective if-statement where body is a function executing the clause for a != 0"""
-        self._build_cmds_if_stmt(GenericInstr.BNZ, a, b=None, body=body)
+        self._build_cmds_if_stmt(GenericInstr.BNZ, op0, op1=None, body=body)
 
     def sdk_new_if_context(
-        self, condition: GenericInstr, a: T_CValue, b: Optional[T_CValue]
+        self, condition: GenericInstr, op0: T_CValue, op1: Optional[T_CValue]
     ) -> SdkIfContext:
         id = self._next_context_id
-        context = SdkIfContext(id=id, builder=self, condition=condition, a=a, b=b)
+        context = SdkIfContext(
+            id=id, builder=self, condition=condition, op0=op0, op1=op1
+        )
         self._next_context_id += 1
         return context
 

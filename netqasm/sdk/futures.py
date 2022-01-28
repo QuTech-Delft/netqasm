@@ -196,32 +196,32 @@ class BaseFuture(int):
 
     def if_eq(self, other: Optional[T_CValue]) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BEQ, a=self, b=other
+            condition=GenericInstr.BEQ, op0=self, op1=other
         )
 
     def if_ne(self, other: Optional[T_CValue]) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BNE, a=self, b=other
+            condition=GenericInstr.BNE, op0=self, op1=other
         )
 
     def if_lt(self, other: Optional[T_CValue]) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BLT, a=self, b=other
+            condition=GenericInstr.BLT, op0=self, op1=other
         )
 
     def if_ge(self, other: Optional[T_CValue]) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BGE, a=self, b=other
+            condition=GenericInstr.BGE, op0=self, op1=other
         )
 
     def if_ez(self) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BEZ, a=self, b=None
+            condition=GenericInstr.BEZ, op0=self, op1=None
         )
 
     def if_nz(self) -> SdkIfContext:
         return self.builder.sdk_new_if_context(
-            condition=GenericInstr.BNZ, a=self, b=None
+            condition=GenericInstr.BNZ, op0=self, op1=None
         )
 
 
