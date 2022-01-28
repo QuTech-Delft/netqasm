@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import operand
 from netqasm.lang.ir import GenericInstr, ICmd, Symbols
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
+from netqasm.lang.operand import Address, ArrayEntry
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import HostLine
@@ -385,8 +385,17 @@ class Future(BaseFuture):
         commands.append(access_cmd)
         return commands
 
-    def get_address_entry(self) -> Union[Address, ArraySlice, ArrayEntry]:
-        return parse_address(f"{Symbols.ADDRESS_START}{self._address}[{self._index}]")
+    def get_address_entry(self) -> ArrayEntry:
+        if isinstance(self._index, RegFuture):
+            assert self._index.reg is not None, (
+                f"cannot use RegFuture {self._index} as array index since "
+                f"it does not yet have a value"
+            )
+            return ArrayEntry(Address(self._address), self._index.reg)
+        elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
+            return ArrayEntry(Address(self._address), self._index)
+        else:
+            assert False, f"index type {self._index} not supported"
 
 
 class RegFuture(BaseFuture):

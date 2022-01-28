@@ -8,7 +8,17 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from itertools import count
-from typing import Dict, Iterator, List, Optional, Set, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 from netqasm import NETQASM_VERSION
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
@@ -53,6 +63,9 @@ from netqasm.sdk.qubit import FutureQubit, Qubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
+
+if TYPE_CHECKING:
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 
 class LabelManager:
@@ -292,7 +305,7 @@ class Builder:
 
     def _build_cmds_post_epr(
         self,
-        qubit_ids: Optional[Array],
+        qubit_ids: Array,
         number: int,
         ent_results_array: Array,
         tp: EPRType,
@@ -301,23 +314,19 @@ class Builder:
 
         loop_register = self._mem_mgr.get_inactive_register()
 
-        def post_loop(conn):
+        def post_loop(conn: BaseNetQASMConnection):
             # Wait for each pair individually
             pair = loop_register
-            conn._builder._add_wait_for_ent_info_cmd(
+            conn.builder._add_wait_for_ent_info_cmd(
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
-            if tp == EPRType.K or tp == EPRType.R:
-                q_id = qubit_ids.get_future_index(pair)
-                q = FutureQubit(conn=conn, future_id=q_id)
-                post_routine(self, q, pair)
-            elif tp == EPRType.M:
-                slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
-                ent_info_slice = ent_results_array.get_future_slice(slc)
-                post_routine(self, ent_info_slice, pair)
-            else:
-                raise NotImplementedError
+            assert tp == EPRType.K or tp == EPRType.R
+            q_id = qubit_ids.get_future_index(pair)
+            q = FutureQubit(conn=conn, future_id=q_id)
+            pair_future = RegFuture(self._connection, pair)
+            # post_routine(self, q, pair)
+            post_routine(self, q, pair_future)
 
         # TODO use loop context
         self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)

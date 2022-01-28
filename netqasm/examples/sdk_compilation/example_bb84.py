@@ -24,9 +24,9 @@ def main(no_output=False):
         outcomes = alice.new_array(n)
 
         with epr_socket.create_context(number=n, sequential=True) as (q, pair):
-            with bit_flips.get_future_index(pair).if_eq(1):
+            with bit_flips.get_future_index(pair).if_eq(1337):
                 q.X()
-            with basis_flips.get_future_index(pair).if_eq(1):
+            with basis_flips.get_future_index(pair).if_eq(42):
                 q.H()
             outcome = outcomes.get_future_index(pair)
             q.measure(outcome)
