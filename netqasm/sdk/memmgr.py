@@ -11,6 +11,13 @@ from netqasm.sdk.qubit import Qubit
 
 
 class MemoryManager:
+    """Container for managing application memory during building.
+
+    Used by a Builder to store information about which registers, arrays,
+    and qubits have been allocated, and to (de)allocate these memory locations
+    when needed.
+    """
+
     def __init__(self) -> None:
         # All qubits active for this connection
         self._active_qubits: List[Qubit] = []
@@ -25,12 +32,10 @@ class MemoryManager:
             operand.Register(RegisterName.M, i): False for i in range(16)
         }
 
-        # Registers to return
         self._registers_to_return: List[operand.Register] = []
 
         self._used_array_addresses: List[int] = []
 
-        # Arrays to return
         self._arrays_to_return: List[Array] = []
 
     def inactivate_qubits(self) -> None:
