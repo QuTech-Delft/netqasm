@@ -5,6 +5,11 @@ from typing import List, Optional, Union
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.connection import DebugConnection
+from netqasm.sdk.constraint import (
+    ValueAtMostConstraint,
+    ValueConstraint,
+    ValueConstraintType,
+)
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
 from netqasm.sdk.qubit import Qubit
@@ -579,17 +584,31 @@ def test_try():
     )
 
 
+def test_while_true():
+    with DebugConnection("Alice") as conn:
+
+        with conn.while_true() as loop:
+            q = Qubit(conn)
+            m = q.measure()
+            constraint = ValueAtMostConstraint(m, 42)
+            loop.set_exit_condition(constraint)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
-    test_simple()
-    test_create_epr()
-    test_branching()
-    test_loop_context()
-    test_looping()
-    test_futures()
-    test_nested()
-    test_epr_keep_info()
-    test_epr_context()
-    test_epr_context_future_index()
-    test_epr_post()
-    test_try()
+    # test_simple()
+    # test_create_epr()
+    # test_branching()
+    # test_loop_context()
+    # test_looping()
+    # test_futures()
+    # test_nested()
+    # test_epr_keep_info()
+    # test_epr_context()
+    # test_epr_context_future_index()
+    # test_epr_post()
+    # test_try()
+    test_while_true()

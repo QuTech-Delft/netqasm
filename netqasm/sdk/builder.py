@@ -60,6 +60,7 @@ from netqasm.sdk.build_types import (
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
+from netqasm.sdk.constraint import ValueAtMostConstraint, ValueConstraint
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit
@@ -140,6 +141,22 @@ class SdkForEachContext:
         return self._builder._foreach_context_exit(
             context_id=self._id, array=self._array
         )
+
+
+class SdkWhileTrueContext:
+    """Context object for while_true() statements in SDK code."""
+
+    def __init__(self, id: int, builder: Builder):
+        self._id = id
+        self._builder = builder
+        self._exit_condition: Optional[ValueConstraint] = None
+
+    def set_exit_condition(self, constraint: ValueConstraint) -> None:
+        self._exit_condition = constraint
+
+    @property
+    def exit_condition(self) -> ValueConstraint:
+        return self._exit_condition
 
 
 class Builder:
@@ -761,6 +778,52 @@ class Builder:
             BranchLabel(exit_label),
         ]
 
+    def _while_true_get_entry_commands(
+        self,
+        entry_label: str,
+    ) -> List[T_Cmd]:
+        return [BranchLabel(entry_label)]
+
+    def _while_true_get_break_commands(
+        self,
+        context: SdkWhileTrueContext,
+        exit_label: str,
+    ) -> List[T_Cmd]:
+        commands: List[ICmd] = []
+        condition = context.exit_condition
+
+        if isinstance(condition, ValueAtMostConstraint):
+            if_start: List[ICmd] = []
+
+            temp_regs_to_remove: List[operand.Register] = []
+
+            cmds, cond_operand = self._get_condition_operand(condition.future)
+            if_start.extend(cmds)
+
+            if isinstance(condition.future, Future):
+                assert isinstance(cond_operand, operand.Register)
+                temp_regs_to_remove.append(cond_operand)
+
+            branch = ICmd(
+                instruction=GenericInstr.BLT,
+                operands=[cond_operand, condition.value, Label(exit_label)],
+            )
+            if_start.append(branch)
+            commands = if_start
+        else:
+            assert False, "not supported"
+        return commands
+
+    def _while_true_get_exit_commands(
+        self,
+        entry_label: str,
+        exit_label: str,
+    ) -> List[T_Cmd]:
+        return [
+            ICmd(instruction=GenericInstr.JMP, operands=[Label(entry_label)]),
+            BranchLabel(exit_label),
+        ]
+
     def if_context_enter(self, context_id: int) -> None:
         pre_commands = self.subrt_pop_all_pending_commands()
         self._pre_context_commands[context_id] = pre_commands
@@ -821,6 +884,24 @@ class Builder:
             loop_register=loop_register,
         )
         self._mem_mgr.remove_active_register(loop_register)
+
+    def _while_true_context_enter(self, context_id: int) -> None:
+        pre_commands = self.subrt_pop_all_pending_commands()
+        self._pre_context_commands[context_id] = pre_commands
+
+    def _while_true_context_exit(
+        self, context_id: int, context: SdkWhileTrueContext
+    ) -> None:
+        body_commands = self.subrt_pop_all_pending_commands()
+        pre_commands = self._pre_context_commands.pop(context_id, None)
+        if pre_commands is None:
+            raise RuntimeError("Something went wrong, no pre_commands")
+
+        self._build_cmds_while_true(
+            pre_commands=pre_commands,
+            body_commands=body_commands,
+            context=context,
+        )
 
     def _build_cmds_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
@@ -1385,6 +1466,40 @@ class Builder:
 
         self.subrt_add_pending_commands(commands=commands)
 
+    def _build_cmds_while_true(
+        self,
+        pre_commands: List[T_Cmd],
+        body_commands: List[T_Cmd],
+        context: SdkWhileTrueContext,
+    ) -> None:
+        if len(body_commands) == 0:
+            self.subrt_add_pending_commands(commands=pre_commands)
+            return
+
+        entry_label = self._label_mgr.new_label(start_with="WHILE")
+        exit_label = self._label_mgr.new_label(start_with="WHILE_EXIT")
+
+        while_true_start = self._while_true_get_entry_commands(
+            entry_label=entry_label,
+        )
+        while_true_break = self._while_true_get_break_commands(
+            context=context, exit_label=exit_label
+        )
+        while_true_end = self._while_true_get_exit_commands(
+            entry_label=entry_label,
+            exit_label=exit_label,
+        )
+
+        commands = (
+            pre_commands
+            + while_true_start
+            + body_commands
+            + while_true_break
+            + while_true_end
+        )
+
+        self.subrt_add_pending_commands(commands=commands)
+
     def _build_cmds_if_stmt(
         self,
         condition: GenericInstr,
@@ -1702,6 +1817,21 @@ class Builder:
         )
         self._next_context_id += 1
         return context
+
+    @contextmanager
+    def sdk_new_while_true_context(self) -> Iterator[SdkWhileTrueContext]:
+        try:
+            id = self._next_context_id
+            context = SdkWhileTrueContext(id=id, builder=self)
+            self._next_context_id += 1
+            self._while_true_context_enter(id)
+            yield context
+        finally:
+            assert context.exit_condition is not None
+            self._while_true_context_exit(
+                context_id=id,
+                context=context,
+            )
 
     @contextmanager
     def sdk_try_context(
