@@ -146,17 +146,30 @@ class SdkForEachContext:
 class SdkWhileTrueContext:
     """Context object for while_true() statements in SDK code."""
 
-    def __init__(self, id: int, builder: Builder):
+    def __init__(self, id: int, builder: Builder, max_iterations: int):
         self._id = id
         self._builder = builder
         self._exit_condition: Optional[ValueConstraint] = None
+        self._loop_register: Optional[RegFuture] = None
+        self._max_iterations = max_iterations
 
     def set_exit_condition(self, constraint: ValueConstraint) -> None:
         self._exit_condition = constraint
 
     @property
-    def exit_condition(self) -> ValueConstraint:
+    def exit_condition(self) -> Optional[ValueConstraint]:
         return self._exit_condition
+
+    def set_loop_register(self, register: RegFuture) -> None:
+        self._loop_register = register
+
+    @property
+    def loop_register(self) -> Optional[RegFuture]:
+        return self._loop_register
+
+    @property
+    def max_iterations(self) -> int:
+        return self._max_iterations
 
 
 class Builder:
@@ -205,6 +218,7 @@ class Builder:
         self._next_context_id: int = 0
         # Storing commands before an conditional statement
         self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
+        self._pre_context_registers: Dict[int, List[operand.Register]] = {}
 
         self._label_mgr = LabelManager()
 
@@ -781,8 +795,18 @@ class Builder:
     def _while_true_get_entry_commands(
         self,
         entry_label: str,
+        exit_label: str,
+        stop: int,
+        loop_register: operand.Register,
     ) -> List[T_Cmd]:
-        return [BranchLabel(entry_label)]
+        return [
+            ICmd(instruction=GenericInstr.SET, operands=[loop_register, 0]),
+            BranchLabel(entry_label),
+            ICmd(
+                instruction=GenericInstr.BEQ,
+                operands=[loop_register, stop, Label(exit_label)],
+            ),
+        ]
 
     def _while_true_get_break_commands(
         self,
@@ -812,14 +836,16 @@ class Builder:
             commands = if_start
         else:
             assert False, "not supported"
-        return commands
+        return commands  # type: ignore
 
     def _while_true_get_exit_commands(
-        self,
-        entry_label: str,
-        exit_label: str,
+        self, entry_label: str, exit_label: str, loop_register: operand.Register
     ) -> List[T_Cmd]:
         return [
+            ICmd(
+                instruction=GenericInstr.ADD,
+                operands=[loop_register, loop_register, 1],
+            ),
             ICmd(instruction=GenericInstr.JMP, operands=[Label(entry_label)]),
             BranchLabel(exit_label),
         ]
@@ -885,9 +911,14 @@ class Builder:
         )
         self._mem_mgr.remove_active_register(loop_register)
 
-    def _while_true_context_enter(self, context_id: int) -> None:
+    def _while_true_context_enter(self, context_id: int) -> operand.Register:
         pre_commands = self.subrt_pop_all_pending_commands()
+        loop_register = self._mem_mgr.get_inactive_register(activate=True)
+
         self._pre_context_commands[context_id] = pre_commands
+        self._pre_context_registers[context_id] = [loop_register]
+
+        return loop_register
 
     def _while_true_context_exit(
         self, context_id: int, context: SdkWhileTrueContext
@@ -896,11 +927,16 @@ class Builder:
         pre_commands = self._pre_context_commands.pop(context_id, None)
         if pre_commands is None:
             raise RuntimeError("Something went wrong, no pre_commands")
+        loop_registers = self._pre_context_registers.pop(context_id, None)
+        if loop_registers is None:
+            raise RuntimeError("Something went wrong, no loop_registers for context")
+        loop_register = loop_registers[0]
 
         self._build_cmds_while_true(
             pre_commands=pre_commands,
             body_commands=body_commands,
             context=context,
+            loop_register=loop_register,
         )
 
     def _build_cmds_breakpoint(
@@ -1471,6 +1507,7 @@ class Builder:
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
         context: SdkWhileTrueContext,
+        loop_register: operand.Register,
     ) -> None:
         if len(body_commands) == 0:
             self.subrt_add_pending_commands(commands=pre_commands)
@@ -1481,13 +1518,15 @@ class Builder:
 
         while_true_start = self._while_true_get_entry_commands(
             entry_label=entry_label,
+            exit_label=exit_label,
+            stop=context.max_iterations,
+            loop_register=loop_register,
         )
         while_true_break = self._while_true_get_break_commands(
             context=context, exit_label=exit_label
         )
         while_true_end = self._while_true_get_exit_commands(
-            entry_label=entry_label,
-            exit_label=exit_label,
+            entry_label=entry_label, exit_label=exit_label, loop_register=loop_register
         )
 
         commands = (
@@ -1715,7 +1754,15 @@ class Builder:
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Build commands for a 'create and keep' EPR operation and return the
         created qubits and result futures."""
-        return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
+        if params.min_fidelity_all_at_end is not None:
+            assert params.max_tries is not None
+            with self.sdk_new_while_true_context(params.max_tries) as loop:
+                qubits, results = self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
+                duration = results[-1].generation_duration
+                loop.set_exit_condition(ValueAtMostConstraint(duration, 420))
+            return qubits, results
+        else:
+            return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_keep(
         self, params: EntRequestParams
@@ -1819,12 +1866,18 @@ class Builder:
         return context
 
     @contextmanager
-    def sdk_new_while_true_context(self) -> Iterator[SdkWhileTrueContext]:
+    def sdk_new_while_true_context(
+        self, max_iterations: int
+    ) -> Iterator[SdkWhileTrueContext]:
         try:
             id = self._next_context_id
-            context = SdkWhileTrueContext(id=id, builder=self)
+            context = SdkWhileTrueContext(
+                id=id, builder=self, max_iterations=max_iterations
+            )
             self._next_context_id += 1
-            self._while_true_context_enter(id)
+            loop_register = self._while_true_context_enter(id)
+            reg_future = RegFuture(self._connection, loop_register)
+            context.set_loop_register(reg_future)
             yield context
         finally:
             assert context.exit_condition is not None

@@ -5,11 +5,7 @@ from typing import List, Optional, Union
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.connection import DebugConnection
-from netqasm.sdk.constraint import (
-    ValueAtMostConstraint,
-    ValueConstraint,
-    ValueConstraintType,
-)
+from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
 from netqasm.sdk.qubit import Qubit
@@ -587,13 +583,28 @@ def test_try():
 def test_while_true():
     with DebugConnection("Alice") as conn:
 
-        with conn.while_true() as loop:
+        with conn.while_true(max_iterations=10) as loop:
             q = Qubit(conn)
             m = q.measure()
             constraint = ValueAtMostConstraint(m, 42)
             loop.set_exit_condition(constraint)
 
         subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+
+def test_epr_min_fidelity_all():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.create_keep(number=5, min_fidelity_all_at_end=90, max_tries=100)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
 
@@ -611,4 +622,5 @@ if __name__ == "__main__":
     # test_epr_context_future_index()
     # test_epr_post()
     # test_try()
-    test_while_true()
+    # test_while_true()
+    test_epr_min_fidelity_all()

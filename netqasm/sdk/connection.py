@@ -616,8 +616,8 @@ class BaseNetQASMConnection(abc.ABC):
         """
         self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
-    def while_true(self) -> ContextManager[SdkWhileTrueContext]:
-        return self.builder.sdk_new_while_true_context()
+    def while_true(self, max_iterations: int) -> ContextManager[SdkWhileTrueContext]:
+        return self.builder.sdk_new_while_true_context(max_iterations)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.
