@@ -482,14 +482,9 @@ class Builder:
         role: EPRRole,
         params: EntRequestParams,
     ) -> Tuple[List[T_Cmd], operand.Register, Array, FutureQubit, operand.Register]:
-        # NOTE since this is in a context there will be a post_routine
-        # TODO Fix weird handling of post_routine parameter here
-        def dummy():
-            pass
-
         self._assert_epr_args(
             number=params.number,
-            post_routine=dummy,  # type: ignore
+            post_routine=lambda: None,  # type: ignore
             sequential=params.sequential,
         )
 
@@ -738,7 +733,7 @@ class Builder:
         using_new_temp_reg = False
 
         cmds, cond_operand = self._get_condition_operand(op)
-        if_start += cmds
+        if_start.extend(cmds)
 
         branch = ICmd(
             instruction=branch_instruction,
@@ -770,7 +765,7 @@ class Builder:
 
         for x in [op0, op1]:
             cmds, cond_operand = self._get_condition_operand(x)
-            if_start += cmds
+            if_start.extend(cmds)
             cond_operands.append(cond_operand)
 
             if isinstance(x, Future):
@@ -1100,7 +1095,7 @@ class Builder:
                 self._build_cmds_loop_body(
                     init_array_elt, stop=length, loop_register=loop_register
                 )
-                commands += self.subrt_pop_all_pending_commands()
+                commands.extend(self.subrt_pop_all_pending_commands())
             else:
                 for i, value in enumerate(init_vals):
                     if value is None:
@@ -1517,7 +1512,7 @@ class Builder:
         all_commands = pre_commands + body_commands
         # We also need to check any existing other pre context commands if they are nested
         for pre_context_cmds in self._pre_context_commands.values():
-            all_commands += pre_context_cmds
+            all_commands.extend(pre_context_cmds)
 
         if negated_predicate in [GenericInstr.BEZ, GenericInstr.BNZ]:
             if_start, if_end = self._get_branch_commands_single_operand(
