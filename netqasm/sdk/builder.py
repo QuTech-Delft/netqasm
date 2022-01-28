@@ -263,7 +263,7 @@ class Builder:
         self.subrt_add_pending_command(
             ICmd(instruction=GenericInstr.SET, operands=[reg, init_value])
         )
-        self._mem_mgr.add_reg_to_return(reg)
+        self._mem_mgr.add_register_to_return(reg)
         return RegFuture(connection=self._connection, reg=reg)
 
     def subrt_add_pending_commands(self, commands: List[T_Cmd]) -> None:
@@ -279,7 +279,7 @@ class Builder:
             command.lineno = self._line_tracker.get_line()
         self._pending_commands.append(command)
 
-    def subrt_pop_pending_commands(self) -> List[T_Cmd]:
+    def subrt_pop_all_pending_commands(self) -> List[T_Cmd]:
         commands = self._pending_commands
         self._pending_commands = []
         return commands
@@ -289,7 +289,7 @@ class Builder:
         self._build_cmds_allocated_arrays()
         self._build_cmds_return_registers()
         if len(self._pending_commands) > 0:
-            commands = self.subrt_pop_pending_commands()
+            commands = self.subrt_pop_all_pending_commands()
             metadata = self.subrt_get_metadata()
             return PreSubroutine(**metadata, commands=commands)
         else:
@@ -475,7 +475,7 @@ class Builder:
         self.subrt_add_pending_command(wait_cmd)
 
         for reg in created_regs:
-            self._mem_mgr.remove_active_reg(reg)
+            self._mem_mgr.remove_active_register(reg)
 
     def _pre_epr_context(
         self,
@@ -521,7 +521,7 @@ class Builder:
                 qubit_ids_array, ent_results_array, False, params
             )
 
-        pre_commands = self.subrt_pop_pending_commands()
+        pre_commands = self.subrt_pop_all_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         pair = loop_register
 
@@ -538,12 +538,12 @@ class Builder:
         ent_results_array: Array,
         pair: operand.Register,
     ) -> None:
-        body_commands = self.subrt_pop_pending_commands()
+        body_commands = self.subrt_pop_all_pending_commands()
         self._add_wait_for_ent_info_cmd(
             ent_results_array=ent_results_array,
             pair=pair,
         )
-        wait_cmds = self.subrt_pop_pending_commands()
+        wait_cmds = self.subrt_pop_all_pending_commands()
         body_commands = wait_cmds + body_commands
         self._build_cmds_loop(
             pre_commands=pre_commands,
@@ -553,7 +553,7 @@ class Builder:
             step=1,
             loop_register=loop_register,
         )
-        self._mem_mgr.remove_active_reg(loop_register)
+        self._mem_mgr.remove_active_register(loop_register)
 
     def _assert_epr_args(
         self,
@@ -748,7 +748,7 @@ class Builder:
 
         if using_new_temp_reg:
             assert isinstance(cond_operand, operand.Register)
-            self._mem_mgr.remove_active_reg(cond_operand)
+            self._mem_mgr.remove_active_register(cond_operand)
 
         exit = BranchLabel(exit_label)
         if_end = [exit]
@@ -785,7 +785,7 @@ class Builder:
 
         # Inactivate the temporary registers
         for reg in temp_regs_to_remove:
-            self._mem_mgr.remove_active_reg(reg)
+            self._mem_mgr.remove_active_register(reg)
 
         exit = BranchLabel(exit_label)
         if_end = [exit]
@@ -795,12 +795,12 @@ class Builder:
     @contextmanager
     def _activate_register(self, register: operand.Register) -> Iterator[None]:
         try:
-            self._mem_mgr.add_active_reg(register)
+            self._mem_mgr.add_active_register(register)
             yield
         except Exception as err:
             raise err
         finally:
-            self._mem_mgr.remove_active_reg(register)
+            self._mem_mgr.remove_active_register(register)
 
     def _loop_get_register(
         self,
@@ -818,7 +818,7 @@ class Builder:
         else:
             loop_register = register
 
-        if self._mem_mgr.is_reg_active(loop_register):
+        if self._mem_mgr.is_register_active(loop_register):
             raise ValueError("Register used for looping should not already be active")
         return loop_register
 
@@ -856,7 +856,7 @@ class Builder:
         ]
 
     def if_context_enter(self, context_id: int) -> None:
-        pre_commands = self.subrt_pop_pending_commands()
+        pre_commands = self.subrt_pop_all_pending_commands()
         self._pre_context_commands[context_id] = pre_commands
 
     def if_context_exit(
@@ -867,7 +867,7 @@ class Builder:
         op1: Optional[T_CValue],
     ) -> None:
         # pop commands that were added while evaluting the context body
-        body_commands = self.subrt_pop_pending_commands()
+        body_commands = self.subrt_pop_all_pending_commands()
 
         # get all commands that were pending before entering this context
         pre_context_commands = self._pre_context_commands.pop(context_id, None)
@@ -885,7 +885,7 @@ class Builder:
     def _foreach_context_enter(
         self, context_id: int, array: Array, return_index: bool
     ) -> Union[Tuple[operand.Register, Future], Future]:
-        pre_commands = self.subrt_pop_pending_commands()
+        pre_commands = self.subrt_pop_all_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
 
         # NOTE (BUG): the below assignment is NOT consistent with the type of _pre_context_commands
@@ -897,7 +897,7 @@ class Builder:
             return array.get_future_index(loop_register)
 
     def _foreach_context_exit(self, context_id: int, array: Array) -> None:
-        body_commands = self.subrt_pop_pending_commands()
+        body_commands = self.subrt_pop_all_pending_commands()
         pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
             context_id, None  # type: ignore
         )
@@ -914,7 +914,7 @@ class Builder:
             step=1,
             loop_register=loop_register,
         )
-        self._mem_mgr.remove_active_reg(loop_register)
+        self._mem_mgr.remove_active_register(loop_register)
 
     def _build_cmds_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
@@ -992,7 +992,7 @@ class Builder:
             if not isinstance(qubit_id, Future):
                 if qubit_id != 0:
                     self._build_cmds_free_up_qubit_location(virtual_address=0)
-        outcome_reg = self._mem_mgr.get_new_meas_outcome_reg()
+        outcome_reg = self._mem_mgr.get_new_meas_outcome_register()
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
         meas_command = ICmd(
@@ -1011,10 +1011,10 @@ class Builder:
         if future is not None:
             if isinstance(future, Future):
                 outcome_commands = future._get_store_commands(outcome_reg)
-                self._mem_mgr.meas_reg_set_unused(outcome_reg)
+                self._mem_mgr.meas_register_set_unused(outcome_reg)
             elif isinstance(future, RegFuture):
                 future.reg = outcome_reg
-                self._mem_mgr.add_reg_to_return(outcome_reg)
+                self._mem_mgr.add_register_to_return(outcome_reg)
                 outcome_commands = []
             else:
                 outcome_commands = []
@@ -1054,7 +1054,7 @@ class Builder:
         self.subrt_add_pending_command(qfree_command)
 
     def _build_cmds_allocated_arrays(self) -> None:
-        current_commands = self.subrt_pop_pending_commands()
+        current_commands = self.subrt_pop_all_pending_commands()
 
         for array in self._mem_mgr.get_arrays_to_return():
             self._build_cmds_init_array(array)
@@ -1100,7 +1100,7 @@ class Builder:
                 self._build_cmds_loop_body(
                     init_array_elt, stop=length, loop_register=loop_register
                 )
-                commands += self.subrt_pop_pending_commands()
+                commands += self.subrt_pop_all_pending_commands()
             else:
                 for i, value in enumerate(init_vals):
                     if value is None:
@@ -1426,12 +1426,12 @@ class Builder:
         by `start`, `stop` and `step`.
         """
         loop_register = self._loop_get_register(loop_register)
-        pre_commands = self.subrt_pop_pending_commands()
+        pre_commands = self.subrt_pop_all_pending_commands()
 
         with self._activate_register(loop_register):
             # evalute body (will add pending commands)
             body(self._connection)
-        body_commands = self.subrt_pop_pending_commands()
+        body_commands = self.subrt_pop_all_pending_commands()
 
         self._build_cmds_loop(
             pre_commands=pre_commands,
@@ -1484,13 +1484,13 @@ class Builder:
         body: T_BranchRoutine,
     ) -> None:
         """Used to build effective if-statements"""
-        current_commands = self.subrt_pop_pending_commands()
+        current_commands = self.subrt_pop_all_pending_commands()
 
         # evaluate body (will add pending commands)
         body(self._connection)
 
         # get those commands
-        body_commands = self.subrt_pop_pending_commands()
+        body_commands = self.subrt_pop_all_pending_commands()
 
         # combine existing commands with body commands and branch instructions
         self._build_cmds_condition(
@@ -1710,11 +1710,11 @@ class Builder:
         loop_register: Optional[Union[operand.Register, str]] = None,
     ) -> Iterator[operand.Register]:
         try:
-            pre_commands = self.subrt_pop_pending_commands()
+            pre_commands = self.subrt_pop_all_pending_commands()
             loop_register_result = self._loop_get_register(loop_register, activate=True)
             yield loop_register_result
         finally:
-            body_commands = self.subrt_pop_pending_commands()
+            body_commands = self.subrt_pop_all_pending_commands()
             self._build_cmds_loop(
                 pre_commands=pre_commands,
                 body_commands=body_commands,
@@ -1723,7 +1723,7 @@ class Builder:
                 step=step,
                 loop_register=loop_register_result,
             )
-            self._mem_mgr.remove_active_reg(loop_register_result)
+            self._mem_mgr.remove_active_register(loop_register_result)
 
     def sdk_loop_body(
         self,
@@ -1785,10 +1785,10 @@ class Builder:
         max_tries: int = 1,
     ) -> Iterator[None]:
         try:
-            pre_commands = self.subrt_pop_pending_commands()
+            pre_commands = self.subrt_pop_all_pending_commands()
             yield
         finally:
-            body_commands = self.subrt_pop_pending_commands()
+            body_commands = self.subrt_pop_all_pending_commands()
             commands = pre_commands + body_commands
             self.subrt_add_pending_commands(commands)
 
@@ -1798,9 +1798,9 @@ class Builder:
     #     max_tries: int = 1,
     # ) -> None:
     #     try:
-    #         pre_commands = self.subrt_pop_pending_commands()
+    #         pre_commands = self.subrt_pop_all_pending_commands()
     #         yield
     #     finally:
-    #         body_commands = self.subrt_pop_pending_commands()
+    #         body_commands = self.subrt_pop_all_pending_commands()
     #         commands = pre_commands + body_commands
     #         self.subrt_add_pending_commands(commands)

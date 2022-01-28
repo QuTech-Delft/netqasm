@@ -57,24 +57,24 @@ class MemoryManager:
                 return address
         raise RuntimeError("Could not get new qubit address")
 
-    def is_reg_active(self, reg: operand.Register) -> bool:
+    def is_register_active(self, reg: operand.Register) -> bool:
         return reg in self._active_registers
 
-    def add_active_reg(self, reg: operand.Register) -> None:
+    def add_active_register(self, reg: operand.Register) -> None:
         if reg in self._active_registers:
             raise ValueError(f"Register {reg} is already active")
         self._active_registers.add(reg)
 
-    def remove_active_reg(self, reg: operand.Register) -> None:
+    def remove_active_register(self, reg: operand.Register) -> None:
         self._active_registers.remove(reg)
 
-    def meas_reg_set_used(self, reg: operand.Register) -> None:
+    def meas_register_set_used(self, reg: operand.Register) -> None:
         self._used_meas_registers[reg] = True
 
-    def meas_reg_set_unused(self, reg: operand.Register) -> None:
+    def meas_register_set_unused(self, reg: operand.Register) -> None:
         self._used_meas_registers[reg] = False
 
-    def get_new_meas_outcome_reg(self) -> operand.Register:
+    def get_new_meas_outcome_register(self) -> operand.Register:
         # Find the next unused M-register.
         for reg, used in self._used_meas_registers.items():
             if not used:
@@ -87,7 +87,7 @@ class MemoryManager:
             operand.Register(RegisterName.M, i): False for i in range(16)
         }
 
-    def add_reg_to_return(self, reg: operand.Register) -> None:
+    def add_register_to_return(self, reg: operand.Register) -> None:
         self._registers_to_return.append(reg)
 
     def get_registers_to_return(self) -> List[operand.Register]:
@@ -99,9 +99,9 @@ class MemoryManager:
     def get_inactive_register(self, activate: bool = False) -> operand.Register:
         for i in range(2 ** REG_INDEX_BITS):
             register = parse_register(f"R{i}")
-            if not self.is_reg_active(register):
+            if not self.is_register_active(register):
                 if activate:
-                    self.add_active_reg(register)
+                    self.add_active_register(register)
                 return register
         raise RuntimeError("could not find an available loop register")
 

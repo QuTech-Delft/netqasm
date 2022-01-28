@@ -328,9 +328,9 @@ class Future(BaseFuture):
             + store_commands
         )
 
-        self.builder._mem_mgr.remove_active_reg(tmp_register)
+        self.builder._mem_mgr.remove_active_register(tmp_register)
         if other_tmp_register is not None:
-            self.builder._mem_mgr.remove_active_reg(other_tmp_register)
+            self.builder._mem_mgr.remove_active_register(other_tmp_register)
 
         self.builder.subrt_add_pending_commands(commands)
 
@@ -486,7 +486,7 @@ class RegFuture(BaseFuture):
         )
 
         if other_tmp_register is not None:
-            self.builder._mem_mgr.remove_active_reg(other_tmp_register)
+            self.builder._mem_mgr.remove_active_register(other_tmp_register)
 
         self.builder.subrt_add_pending_commands(commands)
 
