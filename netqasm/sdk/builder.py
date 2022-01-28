@@ -325,7 +325,6 @@ class Builder:
             q_id = qubit_ids.get_future_index(pair)
             q = FutureQubit(conn=conn, future_id=q_id)
             pair_future = RegFuture(self._connection, pair)
-            # post_routine(self, q, pair)
             post_routine(self, q, pair_future)
 
         # TODO use loop context

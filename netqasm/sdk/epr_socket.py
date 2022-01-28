@@ -218,7 +218,7 @@ class EPRSocket(abc.ABC):
         :return: list of qubits created
         """
 
-        qubits, _ = self.conn._builder.sdk_create_epr_keep(
+        qubits, _ = self.conn.builder.sdk_create_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -252,7 +252,7 @@ class EPRSocket(abc.ABC):
         )
         return qubits, info
 
-    def get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
+    def _get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
         if basis == EPRMeasBasis.X:
             return (0, 24, 0)
         elif basis == EPRMeasBasis.Y:
@@ -338,9 +338,9 @@ class EPRSocket(abc.ABC):
         """
 
         if basis_local is not None:
-            rotations_local = self.get_rotations_from_basis(basis_local)
+            rotations_local = self._get_rotations_from_basis(basis_local)
         if basis_remote is not None:
-            rotations_remote = self.get_rotations_from_basis(basis_remote)
+            rotations_remote = self._get_rotations_from_basis(basis_remote)
 
         return self.conn.builder.sdk_create_epr_measure(
             params=EntRequestParams(
@@ -416,7 +416,7 @@ class EPRSocket(abc.ABC):
         """
 
         if basis_local is not None:
-            rotations_local = self.get_rotations_from_basis(basis_local)
+            rotations_local = self._get_rotations_from_basis(basis_local)
 
         return self.conn.builder.sdk_epr_rsp_create(
             params=EntRequestParams(

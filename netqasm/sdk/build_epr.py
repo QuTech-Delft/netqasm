@@ -24,7 +24,7 @@ class EntRequestParams:
 
 
 # Length of NetQASM array for serialized Create Requests.
-SER_CREATE_REQUEST_LEN = 20
+SER_CREATE_LEN = 20
 
 # Indices of Create Request arguments in serialized NetQASM array
 SER_CREATE_IDX_TYPE = 0
@@ -49,7 +49,7 @@ SER_CREATE_IDX_ROTATION_Y_REMOTE = 18
 SER_CREATE_IDX_ROTATION_X_REMOTE2 = 19
 
 # Length of NetQASM array for EPR Keep results.
-SER_RESULT_KEEP_LEN = 10
+SER_RESPONSE_KEEP_LEN = 10
 
 # Indices of EPR Keep results in serialized NetQASM array
 SER_RESPONSE_KEEP_IDX_TYPE = 0
@@ -64,7 +64,7 @@ SER_RESPONSE_KEEP_IDX_GOODNESS_TIME = 8
 SER_RESPONSE_KEEP_IDX_BELL_STATE = 9
 
 # Length of NetQASM array for EPR Measure results.
-SER_RESULT_MEASURE_LEN = 10
+SER_RESPONSE_MEASURE_LEN = 10
 
 # Indices of EPR Measure results in serialized NetQASM array
 SER_RESPONSE_MEASURE_IDX_TYPE = 0
@@ -80,7 +80,9 @@ SER_RESPONSE_MEASURE_IDX_BELL_STATE = 9
 
 
 def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[int]]:
-    array: List[Optional[int]] = [None for i in range(SER_CREATE_REQUEST_LEN)]
+    """Convert an EntRequestParams object into a list of values that can be put
+    in a NetQASM array."""
+    array: List[Optional[int]] = [None for i in range(SER_CREATE_LEN)]
 
     array[SER_CREATE_IDX_TYPE] = tp.value
     array[SER_CREATE_IDX_NUMBER] = params.number
@@ -110,10 +112,11 @@ def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[in
 
 
 def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepResult]:
-    assert len(array) == num_pairs * SER_RESULT_KEEP_LEN
+    """Convert values in a NetQASM array into EprKeepResult objects."""
+    assert len(array) == num_pairs * SER_RESPONSE_KEEP_LEN
     results: List[EprKeepResult] = []
     for i in range(num_pairs):
-        base = i * SER_RESULT_KEEP_LEN
+        base = i * SER_RESPONSE_KEEP_LEN
         results.append(
             EprKeepResult(
                 qubit_id=array.get_future_index(
@@ -136,10 +139,11 @@ def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepRe
 def deserialize_epr_measure_results(
     num_pairs: int, array: Array
 ) -> List[EprMeasureResult]:
-    assert len(array) == num_pairs * SER_RESULT_MEASURE_LEN
+    """Convert values in a NetQASM array into EprMeasureResult objects."""
+    assert len(array) == num_pairs * SER_RESPONSE_MEASURE_LEN
     results: List[EprMeasureResult] = []
     for i in range(num_pairs):
-        base = i * SER_RESULT_MEASURE_LEN
+        base = i * SER_RESPONSE_MEASURE_LEN
         results.append(
             EprMeasureResult(
                 measurement_outcome=array.get_future_index(
