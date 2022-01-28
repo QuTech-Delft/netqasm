@@ -414,11 +414,11 @@ def test_try():
 
 if __name__ == "__main__":
     # set_log_level("DEBUG")
-    # test_simple()
-    # test_create_epr()
+    test_simple()
+    test_create_epr()
     test_branching()
-    # test_loop_context()
-    # test_looping()
-    # test_futures()
-    # test_nested()
-    # test_try()
+    test_loop_context()
+    test_looping()
+    test_futures()
+    test_nested()
+    test_try()
