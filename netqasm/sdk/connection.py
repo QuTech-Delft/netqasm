@@ -246,6 +246,10 @@ class BaseNetQASMConnection(abc.ABC):
     def network_info(self) -> Type[NetworkInfo]:
         return self._get_network_info()
 
+    @property
+    def builder(self) -> Builder:
+        return self._builder
+
     @classmethod
     def get_app_ids(cls) -> Dict[str, List[int]]:
         return cls._app_ids
@@ -410,7 +414,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         :return: list of active qubits
         """
-        return self._builder.active_qubits
+        return self._builder._mem_mgr.get_active_qubits()
 
     def _init_new_app(self, max_qubits: int) -> None:
         """Send a message to the quantum node controller to register a new application.
@@ -478,7 +482,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param callback: if `block` is False, this callback is called when the quantum
             node controller sends the subroutine results.
         """
-        subroutine = self._builder._pop_pending_subroutine()
+        subroutine = self._builder.subrt_pop_pending_subroutine()
         if subroutine is None:
             return
 
@@ -503,7 +507,7 @@ class BaseNetQASMConnection(abc.ABC):
         self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        subroutine = self._builder._pre_process_subroutine(presubroutine)
+        subroutine = self._builder.subrt_compile_subroutine(presubroutine)
         self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
         # Commit the subroutine to the quantum device
@@ -538,7 +542,7 @@ class BaseNetQASMConnection(abc.ABC):
             have the same length as `length`.
         :return: a handle to the array that can be used in application code
         """
-        return self._builder.new_array(length, init_values)
+        return self._builder.alloc_array(length, init_values)
 
     def loop(
         self,
@@ -583,7 +587,7 @@ class BaseNetQASMConnection(abc.ABC):
         """
         # TODO: this returns a method that has a decorator.
         #       Are type hints still correct?
-        return self._builder.loop(stop, start, step, loop_register)  # type: ignore
+        return self._builder.sdk_loop_context(stop, start, step, loop_register)  # type: ignore
 
     def loop_body(
         self,
@@ -591,7 +595,7 @@ class BaseNetQASMConnection(abc.ABC):
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[operand.Register] = None,
+        loop_register: Optional[Union[operand.Register, str]] = None,
     ) -> None:
         """Loop code that is defined in a Python function (body).
 
@@ -604,7 +608,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param step: step size of iteration range, defaults to 1
         :param loop_register: specific register to be used for holding the loop index.
         """
-        self._builder.loop_body(body, stop, start, step, loop_register)
+        self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.
@@ -618,7 +622,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_eq(a, b, body)
+        self._builder.sdk_if_eq(a, b, body)
 
     def if_ne(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a != b.
@@ -632,7 +636,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ne(a, b, body)
+        self._builder.sdk_if_ne(a, b, body)
 
     def if_lt(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a < b.
@@ -646,7 +650,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_lt(a, b, body)
+        self._builder.sdk_if_lt(a, b, body)
 
     def if_ge(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a > b.
@@ -660,7 +664,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param b: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ge(a, b, body)
+        self._builder.sdk_if_ge(a, b, body)
 
     def if_ez(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == 0.
@@ -673,7 +677,7 @@ class BaseNetQASMConnection(abc.ABC):
         :param a: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_ez(a, body)
+        self._builder.sdk_if_ez(a, body)
 
     def if_nz(self, a: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a != 0.
@@ -686,7 +690,11 @@ class BaseNetQASMConnection(abc.ABC):
         :param a: a classical value
         :param body: function to execute if condition is true
         """
-        self._builder.if_nz(a, body)
+        self._builder.sdk_if_nz(a, body)
+
+    def try_until_success(self, max_tries: int = 1) -> Iterator[None]:
+        """TODO docstring"""
+        return self._builder.sdk_try_context(max_tries)  # type: ignore
 
     def tomography(
         self,
@@ -789,7 +797,7 @@ class BaseNetQASMConnection(abc.ABC):
     def insert_breakpoint(
         self, action: BreakpointAction, role: BreakpointRole = BreakpointRole.CREATE
     ) -> None:
-        self._builder.insert_breakpoint(action, role)
+        self._builder._build_cmds_breakpoint(action, role)
 
 
 class DebugConnection(BaseNetQASMConnection):

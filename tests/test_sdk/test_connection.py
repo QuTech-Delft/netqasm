@@ -1012,6 +1012,6 @@ if __name__ == "__main__":
     # test_rotations()
     # test_epr()
     # test_two_epr()
-    # test_epr_m()
+    test_epr_m()
     # test_epr_r_create()
-    test_epr_r_receive()
+    # test_epr_r_receive()

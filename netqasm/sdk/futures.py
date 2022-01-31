@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import operand
 from netqasm.lang.ir import GenericInstr, ICmd, Symbols
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import HostLine
@@ -18,6 +19,7 @@ from netqasm.util.log import HostLine
 if TYPE_CHECKING:
     from netqasm.lang import ir
     from netqasm.sdk import connection as sdkconn
+    from netqasm.sdk.builder import Builder, SdkForEachContext, SdkIfContext
 
 # Generic type for classical values (that may only get a value at runtime).
 T_CValue = Union[int, "Future", "RegFuture"]
@@ -154,6 +156,10 @@ class BaseFuture(int):
         return f"{self.__class__} with value={self.value}"
 
     @property
+    def builder(self) -> Builder:
+        return self._connection.builder
+
+    @property
     def value(self) -> Optional[int]:
         """Get the value of the future.
         If it's not set yet, `None` is returned."""
@@ -184,54 +190,38 @@ class BaseFuture(int):
         :param other: value to add to this Future's value
         :param mod: do the addition modulo `mod`
         """
-        raise NotImplementedError(f"add is not implement for {self.__class__.__name__}")
-
-    def if_eq(self, other: Optional[T_CValue]) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BEQ,
-            a=self,
-            b=other,
+        raise NotImplementedError(
+            f"add is not implemented for {self.__class__.__name__}"
         )
 
-    def if_ne(self, other: Optional[T_CValue]) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BNE,
-            a=self,
-            b=other,
+    def if_eq(self, other: Optional[T_CValue]) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BEQ, op0=self, op1=other
         )
 
-    def if_lt(self, other: Optional[T_CValue]) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BLT,
-            a=self,
-            b=other,
+    def if_ne(self, other: Optional[T_CValue]) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BNE, op0=self, op1=other
         )
 
-    def if_ge(self, other: Optional[T_CValue]) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BGE,
-            a=self,
-            b=other,
+    def if_lt(self, other: Optional[T_CValue]) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BLT, op0=self, op1=other
         )
 
-    def if_ez(self) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BEZ,
-            a=self,
-            b=None,
+    def if_ge(self, other: Optional[T_CValue]) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BGE, op0=self, op1=other
         )
 
-    def if_nz(self) -> _IfContext:
-        return _IfContext(
-            connection=self._connection,
-            condition=GenericInstr.BNZ,
-            a=self,
-            b=None,
+    def if_ez(self) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BEZ, op0=self, op1=None
+        )
+
+    def if_nz(self) -> SdkIfContext:
+        return self.builder.sdk_new_if_context(
+            condition=GenericInstr.BNZ, op0=self, op1=None
         )
 
 
@@ -296,7 +286,7 @@ class Future(BaseFuture):
             other = parse_register(other)
 
         # Store self in a temporary register
-        tmp_register = self._connection._builder._get_inactive_register(activate=True)
+        tmp_register = self.builder._mem_mgr.get_inactive_register(activate=True)
         load_commands = self._get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
@@ -305,9 +295,7 @@ class Future(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._builder._get_inactive_register(
-                activate=True
-            )
+            other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -340,11 +328,11 @@ class Future(BaseFuture):
             + store_commands
         )
 
-        self._connection._builder._remove_active_register(tmp_register)
+        self.builder._mem_mgr.remove_active_register(tmp_register)
         if other_tmp_register is not None:
-            self._connection._builder._remove_active_register(other_tmp_register)
+            self.builder._mem_mgr.remove_active_register(other_tmp_register)
 
-        self._connection._builder.add_pending_commands(commands)
+        self.builder.subrt_add_pending_commands(commands)
 
     def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
         return self._get_access_commands(GenericInstr.LOAD, register)
@@ -364,9 +352,9 @@ class Future(BaseFuture):
                 raise RuntimeError(
                     "Future-index must be from the same connection as the future itself"
                 )
-            tmp_register = self._connection._builder._get_inactive_register()
+            tmp_register = self.builder._mem_mgr.get_inactive_register()
             # NOTE this might be many commands if the index is a future with a future index etc
-            with self._connection._builder._activate_register(tmp_register):
+            with self.builder._activate_register(tmp_register):
                 access_index_cmds = self._index._get_access_commands(
                     instruction=GenericInstr.LOAD,
                     register=tmp_register,
@@ -391,6 +379,9 @@ class Future(BaseFuture):
         )
         commands.append(access_cmd)
         return commands
+
+    def get_address_entry(self) -> Union[Address, ArraySlice, ArrayEntry]:
+        return parse_address(f"{Symbols.ADDRESS_START}{self._address}[{self._index}]")
 
 
 class RegFuture(BaseFuture):
@@ -461,9 +452,7 @@ class RegFuture(BaseFuture):
 
         # If other is a Future, also load this into a temporary register
         if isinstance(other, Future):
-            other_operand = self._connection._builder._get_inactive_register(
-                activate=True
-            )
+            other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
             load_commands += other._get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
@@ -497,9 +486,9 @@ class RegFuture(BaseFuture):
         )
 
         if other_tmp_register is not None:
-            self._connection._builder._remove_active_register(other_tmp_register)
+            self.builder._mem_mgr.remove_active_register(other_tmp_register)
 
-        self._connection._builder.add_pending_commands(commands)
+        self.builder.subrt_add_pending_commands(commands)
 
 
 class Array:
@@ -558,6 +547,10 @@ class Array:
     def address(self) -> int:
         return self._address
 
+    @property
+    def builder(self) -> Builder:
+        return self._connection.builder
+
     def get_future_index(self, index: Union[int, str, operand.Register]) -> Future:
         """Get a Future representing a particular array element"""
         if isinstance(index, str):
@@ -583,7 +576,7 @@ class Array:
                 range_args.append(x)
         return [self.get_future_index(index) for index in range(*range_args)]
 
-    def foreach(self) -> _ForEachContext:
+    def foreach(self) -> SdkForEachContext:
         """Create a context of code that gets called for each element in the array.
 
         Returns a future of the array value at the current index.
@@ -609,13 +602,9 @@ class Array:
                         q.H()
                     q.measure(future=outcomes.get_future_index(i))
         """
-        return _ForEachContext(
-            connection=self._connection,
-            array=self,
-            return_index=False,
-        )
+        return self.builder.sdk_new_foreach_context(array=self, return_index=False)
 
-    def enumerate(self) -> _ForEachContext:
+    def enumerate(self) -> SdkForEachContext:
         """Create a context of code that gets called for each element in the array
         and includes a counter.
 
@@ -643,82 +632,4 @@ class Array:
                         q.H()
                     q.measure(future=outcomes.get_future_index(i))
         """
-        return _ForEachContext(
-            connection=self._connection,
-            array=self,
-            return_index=True,
-        )
-
-
-class _Context:
-
-    next_id: int = 0
-
-    @property
-    @abc.abstractmethod
-    def ENTER_METH(self):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def EXIT_METH(self):
-        pass
-
-    def __init__(self, connection: sdkconn.BaseNetQASMConnection, **kwargs):
-        self._id: int = self._get_id()
-        self._connection: sdkconn.BaseNetQASMConnection = connection
-        self._kwargs = kwargs
-
-    def _get_id(self) -> int:
-        _Context.next_id += 1
-        return _Context.next_id - 1
-
-    def __enter__(self):
-        return getattr(self._connection._builder, self.ENTER_METH)(
-            context_id=self._id,
-            **self._kwargs,
-        )
-
-    def __exit__(self, *args, **kwargs):
-        getattr(self._connection._builder, self.EXIT_METH)(
-            context_id=self._id,
-            **self._kwargs,
-        )
-
-
-class _IfContext(_Context):
-
-    ENTER_METH = "_enter_if_context"
-    EXIT_METH = "_exit_if_context"
-
-    def __init__(
-        self,
-        connection: sdkconn.BaseNetQASMConnection,
-        condition: GenericInstr,
-        a: Optional[T_CValue],
-        b: Optional[T_CValue],
-    ):
-        super().__init__(
-            connection=connection,
-            condition=condition,
-            a=a,
-            b=b,
-        )
-
-
-class _ForEachContext(_Context):
-
-    ENTER_METH = "_enter_foreach_context"
-    EXIT_METH = "_exit_foreach_context"
-
-    def __init__(
-        self,
-        connection: sdkconn.BaseNetQASMConnection,
-        array: Array,
-        return_index: bool,
-    ):
-        super().__init__(
-            connection=connection,
-            array=array,
-            return_index=return_index,
-        )
+        return self.builder.sdk_new_foreach_context(array=self, return_index=True)

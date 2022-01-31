@@ -8,9 +8,9 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
-from netqasm.lang.ir import GenericInstr
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.qlink_compat import (
+    EPRRole,
     EPRType,
     LinkLayerOKTypeK,
     LinkLayerOKTypeM,
@@ -151,6 +151,264 @@ class EPRSocket(abc.ABC):
         """Get the desired minimum fidelity"""
         return self._min_fidelity
 
+    def create_keep(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+    ) -> List[Qubit]:
+        """Ask the network stack to generate EPR pairs with the remote node and keep
+        them in memory.
+
+        A `create_keep` operation must always be matched by a `recv_keep` operation on
+        the remote node.
+
+        If `sequential` is False (default), this operation returns a list of Qubit
+        objects representing the local qubits that are each one half of the generated
+        pairs. These qubits can then be manipulated locally just like locally
+        initialized qubits, by e.g. applying gates or measuring them.
+        Each qubit also contains information about the entanglement generation that
+        lead to its creation, and can be accessed by its `entanglement_info` property.
+
+        A typical example for just generating one pair with another node would be:
+
+        .. code-block::
+
+            q = epr_socket.create_keep()[0]
+            # `q` can now be used as a normal qubit
+
+        If `sequential` is False (default), the all requested EPR pairs are generated
+        at once, before returning the results (qubits or entanglement info objects).
+
+        If `sequential` is True, a callback function (`post_routine`) should be
+        specified. After generating one EPR pair, this callback will be called, before
+        generating the next pair. This method can e.g. be used to generate many EPR
+        pairs (more than the number of physical qubits available), by measuring (and
+        freeing up) each qubit before the next pair is generated.
+
+        For example:
+
+        .. code-block::
+
+            outcomes = alice.new_array(num)
+
+            def post_create(conn, q, pair):
+                q.H()
+                outcome = outcomes.get_future_index(pair)
+                q.measure(outcome)
+            epr_socket.create_keep(number=num, post_routine=post_create, sequential=True)
+
+
+        :param number: number of EPR pairs to generate, defaults to 1
+        :param post_routine: callback function for each genated pair. Only used if
+            `sequential` is True.
+            The callback should take three arguments `(conn, q, pair)` where
+            * `conn` is the connection (e.g. `self`)
+            * `q` is the entangled qubit (of type `FutureQubit`)
+            * `pair` is a register holding which pair is handled (0, 1, ...)
+        :param sequential: whether to use callbacks after each pair, defaults to False
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
+        :return: list of qubits created
+        """
+
+        return self.conn.builder.sdk_create_epr_keep(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+                time_unit=time_unit,
+                max_time=max_time,
+            ),
+        )
+
+    def get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
+        if basis == EPRMeasBasis.X:
+            return (0, 24, 0)
+        elif basis == EPRMeasBasis.Y:
+            return (8, 0, 0)
+        elif basis == EPRMeasBasis.Z:
+            return (0, 0, 0)
+        elif basis == EPRMeasBasis.MX:
+            return (0, 8, 0)
+        elif basis == EPRMeasBasis.MY:
+            return (24, 0, 0)
+        elif basis == EPRMeasBasis.MZ:
+            return (16, 0, 0)
+        else:
+            assert False, f"invalid EPRMeasBasis {basis}"
+
+    def create_measure(
+        self,
+        number: int = 1,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+        basis_local: EPRMeasBasis = None,
+        basis_remote: EPRMeasBasis = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+        random_basis_remote: Optional[RandomBasis] = None,
+    ) -> List[LinkLayerOKTypeM]:
+        """Ask the network stack to generate EPR pairs with the remote node and
+        measure them immediately (on both nodes).
+
+        A `create_measure` operation must always be matched by a `recv_measure`
+        operation on the remote node.
+
+        This operation returns a list of Linklayer response objects. These objects
+        contain information about the entanglement generation and includes the
+        measurement outcome and basis used. Note that all values are `Future` objects.
+        This means that the current subroutine must be flushed before the values
+        become defined.
+
+        An example for generating 10 pairs with another node that are immediately
+        measured:
+
+        .. code-block::
+
+            # list of Futures that become defined when subroutine is flushed
+            outcomes = []
+            with NetQASMConnection("alice", epr_sockets=[epr_socket]):
+                ent_infos = epr_socket.create(number=10, tp=EPRType.M)
+                for ent_info in ent_infos:
+                    outcomes.append(ent_info.measurement_outcome)
+
+        The basis to measure in can also be specified. There are 3 ways to specify a
+        basis:
+
+        * using one of the `EPRMeasBasis` variants
+        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
+          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+          means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
+          applied to the qubit.
+        * using one of the `RandomBasis` variants, in which case one of the bases of
+          that variant is chosen at random just before measuring
+
+        NOTE: the node that initiates the entanglement generation, i.e. the one that
+        calls `create` on its EPR socket, also controls the measurement bases of the
+        receiving node (by setting e.g. `rotations_remote`). The receiving node cannot
+        change this.
+
+        :param number: number of EPR pairs to generate, defaults to 1
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
+        :param basis_local: basis to measure in on this node for M-type requests
+        :param basis_remote: basis to measure in on the remote node for M-type requests
+        :param rotations_local: rotations to apply before measuring on this node
+        :param rotations_remote: rotations to apply before measuring on remote node
+        :param random_basis_local: random bases to choose from when measuring on this
+            node
+        :param random_basis_remote: random bases to choose from when measuring on
+            the remote node
+        :return: list of entanglement info objects per created pair.
+        """
+
+        if basis_local is not None:
+            rotations_local = self.get_rotations_from_basis(basis_local)
+        if basis_remote is not None:
+            rotations_remote = self.get_rotations_from_basis(basis_remote)
+
+        return self.conn.builder.sdk_create_epr_measure(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+                time_unit=time_unit,
+                max_time=max_time,
+                random_basis_local=random_basis_local,
+                random_basis_remote=random_basis_remote,
+                rotations_local=rotations_local,
+                rotations_remote=rotations_remote,
+            ),
+        )
+
+    def create_rsp(
+        self,
+        number: int = 1,
+        time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
+        max_time: int = 0,
+        basis_local: EPRMeasBasis = None,
+        rotations_local: Tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: Optional[RandomBasis] = None,
+    ) -> List[LinkLayerOKTypeM]:
+        """Ask the network stack to do remote preparation with the remote node.
+
+        A `create_rsp` operation must always be matched by a `recv_erp` operation
+        on the remote node.
+
+        This operation returns a list of Linklayer response objects. These objects
+        contain information about the entanglement generation and includes the
+        measurement outcome and basis used. Note that all values are `Future` objects.
+        This means that the current subroutine must be flushed before the values
+        become defined.
+
+        An example for generating 10 pairs with another node that are immediately
+        measured:
+
+        .. code-block::
+
+            m: LinkLayerOKTypeM = epr_socket.create_rsp(tp=EPRType.R)[0]
+            print(m.measurement_outcome)
+            # remote node now has a prepared qubit
+
+        The basis to measure in can also be specified.
+        There are 3 ways to specify a basis:
+
+        * using one of the `EPRMeasBasis` variants
+        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
+          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+          means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
+          applied to the qubit.
+        * using one of the `RandomBasis` variants, in which case one of the bases of
+          that variant is chosen at random just before measuring
+
+        :param number: number of EPR pairs to generate, defaults to 1
+        :param time_unit: which time unit to use for the `max_time` parameter
+        :param max_time: maximum number of time units (see `time_unit`) the Host is
+            willing to wait for entanglement generation of a single pair. If generation
+            does not succeed within this time, the whole subroutine that this request
+            is part of is reset and run again by the quantum node controller.
+        :param basis_local: basis to measure in on this node for M-type requests
+        :param basis_remote: basis to measure in on the remote node for M-type requests
+        :param rotations_local: rotations to apply before measuring on this node
+        :param rotations_remote: rotations to apply before measuring on remote node
+        :param random_basis_local: random bases to choose from when measuring on this
+            node
+        :param random_basis_remote: random bases to choose from when measuring on
+            the remote node
+        :return: list of entanglement info objects per created pair.
+        """
+
+        if basis_local is not None:
+            rotations_local = self.get_rotations_from_basis(basis_local)
+
+        return self.conn.builder.sdk_epr_rsp_create(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+                time_unit=time_unit,
+                max_time=max_time,
+                random_basis_local=random_basis_local,
+                rotations_local=rotations_local,
+            )
+        )
+
     def create(
         self,
         number: int = 1,
@@ -277,58 +535,40 @@ class EPRSocket(abc.ABC):
             list of entanglement info objects per created pair.
         """
 
-        # TODO: don't hard-code the assumption that rotation values are in multiples
-        #       of pi/16
-        if basis_local == EPRMeasBasis.X:
-            rotations_local = (0, 24, 0)
-        elif basis_local == EPRMeasBasis.Y:
-            rotations_local = (8, 0, 0)
-        elif basis_local == EPRMeasBasis.Z:
-            rotations_local = (0, 0, 0)
-        elif basis_local == EPRMeasBasis.MX:
-            rotations_local = (0, 8, 0)
-        elif basis_local == EPRMeasBasis.MY:
-            rotations_local = (24, 0, 0)
-        elif basis_local == EPRMeasBasis.MZ:
-            rotations_local = (16, 0, 0)
-        elif basis_local is None:
-            pass  # use rotations_local argument value
-        else:
-            raise ValueError(f"Unsupported EPR measurement basis: {basis_local}")
+        self._logger.warning(
+            "EPRSocket.create() is deprecated. Use one of "
+            "create_keep, create_measure, or create_rsp instead."
+        )
 
-        if basis_remote == EPRMeasBasis.X:
-            rotations_remote = (0, 24, 0)
-        elif basis_remote == EPRMeasBasis.Y:
-            rotations_remote = (8, 0, 0)
-        elif basis_remote == EPRMeasBasis.Z:
-            rotations_remote = (0, 0, 0)
-        elif basis_remote == EPRMeasBasis.MX:
-            rotations_remote = (0, 8, 0)
-        elif basis_remote == EPRMeasBasis.MY:
-            rotations_remote = (24, 0, 0)
-        elif basis_remote == EPRMeasBasis.MZ:
-            rotations_remote = (16, 0, 0)
-        elif basis_remote is None:
-            pass  # use rotations_remote argument value
-        else:
-            raise ValueError(f"Unsupported EPR measurement basis: {basis_remote}")
-
-        return self.conn._builder.create_epr(  # type: ignore
-            tp=tp,
-            params=EntRequestParams(
-                remote_node_id=self.remote_node_id,
-                epr_socket_id=self._epr_socket_id,
+        if tp == EPRType.K:
+            return self.create_keep(
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
-                random_basis_local=random_basis_local,
-                random_basis_remote=random_basis_remote,
+            )
+        elif tp == EPRType.M:
+            return self.create_measure(
+                number=number,
+                time_unit=time_unit,
+                max_time=max_time,
+                basis_local=basis_local,
+                basis_remote=basis_remote,
                 rotations_local=rotations_local,
                 rotations_remote=rotations_remote,
-            ),
-        )
+                random_basis_local=random_basis_local,
+                random_basis_remote=random_basis_remote,
+            )
+        elif tp == EPRType.R:
+            return self.create_rsp(
+                number=number,
+                time_unit=time_unit,
+                max_time=max_time,
+                basis_local=basis_local,
+                random_basis_local=random_basis_local,
+            )
+        assert False
 
     @contextmanager
     def create_context(
@@ -359,7 +599,6 @@ class EPRSocket(abc.ABC):
         :param sequential: whether to generate pairs sequentially, defaults to False
         """
         try:
-            instruction = GenericInstr.CREATE_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -367,9 +606,8 @@ class EPRSocket(abc.ABC):
                 ent_results_array,
                 output,
                 pair,
-            ) = self.conn._builder._pre_epr_context(
-                instruction=instruction,
-                tp=EPRType.K,
+            ) = self.conn.builder._pre_epr_context(
+                role=EPRRole.CREATE,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
                     epr_socket_id=self._epr_socket_id,
@@ -382,13 +620,105 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._builder._post_epr_context(
+            self.conn.builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
+
+    def recv_keep(
+        self,
+        number: int = 1,
+        post_routine: Optional[Callable] = None,
+        sequential: bool = False,
+    ) -> List[Qubit]:
+        """Ask the network stack to wait for the remote node to generate EPR pairs,
+        which are kept in memory.
+
+        A `recv_keep` operation must always be matched by a `create_keep` operation on
+        the remote node. The number of generated pairs must also match.
+
+        For more information see the documentation of `create_keep`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :param post_routine: callback function used when `sequential` is True
+        :param sequential: whether to call the callback after each pair generation,
+            defaults to False
+        :return: list of qubits created
+        """
+
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        return self.conn.builder.sdk_recv_epr_keep(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=post_routine,
+                sequential=sequential,
+            ),
+        )
+
+    def recv_measure(
+        self,
+        number: int = 1,
+    ) -> List[LinkLayerOKTypeM]:
+        """Ask the network stack to wait for the remote node to generate EPR pairs,
+        which are immediately measured (on both nodes).
+
+        A `recv_measure` operation must always be matched by a `create_measure`
+        operation on the remote node. The number and type of generation must also match.
+
+        For more information see the documentation of `create_measure`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :param post_routine: callback function used when `sequential` is True
+        :param sequential: whether to call the callback after each pair generation,
+            defaults to False
+        :return: list of entanglement info objects per created pair.
+        """
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        return self.conn.builder.sdk_recv_epr_measure(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+            ),
+        )
+
+    def recv_rsp(
+        self,
+        number: int = 1,
+    ) -> List[Qubit]:
+        """Ask the network stack to wait for remote state preparation from another node.
+
+        A `recv_rsp` operation must always be matched by a `create_rsp` operation on
+        the remote node. The number and type of generation must also match.
+
+        For more information see the documentation of `create_rsp`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :return: list of qubits created
+        """
+        if self.conn is None:
+            raise RuntimeError("EPRSocket does not have an open connection")
+
+        return self.conn.builder.sdk_epr_rsp_recv(
+            params=EntRequestParams(
+                remote_node_id=self.remote_node_id,
+                epr_socket_id=self._epr_socket_id,
+                number=number,
+                post_routine=None,
+                sequential=False,
+            ),
+        )
 
     def recv(
         self,
@@ -417,20 +747,22 @@ class EPRSocket(abc.ABC):
         :return: For K-type requests: list of qubits created. For M-type requests:
             list of entanglement info objects per created pair.
         """
+        self._logger.warning(
+            "EPRSocket.recv() is deprecated. Use one of "
+            "recv_keep, recv_measure, or recv_rsp instead."
+        )
 
-        if self.conn is None:
-            raise RuntimeError("EPRSocket does not have an open connection")
-
-        return self.conn._builder.recv_epr(
-            tp=tp,
-            params=EntRequestParams(
-                remote_node_id=self.remote_node_id,
-                epr_socket_id=self._epr_socket_id,
+        if tp == EPRType.K:
+            return self.recv_keep(
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
-            ),
-        )
+            )
+        elif tp == EPRType.M:
+            return self.recv_measure(number=number)
+        elif tp == EPRType.R:
+            return self.recv_rsp(number=number)
+        assert False
 
     @contextmanager
     def recv_context(
@@ -440,7 +772,6 @@ class EPRSocket(abc.ABC):
     ):
         """Receives EPR pair with a remote node (see doc of :meth:`~.create_context`)"""
         try:
-            instruction = GenericInstr.RECV_EPR
             # NOTE loop_register is the register used for looping over the generated pairs
             (
                 pre_commands,
@@ -448,9 +779,8 @@ class EPRSocket(abc.ABC):
                 ent_results_array,
                 output,
                 pair,
-            ) = self.conn._builder._pre_epr_context(
-                instruction=instruction,
-                tp=EPRType.K,
+            ) = self.conn.builder._pre_epr_context(
+                role=EPRRole.RECV,
                 params=EntRequestParams(
                     remote_node_id=self.remote_node_id,
                     epr_socket_id=self._epr_socket_id,
@@ -461,7 +791,7 @@ class EPRSocket(abc.ABC):
             )
             yield output, pair
         finally:
-            self.conn._builder._post_epr_context(
+            self.conn.builder._post_epr_context(
                 pre_commands=pre_commands,
                 number=number,
                 loop_register=loop_register,
