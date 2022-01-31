@@ -1179,63 +1179,6 @@ class Builder:
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
-    def _build_cmds_epr(
-        self,
-        qubit_ids_array: Optional[Array],
-        ent_results_array: Array,
-        wait_all: bool,
-        tp: EPRType,
-        params: EntRequestParams,
-        role: EPRRole = EPRRole.CREATE,
-        **kwargs,
-    ) -> None:
-        qubit_ids_array_address: Union[int, operand.Register]
-        epr_cmd_operands: List[T_OperandUnion]
-
-        if tp == EPRType.K or (tp == EPRType.R and role == EPRRole.RECV):
-            assert qubit_ids_array is not None
-            qubit_ids_array_address = qubit_ids_array.address
-        else:
-            # NOTE since this argument won't be used just set it to some
-            # constant register for now
-            qubit_ids_array_address = operand.Register(RegisterName.C, 0)
-
-        if role == EPRRole.CREATE:
-            create_args_array = self._alloc_epr_create_args(tp, params)
-            epr_cmd_operands = [
-                qubit_ids_array_address,
-                create_args_array.address,
-                ent_results_array.address,
-            ]
-        else:
-            epr_cmd_operands = [
-                qubit_ids_array_address,
-                ent_results_array.address,
-            ]
-
-        # epr command
-        instr = {
-            EPRRole.CREATE: GenericInstr.CREATE_EPR,
-            EPRRole.RECV: GenericInstr.RECV_EPR,
-        }[role]
-        epr_cmd = ICmd(
-            instruction=instr,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,
-        )
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        commands: List[T_Cmd] = [epr_cmd] + wait_cmds  # type: ignore
-        self.subrt_add_pending_commands(commands)
-
     def _build_cmds_epr_create_keep(
         self,
         create_args_array: Array,
