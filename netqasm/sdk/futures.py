@@ -653,3 +653,6 @@ class Array:
                     q.measure(future=outcomes.get_future_index(i))
         """
         return self.builder.sdk_new_foreach_context(array=self, return_index=True)
+
+    def undefine(self) -> None:
+        self.builder._build_cmds_undefine_array(self)

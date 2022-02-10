@@ -41,6 +41,7 @@ from netqasm.lang.ir import (
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
+from netqasm.sdk import qubit
 from netqasm.sdk.build_epr import (
     EntRequestParams,
     EprKeepResult,
@@ -49,6 +50,7 @@ from netqasm.sdk.build_epr import (
     deserialize_epr_measure_results,
     serialize_request,
 )
+from netqasm.sdk.build_nv import NVEprCompiler
 from netqasm.sdk.build_types import (
     GenericHardwareConfig,
     HardwareConfig,
@@ -60,7 +62,7 @@ from netqasm.sdk.build_types import (
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
-from netqasm.sdk.constraint import ValueAtMostConstraint, ValueConstraint
+from netqasm.sdk.constraint import SdkConstraint, ValueAtMostConstraint
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit
@@ -149,16 +151,24 @@ class SdkWhileTrueContext:
     def __init__(self, id: int, builder: Builder, max_iterations: int):
         self._id = id
         self._builder = builder
-        self._exit_condition: Optional[ValueConstraint] = None
+        self._exit_condition: Optional[SdkConstraint] = None
+        self._cleanup_code: Optional[T_LoopRoutine] = None
         self._loop_register: Optional[RegFuture] = None
         self._max_iterations = max_iterations
 
-    def set_exit_condition(self, constraint: ValueConstraint) -> None:
+    def set_exit_condition(self, constraint: SdkConstraint) -> None:
         self._exit_condition = constraint
 
     @property
-    def exit_condition(self) -> Optional[ValueConstraint]:
+    def exit_condition(self) -> Optional[SdkConstraint]:
         return self._exit_condition
+
+    def set_cleanup_code(self, cleanup_code: T_LoopRoutine) -> None:
+        self._cleanup_code = cleanup_code
+
+    @property
+    def cleanup_code(self) -> Optional[T_LoopRoutine]:
+        return self._cleanup_code
 
     def set_loop_register(self, register: RegFuture) -> None:
         self._loop_register = register
@@ -183,7 +193,7 @@ class Builder:
 
     def __init__(
         self,
-        connection,
+        connection: BaseNetQASMConnection,
         app_id: int,
         hardware_config: Optional[HardwareConfig] = None,
         log_config: LogConfig = None,
@@ -1179,6 +1189,22 @@ class Builder:
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
+    def _build_cmds_undefine_array(self, array: Array) -> None:
+        index_reg = self._mem_mgr.get_inactive_register()
+        undef_cmd = ICmd(
+            instruction=GenericInstr.UNDEF,
+            operands=[ArrayEntry(Address(array.address), index_reg)],
+        )
+
+        def undef_result_element(conn: BaseNetQASMConnection):
+            conn.builder.subrt_add_pending_command(undef_cmd)
+
+        self._build_cmds_loop_body(
+            undef_result_element,
+            stop=len(array),
+            loop_register=index_reg,
+        )
+
     def _build_cmds_epr_create_keep(
         self,
         create_args_array: Array,
@@ -1468,6 +1494,13 @@ class Builder:
         while_true_break = self._while_true_get_break_commands(
             context=context, exit_label=exit_label
         )
+
+        cleanup_body = context.cleanup_code
+        assert cleanup_body is not None
+        cleanup_body()
+
+        cleanup_commands = self.subrt_pop_all_pending_commands()
+
         while_true_end = self._while_true_get_exit_commands(
             entry_label=entry_label, exit_label=exit_label, loop_register=loop_register
         )
@@ -1477,6 +1510,7 @@ class Builder:
             + while_true_start
             + body_commands
             + while_true_break
+            + cleanup_commands
             + while_true_end
         )
 
@@ -1544,7 +1578,8 @@ class Builder:
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        reset_results_array: bool = False,
+    ) -> Tuple[List[Qubit], Array]:
         """Build commands for an EPR keep operation and return the result futures."""
         self._check_epr_args(tp=EPRType.K, params=params)
 
@@ -1568,13 +1603,20 @@ class Builder:
 
         wait_all = params.post_routine is None
 
+        if reset_results_array:
+            self._build_cmds_undefine_array(ent_results_array)
+
         # Construct and add the NetQASM instructions
         if role == EPRRole.CREATE:
             # NetQASM array for entanglement request parameters.
             create_args_array: Array = self._alloc_epr_create_args(EPRType.K, params)
 
             self._build_cmds_epr_create_keep(
-                create_args_array, qubit_ids_array, ent_results_array, wait_all, params
+                create_args_array,
+                qubit_ids_array,
+                ent_results_array,
+                wait_all,
+                params,
             )
         else:
             self._build_cmds_epr_recv_keep(
@@ -1591,8 +1633,7 @@ class Builder:
                 params.post_routine,
             )
 
-        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
-        return qubit_futures, epr_results
+        return qubit_futures, ent_results_array
 
     def sdk_epr_measure(
         self,
@@ -1698,13 +1739,36 @@ class Builder:
         """Build commands for a 'create and keep' EPR operation and return the
         created qubits and result futures."""
         if params.min_fidelity_all_at_end is not None:
+            # If a min-fidelity constraint is specified, wrap the operation in a loop
             assert params.max_tries is not None
             with self.sdk_new_while_true_context(params.max_tries) as loop:
-                qubits, results = self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
+                qubits, result_array = self.sdk_epr_keep(
+                    role=EPRRole.CREATE, params=params
+                )
+
+                results = deserialize_epr_keep_results(params.number, result_array)
+
                 duration = results[-1].generation_duration
-                loop.set_exit_condition(ValueAtMostConstraint(duration, 420))
+                max_time = NVEprCompiler.get_max_time_for_fidelity(
+                    params.min_fidelity_all_at_end
+                )
+                self._connection._logger.warning(
+                    f"converting min fidelity constraint of "
+                    f"{params.min_fidelity_all_at_end} to a max time of {max_time}"
+                )
+
+                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+                def cleanup():
+                    result_array.undefine()
+                    for q in qubits:
+                        q.free()
+
+                loop.set_cleanup_code(cleanup)
+
             return qubits, results
         else:
+            # otherwise, just do the operation once
             return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_keep(
@@ -1712,7 +1776,34 @@ class Builder:
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Build commands for a 'receive and keep' EPR operation and return the
         created qubits and result futures."""
-        return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
+
+        if params.min_fidelity_all_at_end is not None:
+            # If a min-fidelity constraint is specified, wrap the operation in a loop
+            assert params.max_tries is not None
+            with self.sdk_new_while_true_context(params.max_tries) as loop:
+                qubits, result_array = self.sdk_epr_keep(
+                    role=EPRRole.RECV, params=params, reset_results_array=True
+                )
+
+                results = deserialize_epr_keep_results(params.number, result_array)
+
+                duration = results[-1].generation_duration
+                max_time = NVEprCompiler.get_max_time_for_fidelity(
+                    params.min_fidelity_all_at_end
+                )
+                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+                def cleanup():
+                    result_array.undefine()
+                    for q in qubits:
+                        q.free()
+
+                loop.set_cleanup_code(cleanup)
+
+            return qubits, results
+        else:
+            # otherwise, just do the operation once
+            return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
@@ -1725,6 +1816,46 @@ class Builder:
         """Build commands for a 'receive and measure' EPR operation and return the
         result futures."""
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
+
+    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[EprMeasureResult]:
+        """Build commands for a 'create remote state preperation' EPR operation
+        and return the result futures."""
+        if params.min_fidelity_all_at_end is not None:
+            # If a min-fidelity constraint is specified, wrap the operation in a loop
+            assert params.max_tries is not None
+            with self.sdk_new_while_true_context(params.max_tries) as loop:
+                results = self.sdk_epr_rsp_create(params=params)
+                duration = results[-1].generation_duration
+                max_time = NVEprCompiler.get_max_time_for_fidelity(
+                    params.min_fidelity_all_at_end
+                )
+                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+            return results
+        else:
+            # otherwise, just do the operation once
+            return self.sdk_epr_rsp_create(params=params)
+
+    def sdk_recv_epr_rsp(
+        self, params: EntRequestParams
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'receive remote state preparation' EPR operation
+        and return the created qubits and result futures."""
+
+        if params.min_fidelity_all_at_end is not None:
+            # If a min-fidelity constraint is specified, wrap the operation in a loop
+            assert params.max_tries is not None
+            with self.sdk_new_while_true_context(params.max_tries) as loop:
+                qubits, results = self.sdk_epr_rsp_recv(params=params)
+                duration = results[-1].generation_duration
+                max_time = NVEprCompiler.get_max_time_for_fidelity(
+                    params.min_fidelity_all_at_end
+                )
+                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+            return qubits, results
+        else:
+            # otherwise, just do the operation once
+            return self.sdk_epr_rsp_recv(params=params)
 
     @contextmanager
     def sdk_loop_context(

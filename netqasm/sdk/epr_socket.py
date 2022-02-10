@@ -444,7 +444,7 @@ class EPRSocket(abc.ABC):
         if basis_local is not None:
             rotations_local = self._get_rotations_from_basis(basis_local)
 
-        return self.conn.builder.sdk_epr_rsp_create(
+        return self.conn.builder.sdk_create_epr_rsp(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -783,7 +783,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        qubits, _ = self.conn.builder.sdk_epr_rsp_recv(
+        qubits, _ = self.conn.builder.sdk_recv_epr_rsp(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
@@ -813,7 +813,7 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
-        qubits, infos = self.conn.builder.sdk_epr_rsp_recv(
+        qubits, infos = self.conn.builder.sdk_recv_epr_rsp(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,

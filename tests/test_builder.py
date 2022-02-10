@@ -8,7 +8,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
-from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.qubit import FutureQubit, Qubit
 
 logger = get_netqasm_logger()
 
@@ -602,10 +602,30 @@ def test_epr_min_fidelity_all():
     epr_socket = EPRSocket("Bob")
 
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
-        epr_socket.create_keep(number=5, min_fidelity_all_at_end=90, max_tries=100)
+        epr_socket.create_keep(number=2, min_fidelity_all_at_end=80, max_tries=100)
 
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.SET,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.UNDEF,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.QFREE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
 
 
 if __name__ == "__main__":
