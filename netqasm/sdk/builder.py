@@ -1432,6 +1432,7 @@ class Builder:
         role: EPRRole,
         params: EntRequestParams,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for an EPR keep operation and return the result futures."""
         self._check_epr_args(tp=EPRType.K, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1485,6 +1486,7 @@ class Builder:
         role: EPRRole,
         params: EntRequestParams,
     ) -> List[EprMeasureResult]:
+        """Build commands for an EPR measure operation and return the result futures."""
         self._check_epr_args(tp=EPRType.M, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1515,6 +1517,8 @@ class Builder:
         self,
         params: EntRequestParams,
     ) -> List[EprMeasureResult]:
+        """Build commands for a 'create remote state preparation' EPR operation
+        and return the result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1541,6 +1545,8 @@ class Builder:
         self,
         params: EntRequestParams,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'receive remote state preparation' EPR operation
+        and return the created qubits and result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1576,19 +1582,27 @@ class Builder:
     def sdk_create_epr_keep(
         self, params: EntRequestParams
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'create and keep' EPR operation and return the
+        created qubits and result futures."""
         return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_keep(
         self, params: EntRequestParams
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'receive and keep' EPR operation and return the
+        created qubits and result futures."""
         return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
     ) -> List[EprMeasureResult]:
+        """Build commands for a 'create and measure' EPR operation and return the
+        result futures."""
         return self.sdk_epr_measure(role=EPRRole.CREATE, params=params)
 
     def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[EprMeasureResult]:
+        """Build commands for a 'receive and measure' EPR operation and return the
+        result futures."""
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
 
     @contextmanager
@@ -1599,6 +1613,7 @@ class Builder:
         step: int = 1,
         loop_register: Optional[Union[operand.Register, str]] = None,
     ) -> Iterator[operand.Register]:
+        """Build commands for a 'loop' context and return the context object."""
         try:
             pre_commands = self.subrt_pop_all_pending_commands()
             loop_register_result = self._loop_get_register(loop_register, activate=True)
@@ -1622,7 +1637,8 @@ class Builder:
         start: int = 0,
         step: int = 1,
         loop_register: Optional[Union[operand.Register, str]] = None,
-    ):
+    ) -> None:
+        """Build commands for looping the code in the specified body."""
         self._build_cmds_loop_body(body, stop, start, step, loop_register)
 
     def sdk_if_eq(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
@@ -1652,6 +1668,7 @@ class Builder:
     def sdk_new_if_context(
         self, condition: GenericInstr, op0: T_CValue, op1: Optional[T_CValue]
     ) -> SdkIfContext:
+        """Build commands for an 'if' context and return the context object."""
         id = self._next_context_id
         context = SdkIfContext(
             id=id, builder=self, condition=condition, op0=op0, op1=op1
@@ -1662,6 +1679,7 @@ class Builder:
     def sdk_new_foreach_context(
         self, array: Array, return_index: bool
     ) -> SdkForEachContext:
+        """Build commands for an 'foreach' context and return the context object."""
         id = self._next_context_id
         context = SdkForEachContext(
             id=id, builder=self, array=array, return_index=return_index
@@ -1674,6 +1692,7 @@ class Builder:
         self,
         max_tries: int = 1,
     ) -> Iterator[None]:
+        """Build commands for a 'try' context."""
         try:
             pre_commands = self.subrt_pop_all_pending_commands()
             yield
@@ -1686,6 +1705,8 @@ class Builder:
     def sdk_create_epr_context(
         self, params: EntRequestParams
     ) -> Iterator[Tuple[FutureQubit, RegFuture]]:
+        """Build commands for an EPR context and return an iterator over
+        the EPR qubits and indices created in this context."""
         try:
             (
                 pre_commands,

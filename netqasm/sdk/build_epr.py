@@ -23,9 +23,6 @@ class EntRequestParams:
     rotations_remote: Tuple[int, int, int] = (0, 0, 0)
 
 
-# Length of NetQASM array for serialized Create Requests.
-SER_CREATE_LEN = 20
-
 # Indices of Create Request arguments in serialized NetQASM array
 SER_CREATE_IDX_TYPE = 0
 SER_CREATE_IDX_NUMBER = 1
@@ -48,8 +45,8 @@ SER_CREATE_IDX_ROTATION_X_REMOTE1 = 17
 SER_CREATE_IDX_ROTATION_Y_REMOTE = 18
 SER_CREATE_IDX_ROTATION_X_REMOTE2 = 19
 
-# Length of NetQASM array for EPR Keep results.
-SER_RESPONSE_KEEP_LEN = 10
+# Length of NetQASM array for serialized Create Requests.
+SER_CREATE_LEN = SER_CREATE_IDX_ROTATION_X_REMOTE2 + 1
 
 # Indices of EPR Keep results in serialized NetQASM array
 SER_RESPONSE_KEEP_IDX_TYPE = 0
@@ -63,8 +60,8 @@ SER_RESPONSE_KEEP_IDX_GOODNESS = 7
 SER_RESPONSE_KEEP_IDX_GOODNESS_TIME = 8
 SER_RESPONSE_KEEP_IDX_BELL_STATE = 9
 
-# Length of NetQASM array for EPR Measure results.
-SER_RESPONSE_MEASURE_LEN = 10
+# Length of NetQASM array for EPR Keep results.
+SER_RESPONSE_KEEP_LEN = SER_RESPONSE_KEEP_IDX_BELL_STATE + 1
 
 # Indices of EPR Measure results in serialized NetQASM array
 SER_RESPONSE_MEASURE_IDX_TYPE = 0
@@ -77,6 +74,9 @@ SER_RESPONSE_MEASURE_IDX_PURPOSE_ID = 6
 SER_RESPONSE_MEASURE_IDX_REMOTE_NODE_ID = 7
 SER_RESPONSE_MEASURE_IDX_GOODNESS = 8
 SER_RESPONSE_MEASURE_IDX_BELL_STATE = 9
+
+# Length of NetQASM array for EPR Measure results.
+SER_RESPONSE_MEASURE_LEN = SER_RESPONSE_MEASURE_IDX_BELL_STATE + 1
 
 
 def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[int]]:

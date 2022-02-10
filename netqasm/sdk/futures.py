@@ -335,6 +335,8 @@ class Future(BaseFuture):
         self.builder.subrt_add_pending_commands(commands)
 
     def get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
+        """Return a list of PreSubroutine commands for loading this Future into
+        the specified register."""
         return self._get_access_commands(GenericInstr.LOAD, register)
 
     def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
@@ -386,6 +388,8 @@ class Future(BaseFuture):
         return commands
 
     def get_address_entry(self) -> ArrayEntry:
+        """Convert this Future to an ArrayEntry object to be used an instruction
+        operand."""
         if isinstance(self._index, RegFuture):
             assert self._index.reg is not None, (
                 f"cannot use RegFuture {self._index} as array index since "

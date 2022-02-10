@@ -239,6 +239,14 @@ class EPRSocket(abc.ABC):
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Same as create_keep but also return the EPR generation information coming
+        from the network stack.
+
+        For more information see the documentation of `create_keep`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :return: tuple with (1) list of qubits created, (2) list of EprKeepResult objects
+        """
         qubits, info = self.conn._builder.sdk_create_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
@@ -668,6 +676,14 @@ class EPRSocket(abc.ABC):
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Same as recv_keep but also return the EPR generation information coming
+        from the network stack.
+
+        For more information see the documentation of `recv_keep`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :return: tuple with (1) list of qubits created, (2) list of EprKeepResult objects
+        """
         qubits, info = self.conn._builder.sdk_recv_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
@@ -742,6 +758,14 @@ class EPRSocket(abc.ABC):
         self,
         number: int = 1,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Same as recv_rsp but also return the EPR generation information coming
+        from the network stack.
+
+        For more information see the documentation of `recv_rsp`.
+
+        :param number: number of pairs to generate, defaults to 1
+        :return: tuple with (1) list of qubits created, (2) list of EprKeepResult objects
+        """
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
