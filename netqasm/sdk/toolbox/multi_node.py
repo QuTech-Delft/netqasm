@@ -76,13 +76,13 @@ def create_ghz(
         assert up_epr_socket is not None
         # Start role
         role = _Role.start
-        q = up_epr_socket.create()[0]
+        q = up_epr_socket.create_keep()[0]
         assert isinstance(q, Qubit)
         conn = up_epr_socket.conn
         m = 0
     else:
         assert down_epr_socket is not None
-        q = down_epr_socket.recv()[0]
+        q = down_epr_socket.recv_keep()[0]
         assert isinstance(q, Qubit)
         conn = down_epr_socket.conn
         if up_epr_socket is None:
@@ -92,7 +92,7 @@ def create_ghz(
         else:
             # Middle role
             role = _Role.middle
-            q_up: Qubit = up_epr_socket.create()[0]  # type: ignore
+            q_up: Qubit = up_epr_socket.create_keep()[0]  # type: ignore
             # merge the states by doing half a Bell measurement
             q.cnot(q_up)
             m = q_up.measure()

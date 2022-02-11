@@ -33,8 +33,8 @@ def main(app_config=None, col=0, strategy=None):
     )
     with player2:
         # Create EPR pairs
-        q1 = epr_socket.recv()[0]
-        q2 = epr_socket.recv()[0]
+        q1 = epr_socket.recv_keep()[0]
+        q2 = epr_socket.recv_keep()[0]
 
         player2.flush()
 

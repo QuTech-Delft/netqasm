@@ -292,17 +292,6 @@ def test_epr():
             instructions.vanilla.GateHInstruction(
                 reg=Register(RegisterName.Q, 0),
             ),
-            # free qubit
-            # NOTE qubits are now freed when application ends
-            # without explicit qfree for each
-            # Command(instruction=Instruction.SET, operands=[
-            #     Register(RegisterName.Q, 0),
-            #     0,
-            # ]),
-            # Command(instruction=Instruction.QFREE, operands=[
-            #     Register(RegisterName.Q, 0),
-            # ]),
-            # return cmds
             instructions.core.RetArrInstruction(
                 address=Address(0),
             ),
@@ -509,8 +498,8 @@ def test_epr_m():
 
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
-        outcomes = epr_socket.create(tp=EPRType.M)
-        m = outcomes[0][2]
+        outcomes = epr_socket.create_measure()
+        m = outcomes[0].measurement_outcome
         with m.if_eq(0):
             m.add(1)
 
@@ -1008,10 +997,10 @@ def test_epr_max_time():
 
 
 if __name__ == "__main__":
-    # test_simple()
-    # test_rotations()
-    # test_epr()
-    # test_two_epr()
+    test_simple()
+    test_rotations()
+    test_epr()
+    test_two_epr()
     test_epr_m()
-    # test_epr_r_create()
-    # test_epr_r_receive()
+    test_epr_r_create()
+    test_epr_r_receive()

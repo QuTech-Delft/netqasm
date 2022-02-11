@@ -1,4 +1,4 @@
-from netqasm.sdk.epr_socket import EPRSocket, EPRType
+from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.external import NetQASMConnection
 
 
@@ -24,9 +24,8 @@ def main(app_config=None):
             q.measure(array_entry)
 
         # Create EPR pair
-        epr_socket.recv(
+        epr_socket.recv_keep(
             number=num_pairs,
-            tp=EPRType.K,
             sequential=True,
             post_routine=post_create,
         )

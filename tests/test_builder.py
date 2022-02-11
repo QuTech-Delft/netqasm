@@ -6,6 +6,7 @@ from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
+from netqasm.sdk.futures import RegFuture
 from netqasm.sdk.qubit import Qubit
 
 logger = get_netqasm_logger()
@@ -401,6 +402,160 @@ def test_nested():
     )
 
 
+def test_epr_keep_info():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        eprs, infos = epr_socket.create_keep_with_info()
+        epr, info = eprs[0], infos[0]
+
+        _ = epr.measure(store_array=False)
+        with info.generation_duration.if_ge(1337):
+            _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_context():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+
+        with epr_socket.create_context(5) as (qubit, index):
+            with index.if_eq(1337):
+                qubit.H()
+            _ = qubit.measure()
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.BNE,
+            GenericInstr.LOAD,
+            GenericInstr.H,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_context_future_index():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        outcomes = conn.new_array(5)
+
+        with epr_socket.create_context(5) as (qubit, index):
+            outcome = outcomes.get_future_index(index)
+            qubit.measure(outcome)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_post():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        outcomes = conn.new_array(10)
+
+        def post_create(_: DebugConnection, q: Qubit, index: RegFuture):
+            q.H()
+            index.add(1)
+            outcome = outcomes.get_future_index(index)
+            q.measure(outcome)
+
+        epr_socket.create_keep(number=10, post_routine=post_create, sequential=True)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.H,
+            GenericInstr.ADD,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
 def test_try():
     with DebugConnection("Alice") as conn:
 
@@ -410,6 +565,18 @@ def test_try():
 
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+        ]
+    )
 
 
 if __name__ == "__main__":
@@ -421,4 +588,8 @@ if __name__ == "__main__":
     test_looping()
     test_futures()
     test_nested()
+    test_epr_keep_info()
+    test_epr_context()
+    test_epr_context_future_index()
+    test_epr_post()
     test_try()

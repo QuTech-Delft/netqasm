@@ -7,13 +7,9 @@ Python application script code into NetQASM subroutines.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
-from enum import Enum
 from itertools import count
 from typing import (
     TYPE_CHECKING,
-    Any,
-    Callable,
     Dict,
     Iterator,
     List,
@@ -44,15 +40,20 @@ from netqasm.lang.ir import (
 )
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
-from netqasm.qlink_compat import (
-    EPRRole,
-    EPRType,
-    LinkLayerCreate,
-    LinkLayerOKTypeK,
-    LinkLayerOKTypeM,
-    LinkLayerOKTypeR,
-    RandomBasis,
-    TimeUnit,
+from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
+from netqasm.sdk.build_epr import (
+    EntRequestParams,
+    EprKeepResult,
+    EprMeasureResult,
+    deserialize_epr_keep_results,
+    deserialize_epr_measure_results,
+    serialize_request,
+)
+from netqasm.sdk.build_types import (
+    T_BranchRoutine,
+    T_LinkLayerOkList,
+    T_LoopRoutine,
+    T_PostRoutine,
 )
 from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
@@ -63,32 +64,8 @@ from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
 
-T_LinkLayerOkList = Union[
-    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
-]
-T_PostRoutine = Callable[
-    ["Builder", Union[FutureQubit, List[Future]], operand.Register], None
-]
-T_BranchRoutine = Callable[["connection.BaseNetQASMConnection"], None]
-T_LoopRoutine = Callable[["connection.BaseNetQASMConnection"], None]
-
 if TYPE_CHECKING:
-    from . import connection
-
-
-@dataclass
-class EntRequestParams:
-    remote_node_id: int
-    epr_socket_id: int
-    number: int
-    post_routine: Optional[T_PostRoutine]
-    sequential: bool
-    time_unit: TimeUnit = TimeUnit.MICRO_SECONDS
-    max_time: int = 0
-    random_basis_local: Optional[RandomBasis] = None
-    random_basis_remote: Optional[RandomBasis] = None
-    rotations_local: Tuple[int, int, int] = (0, 0, 0)
-    rotations_remote: Tuple[int, int, int] = (0, 0, 0)
+    from netqasm.sdk.connection import BaseNetQASMConnection
 
 
 class LabelManager:
@@ -321,69 +298,14 @@ class Builder:
         return operand.Register(RegisterName.Q, reg_index)
 
     def _alloc_epr_create_args(self, tp: EPRType, params: EntRequestParams) -> Array:
-        create_kwargs: Dict[str, Any] = {}
-        create_kwargs["type"] = tp
-        create_kwargs["number"] = params.number
-        if params.max_time != 0:  # if 0, don't need to set value explicitly
-            create_kwargs["time_unit"] = params.time_unit.value
-            create_kwargs["max_time"] = params.max_time
-        # TODO currently this give 50 / 50 since with the current link layer
-        # This should change and not be hardcoded here
-        if params.random_basis_local is not None:
-            # NOTE Currently there is not value one can set to specify
-            # a uniform distribution for three bases. This needs to be changed
-            # in the underlying link layer/network stack
-            assert params.random_basis_local in [
-                RandomBasis.XZ,
-                RandomBasis.CHSH,
-            ], "Can only random measure in one of two bases for now"
-            create_kwargs["random_basis_local"] = params.random_basis_local
-            create_kwargs["probability_dist_local1"] = 128
-        if params.random_basis_remote is not None:
-            assert params.random_basis_remote in [
-                RandomBasis.XZ,
-                RandomBasis.CHSH,
-            ], "Can only random measure in one of two bases for now"
-            create_kwargs["random_basis_remote"] = params.random_basis_remote
-            create_kwargs["probability_dist_remote1"] = 128
+        serialized_args = serialize_request(tp, params)
+        return self.alloc_array(
+            length=len(serialized_args), init_values=serialized_args
+        )
 
-        if tp == EPRType.M or tp == EPRType.R:
-            rotx1_local, roty_local, rotx2_local = params.rotations_local
-            rotx1_remote, roty_remote, rotx2_remote = params.rotations_remote
-
-            if params.rotations_local != (
-                0,
-                0,
-                0,
-            ):  # instructions for explicitly setting to zero are redundant
-                create_kwargs["rotation_X_local1"] = rotx1_local
-                create_kwargs["rotation_Y_local"] = roty_local
-                create_kwargs["rotation_X_local2"] = rotx2_local
-
-            if params.rotations_remote != (
-                0,
-                0,
-                0,
-            ):  # instructions for explicitly setting to zero are redundant
-                create_kwargs["rotation_X_remote1"] = rotx1_remote
-                create_kwargs["rotation_Y_remote"] = roty_remote
-                create_kwargs["rotation_X_remote2"] = rotx2_remote
-
-        create_args = []
-        # NOTE we don't include the two first args since these are remote_node_id
-        # and epr_socket_id which come as registers
-        for field in LinkLayerCreate._fields[2:]:
-            arg = create_kwargs.get(field)
-            # If Enum, use its value
-            if isinstance(arg, Enum):
-                arg = arg.value
-            create_args.append(arg)
-        # TODO don't create a new array if already created from previous command
-        return self.alloc_array(init_values=create_args)
-
-    def _add_post_commands(
+    def _build_cmds_post_epr(
         self,
-        qubit_ids: Optional[Array],
+        qubit_ids: Array,
         number: int,
         ent_results_array: Array,
         tp: EPRType,
@@ -392,23 +314,18 @@ class Builder:
 
         loop_register = self._mem_mgr.get_inactive_register()
 
-        def post_loop(conn):
+        def post_loop(conn: BaseNetQASMConnection):
             # Wait for each pair individually
             pair = loop_register
-            conn._builder._add_wait_for_ent_info_cmd(
+            conn.builder._add_wait_for_ent_info_cmd(
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
-            if tp == EPRType.K or tp == EPRType.R:
-                q_id = qubit_ids.get_future_index(pair)
-                q = FutureQubit(conn=conn, future_id=q_id)
-                post_routine(self, q, pair)
-            elif tp == EPRType.M:
-                slc = slice(pair * OK_FIELDS_M, (pair + 1) * OK_FIELDS_M)
-                ent_info_slice = ent_results_array.get_future_slice(slc)
-                post_routine(self, ent_info_slice, pair)
-            else:
-                raise NotImplementedError
+            assert tp == EPRType.K or tp == EPRType.R
+            q_id = qubit_ids.get_future_index(pair)
+            q = FutureQubit(conn=conn, future_id=q_id)
+            pair_future = RegFuture(self._connection, pair)
+            post_routine(self, q, pair_future)
 
         # TODO use loop context
         self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
@@ -602,13 +519,6 @@ class Builder:
             raise ValueError(f"Unsupported Create type: {tp}")
         return ent_results_array
 
-    def _get_meas_dir_futures_array(
-        self, number: int, ent_results_array: Array
-    ) -> List[LinkLayerOKTypeM]:
-        return self._create_ent_info_m_slices(
-            num_pairs=number, ent_results_array=ent_results_array
-        )
-
     def _get_qubit_futures(
         self, number: int, sequential: bool, ent_results_array: Array
     ) -> List[Qubit]:
@@ -630,18 +540,6 @@ class Builder:
                 slice(i * OK_FIELDS_K, (i + 1) * OK_FIELDS_K)
             )
             ent_info_slice = LinkLayerOKTypeK(*ent_info_slice_futures)
-            ent_info_slices.append(ent_info_slice)
-        return ent_info_slices
-
-    def _create_ent_info_m_slices(
-        self, num_pairs: int, ent_results_array: Array
-    ) -> List[LinkLayerOKTypeM]:
-        ent_info_slices = []
-        for i in range(num_pairs):
-            ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
-                slice(i * OK_FIELDS_M, (i + 1) * OK_FIELDS_M)
-            )
-            ent_info_slice = LinkLayerOKTypeM(*ent_info_slice_futures)
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
@@ -1113,7 +1011,7 @@ class Builder:
         self, register: operand.Register, value: Union[Future, int]
     ) -> None:
         if isinstance(value, Future):
-            set_reg_cmds = value._get_load_commands(register)
+            set_reg_cmds = value.get_load_commands(register)
         elif isinstance(value, int):
             set_reg_cmds = [
                 ICmd(instruction=GenericInstr.SET, operands=[register, value])
@@ -1533,7 +1431,8 @@ class Builder:
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> List[Qubit]:
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for an EPR keep operation and return the result futures."""
         self._check_epr_args(tp=EPRType.K, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1571,7 +1470,7 @@ class Builder:
 
         # Construct and add NetQASM instructions for post routine
         if params.post_routine:
-            self._add_post_commands(
+            self._build_cmds_post_epr(
                 qubit_ids_array,
                 params.number,
                 ent_results_array,
@@ -1579,13 +1478,15 @@ class Builder:
                 params.post_routine,
             )
 
-        return qubit_futures
+        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
+        return qubit_futures, epr_results
 
     def sdk_epr_measure(
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
+        """Build commands for an EPR measure operation and return the result futures."""
         self._check_epr_args(tp=EPRType.M, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1594,11 +1495,6 @@ class Builder:
         # This will be filled in by the quantum node controller.
         ent_results_array = self._alloc_ent_results_array(
             number=params.number, tp=EPRType.M
-        )
-
-        # SDK handles to result values (LinkLayerOkTypeM objects).
-        result_futures: List[LinkLayerOKTypeM] = self._get_meas_dir_futures_array(
-            params.number, ent_results_array
         )
 
         wait_all = params.post_routine is None
@@ -1614,12 +1510,15 @@ class Builder:
         else:
             self._build_cmds_epr_recv_measure(ent_results_array, wait_all, params)
 
-        return result_futures
+        results = deserialize_epr_measure_results(params.number, ent_results_array)
+        return results
 
     def sdk_epr_rsp_create(
         self,
         params: EntRequestParams,
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
+        """Build commands for a 'create remote state preparation' EPR operation
+        and return the result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1633,11 +1532,6 @@ class Builder:
         # NetQASM array for entanglement request parameters.
         create_args_array: Array = self._alloc_epr_create_args(EPRType.R, params)
 
-        # SDK handles to result values (LinkLayerOkTypeM objects).
-        result_futures = self._get_meas_dir_futures_array(
-            params.number, ent_results_array
-        )
-
         wait_all = params.post_routine is None
 
         # Construct and add the NetQASM instructions
@@ -1645,12 +1539,14 @@ class Builder:
             create_args_array, ent_results_array, wait_all, params
         )
 
-        return result_futures
+        return deserialize_epr_measure_results(params.number, ent_results_array)
 
     def sdk_epr_rsp_recv(
         self,
         params: EntRequestParams,
-    ) -> List[Qubit]:
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'receive remote state preparation' EPR operation
+        and return the created qubits and result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
 
         # Setup NetQASM arrays and SDK handles.
@@ -1680,20 +1576,33 @@ class Builder:
             qubit_ids_array, ent_results_array, wait_all, params
         )
 
-        return qubit_futures
+        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
+        return qubit_futures, epr_results
 
-    def sdk_create_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+    def sdk_create_epr_keep(
+        self, params: EntRequestParams
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'create and keep' EPR operation and return the
+        created qubits and result futures."""
         return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
 
-    def sdk_recv_epr_keep(self, params: EntRequestParams) -> List[Qubit]:
+    def sdk_recv_epr_keep(
+        self, params: EntRequestParams
+    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        """Build commands for a 'receive and keep' EPR operation and return the
+        created qubits and result futures."""
         return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
-    ) -> List[LinkLayerOKTypeM]:
+    ) -> List[EprMeasureResult]:
+        """Build commands for a 'create and measure' EPR operation and return the
+        result futures."""
         return self.sdk_epr_measure(role=EPRRole.CREATE, params=params)
 
-    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[LinkLayerOKTypeM]:
+    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[EprMeasureResult]:
+        """Build commands for a 'receive and measure' EPR operation and return the
+        result futures."""
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
 
     @contextmanager
@@ -1704,6 +1613,7 @@ class Builder:
         step: int = 1,
         loop_register: Optional[Union[operand.Register, str]] = None,
     ) -> Iterator[operand.Register]:
+        """Build commands for a 'loop' context and return the context object."""
         try:
             pre_commands = self.subrt_pop_all_pending_commands()
             loop_register_result = self._loop_get_register(loop_register, activate=True)
@@ -1727,7 +1637,8 @@ class Builder:
         start: int = 0,
         step: int = 1,
         loop_register: Optional[Union[operand.Register, str]] = None,
-    ):
+    ) -> None:
+        """Build commands for looping the code in the specified body."""
         self._build_cmds_loop_body(body, stop, start, step, loop_register)
 
     def sdk_if_eq(self, op0: T_CValue, op1: T_CValue, body: T_BranchRoutine) -> None:
@@ -1757,6 +1668,7 @@ class Builder:
     def sdk_new_if_context(
         self, condition: GenericInstr, op0: T_CValue, op1: Optional[T_CValue]
     ) -> SdkIfContext:
+        """Build commands for an 'if' context and return the context object."""
         id = self._next_context_id
         context = SdkIfContext(
             id=id, builder=self, condition=condition, op0=op0, op1=op1
@@ -1767,6 +1679,7 @@ class Builder:
     def sdk_new_foreach_context(
         self, array: Array, return_index: bool
     ) -> SdkForEachContext:
+        """Build commands for an 'foreach' context and return the context object."""
         id = self._next_context_id
         context = SdkForEachContext(
             id=id, builder=self, array=array, return_index=return_index
@@ -1779,6 +1692,7 @@ class Builder:
         self,
         max_tries: int = 1,
     ) -> Iterator[None]:
+        """Build commands for a 'try' context."""
         try:
             pre_commands = self.subrt_pop_all_pending_commands()
             yield
@@ -1787,15 +1701,27 @@ class Builder:
             commands = pre_commands + body_commands
             self.subrt_add_pending_commands(commands)
 
-    # @contextmanager
-    # def sdk_future_if_context(
-    #     self,
-    #     max_tries: int = 1,
-    # ) -> None:
-    #     try:
-    #         pre_commands = self.subrt_pop_all_pending_commands()
-    #         yield
-    #     finally:
-    #         body_commands = self.subrt_pop_all_pending_commands()
-    #         commands = pre_commands + body_commands
-    #         self.subrt_add_pending_commands(commands)
+    @contextmanager
+    def sdk_create_epr_context(
+        self, params: EntRequestParams
+    ) -> Iterator[Tuple[FutureQubit, RegFuture]]:
+        """Build commands for an EPR context and return an iterator over
+        the EPR qubits and indices created in this context."""
+        try:
+            (
+                pre_commands,
+                loop_register,
+                ent_results_array,
+                output,
+                pair,
+            ) = self._pre_epr_context(role=EPRRole.CREATE, params=params)
+            pair_future = RegFuture(self._connection, pair)
+            yield output, pair_future
+        finally:
+            self._post_epr_context(
+                pre_commands=pre_commands,
+                number=params.number,
+                loop_register=loop_register,
+                ent_results_array=ent_results_array,
+                pair=pair,
+            )

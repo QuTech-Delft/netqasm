@@ -16,8 +16,8 @@ from itertools import count
 from typing import (
     TYPE_CHECKING,
     Callable,
+    ContextManager,
     Dict,
-    Iterator,
     List,
     Optional,
     Tuple,
@@ -550,7 +550,7 @@ class BaseNetQASMConnection(abc.ABC):
         start: int = 0,
         step: int = 1,
         loop_register: Optional[operand.Register] = None,
-    ) -> Iterator[operand.Register]:
+    ) -> ContextManager[operand.Register]:
         """Create a context for code that gets looped.
 
         Each iteration of the loop is associated with an index, which starts at 0
@@ -585,9 +585,7 @@ class BaseNetQASMConnection(abc.ABC):
             In most cases there is no need to explicitly specify this.
         :return: the context object (to be used in a `with ...` expression)
         """
-        # TODO: this returns a method that has a decorator.
-        #       Are type hints still correct?
-        return self._builder.sdk_loop_context(stop, start, step, loop_register)  # type: ignore
+        return self._builder.sdk_loop_context(stop, start, step, loop_register)
 
     def loop_body(
         self,
@@ -692,9 +690,9 @@ class BaseNetQASMConnection(abc.ABC):
         """
         self._builder.sdk_if_nz(a, body)
 
-    def try_until_success(self, max_tries: int = 1) -> Iterator[None]:
+    def try_until_success(self, max_tries: int = 1) -> ContextManager[None]:
         """TODO docstring"""
-        return self._builder.sdk_try_context(max_tries)  # type: ignore
+        return self._builder.sdk_try_context(max_tries)
 
     def tomography(
         self,

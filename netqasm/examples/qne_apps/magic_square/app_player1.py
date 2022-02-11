@@ -40,8 +40,8 @@ def main(app_config=None, row=0, strategy=None):
     with player1:
         app_logger.log("Creating shared state with other player...")
         # Create EPR pairs
-        q1 = epr_socket.create()[0]
-        q2 = epr_socket.create()[0]
+        q1 = epr_socket.create_keep()[0]
+        q2 = epr_socket.create_keep()[0]
 
         # TODO put in single subroutine?
         player1.flush()

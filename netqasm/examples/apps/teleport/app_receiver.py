@@ -18,7 +18,7 @@ def main(app_config=None):
         app_name=app_config.app_name, log_config=log_config, epr_sockets=[epr_socket]
     )
     with receiver:
-        epr = epr_socket.recv()[0]
+        epr = epr_socket.recv_keep()[0]
         receiver.flush()
 
         # Get the corrections

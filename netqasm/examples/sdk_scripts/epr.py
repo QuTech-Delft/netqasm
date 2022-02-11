@@ -12,13 +12,13 @@ def run_alice():
     epr_socket = EPRSocket("Bob")
     with NetQASMConnection("Alice", epr_sockets=[epr_socket]):
         # Create entanglement
-        epr_socket.create()[0]
+        epr_socket.create_keep()[0]
 
 
 def run_bob():
     epr_socket = EPRSocket("Alice")
     with NetQASMConnection("Bob", epr_sockets=[epr_socket]):
-        epr_socket.recv()
+        epr_socket.recv_keep()
 
 
 def post_function(backend):

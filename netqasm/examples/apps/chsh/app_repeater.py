@@ -16,10 +16,10 @@ def main(app_config=None):
 
     with repeater:
         # Wait for entanglement with Alice
-        epr_alice = epr_socket_alice.recv()[0]
+        epr_alice = epr_socket_alice.recv_keep()[0]
 
         # Create entanglement with Bob
-        epr_bob = epr_socket_bob.create()[0]
+        epr_bob = epr_socket_bob.create_keep()[0]
 
         # Teleport qubit that is entangled with Alice to Bob
         epr_alice.cnot(epr_bob)

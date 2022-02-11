@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 from netqasm.lang import operand
 from netqasm.lang.ir import GenericInstr, ICmd, Symbols
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
+from netqasm.lang.operand import Address, ArrayEntry
 from netqasm.lang.parsing import parse_address, parse_register
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import HostLine
@@ -239,7 +239,7 @@ class Future(BaseFuture):
         self,
         connection: sdkconn.BaseNetQASMConnection,
         address: int,
-        index: Union[int, Future, operand.Register],
+        index: Union[int, Future, operand.Register, RegFuture],
     ):
         """Future constructor. Typically not used directly.
 
@@ -250,7 +250,7 @@ class Future(BaseFuture):
         """
         super().__init__(connection=connection)
         self._address: int = address
-        self._index: Union[int, Future, operand.Register] = index
+        self._index: Union[int, Future, operand.Register, RegFuture] = index
 
     def __str__(self) -> str:
         value = self.value
@@ -287,7 +287,7 @@ class Future(BaseFuture):
 
         # Store self in a temporary register
         tmp_register = self.builder._mem_mgr.get_inactive_register(activate=True)
-        load_commands = self._get_load_commands(tmp_register)
+        load_commands = self.get_load_commands(tmp_register)
         store_commands = self._get_store_commands(tmp_register)
 
         other_tmp_register: Optional[operand.Register] = None
@@ -297,7 +297,7 @@ class Future(BaseFuture):
         if isinstance(other, Future):
             other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
-            load_commands += other._get_load_commands(other_tmp_register)
+            load_commands += other.get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
         elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
@@ -334,7 +334,9 @@ class Future(BaseFuture):
 
         self.builder.subrt_add_pending_commands(commands)
 
-    def _get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
+    def get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
+        """Return a list of PreSubroutine commands for loading this Future into
+        the specified register."""
         return self._get_access_commands(GenericInstr.LOAD, register)
 
     def _get_store_commands(self, register: operand.Register) -> List[T_Cmd]:
@@ -361,6 +363,11 @@ class Future(BaseFuture):
                 )
             commands += access_index_cmds
             index: Union[int, operand.Register] = tmp_register
+        elif isinstance(self._index, RegFuture):
+            assert (
+                self._index.reg is not None
+            ), "Trying to use RegFuture that has no value yet"
+            index = self._index.reg
         elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
             index = self._index
         else:
@@ -380,8 +387,19 @@ class Future(BaseFuture):
         commands.append(access_cmd)
         return commands
 
-    def get_address_entry(self) -> Union[Address, ArraySlice, ArrayEntry]:
-        return parse_address(f"{Symbols.ADDRESS_START}{self._address}[{self._index}]")
+    def get_address_entry(self) -> ArrayEntry:
+        """Convert this Future to an ArrayEntry object to be used an instruction
+        operand."""
+        if isinstance(self._index, RegFuture):
+            assert self._index.reg is not None, (
+                f"cannot use RegFuture {self._index} as array index since "
+                f"it does not yet have a value"
+            )
+            return ArrayEntry(Address(self._address), self._index.reg)
+        elif isinstance(self._index, int) or isinstance(self._index, operand.Register):
+            return ArrayEntry(Address(self._address), self._index)
+        else:
+            assert False, f"index type {self._index} not supported"
 
 
 class RegFuture(BaseFuture):
@@ -454,7 +472,7 @@ class RegFuture(BaseFuture):
         if isinstance(other, Future):
             other_operand = self.builder._mem_mgr.get_inactive_register(activate=True)
             other_tmp_register = other_operand
-            load_commands += other._get_load_commands(other_tmp_register)
+            load_commands += other.get_load_commands(other_tmp_register)
             store_commands += other._get_store_commands(other_tmp_register)
         elif isinstance(other, operand.Register) or isinstance(other, int):
             other_operand = other
@@ -551,7 +569,9 @@ class Array:
     def builder(self) -> Builder:
         return self._connection.builder
 
-    def get_future_index(self, index: Union[int, str, operand.Register]) -> Future:
+    def get_future_index(
+        self, index: Union[int, str, operand.Register, RegFuture]
+    ) -> Future:
         """Get a Future representing a particular array element"""
         if isinstance(index, str):
             index = parse_register(index)

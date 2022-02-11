@@ -19,12 +19,12 @@ def main(app_config=None):
         epr_sockets=[epr_socket_bob, epr_socket_charlie],
     )
     with alice:
-        epr_bob = epr_socket_bob.create()[0]
+        epr_bob = epr_socket_bob.create_keep()[0]
         m_bob = epr_bob.measure()
 
         alice.flush()
 
-        epr_charlie = epr_socket_charlie.create()[0]
+        epr_charlie = epr_socket_charlie.create_keep()[0]
         m_charlie = epr_charlie.measure()
 
     logger.info(f"alice:    m_bob:    {m_bob}")
