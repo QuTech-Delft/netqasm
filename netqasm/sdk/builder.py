@@ -7,6 +7,7 @@ Python application script code into NetQASM subroutines.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from enum import Enum, auto
 from itertools import count
 from typing import (
     TYPE_CHECKING,
@@ -72,6 +73,11 @@ from netqasm.util.log import LineTracker
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
+
+
+class HardwareFlags(Enum):
+    GENERIC = 0
+    NV = auto()
 
 
 class LabelManager:
@@ -215,6 +221,8 @@ class Builder:
             set to False if the quantum node controller does not support returning
             arrays.
         """
+        self._hardware = HardwareFlags.GENERIC
+
         self._connection = connection
         self._app_id = app_id
 
