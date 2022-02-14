@@ -3,7 +3,7 @@ from enum import Enum, auto
 from typing import List, Optional, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
-from netqasm.logging.glob import get_netqasm_logger, set_log_level
+from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.build_types import NVHardwareConfig
 from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection

@@ -51,7 +51,6 @@ from netqasm.sdk.build_epr import (
 )
 from netqasm.sdk.build_nv import NVEprCompiler
 from netqasm.sdk.build_types import (
-    NV,
     GenericHardwareConfig,
     HardwareConfig,
     NVHardwareConfig,

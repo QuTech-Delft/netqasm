@@ -621,7 +621,7 @@ class BaseNetQASMConnection(abc.ABC):
         the maximum number of tries has been reached.
 
         The code inside the context is automatically looped (re-run).
-        At the end of each iteration, the exit_condition of the context object is 
+        At the end of each iteration, the exit_condition of the context object is
         checked. If the condition holds, the loop exits. Otherwise the loop
         does another iteration. If `max_iterations` iterations have been reached,
         the loop exits anyway.
