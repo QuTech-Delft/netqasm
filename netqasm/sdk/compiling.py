@@ -156,6 +156,8 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 if isinstance(op, Register):
                     self._used_registers.update([op])
 
+            if isinstance(instr, core.CreateEPRInstruction):
+                print(1)
             index_changes[i] = len(new_commands)
 
             if isinstance(instr, core.SingleQubitInstruction) or isinstance(
@@ -170,8 +172,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
         add_no_op_at_end = False
 
         for instr in new_commands:
-            if isinstance(instr, core.BranchUnaryInstruction) or isinstance(
-                instr, core.BranchBinaryInstruction
+            if (
+                isinstance(instr, core.BranchUnaryInstruction)
+                or isinstance(instr, core.BranchBinaryInstruction)
+                or isinstance(instr, core.JmpInstruction)
             ):
                 original_line = instr.line.value
                 if original_line == len(self._subroutine.commands):
@@ -266,8 +270,17 @@ class NVSubroutineCompiler(SubroutineCompiler):
     def _handle_two_qubit_gate(
         self, instr: core.TwoQubitInstruction
     ) -> List[NetQASMInstruction]:
-        qubit_id0 = self.get_reg_value(instr.reg0).value
-        qubit_id1 = self.get_reg_value(instr.reg1).value
+        try:
+            qubit_id0 = self.get_reg_value(instr.reg0).value
+            qubit_id1 = self.get_reg_value(instr.reg1).value
+        except KeyError:
+            # Register values are not known at compile time.
+            # We may assume that this is a MOV operation from the communication
+            # qubit to a memory qubit. (This is the only time a gate uses
+            # operands that are not known at compile time.)
+            assert isinstance(instr, vanilla.MovInstruction)
+            return self._move_electron_carbon(instr)
+
         assert qubit_id0 != qubit_id1
 
         # It is assumed that there is only one electron, and that its virtual ID is 0.

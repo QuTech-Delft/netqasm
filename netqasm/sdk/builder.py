@@ -7,7 +7,6 @@ Python application script code into NetQASM subroutines.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from enum import Enum, auto
 from itertools import count
 from typing import (
     TYPE_CHECKING,
@@ -42,7 +41,6 @@ from netqasm.lang.ir import (
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
-from netqasm.sdk import qubit
 from netqasm.sdk.build_epr import (
     EntRequestParams,
     EprKeepResult,
@@ -57,7 +55,6 @@ from netqasm.sdk.build_types import (
     HardwareConfig,
     NVHardwareConfig,
     T_BranchRoutine,
-    T_LinkLayerOkList,
     T_LoopRoutine,
     T_PostRoutine,
 )
@@ -73,11 +70,6 @@ from netqasm.util.log import LineTracker
 
 if TYPE_CHECKING:
     from netqasm.sdk.connection import BaseNetQASMConnection
-
-
-class HardwareFlags(Enum):
-    GENERIC = 0
-    NV = auto()
 
 
 class LabelManager:
@@ -221,7 +213,9 @@ class Builder:
             set to False if the quantum node controller does not support returning
             arrays.
         """
-        self._hardware = HardwareFlags.GENERIC
+        self._hardware_config = hardware_config
+        if self._hardware_config is None:
+            self._hardware_config = GenericHardwareConfig(5)
 
         self._connection = connection
         self._app_id = app_id
@@ -343,6 +337,9 @@ class Builder:
     def subrt_compile_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Convert a PreSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
+        # self._connection._logger.warning(
+        #     f"\n\n SUBROUTINE BEFORE TRANSPILATION\n{subroutine}\n\n"
+        # )
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).compile()
         if self._track_lines:
@@ -364,6 +361,50 @@ class Builder:
         return self.alloc_array(
             length=len(serialized_args), init_values=serialized_args
         )
+
+    def _build_cmds_wait_move_epr_to_mem(
+        self,
+        qubit_ids: Array,
+        number: int,
+        ent_results_array: Array,
+        tp: EPRType,
+    ) -> None:
+
+        loop_register = self._mem_mgr.get_inactive_register()
+
+        def post_loop(conn: BaseNetQASMConnection, loop_reg: RegFuture):
+            # Wait for each pair individually
+            pair = loop_register
+            conn.builder._add_wait_for_ent_info_cmd(
+                ent_results_array=ent_results_array,
+                pair=pair,
+            )
+            # q_id = qubit_ids.get_future_index(pair)
+
+            # If it's the last pair, don't move it to a mem qubit
+            with loop_reg.if_ne(number - 1):
+                reg0 = self._mem_mgr.get_inactive_register(activate=True)
+                reg1 = self._mem_mgr.get_inactive_register(activate=True)
+                sub_cmd = ICmd(
+                    instruction=GenericInstr.SUB,
+                    operands=[reg0, number - 1, loop_reg.reg],
+                )
+                set_0_cmds = ICmd(instruction=GenericInstr.SET, operands=[reg1, 0])
+
+                mov_cmd = ICmd(
+                    instruction=GenericInstr.MOV,
+                    operands=[reg1, reg0],
+                )
+                free_cmd = ICmd(instruction=GenericInstr.QFREE, operands=[reg1])
+                commands = [sub_cmd] + [set_0_cmds] + [mov_cmd] + [free_cmd]
+                self.subrt_add_pending_commands(commands)
+
+                self._mem_mgr.remove_active_register(reg0)
+                self._mem_mgr.remove_active_register(reg1)
+
+        # TODO use loop context
+        self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
+        # self._mem_mgr.remove_active_register(loop_register)
 
     def _build_cmds_post_epr(
         self,
@@ -587,7 +628,7 @@ class Builder:
         ent_info_slices = self._create_ent_info_k_slices(
             num_pairs=number, ent_results_array=ent_results_array
         )
-        qubits = self._create_ent_qubits(
+        qubits = self._create_ent_qubits_2(
             ent_info_slices=ent_info_slices,
             sequential=sequential,
         )
@@ -605,9 +646,70 @@ class Builder:
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
+    def _create_ent_qubits_2(
+        self, ent_info_slices: List[LinkLayerOKTypeK], sequential: bool
+    ) -> List[Qubit]:
+        qubits: List[Qubit] = []
+        num_pairs = len(ent_info_slices)
+
+        if isinstance(self._hardware_config, NVHardwareConfig):
+            # NV: only ID 0 can be used for entanglement
+            self._build_cmds_free_up_qubit_location(0)
+            if sequential:
+                # all qubits get ID 0
+                for _, ent_info_slice in enumerate(ent_info_slices):
+                    q = Qubit(
+                        self._connection,
+                        add_new_command=False,
+                        ent_info=ent_info_slice,
+                        virtual_address=0,
+                    )
+                    qubits.append(q)
+            else:  # not sequential
+                # EXPLICIT MOVE (i.e. application moves states from comm to mem qubits)
+
+                # Create the Qubit object that is returned to the SDK.
+                for i, ent_info_slice in enumerate(ent_info_slices):
+                    # Allocate and initialize memory qubit the qubit should finally
+                    # end up in.
+                    # TODO: make sure mem qubits are free
+
+                    final_id = num_pairs - 1 - i
+
+                    # If the final qubit is the comm qubit (ID 0), don't allocate it,
+                    # since it will automatically be allocated as part of
+                    # entanglement generation.
+                    add_new_command = True
+                    if final_id == 0:
+                        add_new_command = False
+
+                    q = Qubit(
+                        self._connection,
+                        add_new_command=add_new_command,
+                        ent_info=ent_info_slice,
+                        virtual_address=final_id,
+                    )
+                    qubits.append(q)
+        else:  # generic hardware
+            for i, ent_info_slice in enumerate(ent_info_slices):
+                virt_id: Optional[int]
+                if sequential:
+                    # use one and the same ID for all qubits
+                    virt_id = self._mem_mgr.get_new_qubit_address()
+                else:  # not sequential
+                    virt_id = None  # let Qubit constructor choose unused ID
+                q = Qubit(
+                    self._connection,
+                    add_new_command=False,
+                    ent_info=ent_info_slice,
+                    virtual_address=virt_id,
+                )
+                qubits.append(q)
+        return qubits
+
     def _create_ent_qubits(
         self,
-        ent_info_slices: T_LinkLayerOkList,
+        ent_info_slices: List[LinkLayerOKTypeK],
         sequential: bool,
     ) -> List[Qubit]:
         qubits = []
@@ -640,7 +742,7 @@ class Builder:
                     )
             else:
                 virtual_address = None
-                if self._compiler == NVSubroutineCompiler:
+                if isinstance(self._hardware_config, NVHardwareConfig):
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
                     virtual_address = 0
@@ -1204,7 +1306,7 @@ class Builder:
             operands=[ArrayEntry(Address(array.address), index_reg)],
         )
 
-        def undef_result_element(conn: BaseNetQASMConnection):
+        def undef_result_element(conn: BaseNetQASMConnection, _: RegFuture):
             conn.builder.subrt_add_pending_command(undef_cmd)
 
         self._build_cmds_loop_body(
@@ -1444,6 +1546,7 @@ class Builder:
             step=step,
             loop_register=loop_register,
         )
+        self._mem_mgr.remove_active_register(loop_register)
 
     def _build_cmds_loop(
         self,
@@ -1505,7 +1608,7 @@ class Builder:
 
         cleanup_body = context.cleanup_code
         assert cleanup_body is not None
-        cleanup_body()
+        cleanup_body(self._connection)
 
         cleanup_commands = self.subrt_pop_all_pending_commands()
 
@@ -1609,7 +1712,14 @@ class Builder:
         virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
         qubit_ids_array: Array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
 
-        wait_all = params.post_routine is None
+        wait_all = True
+        # If there is a post routine, handle pairs one by one.
+        # If there is only one comm qubit, handle pairs one by one.
+        if (
+            params.post_routine is not None
+            or self._hardware_config.comm_qubit_count == 1
+        ):
+            wait_all = False
 
         if reset_results_array:
             self._build_cmds_undefine_array(ent_results_array)
@@ -1629,6 +1739,18 @@ class Builder:
         else:
             self._build_cmds_epr_recv_keep(
                 qubit_ids_array, ent_results_array, wait_all, params
+            )
+
+        if not params.sequential and self._hardware_config.comm_qubit_count == 1:
+            # Wait for pairs one by one and move them to a memory qubit
+            # for i in range(0, params.number):
+            #     qalloc_command = ICmd(
+            #         instruction=GenericInstr.QALLOC,
+            #         operands=[i],
+            #     )
+            #     self.subrt_add_pending_command(qalloc_command)
+            self._build_cmds_wait_move_epr_to_mem(
+                qubit_ids_array, params.number, ent_results_array, tp=EPRType.K
             )
 
         # Construct and add NetQASM instructions for post routine
@@ -1767,17 +1889,20 @@ class Builder:
 
                 loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
 
-                def cleanup():
+                def cleanup(_: BaseNetQASMConnection):
                     result_array.undefine()
-                    for q in qubits:
-                        q.free()
+                    # TODO: how to know if qubits need to be freed?
+                    # for q in qubits:
+                    #     q.free()
 
                 loop.set_cleanup_code(cleanup)
 
             return qubits, results
         else:
             # otherwise, just do the operation once
-            return self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
+            qubits, result_array = self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
+            results = deserialize_epr_keep_results(params.number, result_array)
+            return qubits, results
 
     def sdk_recv_epr_keep(
         self, params: EntRequestParams
@@ -1801,8 +1926,9 @@ class Builder:
                 )
                 loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
 
-                def cleanup():
+                def cleanup(_: BaseNetQASMConnection):
                     result_array.undefine()
+                    # TODO: how to know if qubits need to be freed?
                     for q in qubits:
                         q.free()
 
@@ -1811,7 +1937,9 @@ class Builder:
             return qubits, results
         else:
             # otherwise, just do the operation once
-            return self.sdk_epr_keep(role=EPRRole.RECV, params=params)
+            qubits, result_array = self.sdk_epr_keep(role=EPRRole.RECV, params=params)
+            results = deserialize_epr_keep_results(params.number, result_array)
+            return qubits, results
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
