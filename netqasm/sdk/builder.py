@@ -689,13 +689,13 @@ class Builder:
                     )
                     qubits.append(q)
         else:  # generic hardware
+            virt_id: Optional[int]
+            if sequential:
+                # use one and the same virtual ID for all qubits
+                virt_id = self._mem_mgr.get_new_qubit_address()
+            else:
+                virt_id = None  # let Qubit constructor choose unused ID
             for i, ent_info_slice in enumerate(ent_info_slices):
-                virt_id: Optional[int]
-                if sequential:
-                    # use one and the same ID for all qubits
-                    virt_id = self._mem_mgr.get_new_qubit_address()
-                else:  # not sequential
-                    virt_id = None  # let Qubit constructor choose unused ID
                 q = Qubit(
                     self._connection,
                     add_new_command=False,
