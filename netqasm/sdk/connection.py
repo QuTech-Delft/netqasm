@@ -617,6 +617,28 @@ class BaseNetQASMConnection(abc.ABC):
         self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
     def while_true(self, max_iterations: int) -> ContextManager[SdkWhileTrueContext]:
+        """Create a context with code to be looped until the exit condition is met, or
+        the maximum number of tries has been reached.
+
+        The code inside the context is automatically looped (re-run).
+        At the end of each iteration, the exit_condition of the context object is 
+        checked. If the condition holds, the loop exits. Otherwise the loop
+        does another iteration. If `max_iterations` iterations have been reached,
+        the loop exits anyway.
+
+        Make sure you set the loop_condition on the context object, like e.g.
+
+        .. code-block::
+
+        with connection.while_true(max_iterations=10) as loop:
+            q = Qubit(conn)
+            m = q.measure()
+            constraint = ValueAtMostConstraint(m, 0)
+            loop.set_exit_condition(constraint)
+
+
+        :param max_iterations: the maximum number of times to loop
+        """
         return self.builder.sdk_new_while_true_context(max_iterations)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:

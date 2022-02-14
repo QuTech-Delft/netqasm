@@ -156,8 +156,6 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 if isinstance(op, Register):
                     self._used_registers.update([op])
 
-            if isinstance(instr, core.CreateEPRInstruction):
-                print(1)
             index_changes[i] = len(new_commands)
 
             if isinstance(instr, core.SingleQubitInstruction) or isinstance(

@@ -655,4 +655,5 @@ class Array:
         return self.builder.sdk_new_foreach_context(array=self, return_index=True)
 
     def undefine(self) -> None:
+        """Undefine (i.e. set to 'None') all elements in the array."""
         self.builder._build_cmds_undefine_array(self)

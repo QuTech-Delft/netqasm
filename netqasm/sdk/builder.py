@@ -51,6 +51,7 @@ from netqasm.sdk.build_epr import (
 )
 from netqasm.sdk.build_nv import NVEprCompiler
 from netqasm.sdk.build_types import (
+    NV,
     GenericHardwareConfig,
     HardwareConfig,
     NVHardwareConfig,
@@ -156,28 +157,35 @@ class SdkWhileTrueContext:
         self._max_iterations = max_iterations
 
     def set_exit_condition(self, constraint: SdkConstraint) -> None:
+        """Set the exit condition for this while loop."""
         self._exit_condition = constraint
 
     @property
     def exit_condition(self) -> Optional[SdkConstraint]:
+        """Get the exit condition for this while loop."""
         return self._exit_condition
 
     def set_cleanup_code(self, cleanup_code: T_CleanupRoutine) -> None:
+        """Set the cleanup code for this while loop."""
         self._cleanup_code = cleanup_code
 
     @property
     def cleanup_code(self) -> Optional[T_CleanupRoutine]:
+        """Get the cleanup code for this while loop."""
         return self._cleanup_code
 
     def set_loop_register(self, register: RegFuture) -> None:
+        """Set the register used that holds the iteration index for this while loop."""
         self._loop_register = register
 
     @property
     def loop_register(self) -> Optional[RegFuture]:
+        """Get the register used that holds the iteration index for this while loop."""
         return self._loop_register
 
     @property
     def max_iterations(self) -> int:
+        """Get the maximum number of iterations for this while loop."""
         return self._max_iterations
 
 
@@ -214,10 +222,6 @@ class Builder:
             set to False if the quantum node controller does not support returning
             arrays.
         """
-        self._hardware_config = hardware_config
-        if self._hardware_config is None:
-            self._hardware_config = GenericHardwareConfig(5)
-
         self._connection = connection
         self._app_id = app_id
 
@@ -361,11 +365,7 @@ class Builder:
         )
 
     def _build_cmds_wait_move_epr_to_mem(
-        self,
-        qubit_ids: Array,
-        number: int,
-        ent_results_array: Array,
-        tp: EPRType,
+        self, number: int, ent_results_array: Array
     ) -> None:
 
         loop_register = self._mem_mgr.get_inactive_register()
@@ -383,26 +383,33 @@ class Builder:
                 reg0 = self._mem_mgr.get_inactive_register(activate=True)
                 reg1 = self._mem_mgr.get_inactive_register(activate=True)
                 assert loop_reg.reg is not None
+
+                # Calculate the virtual ID of the memory qubit this state should move to.
+                # It is "number of pairs" - 1 - "current index".
                 sub_cmd = ICmd(
                     instruction=GenericInstr.SUB,
                     operands=[reg0, number - 1, loop_reg.reg],
                 )
                 set_0_cmds = ICmd(instruction=GenericInstr.SET, operands=[reg1, 0])
 
+                # Move the state from the communication qubit (ID = 0) to the
+                # memory qubit for which we calculated the ID above.
                 mov_cmd = ICmd(
                     instruction=GenericInstr.MOV,
                     operands=[reg1, reg0],
                 )
+
+                # Mark the communication qubit as free.
                 free_cmd = ICmd(instruction=GenericInstr.QFREE, operands=[reg1])
+
+                # Add the commands to the subroutine.
                 commands = [sub_cmd] + [set_0_cmds] + [mov_cmd] + [free_cmd]  # type: ignore
                 self.subrt_add_pending_commands(commands)  # type: ignore
 
                 self._mem_mgr.remove_active_register(reg0)
                 self._mem_mgr.remove_active_register(reg1)
 
-        # TODO use loop context
         self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
-        # self._mem_mgr.remove_active_register(loop_register)
 
     def _build_cmds_post_epr(
         self,
@@ -668,9 +675,8 @@ class Builder:
 
                 # Create the Qubit object that is returned to the SDK.
                 for i, ent_info_slice in enumerate(ent_info_slices):
-                    # Allocate and initialize memory qubit the qubit should finally
-                    # end up in.
-                    # TODO: make sure mem qubits are free
+                    # Allocate and initialize the memory qubit which the entangled
+                    # state should finally end up in.
 
                     final_id = num_pairs - 1 - i
 
@@ -680,6 +686,9 @@ class Builder:
                     add_new_command = True
                     if final_id == 0:
                         add_new_command = False
+                    else:
+                        # Make sure the memory qubit is free so we can allocate it.
+                        assert not self._mem_mgr.is_qubit_id_used(final_id)
 
                     q = Qubit(
                         self._connection,
@@ -703,58 +712,6 @@ class Builder:
                     virtual_address=virt_id,
                 )
                 qubits.append(q)
-        return qubits
-
-    def _create_ent_qubits_OLD(
-        self,
-        ent_info_slices: List[LinkLayerOKTypeK],
-        sequential: bool,
-    ) -> List[Qubit]:
-        qubits = []
-        virtual_address = None
-        for i, ent_info_slice in enumerate(ent_info_slices):
-            # If sequential we want all qubits to have the same ID
-            if sequential:
-                if i == 0:
-                    if self._compiler == NVSubroutineCompiler:
-                        # If compiling for NV, only virtual ID 0 can be used to store the entangled
-                        # qubit. So, if this qubit is already in use, we need to move it away first.
-                        virtual_address = 0
-                        # FIXME: Unlike in the non-sequential case we do not free. This is because
-                        # currently if multiple CREATE commands are issued this will incorrectly think
-                        # that the virtual_address 0 is in use. This will in turn trigger a move which
-                        # will break the code on nodes with no storage qubits.
-                    qubit = Qubit(
-                        self._connection,
-                        add_new_command=False,
-                        ent_info=ent_info_slice,  # type: ignore
-                        virtual_address=virtual_address,
-                    )
-                    virtual_address = qubit.qubit_id
-                else:
-                    qubit = Qubit(
-                        self._connection,
-                        add_new_command=False,
-                        ent_info=ent_info_slice,  # type: ignore
-                        virtual_address=virtual_address,
-                    )
-            else:
-                virtual_address = None
-                if isinstance(self._hardware_config, NVHardwareConfig):
-                    # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
-                    # So, if this qubit is already in use, we need to move it away first.
-                    virtual_address = 0
-                    self._build_cmds_free_up_qubit_location(
-                        virtual_address=virtual_address
-                    )
-                qubit = Qubit(
-                    self._connection,
-                    add_new_command=False,
-                    ent_info=ent_info_slice,  # type: ignore
-                    virtual_address=virtual_address,
-                )
-            qubits.append(qubit)
-
         return qubits
 
     def _reset(self) -> None:
@@ -1127,7 +1084,7 @@ class Builder:
     def _build_cmds_measure(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
     ) -> None:
-        if self._compiler == NVSubroutineCompiler:
+        if isinstance(self._hardware_config, NVHardwareConfig):
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
             if not isinstance(qubit_id, Future):
@@ -1284,7 +1241,7 @@ class Builder:
         self.subrt_add_pending_commands(commands=ret_reg_instrs)
 
     def _build_cmds_free_up_qubit_location(self, virtual_address: int) -> None:
-        if self._compiler == NVSubroutineCompiler:
+        if isinstance(self._hardware_config, NVHardwareConfig):
             for q in self._mem_mgr.get_active_qubits():
                 # Find a free qubit
                 new_virtual_address = self._mem_mgr.get_new_qubit_address()
@@ -1746,15 +1703,8 @@ class Builder:
             and self._hardware_config is not None
             and self._hardware_config.comm_qubit_count == 1
         ):
-            # Wait for pairs one by one and move them to a memory qubit
-            # for i in range(0, params.number):
-            #     qalloc_command = ICmd(
-            #         instruction=GenericInstr.QALLOC,
-            #         operands=[i],
-            #     )
-            #     self.subrt_add_pending_command(qalloc_command)
             self._build_cmds_wait_move_epr_to_mem(
-                qubit_ids_array, params.number, ent_results_array, tp=EPRType.K
+                number=params.number, ent_results_array=ent_results_array
             )
 
         # Construct and add NetQASM instructions for post routine
@@ -1895,9 +1845,12 @@ class Builder:
 
                 def cleanup(_: BaseNetQASMConnection):
                     result_array.undefine()
-                    # TODO: how to know if qubits need to be freed?
-                    # for q in qubits:
-                    #     q.free()
+                    # If the request was sequential, each pair has already been
+                    # measured and does not need to be freed.
+                    # Otherwise: free the qubits.
+                    if not params.sequential:
+                        for q in qubits:
+                            q.free()
 
                 loop.set_cleanup_code(cleanup)
 
@@ -1932,9 +1885,12 @@ class Builder:
 
                 def cleanup(_: BaseNetQASMConnection):
                     result_array.undefine()
-                    # TODO: how to know if qubits need to be freed?
-                    for q in qubits:
-                        q.free()
+                    # If the request was sequential, each pair has already been
+                    # measured and does not need to be freed.
+                    # Otherwise: free the qubits.
+                    if not params.sequential:
+                        for q in qubits:
+                            q.free()
 
                 loop.set_cleanup_code(cleanup)
 
@@ -2083,6 +2039,7 @@ class Builder:
     def sdk_new_while_true_context(
         self, max_iterations: int
     ) -> Iterator[SdkWhileTrueContext]:
+        """Build commands for a 'while_true' context and return the context object."""
         try:
             id = self._next_context_id
             context = SdkWhileTrueContext(

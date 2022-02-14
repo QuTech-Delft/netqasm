@@ -53,6 +53,10 @@ class MemoryManager:
         """Check if a qubit location is in use."""
         return q in self._active_qubits
 
+    def is_qubit_id_used(self, id: int) -> bool:
+        """Check if a qubit ID is in use."""
+        return any(q.qubit_id == id for q in self._active_qubits)
+
     def activate_qubit(self, q: Qubit) -> None:
         """Mark a qubit location as 'in use'."""
         self._active_qubits.append(q)
