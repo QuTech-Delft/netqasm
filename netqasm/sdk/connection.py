@@ -13,7 +13,6 @@ import math
 import os
 import pickle
 from itertools import count
-from optparse import Option
 from typing import (
     TYPE_CHECKING,
     Callable,

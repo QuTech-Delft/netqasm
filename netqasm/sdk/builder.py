@@ -55,6 +55,7 @@ from netqasm.sdk.build_types import (
     HardwareConfig,
     NVHardwareConfig,
     T_BranchRoutine,
+    T_CleanupRoutine,
     T_LoopRoutine,
     T_PostRoutine,
 )
@@ -150,7 +151,7 @@ class SdkWhileTrueContext:
         self._id = id
         self._builder = builder
         self._exit_condition: Optional[SdkConstraint] = None
-        self._cleanup_code: Optional[T_LoopRoutine] = None
+        self._cleanup_code: Optional[T_CleanupRoutine] = None
         self._loop_register: Optional[RegFuture] = None
         self._max_iterations = max_iterations
 
@@ -161,11 +162,11 @@ class SdkWhileTrueContext:
     def exit_condition(self) -> Optional[SdkConstraint]:
         return self._exit_condition
 
-    def set_cleanup_code(self, cleanup_code: T_LoopRoutine) -> None:
+    def set_cleanup_code(self, cleanup_code: T_CleanupRoutine) -> None:
         self._cleanup_code = cleanup_code
 
     @property
-    def cleanup_code(self) -> Optional[T_LoopRoutine]:
+    def cleanup_code(self) -> Optional[T_CleanupRoutine]:
         return self._cleanup_code
 
     def set_loop_register(self, register: RegFuture) -> None:
@@ -337,9 +338,6 @@ class Builder:
     def subrt_compile_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
         """Convert a PreSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
-        # self._connection._logger.warning(
-        #     f"\n\n SUBROUTINE BEFORE TRANSPILATION\n{subroutine}\n\n"
-        # )
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).compile()
         if self._track_lines:
@@ -379,12 +377,12 @@ class Builder:
                 ent_results_array=ent_results_array,
                 pair=pair,
             )
-            # q_id = qubit_ids.get_future_index(pair)
 
             # If it's the last pair, don't move it to a mem qubit
             with loop_reg.if_ne(number - 1):
                 reg0 = self._mem_mgr.get_inactive_register(activate=True)
                 reg1 = self._mem_mgr.get_inactive_register(activate=True)
+                assert loop_reg.reg is not None
                 sub_cmd = ICmd(
                     instruction=GenericInstr.SUB,
                     operands=[reg0, number - 1, loop_reg.reg],
@@ -396,8 +394,8 @@ class Builder:
                     operands=[reg1, reg0],
                 )
                 free_cmd = ICmd(instruction=GenericInstr.QFREE, operands=[reg1])
-                commands = [sub_cmd] + [set_0_cmds] + [mov_cmd] + [free_cmd]
-                self.subrt_add_pending_commands(commands)
+                commands = [sub_cmd] + [set_0_cmds] + [mov_cmd] + [free_cmd]  # type: ignore
+                self.subrt_add_pending_commands(commands)  # type: ignore
 
                 self._mem_mgr.remove_active_register(reg0)
                 self._mem_mgr.remove_active_register(reg1)
@@ -628,7 +626,7 @@ class Builder:
         ent_info_slices = self._create_ent_info_k_slices(
             num_pairs=number, ent_results_array=ent_results_array
         )
-        qubits = self._create_ent_qubits_2(
+        qubits = self._create_ent_qubits(
             ent_info_slices=ent_info_slices,
             sequential=sequential,
         )
@@ -646,7 +644,7 @@ class Builder:
             ent_info_slices.append(ent_info_slice)
         return ent_info_slices
 
-    def _create_ent_qubits_2(
+    def _create_ent_qubits(
         self, ent_info_slices: List[LinkLayerOKTypeK], sequential: bool
     ) -> List[Qubit]:
         qubits: List[Qubit] = []
@@ -707,7 +705,7 @@ class Builder:
                 qubits.append(q)
         return qubits
 
-    def _create_ent_qubits(
+    def _create_ent_qubits_OLD(
         self,
         ent_info_slices: List[LinkLayerOKTypeK],
         sequential: bool,
@@ -1717,7 +1715,8 @@ class Builder:
         # If there is only one comm qubit, handle pairs one by one.
         if (
             params.post_routine is not None
-            or self._hardware_config.comm_qubit_count == 1
+            or self._hardware_config is not None
+            and self._hardware_config.comm_qubit_count == 1
         ):
             wait_all = False
 
@@ -1741,7 +1740,11 @@ class Builder:
                 qubit_ids_array, ent_results_array, wait_all, params
             )
 
-        if not params.sequential and self._hardware_config.comm_qubit_count == 1:
+        if (
+            not params.sequential
+            and self._hardware_config is not None
+            and self._hardware_config.comm_qubit_count == 1
+        ):
             # Wait for pairs one by one and move them to a memory qubit
             # for i in range(0, params.number):
             #     qalloc_command = ICmd(

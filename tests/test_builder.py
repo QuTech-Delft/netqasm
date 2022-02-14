@@ -1,6 +1,5 @@
 import math
 from enum import Enum, auto
-from re import sub
 from typing import List, Optional, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
