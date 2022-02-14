@@ -1336,7 +1336,10 @@ class Builder:
 
         with self._activate_register(loop_register):
             # evalute body (will add pending commands)
-            self._connection, RegFuture(connection=self._connection, reg=loop_register)
+            body(
+                self._connection,
+                RegFuture(connection=self._connection, reg=loop_register),
+            )
         body_commands = self.subrt_pop_all_pending_commands()
 
         self._build_cmds_loop(
