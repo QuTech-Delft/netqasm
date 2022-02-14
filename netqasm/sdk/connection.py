@@ -37,6 +37,12 @@ from netqasm.backend.messages import (
 from netqasm.lang import operand
 from netqasm.lang.ir import BreakpointAction, BreakpointRole, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.build_types import (
+    GenericHardwareConfig,
+    HardwareConfig,
+    T_BranchRoutine,
+    T_LoopRoutine,
+)
 from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
@@ -46,18 +52,12 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
-from .builder import Builder
+from .builder import Builder, SdkWhileTrueContext
 
 # Generic type for messages sent to the quantum node controller.
 # Note that `SubroutineMessage` does not derive from `Message` so it has to be
 # mentioned explicitly.
 T_Message = Union[Message, SubroutineMessage]
-
-# Callback function type for conditional statements.
-T_BranchRoutine = Callable[["BaseNetQASMConnection"], None]
-
-# Callback function type for loop statements.
-T_LoopRoutine = Callable[["BaseNetQASMConnection"], None]
 
 # Imports that are only needed for type checking
 if TYPE_CHECKING:
@@ -94,6 +94,7 @@ class BaseNetQASMConnection(abc.ABC):
         node_name: Optional[str] = None,
         app_id: Optional[int] = None,
         max_qubits: int = 5,
+        hardware_config: Optional[HardwareConfig] = None,
         log_config: LogConfig = None,
         epr_sockets: Optional[List[esck.EPRSocket]] = None,
         compiler: Optional[Type[SubroutineCompiler]] = None,
@@ -129,6 +130,10 @@ class BaseNetQASMConnection(abc.ABC):
         :param max_qubits: maximum number of qubits that can be in use
             at the same time by applications registered through this connection.
             Defaults to 5.
+
+        :param hardware_config: configuration object with info about the underlying
+            hardware. Used by the Builder of this Connection. When None,
+            a generic configuration object is created with the default qubit count of 5.
 
         :param log_config: configuration object specifying what to log.
 
@@ -189,13 +194,16 @@ class BaseNetQASMConnection(abc.ABC):
         # Set directory for storing serialized subroutines.
         self._log_subroutines_dir: Optional[str] = log_config.log_subroutines_dir
 
+        if hardware_config is None:
+            hardware_config = GenericHardwareConfig(max_qubits)
+
         # Builder object of this connection.
         # The Builder is used to gather application code and output an
         # Intermediate Representation (IR), which is then compiled into subroutines.
         self._builder = Builder(
             connection=self,
             app_id=self._app_id,
-            max_qubits=max_qubits,
+            hardware_config=hardware_config,
             compiler=compiler,
             return_arrays=return_arrays,
         )
