@@ -1605,10 +1605,11 @@ class Builder:
         )
 
         cleanup_body = context.cleanup_code
-        assert cleanup_body is not None
-        cleanup_body(self._connection)
-
-        cleanup_commands = self.subrt_pop_all_pending_commands()
+        if cleanup_body is not None:
+            cleanup_body(self._connection)
+            cleanup_commands = self.subrt_pop_all_pending_commands()
+        else:
+            cleanup_commands = []
 
         while_true_end = self._while_true_get_exit_commands(
             entry_label=entry_label, exit_label=exit_label, loop_register=loop_register

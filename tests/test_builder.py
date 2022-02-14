@@ -622,8 +622,6 @@ def test_epr_min_fidelity_all():
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.UNDEF,
             PatternWildcard.ANY_ZERO_OR_MORE,
-            GenericInstr.QFREE,
-            PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.JMP,
             PatternWildcard.BRANCH_LABEL,
         ]
@@ -839,9 +837,9 @@ if __name__ == "__main__":
     # test_epr_post()
     # test_try()
     # test_while_true()
-    # test_epr_min_fidelity_all()
+    test_epr_min_fidelity_all()
     # test_create_multiple_eprs()
     # test_create_2_eprs_NV()
-    test_create_3_eprs_NV()
+    # test_create_3_eprs_NV()
     # test_bqc_receiver_NV()
     # test_bqc_receiver_NV_min_fidelity()
