@@ -52,7 +52,7 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
-from .builder import Builder, SdkWhileTrueContext
+from .builder import Builder
 
 # Generic type for messages sent to the quantum node controller.
 # Note that `SubroutineMessage` does not derive from `Message` so it has to be
