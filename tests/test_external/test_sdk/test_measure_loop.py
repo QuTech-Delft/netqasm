@@ -12,7 +12,7 @@ def run_alice():
 
         outcomes = alice.new_array(num)
 
-        def body(alice):
+        def body(alice, _):
             q = Qubit(alice)
             q.H()
             q.measure(future=outcomes.get_future_index("R0"))

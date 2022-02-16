@@ -17,7 +17,7 @@ def run_alice():
         array = alice.new_array(init_values=init_values)
         outcomes = alice.new_array(length=num)
 
-        def body(alice):
+        def body(alice, _):
             q = Qubit(alice)
             with array.get_future_index(loop_register).if_eq(1):
                 q.X()

@@ -17,8 +17,8 @@ def run_alice():
         i = array.get_future_index(0)
         j = array.get_future_index(1)
 
-        def outer_body(alice):
-            def inner_body(alice):
+        def outer_body(alice, _):
+            def inner_body(alice, _):
                 q = Qubit(alice)
                 q.free()
                 j.add(1)
