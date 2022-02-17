@@ -1664,7 +1664,14 @@ class Builder:
         assert all(isinstance(q, Qubit) for q in qubit_futures)
 
         # NetQASM array with IDs for the generated qubits.
-        virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
+        if self._hardware_config.comm_qubit_count == 1:
+            # If there is only one comm qubit, only ID 0 can be used to receive the
+            # EPR qubit. The Builder will however insert instructions to move this
+            # qubit to one of the memory qubits. The corresponding QubitFuture object
+            # still has the ID of this memory qubit (and not ID 0)!
+            virtual_qubit_ids = [0 for _ in qubit_futures]
+        else:
+            virtual_qubit_ids = [q.qubit_id for q in qubit_futures]
         qubit_ids_array: Array = self.alloc_array(init_values=virtual_qubit_ids)  # type: ignore
 
         wait_all = True
