@@ -1664,7 +1664,10 @@ class Builder:
         assert all(isinstance(q, Qubit) for q in qubit_futures)
 
         # NetQASM array with IDs for the generated qubits.
-        if self._hardware_config.comm_qubit_count == 1:
+        if (
+            self._hardware_config is not None
+            and self._hardware_config.comm_qubit_count == 1
+        ):
             # If there is only one comm qubit, only ID 0 can be used to receive the
             # EPR qubit. The Builder will however insert instructions to move this
             # qubit to one of the memory qubits. The corresponding QubitFuture object
@@ -1842,7 +1845,7 @@ class Builder:
                 max_time = NVEprCompiler.get_max_time_for_fidelity(
                     params.min_fidelity_all_at_end
                 )
-                self._connection._logger.warning(
+                self._connection._logger.info(
                     f"converting min fidelity constraint of "
                     f"{params.min_fidelity_all_at_end} to a max time of {max_time}"
                 )
