@@ -1335,7 +1335,7 @@ class Builder:
         pre_commands = self.subrt_pop_all_pending_commands()
 
         with self._activate_register(loop_register):
-            # evalute body (will add pending commands)
+            # evaluate body (will add pending commands)
             body(
                 self._connection,
                 RegFuture(connection=self._connection, reg=loop_register),
