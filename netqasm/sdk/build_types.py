@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING, Callable, List, Union
 
 from netqasm.qlink_compat import LinkLayerOKTypeK, LinkLayerOKTypeM, LinkLayerOKTypeR
@@ -25,18 +26,22 @@ T_LoopRoutine = Callable[["connection.BaseNetQASMConnection", RegFuture], None]
 T_CleanupRoutine = Callable[["connection.BaseNetQASMConnection"], None]
 
 
-class HardwareConfig:
+class HardwareConfig(ABC):
     """Base class for hardware information used by the Builder."""
+
+    def __init__(self, num_comm_qubits: int, num_mem_qubits: int) -> None:
+        assert num_comm_qubits > 0
+        assert num_mem_qubits >= 0
+        self._comm_qubit_count = num_comm_qubits
+        self._mem_qubit_count = num_mem_qubits
 
     @property
     def comm_qubit_count(self) -> int:
-        """Number of communication qubits available."""
-        raise NotImplementedError
+        return self._comm_qubit_count
 
     @property
     def mem_qubit_count(self) -> int:
-        """Number of memory qubits available."""
-        raise NotImplementedError
+        return self._mem_qubit_count
 
     @property
     def qubit_count(self) -> int:
@@ -48,17 +53,7 @@ class NVHardwareConfig(HardwareConfig):
     """Hardware information for NV, where there is only one communication qubit."""
 
     def __init__(self, num_qubits: int) -> None:
-        assert num_qubits > 0
-        self._comm_qubit_count = 1
-        self._mem_qubit_count = num_qubits - 1
-
-    @property
-    def comm_qubit_count(self) -> int:
-        return self._comm_qubit_count
-
-    @property
-    def mem_qubit_count(self) -> int:
-        return self._mem_qubit_count
+        super().__init__(1, num_qubits - 1)
 
 
 class GenericHardwareConfig(HardwareConfig):
@@ -66,14 +61,4 @@ class GenericHardwareConfig(HardwareConfig):
     communication qubits."""
 
     def __init__(self, num_qubits: int) -> None:
-        assert num_qubits > 0
-        self._comm_qubit_count = num_qubits
-        self._mem_qubit_count = 0
-
-    @property
-    def comm_qubit_count(self) -> int:
-        return self._comm_qubit_count
-
-    @property
-    def mem_qubit_count(self) -> int:
-        return self._mem_qubit_count
+        super().__init__(num_qubits, 0)

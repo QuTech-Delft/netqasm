@@ -16,7 +16,7 @@ class ValueAtMostConstraint(SdkConstraint):
     """A constraint that a certain variable should be at most another value."""
 
     def __init__(self, future: BaseFuture, value: int) -> None:
-        """ValueAtMostContraint constructor.
+        """ValueAtMostConstraint constructor.
 
         :param future: the variable that should be at most the given value
         :param value: the maximum value that the given future may have
