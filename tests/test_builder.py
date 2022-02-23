@@ -277,7 +277,7 @@ def test_loop_context():
 def test_looping():
     with DebugConnection("Alice") as conn:
 
-        def body(conn: DebugConnection):
+        def body(conn: DebugConnection, reg: RegFuture):
             q = Qubit(conn)
             _ = q.measure()
 

@@ -17,6 +17,8 @@ class EntRequestParams:
     sequential: bool
     time_unit: TimeUnit = TimeUnit.MICRO_SECONDS
     max_time: int = 0
+    min_fidelity_all_at_end: Optional[int] = None
+    max_tries: Optional[int] = None
     random_basis_local: Optional[RandomBasis] = None
     random_basis_remote: Optional[RandomBasis] = None
     rotations_local: Tuple[int, int, int] = (0, 0, 0)

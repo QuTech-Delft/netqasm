@@ -50,6 +50,9 @@ from netqasm.sdk.build_epr import (
     serialize_request,
 )
 from netqasm.sdk.build_types import (
+    GenericHardwareConfig,
+    HardwareConfig,
+    NVHardwareConfig,
     T_BranchRoutine,
     T_LinkLayerOkList,
     T_LoopRoutine,
@@ -152,7 +155,7 @@ class Builder:
         self,
         connection,
         app_id: int,
-        max_qubits: int = 5,
+        hardware_config: Optional[HardwareConfig] = None,
         log_config: LogConfig = None,
         compiler: Optional[Type[SubroutineCompiler]] = None,
         return_arrays: bool = True,
@@ -176,8 +179,6 @@ class Builder:
         self._app_id = app_id
 
         self._pending_commands: List[T_Cmd] = []
-
-        self._max_qubits: int = max_qubits
 
         self._mem_mgr: MemoryManager = MemoryManager()
 
@@ -203,8 +204,20 @@ class Builder:
         # Commited subroutines saved for logging/debugging
         self._committed_subroutines: List[Subroutine] = []
 
+        self._hardware_config = hardware_config
+        if self._hardware_config is None:
+            self._hardware_config = GenericHardwareConfig(5)
+
+        self._max_qubits: int = self._hardware_config.qubit_count
+
         # What compiler (if any) to be used
         self._compiler: Optional[Type[SubroutineCompiler]] = compiler
+
+        # If an NV compiler is specified but not an NV hardware config,
+        # make sure an NV config is used after all.
+        if compiler == NVSubroutineCompiler:
+            num_qubits = self._hardware_config.qubit_count
+            self._hardware_config = NVHardwareConfig(num_qubits)
 
     @property
     def app_id(self) -> int:
@@ -314,7 +327,7 @@ class Builder:
 
         loop_register = self._mem_mgr.get_inactive_register()
 
-        def post_loop(conn: BaseNetQASMConnection):
+        def post_loop(conn: BaseNetQASMConnection, _: RegFuture):
             # Wait for each pair individually
             pair = loop_register
             conn.builder._add_wait_for_ent_info_cmd(
@@ -351,7 +364,7 @@ class Builder:
 
         # Multiply pair * OK_FIELDS
         # TODO use loop context
-        def add_arr_start(conn):
+        def add_arr_start(conn, _):
             self.subrt_add_pending_command(
                 ICmd(
                     instruction=GenericInstr.ADD,
@@ -371,7 +384,7 @@ class Builder:
 
         # Multiply (tmp = pair + 1) * OK_FIELDS
         # TODO use loop context
-        def add_arr_stop(conn):
+        def add_arr_stop(conn, _):
             self.subrt_add_pending_command(
                 ICmd(
                     instruction=GenericInstr.ADD,
@@ -987,7 +1000,7 @@ class Builder:
                     lineno=array.lineno,
                 )
 
-                def init_array_elt(conn):
+                def init_array_elt(conn, _):
                     conn._builder.subrt_add_pending_command(store_cmd)
 
                 self._build_cmds_loop_body(
@@ -1322,8 +1335,11 @@ class Builder:
         pre_commands = self.subrt_pop_all_pending_commands()
 
         with self._activate_register(loop_register):
-            # evalute body (will add pending commands)
-            body(self._connection)
+            # evaluate body (will add pending commands)
+            body(
+                self._connection,
+                RegFuture(connection=self._connection, reg=loop_register),
+            )
         body_commands = self.subrt_pop_all_pending_commands()
 
         self._build_cmds_loop(

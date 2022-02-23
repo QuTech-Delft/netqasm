@@ -159,6 +159,8 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
+        min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> List[Qubit]:
         """Ask the network stack to generate EPR pairs with the remote node and keep
         them in memory.
@@ -215,6 +217,17 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
+            qubits should ideally still have at the moment the last qubit has been
+            generated. For example, when specifying `number=2` and
+            `min_fidelity_all_at_end=80`, the the program will automatically try to
+            make sure that both qubits have a fidelity of at least 80% when the
+            second qubit has been generated. It will attempt to do this by
+            automatically re-trying the entanglement generation if the fidelity
+            constraint is not satisfied. This is however an *attempt*, and not
+            a guarantee!.
+        :param max_tries: maximum number of re-tries should be made to try and achieve
+            the `min_fidelity_all_at_end` constraint.
         :return: list of qubits created
         """
 
@@ -227,6 +240,8 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             ),
         )
         return qubits
@@ -238,6 +253,7 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
+        min_fidelity_all_at_end: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Same as create_keep but also return the EPR generation information coming
         from the network stack.
@@ -256,6 +272,7 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
             ),
         )
         return qubits, info
@@ -374,6 +391,7 @@ class EPRSocket(abc.ABC):
         basis_local: EPRMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
+        min_fidelity_all_at_end: Optional[int] = None,
     ) -> List[EprMeasureResult]:
         """Ask the network stack to do remote preparation with the remote node.
 
@@ -437,6 +455,7 @@ class EPRSocket(abc.ABC):
                 max_time=max_time,
                 random_basis_local=random_basis_local,
                 rotations_local=rotations_local,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
             )
         )
 
@@ -640,6 +659,8 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
+        min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> List[Qubit]:
         """Ask the network stack to wait for the remote node to generate EPR pairs,
         which are kept in memory.
@@ -653,6 +674,17 @@ class EPRSocket(abc.ABC):
         :param post_routine: callback function used when `sequential` is True
         :param sequential: whether to call the callback after each pair generation,
             defaults to False
+        :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
+            qubits should ideally still have at the moment the last qubit has been
+            generated. For example, when specifying `number=2` and
+            `min_fidelity_all_at_end=80`, the the program will automatically try to
+            make sure that both qubits have a fidelity of at least 80% when the
+            second qubit has been generated. It will attempt to do this by
+            automatically re-trying the entanglement generation if the fidelity
+            constraint is not satisfied. This is however an *attempt*, and not
+            a guarantee!.
+        :param max_tries: maximum number of re-tries should be made to try and achieve
+            the `min_fidelity_all_at_end` constraint.
         :return: list of qubits created
         """
 
@@ -666,6 +698,8 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             ),
         )
         return qubits
@@ -675,6 +709,8 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
+        min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Same as recv_keep but also return the EPR generation information coming
         from the network stack.
@@ -691,6 +727,8 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             ),
         )
         return qubits, info
@@ -729,6 +767,8 @@ class EPRSocket(abc.ABC):
     def recv_rsp(
         self,
         number: int = 1,
+        min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> List[Qubit]:
         """Ask the network stack to wait for remote state preparation from another node.
 
@@ -750,6 +790,8 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=None,
                 sequential=False,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             ),
         )
         return qubits
@@ -757,6 +799,8 @@ class EPRSocket(abc.ABC):
     def recv_rsp_with_info(
         self,
         number: int = 1,
+        min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Same as recv_rsp but also return the EPR generation information coming
         from the network stack.
@@ -776,6 +820,8 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=None,
                 sequential=False,
+                min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             ),
         )
         return qubits, infos
