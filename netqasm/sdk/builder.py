@@ -1484,12 +1484,12 @@ class Builder:
         loop_register = self._loop_get_register(loop_register)
         pre_commands = self.subrt_pop_all_pending_commands()
 
-        with self._activate_register(loop_register):
-            # evaluate body (will add pending commands)
-            body(
-                self._connection,
-                RegFuture(connection=self._connection, reg=loop_register),
-            )
+        self._mem_mgr.add_active_register(loop_register)
+        # evaluate body (will add pending commands)
+        body(
+            self._connection,
+            RegFuture(connection=self._connection, reg=loop_register),
+        )
         body_commands = self.subrt_pop_all_pending_commands()
 
         self._build_cmds_loop(
