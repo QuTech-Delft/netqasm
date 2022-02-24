@@ -616,7 +616,7 @@ class BaseNetQASMConnection(abc.ABC):
         """
         self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
-    def while_true(self, max_iterations: int) -> ContextManager[SdkWhileTrueContext]:
+    def loop_until(self, max_iterations: int) -> ContextManager[SdkWhileTrueContext]:
         """Create a context with code to be looped until the exit condition is met, or
         the maximum number of tries has been reached.
 
@@ -630,7 +630,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         .. code-block::
 
-        with connection.while_true(max_iterations=10) as loop:
+        with connection.loop_until(max_iterations=10) as loop:
             q = Qubit(conn)
             m = q.measure()
             constraint = ValueAtMostConstraint(m, 0)
@@ -639,7 +639,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         :param max_iterations: the maximum number of times to loop
         """
-        return self.builder.sdk_new_while_true_context(max_iterations)
+        return self.builder.sdk_new_loop_until_context(max_iterations)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.

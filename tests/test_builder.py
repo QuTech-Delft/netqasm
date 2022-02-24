@@ -582,10 +582,10 @@ def test_try():
     )
 
 
-def test_while_true():
+def test_loop_until():
     with DebugConnection("Alice") as conn:
 
-        with conn.while_true(max_iterations=10) as loop:
+        with conn.loop_until(max_iterations=10) as loop:
             q = Qubit(conn)
             m = q.measure()
             constraint = ValueAtMostConstraint(m, 42)
@@ -593,6 +593,26 @@ def test_while_true():
 
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
 
 
 def test_epr_min_fidelity_all():
@@ -836,7 +856,7 @@ if __name__ == "__main__":
     test_epr_context_future_index()
     test_epr_post()
     test_try()
-    test_while_true()
+    test_loop_until()
     test_epr_min_fidelity_all()
     test_create_multiple_eprs()
     test_create_2_eprs_NV()

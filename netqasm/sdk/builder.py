@@ -145,7 +145,7 @@ class SdkForEachContext:
 
 
 class SdkWhileTrueContext:
-    """Context object for while_true() statements in SDK code."""
+    """Context object for loop_until() statements in SDK code."""
 
     def __init__(self, id: int, builder: Builder, max_iterations: int):
         self._id = id
@@ -866,7 +866,7 @@ class Builder:
             BranchLabel(exit_label),
         ]
 
-    def _while_true_get_entry_commands(
+    def _loop_until_get_entry_commands(
         self,
         entry_label: str,
         exit_label: str,
@@ -882,7 +882,7 @@ class Builder:
             ),
         ]
 
-    def _while_true_get_break_commands(
+    def _loop_until_get_break_commands(
         self,
         context: SdkWhileTrueContext,
         exit_label: str,
@@ -912,7 +912,7 @@ class Builder:
             assert False, "not supported"
         return commands  # type: ignore
 
-    def _while_true_get_exit_commands(
+    def _loop_until_get_exit_commands(
         self, entry_label: str, exit_label: str, loop_register: operand.Register
     ) -> List[T_Cmd]:
         return [
@@ -985,7 +985,7 @@ class Builder:
         )
         self._mem_mgr.remove_active_register(loop_register)
 
-    def _while_true_context_enter(self, context_id: int) -> operand.Register:
+    def _loop_until_context_enter(self, context_id: int) -> operand.Register:
         pre_commands = self.subrt_pop_all_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
 
@@ -994,7 +994,7 @@ class Builder:
 
         return loop_register
 
-    def _while_true_context_exit(
+    def _loop_until_context_exit(
         self, context_id: int, context: SdkWhileTrueContext
     ) -> None:
         body_commands = self.subrt_pop_all_pending_commands()
@@ -1006,7 +1006,7 @@ class Builder:
             raise RuntimeError("Something went wrong, no loop_registers for context")
         loop_register = loop_registers[0]
 
-        self._build_cmds_while_true(
+        self._build_cmds_loop_until(
             pre_commands=pre_commands,
             body_commands=body_commands,
             context=context,
@@ -1536,7 +1536,7 @@ class Builder:
 
         self.subrt_add_pending_commands(commands=commands)
 
-    def _build_cmds_while_true(
+    def _build_cmds_loop_until(
         self,
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
@@ -1550,13 +1550,13 @@ class Builder:
         entry_label = self._label_mgr.new_label(start_with="WHILE")
         exit_label = self._label_mgr.new_label(start_with="WHILE_EXIT")
 
-        while_true_start = self._while_true_get_entry_commands(
+        loop_until_start = self._loop_until_get_entry_commands(
             entry_label=entry_label,
             exit_label=exit_label,
             stop=context.max_iterations,
             loop_register=loop_register,
         )
-        while_true_break = self._while_true_get_break_commands(
+        loop_until_break = self._loop_until_get_break_commands(
             context=context, exit_label=exit_label
         )
 
@@ -1567,17 +1567,17 @@ class Builder:
         else:
             cleanup_commands = []
 
-        while_true_end = self._while_true_get_exit_commands(
+        loop_until_end = self._loop_until_get_exit_commands(
             entry_label=entry_label, exit_label=exit_label, loop_register=loop_register
         )
 
         commands = (
             pre_commands
-            + while_true_start
+            + loop_until_start
             + body_commands
-            + while_true_break
+            + loop_until_break
             + cleanup_commands
-            + while_true_end
+            + loop_until_end
         )
 
         self.subrt_add_pending_commands(commands=commands)
@@ -1834,7 +1834,7 @@ class Builder:
         if params.min_fidelity_all_at_end is not None:
             # If a min-fidelity constraint is specified, wrap the operation in a loop
             assert params.max_tries is not None
-            with self.sdk_new_while_true_context(params.max_tries) as loop:
+            with self.sdk_new_loop_until_context(params.max_tries) as loop:
                 qubits, result_array = self.sdk_epr_keep(
                     role=EPRRole.CREATE, params=params
                 )
@@ -1879,7 +1879,7 @@ class Builder:
         if params.min_fidelity_all_at_end is not None:
             # If a min-fidelity constraint is specified, wrap the operation in a loop
             assert params.max_tries is not None
-            with self.sdk_new_while_true_context(params.max_tries) as loop:
+            with self.sdk_new_loop_until_context(params.max_tries) as loop:
                 qubits, result_array = self.sdk_epr_keep(
                     role=EPRRole.RECV, params=params, reset_results_array=True
                 )
@@ -1928,7 +1928,7 @@ class Builder:
         if params.min_fidelity_all_at_end is not None:
             # If a min-fidelity constraint is specified, wrap the operation in a loop
             assert params.max_tries is not None
-            with self.sdk_new_while_true_context(params.max_tries) as loop:
+            with self.sdk_new_loop_until_context(params.max_tries) as loop:
                 results = self.sdk_epr_rsp_create(params=params)
                 duration = results[-1].generation_duration
                 max_time = NVEprCompiler.get_max_time_for_fidelity(
@@ -1950,7 +1950,7 @@ class Builder:
         if params.min_fidelity_all_at_end is not None:
             # If a min-fidelity constraint is specified, wrap the operation in a loop
             assert params.max_tries is not None
-            with self.sdk_new_while_true_context(params.max_tries) as loop:
+            with self.sdk_new_loop_until_context(params.max_tries) as loop:
                 qubits, results = self.sdk_epr_rsp_recv(params=params)
                 duration = results[-1].generation_duration
                 max_time = NVEprCompiler.get_max_time_for_fidelity(
@@ -2045,23 +2045,23 @@ class Builder:
         return context
 
     @contextmanager
-    def sdk_new_while_true_context(
+    def sdk_new_loop_until_context(
         self, max_iterations: int
     ) -> Iterator[SdkWhileTrueContext]:
-        """Build commands for a 'while_true' context and return the context object."""
+        """Build commands for a 'loop_until' context and return the context object."""
         try:
             id = self._next_context_id
             context = SdkWhileTrueContext(
                 id=id, builder=self, max_iterations=max_iterations
             )
             self._next_context_id += 1
-            loop_register = self._while_true_context_enter(id)
+            loop_register = self._loop_until_context_enter(id)
             reg_future = RegFuture(self._connection, loop_register)
             context.set_loop_register(reg_future)
             yield context
         finally:
             assert context.exit_condition is not None
-            self._while_true_context_exit(
+            self._loop_until_context_exit(
                 context_id=id,
                 context=context,
             )
