@@ -1,8 +1,15 @@
 CHANGELOG
 =========
 
-Upcoming
---------
+2022-02-25 (0.8.7)
+------------------
+- Refactored SDK code
+- Added `loop_until` context to SDK
+- Added `min_fidelity_all_at_end` EPR generation parameter
+- Added explicity `create_keep`, `create_measure` and `create_rsp` methods (and similar for `recv_`) to `EPRSocket`.
+  The old `create` and `recv` methods are deprecated.
+- Added builder tests
+- Applied formatting on examples
 
 2021-11-15 (0.8.6)
 ------------------
