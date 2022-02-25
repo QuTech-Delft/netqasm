@@ -52,7 +52,7 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
-from .builder import Builder
+from .builder import Builder, SdkLoopUntilContext
 
 # Generic type for messages sent to the quantum node controller.
 # Note that `SubroutineMessage` does not derive from `Message` so it has to be
@@ -615,6 +615,31 @@ class BaseNetQASMConnection(abc.ABC):
         :param loop_register: specific register to be used for holding the loop index.
         """
         self._builder.sdk_loop_body(body, stop, start, step, loop_register)
+
+    def loop_until(self, max_iterations: int) -> ContextManager[SdkLoopUntilContext]:
+        """Create a context with code to be looped until the exit condition is met, or
+        the maximum number of tries has been reached.
+
+        The code inside the context is automatically looped (re-run).
+        At the end of each iteration, the exit_condition of the context object is
+        checked. If the condition holds, the loop exits. Otherwise the loop
+        does another iteration. If `max_iterations` iterations have been reached,
+        the loop exits anyway.
+
+        Make sure you set the loop_condition on the context object, like e.g.
+
+        .. code-block::
+
+        with connection.loop_until(max_iterations=10) as loop:
+            q = Qubit(conn)
+            m = q.measure()
+            constraint = ValueAtMostConstraint(m, 0)
+            loop.set_exit_condition(constraint)
+
+
+        :param max_iterations: the maximum number of times to loop
+        """
+        return self.builder.sdk_new_loop_until_context(max_iterations)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.

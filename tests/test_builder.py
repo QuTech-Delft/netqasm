@@ -4,7 +4,10 @@ from typing import List, Optional, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
 from netqasm.logging.glob import get_netqasm_logger
+from netqasm.sdk.build_types import NVHardwareConfig
+from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection
+from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
 from netqasm.sdk.qubit import Qubit
@@ -579,6 +582,266 @@ def test_try():
     )
 
 
+def test_loop_until():
+    with DebugConnection("Alice") as conn:
+
+        with conn.loop_until(max_iterations=10) as loop:
+            q = Qubit(conn)
+            m = q.measure()
+            constraint = ValueAtMostConstraint(m, 42)
+            loop.set_exit_condition(constraint)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_min_fidelity_all():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.create_keep(number=2, min_fidelity_all_at_end=80, max_tries=100)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = PreSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.SET,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.UNDEF,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_create_multiple_eprs():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr0, epr1 = epr_socket.create(2)
+
+        epr0.X()
+        epr1.Y()
+
+        _ = epr0.measure(store_array=False)
+        _ = epr1.measure(store_array=False)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    # Check if the qubits have the correct ID
+    epr0_id = 0
+    epr1_id = 1
+
+    for i, cmd in enumerate(subroutine.commands):
+        if not isinstance(cmd, ICmd):
+            continue
+        if cmd.instruction == GenericInstr.X:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr0_id
+        elif cmd.instruction == GenericInstr.Y:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr1_id
+
+
+def test_create_2_eprs_NV():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection(
+        "Alice",
+        epr_sockets=[epr_socket],
+        hardware_config=NVHardwareConfig(2),
+    ) as conn:
+        epr0, epr1 = epr_socket.create_keep(2)
+        print(f"epr0 ID: {epr0.qubit_id}")
+        print(f"epr1 ID: {epr1.qubit_id}")
+
+        epr0.X()
+        epr1.Y()
+
+        _ = epr0.measure(store_array=False)
+        _ = epr1.measure(store_array=False)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    # Check if the qubits have the correct ID
+    epr0_id = 1
+    epr1_id = 0
+
+    for i, cmd in enumerate(subroutine.commands):
+        if not isinstance(cmd, ICmd):
+            continue
+        if cmd.instruction == GenericInstr.X:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr0_id
+        elif cmd.instruction == GenericInstr.Y:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr1_id
+
+
+def test_create_3_eprs_NV():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection(
+        "Alice",
+        epr_sockets=[epr_socket],
+        hardware_config=NVHardwareConfig(3),
+    ) as conn:
+        epr0, epr1, epr2 = epr_socket.create_keep(3)
+        print(f"epr0 ID: {epr0.qubit_id}")
+        print(f"epr1 ID: {epr1.qubit_id}")
+        print(f"epr2 ID: {epr2.qubit_id}")
+
+        epr0.X()
+        epr1.Y()
+        epr2.Z()
+
+        _ = epr0.measure(store_array=False)
+        _ = epr1.measure(store_array=False)
+        _ = epr2.measure(store_array=False)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    # Check if the qubits have the correct ID
+    epr0_id = 2
+    epr1_id = 1
+    epr2_id = 0
+
+    for i, cmd in enumerate(subroutine.commands):
+        if not isinstance(cmd, ICmd):
+            continue
+        if cmd.instruction == GenericInstr.X:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr0_id
+        elif cmd.instruction == GenericInstr.Y:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr1_id
+        elif cmd.instruction == GenericInstr.Z:
+            prev_set_instr = subroutine.commands[i - 1]
+            assert prev_set_instr.operands[1] == epr2_id
+
+
+def test_bqc_receiver_NV():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection(
+        "Alice",
+        epr_sockets=[epr_socket],
+        hardware_config=NVHardwareConfig(2),
+        compiler=NVSubroutineCompiler,
+    ) as conn:
+        carbon, electron = epr_socket.recv_keep(2)
+
+        electron.cphase(carbon)
+
+        delta1 = math.pi
+        electron.rot_Z(angle=delta1)
+        electron.H()
+        _ = electron.measure(store_array=False)
+
+        delta2 = math.pi
+        carbon.rot_Z(angle=delta2)
+        carbon.H()
+        _ = carbon.measure()
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_bqc_receiver_NV_min_fidelity():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection(
+        "Alice",
+        epr_sockets=[epr_socket],
+        hardware_config=NVHardwareConfig(2),
+        compiler=NVSubroutineCompiler,
+    ) as conn:
+        carbon, electron = epr_socket.recv_keep(
+            2, min_fidelity_all_at_end=80, max_tries=25
+        )
+
+        electron.cphase(carbon)
+
+        delta1 = math.pi
+        electron.rot_Z(angle=delta1)
+        electron.H()
+        _ = electron.measure(store_array=False)
+
+        delta2 = math.pi
+        carbon.rot_Z(angle=delta2)
+        carbon.H()
+        _ = carbon.measure()
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     test_simple()
@@ -593,3 +856,10 @@ if __name__ == "__main__":
     test_epr_context_future_index()
     test_epr_post()
     test_try()
+    test_loop_until()
+    test_epr_min_fidelity_all()
+    test_create_multiple_eprs()
+    test_create_2_eprs_NV()
+    test_create_3_eprs_NV()
+    test_bqc_receiver_NV()
+    test_bqc_receiver_NV_min_fidelity()

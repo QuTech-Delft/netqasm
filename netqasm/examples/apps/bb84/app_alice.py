@@ -205,7 +205,10 @@ def main(app_config=None, num_bits=100):
     diff_outcome_count = outcome_comparison_count - sum(
         pair.same_outcome for pair in pairs_info if pair.test_outcome
     )
-    qber = (diff_outcome_count) / outcome_comparison_count
+    if outcome_comparison_count == 0:
+        qber = 1
+    else:
+        qber = (diff_outcome_count) / outcome_comparison_count
     key_rate_potential = 1 - 2 * h(qber)
 
     return {
