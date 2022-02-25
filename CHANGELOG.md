@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-2022-02-25 (0.8.7)
+2022-02-25 (0.9.0)
 ------------------
 - Refactored SDK code
 - Added `loop_until` context to SDK
