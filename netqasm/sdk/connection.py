@@ -52,7 +52,7 @@ from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
 from netqasm.util.log import LineTracker
 
-from .builder import Builder, SdkWhileTrueContext
+from .builder import Builder, SdkLoopUntilContext
 
 # Generic type for messages sent to the quantum node controller.
 # Note that `SubroutineMessage` does not derive from `Message` so it has to be
@@ -616,7 +616,7 @@ class BaseNetQASMConnection(abc.ABC):
         """
         self._builder.sdk_loop_body(body, stop, start, step, loop_register)
 
-    def loop_until(self, max_iterations: int) -> ContextManager[SdkWhileTrueContext]:
+    def loop_until(self, max_iterations: int) -> ContextManager[SdkLoopUntilContext]:
         """Create a context with code to be looped until the exit condition is met, or
         the maximum number of tries has been reached.
 

@@ -144,7 +144,7 @@ class SdkForEachContext:
         )
 
 
-class SdkWhileTrueContext:
+class SdkLoopUntilContext:
     """Context object for loop_until() statements in SDK code."""
 
     def __init__(self, id: int, builder: Builder, max_iterations: int):
@@ -884,7 +884,7 @@ class Builder:
 
     def _loop_until_get_break_commands(
         self,
-        context: SdkWhileTrueContext,
+        context: SdkLoopUntilContext,
         exit_label: str,
     ) -> List[T_Cmd]:
         commands: List[ICmd] = []
@@ -995,7 +995,7 @@ class Builder:
         return loop_register
 
     def _loop_until_context_exit(
-        self, context_id: int, context: SdkWhileTrueContext
+        self, context_id: int, context: SdkLoopUntilContext
     ) -> None:
         body_commands = self.subrt_pop_all_pending_commands()
         pre_commands = self._pre_context_commands.pop(context_id, None)
@@ -1540,7 +1540,7 @@ class Builder:
         self,
         pre_commands: List[T_Cmd],
         body_commands: List[T_Cmd],
-        context: SdkWhileTrueContext,
+        context: SdkLoopUntilContext,
         loop_register: operand.Register,
     ) -> None:
         if len(body_commands) == 0:
@@ -2047,11 +2047,11 @@ class Builder:
     @contextmanager
     def sdk_new_loop_until_context(
         self, max_iterations: int
-    ) -> Iterator[SdkWhileTrueContext]:
+    ) -> Iterator[SdkLoopUntilContext]:
         """Build commands for a 'loop_until' context and return the context object."""
         try:
             id = self._next_context_id
-            context = SdkWhileTrueContext(
+            context = SdkLoopUntilContext(
                 id=id, builder=self, max_iterations=max_iterations
             )
             self._next_context_id += 1
