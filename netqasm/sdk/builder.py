@@ -447,7 +447,7 @@ class Builder:
         self.add_qfree_commands(source)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
-        if self._compiler == NVSubroutineCompiler:
+        if self._compiler == NVSubroutineCompiler or True:
             for q in self.active_qubits:
                 # Find a free qubit
                 new_virtual_address = self._get_new_qubit_address()
@@ -463,7 +463,7 @@ class Builder:
     def add_measure_commands(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
     ) -> None:
-        if self._compiler == NVSubroutineCompiler:
+        if self._compiler == NVSubroutineCompiler or True:
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
             if not isinstance(qubit_id, Future):
@@ -1045,7 +1045,7 @@ class Builder:
                     )
             else:
                 virtual_address = None
-                if self._compiler == NVSubroutineCompiler:
+                if self._compiler == NVSubroutineCompiler or True:
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
                     virtual_address = 0
