@@ -12,10 +12,10 @@ jobs:
     - uses: actions/setup-python@master
       with:
         python-version: 3.8
-    - name: Install netqasm
-      run: make install
     - name: Install simulaqron
       run: pip install simulaqron
+    - name: Install netqasm
+      run: make install
     - name: Install projectq
       run: pip install -Iv projectq==0.5.1
     - name: Run examples
