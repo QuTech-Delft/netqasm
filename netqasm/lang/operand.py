@@ -70,7 +70,7 @@ class Address(Operand):
 @dataclass
 class ArrayEntry(Operand):
     address: Address
-    index: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
+    index: Union[Register, int]  # Can ONLY be int when in a "ProtoSubroutine"
 
     def __post_init__(self):
         if isinstance(self.address, int):
@@ -106,8 +106,8 @@ class ArrayEntry(Operand):
 @dataclass
 class ArraySlice(Operand):
     address: Address
-    start: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
-    stop: Union[Register, int]  # Can ONLY be int when in a "PreSubroutine"
+    start: Union[Register, int]  # Can ONLY be int when in a "ProtoSubroutine"
+    stop: Union[Register, int]  # Can ONLY be int when in a "ProtoSubroutine"
 
     def __post_init__(self):
         if isinstance(self.address, int):
@@ -144,6 +144,19 @@ class ArraySlice(Operand):
 
 @dataclass(eq=True, frozen=True)
 class Label:
+    name: str
+
+    def _assert_types(self):
+        assert isinstance(self.name, str)
+
+    def __str__(self):
+        return self.name
+
+
+@dataclass(eq=True, frozen=True)
+class Template(Operand):
+    """An operand that does not have a concrete value (it can be filled in later)."""
+
     name: str
 
     def _assert_types(self):

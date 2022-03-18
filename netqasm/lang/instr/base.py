@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from netqasm.lang import encoding
 from netqasm.lang.operand import (
@@ -43,7 +43,7 @@ class NetQASMInstruction(ABC):
 
     @classmethod
     @abstractmethod
-    def from_operands(cls, operands: List[Operand]) -> "NetQASMInstruction":
+    def from_operands(cls, operands: List[Union[Operand, int]]) -> "NetQASMInstruction":
         pass
 
     def writes_to(self) -> List[Register]:
@@ -96,7 +96,7 @@ class NoOperandInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 0
         return cls(id=cls.id)
 
@@ -128,7 +128,7 @@ class RegInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 1
         reg = operands[0]
         assert isinstance(reg, Register)
@@ -166,7 +166,7 @@ class RegRegInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 2
         reg0, reg1 = operands
         assert isinstance(reg0, Register)
@@ -207,13 +207,17 @@ class RegImmImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 3
         reg, imm0, imm1 = operands
         assert isinstance(reg, Register)
-        assert isinstance(imm0, int)
-        assert isinstance(imm1, int)
-        return cls(reg=reg, imm0=Immediate(value=imm0), imm1=Immediate(value=imm1))
+        assert isinstance(imm0, int) or isinstance(imm0, Immediate)
+        if isinstance(imm0, int):
+            imm0 = Immediate(value=imm0)
+        assert isinstance(imm1, int) or isinstance(imm1, Immediate)
+        if isinstance(imm1, int):
+            imm1 = Immediate(value=imm1)
+        return cls(reg=reg, imm0=imm0, imm1=imm1)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.imm0)} {str(self.imm1)}"
@@ -255,16 +259,18 @@ class RegRegImmImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 4
         reg0, reg1, imm0, imm1 = operands
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
-        assert isinstance(imm0, int)
-        assert isinstance(imm1, int)
-        return cls(
-            reg0=reg0, reg1=reg1, imm0=Immediate(value=imm0), imm1=Immediate(value=imm1)
-        )
+        assert isinstance(imm0, int) or isinstance(imm0, Immediate)
+        if isinstance(imm0, int):
+            imm0 = Immediate(value=imm0)
+        assert isinstance(imm1, int) or isinstance(imm1, Immediate)
+        if isinstance(imm1, int):
+            imm1 = Immediate(value=imm1)
+        return cls(reg0=reg0, reg1=reg1, imm0=imm0, imm1=imm1)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.imm0)} {str(self.imm1)}"
@@ -303,7 +309,7 @@ class RegRegRegInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 3
         reg0, reg1, reg2 = operands
         assert isinstance(reg0, Register)
@@ -351,7 +357,7 @@ class RegRegRegRegInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 4
         reg0, reg1, reg2, reg3 = operands
         assert isinstance(reg0, Register)
@@ -393,11 +399,14 @@ class ImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 1
         imm = operands[0]
-        assert isinstance(imm, int)
-        return cls(imm=Immediate(value=imm))
+        assert isinstance(imm, int) or isinstance(imm, Immediate)
+        if isinstance(imm, int):
+            imm = Immediate(value=imm)
+
+        return cls(imm=imm)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.imm)}"
@@ -431,13 +440,17 @@ class ImmImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 2
         imm0 = operands[0]
         imm1 = operands[1]
-        assert isinstance(imm0, int)
-        assert isinstance(imm1, int)
-        return cls(imm0=Immediate(value=imm0), imm1=Immediate(value=imm1))
+        assert isinstance(imm0, int) or isinstance(imm0, Immediate)
+        if isinstance(imm0, int):
+            imm0 = Immediate(value=imm0)
+        assert isinstance(imm1, int) or isinstance(imm1, Immediate)
+        if isinstance(imm1, int):
+            imm1 = Immediate(value=imm1)
+        return cls(imm0=imm0, imm1=imm1)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.imm0)} {str(self.imm1)}"
@@ -476,13 +489,15 @@ class RegRegImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 3
         reg0, reg1, imm = operands
         assert isinstance(reg0, Register)
         assert isinstance(reg1, Register)
-        assert isinstance(imm, int)
-        return cls(reg0=reg0, reg1=reg1, imm=Immediate(value=imm))
+        assert isinstance(imm, int) or isinstance(imm, Immediate)
+        if isinstance(imm, int):
+            imm = Immediate(value=imm)
+        return cls(reg0=reg0, reg1=reg1, imm=imm)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.imm)}"
@@ -516,12 +531,14 @@ class RegImmInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 2
         reg, imm = operands
         assert isinstance(reg, Register)
-        assert isinstance(imm, int)
-        return cls(reg=reg, imm=Immediate(value=imm))
+        assert isinstance(imm, int) or isinstance(imm, Immediate)
+        if isinstance(imm, int):
+            imm = Immediate(value=imm)
+        return cls(reg=reg, imm=imm)
 
     def _pretty_print(self):
         return f"{self.mnemonic} {str(self.reg)} {str(self.imm)}"
@@ -555,7 +572,7 @@ class RegEntryInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 2
         reg, entry = operands
         assert isinstance(reg, Register)
@@ -594,7 +611,7 @@ class RegAddrInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 2
         reg, addr = operands
         assert isinstance(reg, Register)
@@ -629,7 +646,7 @@ class ArrayEntryInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 1
         entry = operands[0]
         assert isinstance(entry, ArrayEntry)
@@ -663,7 +680,7 @@ class ArraySliceInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 1
         slice = operands[0]
         assert isinstance(slice, ArraySlice)
@@ -697,7 +714,7 @@ class AddrInstruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 1
         addr = operands[0]
         assert isinstance(addr, Address)
@@ -747,7 +764,7 @@ class Reg5Instruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 5
         reg0, reg1, reg2, reg3, reg4 = operands
         assert isinstance(reg0, Register)
@@ -784,7 +801,7 @@ class DebugInstruction(NetQASMInstruction):
         return b""
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         pass
 
     def _pretty_print(self):

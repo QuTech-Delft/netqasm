@@ -25,19 +25,16 @@ from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.ir import (
-    Address,
-    ArrayEntry,
-    ArraySlice,
     BranchLabel,
     BreakpointAction,
     BreakpointRole,
     GenericInstr,
     ICmd,
-    Label,
-    PreSubroutine,
-    T_OperandUnion,
+    ProtoSubroutine,
+    T_ProtoOperand,
     flip_branch_instr,
 )
+from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Template
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
@@ -59,13 +56,13 @@ from netqasm.sdk.build_types import (
     T_LoopRoutine,
     T_PostRoutine,
 )
-from netqasm.sdk.compiling import NVSubroutineCompiler, SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.constraint import SdkConstraint, ValueAtMostConstraint
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit
 from netqasm.sdk.toolbox import get_angle_spec_from_float
+from netqasm.sdk.transpile import NVSubroutineTranspiler, SubroutineTranspiler
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
 
@@ -189,11 +186,11 @@ class SdkLoopUntilContext:
 
 
 class Builder:
-    """Object that transforms Python script code into `PreSubroutine`s.
+    """Object that transforms Python script code into `ProtoSubroutine`s.
 
     A Connection uses a Builder to handle statements in application script code.
     The Builder converts the statements into pseudo-NetQASM instructions that are
-    assembled into a PreSubroutine. When the connectin flushes, the PreSubroutine is
+    assembled into a ProtoSubroutine. When the connectin flushes, the ProtoSubroutine is
     is compiled into a NetQASM subroutine.
     """
 
@@ -203,7 +200,7 @@ class Builder:
         app_id: int,
         hardware_config: Optional[HardwareConfig] = None,
         log_config: LogConfig = None,
-        compiler: Optional[Type[SubroutineCompiler]] = None,
+        compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,
     ):
         """Builder constructor. Typically not used directly by the Host script.
@@ -215,7 +212,7 @@ class Builder:
         :param log_config: logging configuration, typically just passed as-is by the
             connection object
         :param compiler: which compiler class to use for the translation from
-            PreSubroutine to Subroutine
+            ProtoSubroutine to Subroutine
         :param return_arrays: whether to add ret_arr NetQASM instructions at the end of
             each subroutine (for all arrays that are used in the subroutine). May be
             set to False if the quantum node controller does not support returning
@@ -258,11 +255,11 @@ class Builder:
         self._max_qubits: int = self._hardware_config.qubit_count
 
         # What compiler (if any) to be used
-        self._compiler: Optional[Type[SubroutineCompiler]] = compiler
+        self._compiler: Optional[Type[SubroutineTranspiler]] = compiler
 
         # If an NV compiler is specified but not an NV hardware config,
         # make sure an NV config is used after all.
-        if compiler == NVSubroutineCompiler:
+        if compiler == NVSubroutineTranspiler:
             num_qubits = self._hardware_config.qubit_count
             self._hardware_config = NVHardwareConfig(num_qubits)
 
@@ -321,28 +318,23 @@ class Builder:
         self._pending_commands = []
         return commands
 
-    def subrt_pop_pending_subroutine(self) -> Optional[PreSubroutine]:
+    def subrt_pop_pending_subroutine(self) -> Optional[ProtoSubroutine]:
         # Add commands for initialising and returning arrays
         self._build_cmds_allocated_arrays()
         self._build_cmds_return_registers()
         if len(self._pending_commands) > 0:
             commands = self.subrt_pop_all_pending_commands()
-            metadata = self.subrt_get_metadata()
-            return PreSubroutine(**metadata, commands=commands)
+            return ProtoSubroutine(
+                commands=commands, netqasm_version=NETQASM_VERSION, app_id=self.app_id
+            )
         else:
             return None
 
-    def subrt_get_metadata(self) -> Dict:
-        return {
-            "netqasm_version": NETQASM_VERSION,
-            "app_id": self.app_id,
-        }
-
-    def subrt_compile_subroutine(self, pre_subroutine: PreSubroutine) -> Subroutine:
-        """Convert a PreSubroutine into a Subroutine."""
+    def subrt_compile_subroutine(self, pre_subroutine: ProtoSubroutine) -> Subroutine:
+        """Convert a ProtoSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
         if self._compiler is not None:
-            subroutine = self._compiler(subroutine=subroutine).compile()
+            subroutine = self._compiler(subroutine=subroutine).transpile()
         if self._track_lines:
             self._log_subroutine(subroutine=subroutine)
         return subroutine
@@ -721,7 +713,7 @@ class Builder:
 
     def _get_condition_operand(
         self, value: T_CValue
-    ) -> Tuple[List[ICmd], T_OperandUnion]:
+    ) -> Tuple[List[ICmd], T_ProtoOperand]:
         if isinstance(value, Future):
             # Register for checking branching based on condition
             reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -774,7 +766,7 @@ class Builder:
     ) -> Tuple[List[ICmd], List[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
-        cond_operands: List[T_OperandUnion] = []
+        cond_operands: List[T_ProtoOperand] = []
         if_start: List[ICmd] = []
 
         temp_regs_to_remove: List[operand.Register] = []
@@ -1026,7 +1018,7 @@ class Builder:
         self,
         instruction: GenericInstr,
         virtual_qubit_id: int,
-        n: int = 0,
+        n: Union[int, Template] = 0,
         d: int = 0,
         angle: Optional[float] = None,
     ) -> None:
@@ -1041,7 +1033,11 @@ class Builder:
                 )
             return
         if not (isinstance(n, int) and isinstance(d, int) and n >= 0 and d >= 0):
-            raise ValueError(f"{n} * pi / 2 ^ {d} is not a valid angle specification")
+            # We only allow this if n is a Template
+            if not isinstance(n, Template):
+                raise ValueError(
+                    f"{n} * pi / 2 ^ {d} is not a valid angle specification"
+                )
         register = self._get_qubit_register()
         self._build_cmds_set_register_value(register, virtual_qubit_id)
         rot_command = ICmd(

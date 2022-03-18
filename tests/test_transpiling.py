@@ -8,12 +8,12 @@ from netqasm.lang.instr import core
 from netqasm.lang.instr.flavour import NVFlavour, VanillaFlavour
 from netqasm.lang.operand import Register
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
-from netqasm.lang.parsing import parse_text_subroutine
+from netqasm.lang.parsing.text import parse_text_subroutine
 from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import set_log_level
-from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 
 def pad_single_matrix(m: np.ndarray, index: int, total: int) -> np.ndarray:
@@ -99,20 +99,20 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.ndarray:
     """Try to write quantum instructions in subroutine as one matrix.
     This function relies on the fact that the subroutine has only "set"
     instructions for Q registers, and should only be used for subroutines
-    specifically made for testing the NV compiler.
+    specifically made for testing the NV transpiler.
     """
     qreg_values: Dict[Register, int] = dict()
     virt_ids: Set[int] = set()
 
     # first pass: collect virt IDs used
-    for instr in subroutine.commands:
+    for instr in subroutine.instructions:
         if isinstance(instr, core.SetInstruction):
             virt_ids.add(instr.imm.value)
 
     sub_matrix = SubroutineMatrix(virt_ids)
 
     # second pass: keep track of qreg values and construct matrix
-    for instr in subroutine.commands:
+    for instr in subroutine.instructions:
         if isinstance(instr, core.SetInstruction):
             qreg_values[instr.reg] = instr.imm.value
 
@@ -188,23 +188,23 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.ndarray:
 )
 def test_mapping(text_subroutine: str):
     """
-    Test whether the NV compiler correctly maps gates by comparing the matrices
+    Test whether the NV transpiler correctly maps gates by comparing the matrices
     representing these gates. For this it's sufficient to have simple (incomplete, e.g. no alloc) subroutines.
     """
     vanilla_subroutine = parse_text_subroutine(text_subroutine)
     vanilla_matrix = _subroutine_as_matrix(vanilla_subroutine)
     print(f"vanilla: {vanilla_matrix}")
 
-    compiled_subroutine = NVSubroutineCompiler(vanilla_subroutine).compile()
-    compiled_matrix = _subroutine_as_matrix(compiled_subroutine)
-    print(f"compiled: {np.round(compiled_matrix, 2)}")
-    print(compiled_subroutine)
+    transpiled_subroutine = NVSubroutineTranspiler(vanilla_subroutine).transpile()
+    transpiled_matrix = _subroutine_as_matrix(transpiled_subroutine)
+    print(f"transpiled: {np.round(transpiled_matrix, 2)}")
+    print(transpiled_subroutine)
 
     assert True  # TODO: test mapping of controlled-rotation gates
-    # assert are_matrices_equal(vanilla_matrix, compiled_matrix)
+    # assert are_matrices_equal(vanilla_matrix, transpiled_matrix)
 
 
-def test_compiling_nv():
+def test_transpiling_nv():
     text_subroutine = """
 # NETQASM 0.0
 # APPID 0
@@ -223,11 +223,11 @@ rot_y Q0 1 2
 rot_z Q0 1 2
 """
     original_subroutine = parse_text_subroutine(text_subroutine)
-    print(f"before compiling: {original_subroutine}")
-    subroutine = NVSubroutineCompiler(original_subroutine).compile()
-    print(f"after compiling: {subroutine}")
+    print(f"before transpiling: {original_subroutine}")
+    subroutine = NVSubroutineTranspiler(original_subroutine).transpile()
+    print(f"after transpiling: {subroutine}")
 
-    for instr in subroutine.commands:
+    for instr in subroutine.instructions:
         assert instr.__class__ not in VanillaFlavour().instrs
 
 
@@ -262,19 +262,19 @@ rot_z Q0 1 2
         ),
     ],
 )
-def test_compiling_nv_text(subroutine_str):
+def test_transpiling_nv_text(subroutine_str):
     original = parse_text_subroutine(subroutine_str)
-    print(f"before compiling: {original}")
-    compiled = NVSubroutineCompiler(original).compile()
-    print(f"after compiling: {compiled}")
+    print(f"before transpiling: {original}")
+    transpiled = NVSubroutineTranspiler(original).transpile()
+    print(f"after transpiling: {transpiled}")
 
-    for instr in compiled.commands:
+    for instr in transpiled.instructions:
         assert instr.__class__ not in VanillaFlavour().instrs
 
 
-def test_compiling_nv_using_sdk():
+def test_transpiling_nv_using_sdk():
     set_log_level("DEBUG")
-    with DebugConnection("Alice", compiler=NVSubroutineCompiler) as alice:
+    with DebugConnection("Alice", compiler=NVSubroutineTranspiler) as alice:
         q = Qubit(alice)
         q.X()
         q.Y()
@@ -293,9 +293,10 @@ def test_compiling_nv_using_sdk():
 
     # NOTE this does not test much anymore since we need to state which flavour we
     # are using to be able to deserialize
-    for instr in subroutine.commands:
+    for instr in subroutine.instructions:
         assert instr.__class__ not in VanillaFlavour().instrs
 
 
 if __name__ == "__main__":
-    test_compiling_nv_using_sdk()
+    test_transpiling_nv()
+    test_transpiling_nv_using_sdk()

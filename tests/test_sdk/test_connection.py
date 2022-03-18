@@ -1,5 +1,6 @@
 import logging
 
+from netqasm import NETQASM_VERSION
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
 from netqasm.backend.network_stack import CREATE_FIELDS
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
@@ -35,9 +36,9 @@ def test_simple():
     raw_subroutine = deserialize_message(raw=alice.storage[1]).subroutine
     subroutine = deserialize_subroutine(raw_subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 imm=Immediate(0),
@@ -104,13 +105,12 @@ def test_simple():
             # ]),
         ],
     )
-    for command, expected_command in zip(subroutine.commands, expected.commands):
-        print(repr(command))
-        print(repr(expected_command))
-        assert command == expected_command
+    for instr, expected_instr in zip(subroutine.instructions, expected.instructions):
+        print(repr(instr))
+        print(repr(expected_instr))
+        assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 def test_rotations():
@@ -124,9 +124,9 @@ def test_rotations():
     raw_subroutine = deserialize_message(raw=alice.storage[1]).subroutine
     subroutine = deserialize_subroutine(raw_subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 imm=Immediate(0),
@@ -148,13 +148,12 @@ def test_rotations():
             ),
         ],
     )
-    for command, expected_command in zip(subroutine.commands, expected.commands):
-        print(repr(command))
-        print(repr(expected_command))
-        assert command == expected_command
+    for instr, expected_instr in zip(subroutine.instructions, expected.instructions):
+        print(repr(instr))
+        print(repr(expected_instr))
+        assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 def test_epr():
@@ -172,9 +171,9 @@ def test_epr():
     subroutine = deserialize_subroutine(raw_subroutine)
     print(subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             # Arg array
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
@@ -303,15 +302,14 @@ def test_epr():
             ),
         ],
     )
-    for i, command in enumerate(subroutine.commands):
-        print(repr(command))
-        expected_command = expected.commands[i]
-        print(repr(expected_command))
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
         print()
-        assert command == expected_command
+        assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 def test_two_epr():
@@ -330,9 +328,9 @@ def test_two_epr():
     subroutine = deserialize_subroutine(raw_subroutine)
     print(subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             # Arg array
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
@@ -481,15 +479,14 @@ def test_two_epr():
             ),
         ],
     )
-    for i, command in enumerate(subroutine.commands):
-        print(repr(command))
-        expected_command = expected.commands[i]
-        print(repr(expected_command))
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
         print()
-        assert command == expected_command
+        assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 def test_epr_m():
@@ -509,9 +506,9 @@ def test_epr_m():
     subroutine = deserialize_subroutine(raw_subroutine)
     print(subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             # Arg array
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 1),
@@ -657,15 +654,14 @@ def test_epr_m():
             ),
         ],
     )
-    for i, command in enumerate(subroutine.commands):
-        print(repr(command))
-        expected_command = expected.commands[i]
-        print(repr(expected_command))
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
         print()
-        assert command == expected_command
+        assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 def test_epr_r_create():
@@ -684,9 +680,9 @@ def test_epr_r_create():
     raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
     subroutine = deserialize_subroutine(raw_subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             # Arg array
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 1),
@@ -832,15 +828,14 @@ def test_epr_r_create():
             ),
         ],
     )
-    for i, command in enumerate(subroutine.commands):
-        print(repr(command))
-        expected_command = expected.commands[i]
-        print(repr(expected_command))
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
         print()
-        assert command == expected_command
+        assert instr == expected_instr
     print(f"subroutine: {subroutine}")
     print(f"expected: {expected}")
-    assert subroutine == expected
 
 
 def test_epr_r_receive():
@@ -857,9 +852,9 @@ def test_epr_r_receive():
     subroutine = deserialize_subroutine(raw_subroutine)
     print(subroutine)
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             # Arg array
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
@@ -937,15 +932,14 @@ def test_epr_r_receive():
             ),
         ],
     )
-    for i, command in enumerate(subroutine.commands):
-        print(f"actual command: {repr(command)}")
-        expected_command = expected.commands[i]
-        print(f"expected command: {repr(expected_command)}")
+    for i, instr in enumerate(subroutine.instructions):
+        print(f"actual command: {repr(instr)}")
+        expected_instr = expected.instructions[i]
+        print(f"expected command: {repr(expected_instr)}")
         print()
-        assert command == expected_command
+        assert instr == expected_instr
     print(f"actual: {subroutine}")
     print(f"expected: {expected}")
-    assert subroutine == expected
 
 
 def test_epr_max_time():
@@ -962,7 +956,7 @@ def test_epr_max_time():
     raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
     subroutine = deserialize_subroutine(raw_subroutine)
     print(subroutine)
-    assert subroutine.commands[15:21] == [
+    assert subroutine.instructions[15:21] == [
         instructions.core.SetInstruction(
             reg=Register(RegisterName.R, 0),
             imm=Immediate(1),

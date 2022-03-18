@@ -1,6 +1,6 @@
 """Transpilation of subroutines from one flavour to another.
 
-This module contains the SubroutineCompiler interface which is a base class for
+This module contains the SubroutineTranspiler interface which is a base class for
 transpilers that can convert a NetQASM subroutine into a subroutine with a specific
 flavour.
 """
@@ -15,17 +15,17 @@ from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.util.log import HostLine
 
 
-class SubroutineCompiler(abc.ABC):
+class SubroutineTranspiler(abc.ABC):
     def __init__(self, subroutine: Subroutine, debug: bool = False):
         pass
 
     @abc.abstractmethod
-    def compile(self) -> Subroutine:
-        """Compile the subroutine into one with a specific flavour."""
+    def transpile(self) -> Subroutine:
+        """Transpile the subroutine into one with a specific flavour."""
         pass
 
 
-class NVSubroutineCompiler(SubroutineCompiler):
+class NVSubroutineTranspiler(SubroutineTranspiler):
     """A transpiler that converts a subroutine with the vanilla flavour to a subroutine
     with the NV flavour.
     """
@@ -122,16 +122,16 @@ class NVSubroutineCompiler(SubroutineCompiler):
 
         return gates
 
-    def compile(self) -> Subroutine:
+    def transpile(self) -> Subroutine:
         """
-        Very simple compiling pass: iterate over all instructions once and rewrite them in-line.
+        Very simple transpiling pass: iterate over all instructions once and rewrite them in-line.
         While iterating, keep track of which registers are in use and what their values are.
         """
         new_commands: List[NetQASMInstruction] = []
 
         index_changes = {}  # map index in commands to index in new_commands
 
-        for i, instr in enumerate(self._subroutine.commands):
+        for i, instr in enumerate(self._subroutine.instructions):
             # check which registers are being written to
             affected_regs = instr.writes_to()
 
@@ -147,9 +147,9 @@ class NVSubroutineCompiler(SubroutineCompiler):
                     # don't allow writing to a Q-register by any other instruction type
                     # TODO
                     # raise RuntimeError(
-                    #     f"Cannot compile: the instruction {instr} writes to"
+                    #     f"Cannot transpile: the instruction {instr} writes to"
                     #     " a Q-register but the value cannot be determined"
-                    #     " at compile time.")
+                    #     " at transpile time.")
 
             for op in instr.operands:
                 # update used registers
@@ -176,7 +176,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 or isinstance(instr, core.JmpInstruction)
             ):
                 original_line = instr.line.value
-                if original_line == len(self._subroutine.commands):
+                if original_line == len(self._subroutine.instructions):
                     # There was a label in the original subroutine at the very end.
                     # Since this label is now removed, we should put a "no-op"
                     # instruction there so there is something to jump to.
@@ -192,7 +192,7 @@ class NVSubroutineCompiler(SubroutineCompiler):
                 )
             ]
 
-        self._subroutine.commands = new_commands
+        self._subroutine.instructions = new_commands
         return self._subroutine
 
     def _move_electron_carbon(
@@ -272,10 +272,10 @@ class NVSubroutineCompiler(SubroutineCompiler):
             qubit_id0 = self.get_reg_value(instr.reg0).value
             qubit_id1 = self.get_reg_value(instr.reg1).value
         except KeyError:
-            # Register values are not known at compile time.
+            # Register values are not known at transpile time.
             # We may assume that this is a MOV operation from the communication
             # qubit to a memory qubit. (This is the only time a gate uses
-            # operands that are not known at compile time.)
+            # operands that are not known at transpile time.)
             assert isinstance(instr, vanilla.MovInstruction)
             return self._move_electron_carbon(instr)
 

@@ -14,7 +14,7 @@ class Deserializer:
     :class:`~.NetQASMInstructions` are immediately created from the binary encoding.
 
     (This is in contrast with the parsing.text module, which first converts the input
-    to a :class:`~.PreSubroutine`, consisting of :class:`~.subroutine.ICmd` s, before transforming it into
+    to a :class:`~.ProtoSubroutine`, consisting of :class:`~.subroutine.ICmd` s, before transforming it into
     a :class:`~.Subroutine` containing :class:`~.NetQASMInstruction` s.)
     """
 
@@ -33,7 +33,7 @@ class Deserializer:
             raise ValueError("Length of data not a multiple of command length")
         num_commands = int(len(raw) / encoding.COMMAND_BYTES)
 
-        commands = [
+        instructions = [
             self.deserialize_command(
                 raw[i * encoding.COMMAND_BYTES : (i + 1) * encoding.COMMAND_BYTES]
             )
@@ -41,9 +41,9 @@ class Deserializer:
         ]
 
         return Subroutine(
-            netqasm_version=tuple(metadata.netqasm_version),
-            app_id=metadata.app_id,
-            commands=commands,
+            netqasm_version=tuple(metadata.netqasm_version),  # type: ignore
+            app_id=metadata.app_id,  # type: ignore
+            instructions=instructions,
         )
 
     def deserialize_command(self, raw: bytes) -> NetQASMInstruction:

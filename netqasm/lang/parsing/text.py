@@ -4,26 +4,34 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
 from netqasm.lang.instr import Flavour, VanillaFlavour
+from netqasm.lang.instr.base import NetQASMInstruction
 from netqasm.lang.ir import (
     BranchLabel,
     GenericInstr,
     ICmd,
-    PreSubroutine,
+    ProtoSubroutine,
     string_to_instruction,
 )
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Register
+from netqasm.lang.operand import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+    Register,
+    Template,
+)
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.symbols import Symbols
 from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.util.string import group_by_word, is_number, is_variable_name
 
 T_Cmd = Union[ICmd, BranchLabel]
-T_ParsedValue = Union[int, Register, Label]
+T_ParsedValue = Union[int, Register, Label, Template]
 
 
-def parse_text_presubroutine(text: str) -> PreSubroutine:
+def parse_text_protosubroutine(text: str) -> ProtoSubroutine:
     """
-    Convert a text representation of a subroutine into a PreSubroutine object.
+    Convert a text representation of a subroutine into a ProtoSubroutine object.
     """
     preamble_lines, body_lines_with_macros = _split_preamble_body(text)
     preamble_data = _parse_preamble(preamble_lines)
@@ -43,10 +51,10 @@ def parse_text_subroutine(
     """
     Convert a text representation of a subroutine into a Subroutine object.
 
-    Internally, first a `PreSubroutine` object is created, consisting of `ICmd`s.
+    Internally, first a `ProtoSubroutine` object is created, consisting of `ICmd`s.
     This is then converted into a `Subroutine` using `assemble_subroutine`.
     """
-    pre_subroutine = parse_text_presubroutine(subroutine)
+    pre_subroutine = parse_text_protosubroutine(subroutine)
     assembled_subroutine = assemble_subroutine(
         pre_subroutine=pre_subroutine,
         assign_branch_labels=assign_branch_labels,
@@ -58,14 +66,14 @@ def parse_text_subroutine(
 
 
 def assemble_subroutine(
-    pre_subroutine: PreSubroutine,
+    pre_subroutine: ProtoSubroutine,
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
     flavour: Flavour = None,
 ) -> Subroutine:
     """
-    Convert a `PreSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).
+    Convert a `ProtoSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).
     """
     if make_args_operands:
         _make_args_operands(pre_subroutine)
@@ -81,12 +89,8 @@ def assemble_subroutine(
     return subroutine
 
 
-def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subroutine:
-    subroutine = Subroutine(
-        netqasm_version=pre_subroutine.netqasm_version,
-        app_id=pre_subroutine.app_id,
-        commands=[],
-    )
+def _build_subroutine(pre_subroutine: ProtoSubroutine, flavour: Flavour) -> Subroutine:
+    instructions: List[NetQASMInstruction] = []
 
     for command in pre_subroutine.commands:
         assert isinstance(command, ICmd)
@@ -94,12 +98,19 @@ def _build_subroutine(pre_subroutine: PreSubroutine, flavour: Flavour) -> Subrou
         instr = flavour.get_instr_by_name(command.instruction.name.lower())
         new_command = instr.from_operands(command.operands)
         new_command.lineno = command.lineno
+        instructions.append(new_command)
 
-        subroutine.commands.append(new_command)
-    return subroutine
+    return Subroutine(
+        instructions=instructions,
+        arguments=pre_subroutine.arguments,
+        netqasm_version=pre_subroutine.netqasm_version,
+        app_id=pre_subroutine.app_id,
+    )
 
 
-def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
+def _create_subroutine(
+    preamble_data: Dict[str, List[List[str]]], body_lines: List[str]
+) -> ProtoSubroutine:
     commands: List[Union[ICmd, BranchLabel]] = []
     for line in body_lines:
         if line.endswith(Symbols.BRANCH_END):
@@ -123,12 +134,23 @@ def _create_subroutine(preamble_data, body_lines: List[str]) -> PreSubroutine:
             )
             commands.append(command)
 
-    return PreSubroutine(
-        netqasm_version=_parse_netqasm_version(
+    if Symbols.PREAMBLE_NETQASM in preamble_data:
+        netqasm_version = _parse_netqasm_version(
             preamble_data[Symbols.PREAMBLE_NETQASM][0][0]
-        ),
-        app_id=int(preamble_data[Symbols.PREAMBLE_APPID][0][0]),
+        )
+    else:
+        netqasm_version = None
+
+    app_id: Optional[int]
+    if Symbols.PREAMBLE_APPID in preamble_data:
+        app_id = int(preamble_data[Symbols.PREAMBLE_APPID][0][0])
+    else:
+        app_id = None
+
+    return ProtoSubroutine(
         commands=commands,
+        netqasm_version=netqasm_version,
+        app_id=app_id,
     )
 
 
@@ -176,10 +198,12 @@ def _parse_operand(word: str):
     if word.startswith(Symbols.ADDRESS_START):
         return parse_address(word)
     else:
-        return _parse_value(word, allow_label=True)
+        return _parse_value(word, allow_label=True, allow_template=True)
 
 
-def _parse_value(value: str, allow_label: bool = False) -> T_ParsedValue:
+def _parse_value(
+    value: str, allow_label: bool = False, allow_template: bool = False
+) -> T_ParsedValue:
     # Try to parse a constant
     try:
         return _parse_constant(value)
@@ -199,6 +223,13 @@ def _parse_value(value: str, allow_label: bool = False) -> T_ParsedValue:
         except NetQASMSyntaxError:
             pass
 
+    if allow_template:
+        # Parse a template
+        try:
+            return _parse_template(value)
+        except NetQASMSyntaxError:
+            pass
+
     raise NetQASMSyntaxError(f"{value} is not a valid value in this case")
 
 
@@ -214,6 +245,13 @@ def _parse_label(label: str) -> Label:
     if not is_variable_name(label):
         raise NetQASMSyntaxError(f"Expected a label, got {label}")
     return Label(label)
+
+
+def _parse_template(template: str) -> Template:
+    assert template.startswith("{")
+    assert template.endswith("}")
+    template = template.strip(Symbols.TEMPLATE_BRACKETS).strip()
+    return Template(template)
 
 
 _REGISTER_NAMES = {reg.name: reg for reg in RegisterName}
@@ -349,12 +387,19 @@ def _parse_preamble(preamble_lines: List[str]) -> Dict[str, List[List[str]]]:
     return preamble_instructions
 
 
-def _assert_valid_preamble_instructions(preamble_instructions):
-    preamble_assertions = {
-        Symbols.PREAMBLE_NETQASM: _assert_valid_preamble_instr_netqasm,
-        Symbols.PREAMBLE_APPID: _assert_valid_preamble_instr_appid,
-        Symbols.PREAMBLE_DEFINE: _assert_valid_preamble_instr_define,
-    }
+def _assert_valid_preamble_instructions(
+    preamble_instructions, is_template: bool = False
+):
+    if is_template:
+        preamble_assertions = {
+            Symbols.PREAMBLE_DEFINE: _assert_valid_preamble_instr_define,
+        }
+    else:
+        preamble_assertions = {
+            Symbols.PREAMBLE_NETQASM: _assert_valid_preamble_instr_netqasm,
+            Symbols.PREAMBLE_APPID: _assert_valid_preamble_instr_appid,
+            Symbols.PREAMBLE_DEFINE: _assert_valid_preamble_instr_define,
+        }
     for instr, list_of_operands in preamble_instructions.items():
         preamble_assertion = preamble_assertions.get(instr)
         if preamble_assertion is None:

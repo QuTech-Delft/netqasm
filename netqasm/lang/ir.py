@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+from netqasm import NETQASM_VERSION
 from netqasm.lang.symbols import Symbols
 from netqasm.util.string import rspaces
 
 if TYPE_CHECKING:
     from netqasm.util import log
 
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Register
+from netqasm.lang.operand import Label, Operand, Template
 
 
 class GenericInstr(Enum):
@@ -120,14 +121,7 @@ def string_to_instruction(instr_str):
     return instr
 
 
-T_OperandUnion = Union[
-    int,
-    Register,
-    Address,
-    ArrayEntry,
-    ArraySlice,
-    Label,
-]
+T_ProtoOperand = Union[int, Label, Operand]
 
 
 def _get_lineo_str(lineno):
@@ -142,7 +136,7 @@ def _get_lineo_str(lineno):
 class ICmd:
     instruction: GenericInstr
     args: List[int] = None  # type: ignore
-    operands: List[T_OperandUnion] = None  # type: ignore
+    operands: List[T_ProtoOperand] = None  # type: ignore
     lineno: Optional[log.HostLine] = None
 
     def __post_init__(self):
@@ -196,25 +190,103 @@ class BranchLabel:
         return f"{lineno_str}{self.name}{Symbols.BRANCH_END}"
 
 
-@dataclass
-class PreSubroutine:
+class ProtoSubroutine:
     """
-    A :class:`~.PreSubroutine` object represents a preliminary subroutine that consists of
-    general 'commands' that might not yet be valid NetQASM instructions.
-    These commands can include labels, or instructions with immediates that still need
-    to be converted to registers.
+    A `ProtoSubroutine` object represents a preliminary subroutine that consists
+    of general 'commands' that might not yet be valid NetQASM instructions.
+    These commands can include labels, or instructions with immediates that
+    still need to be converted to registers.
 
-    :class:`~.PreSubroutine`s are currently only used by the sdk and the text parser (netqasm.parser.text).
-    In both cases they are converted into :class:`~.Subroutine` objects before given to other package components.
+    ProtoSubroutines can optionally have *arguments*, which are
+    yet-to-be-defined variables that are used in one or more of the commands in
+    the ProtoSubroutine. So, a ProtoSubroutine can be seen as a function which
+    takes certain parameters (arguments). Concrete values for arguments can be
+    given by instantiating (using the `instantiate` method).
+
+    `ProtoSubroutine`s are currently only used by the sdk and the text parser
+    (netqasm.parser.text). In both cases they are converted into `Subroutine`
+    objects before given to other package components.
     """
 
-    netqasm_version: tuple
-    app_id: int
-    commands: List[Union[ICmd, BranchLabel]]
+    def __init__(
+        self,
+        commands: Optional[List[Union[ICmd, BranchLabel]]] = None,
+        arguments: Optional[List[str]] = None,
+        netqasm_version: Tuple[int, int] = NETQASM_VERSION,
+        app_id: Optional[int] = None,
+    ) -> None:
+        self._netqasm_version: Tuple[int, int] = netqasm_version
+        self._app_id: Optional[int] = app_id
+
+        self._commands: List[Union[ICmd, BranchLabel]] = []
+        if commands is not None:
+            self._commands = commands
+
+        self._arguments: List[str] = []
+        if arguments is not None:
+            self._arguments = arguments
+
+        else:
+            # figure out arguments by inspecting all commands
+            for cmd in self.commands:
+                if not isinstance(cmd, ICmd):
+                    continue
+                for op in cmd.operands:
+                    if isinstance(op, Template):
+                        self._arguments.append(op.name)
+
+    @property
+    def netqasm_version(self) -> Tuple[int, int]:
+        return self._netqasm_version
+
+    @property
+    def app_id(self) -> Optional[int]:
+        return self._app_id
+
+    @property
+    def commands(self) -> List[Union[ICmd, BranchLabel]]:
+        return self._commands
+
+    @commands.setter
+    def commands(self, new_commands: List[Union[ICmd, BranchLabel]]) -> None:
+        self._commands = new_commands
+
+    @property
+    def arguments(self) -> List[str]:
+        return self._arguments
 
     def __str__(self):
-        to_return = f"PreSubroutine (netqasm_version={self.netqasm_version}, app_id={self.app_id}):\n"
-        to_return += " LN | HLN | CMD\n"
+        result = "ProtoSubroutine"
+
+        if len(self.arguments) > 0:
+            result += "("
+            for arg_name in self.arguments:
+                result += f"{arg_name}, "
+            if len(self.arguments) > 1:
+                result = result[:-2]
+            result += ")"
+        result += "\n"
+        result += f"  NetQASM version: {self.netqasm_version}\n"
+        result += f"  App ID: {self.app_id}\n"
+
+        result += " LN | HLN | CMD\n"
         for i, command in enumerate(self.commands):
-            to_return += f"{rspaces(i)} {command.debug_str}\n"
-        return to_return
+            result += f"{rspaces(i)} {command.debug_str}\n"
+        return result
+
+    def instantiate(self, app_id: int, arguments: Dict[str, int]) -> None:
+        commands: List[Union[ICmd, BranchLabel]] = []
+        for cmd in self.commands:
+            if not isinstance(cmd, ICmd):
+                continue
+            ops: List[T_ProtoOperand] = []
+            for op in cmd.operands:
+                if isinstance(op, Template):
+                    ops.append(arguments[op.name])
+                else:
+                    ops.append(op)
+            cmd.operands = ops
+            commands.append(cmd)
+
+        self._commands = commands
+        self._app_id = app_id

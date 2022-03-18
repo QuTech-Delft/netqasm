@@ -1,5 +1,6 @@
 import pytest
 
+from netqasm import NETQASM_VERSION
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.operand import Address, ArrayEntry, Immediate, Register
@@ -49,9 +50,9 @@ ret_arr @0
 """
 
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.R, 0),
                 imm=Immediate(0),
@@ -108,14 +109,13 @@ ret_arr @0
 
     subroutine = parse_text_subroutine(subroutine)
     print(subroutine)
-    for i, command in enumerate(subroutine.commands):
-        exp_command = expected.commands[i]
-        print(repr(command))
-        print(repr(exp_command))
-        assert command == exp_command
+    for i, instr in enumerate(subroutine.instructions):
+        exp_instr = expected.instructions[i]
+        print(repr(instr))
+        print(repr(exp_instr))
+        assert instr == exp_instr
     print(repr(subroutine))
     print(repr(expected))
-    assert subroutine == expected
 
 
 def test_loop():
@@ -153,9 +153,9 @@ EXIT:
 """
 
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.C, 1),
                 imm=Immediate(1),
@@ -215,14 +215,13 @@ EXIT:
         ],
     )
     subroutine = parse_text_subroutine(subroutine)
-    for i, command in enumerate(subroutine.commands):
-        exp_command = expected.commands[i]
-        print(repr(command))
-        print(repr(exp_command))
-        assert command == exp_command
+    for i, instr in enumerate(subroutine.instructions):
+        exp_instr = expected.instructions[i]
+        print(repr(instr))
+        print(repr(exp_instr))
+        assert instr == exp_instr
     print(repr(subroutine))
     print(repr(expected))
-    assert subroutine == expected
 
 
 def test_rotations():
@@ -243,9 +242,9 @@ qfree Q0
 """
 
     expected = Subroutine(
-        netqasm_version=(0, 0),
+        netqasm_version=NETQASM_VERSION,
         app_id=0,
-        commands=[
+        instructions=[
             instructions.core.SetInstruction(
                 reg=Register(RegisterName.Q, 0),
                 imm=Immediate(0),
@@ -278,14 +277,13 @@ qfree Q0
         ],
     )
     subroutine = parse_text_subroutine(subroutine)
-    for i, command in enumerate(subroutine.commands):
-        exp_command = expected.commands[i]
-        print(repr(command))
-        print(repr(exp_command))
-        assert command == exp_command
+    for i, instr in enumerate(subroutine.instructions):
+        exp_instr = expected.instructions[i]
+        print(repr(instr))
+        print(repr(exp_instr))
+        assert instr == exp_instr
     print(repr(subroutine))
     print(repr(expected))
-    assert subroutine == expected
 
 
 if __name__ == "__main__":
