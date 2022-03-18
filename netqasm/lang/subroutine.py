@@ -63,6 +63,10 @@ class Subroutine:
     def app_id(self) -> Optional[int]:
         return self._app_id
 
+    @app_id.setter
+    def app_id(self, new_app_id: int) -> None:
+        self._app_id = new_app_id
+
     @property
     def instructions(self) -> List[NetQASMInstruction]:
         return self._instructions
