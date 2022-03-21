@@ -192,6 +192,19 @@ class RegRegImmImmCommand(Command):
     )
 
 
+class RegRegImm4Command(Command):
+    _fields_ = add_padding(
+        [
+            ("reg0", Register),
+            ("reg1", Register),
+            ("imm0", IMMEDIATE),
+            ("imm1", IMMEDIATE),
+            ("imm2", IMMEDIATE),
+            ("imm3", IMMEDIATE),
+        ]
+    )
+
+
 class RegRegRegCommand(Command):
     _fields_ = add_padding(
         [

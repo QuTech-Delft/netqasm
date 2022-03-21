@@ -58,6 +58,7 @@ class GenericInstr(Enum):
     CPHASE = auto()
     # Measurement
     MEAS = auto()
+    MEAS_BASIS = auto()
     # Entanglement generation
     CREATE_EPR = auto()
     RECV_EPR = auto()

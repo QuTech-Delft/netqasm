@@ -455,6 +455,63 @@ class MeasInstruction(base.RegRegInstruction):
 
 
 @dataclass
+class MeasBasisInstruction(base.RegRegImm4Instruction):
+    id: int = 41
+    mnemonic: str = "meas_basis"
+
+    def writes_to(self) -> List[Register]:
+        return [self.creg]
+
+    @property
+    def qreg(self):
+        return self.reg0
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def creg(self):
+        return self.reg1
+
+    @creg.setter
+    def creg(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def angle_num_x1(self):
+        return self.imm0
+
+    @angle_num_x1.setter
+    def angle_num_x1(self, new_val: Immediate):
+        self.imm0 = new_val
+
+    @property
+    def angle_num_y(self):
+        return self.imm1
+
+    @angle_num_y.setter
+    def angle_num_y(self, new_val: Immediate):
+        self.imm1 = new_val
+
+    @property
+    def angle_num_x2(self):
+        return self.imm2
+
+    @angle_num_x2.setter
+    def angle_num_x2(self, new_val: Immediate):
+        self.imm2 = new_val
+
+    @property
+    def angle_denom(self):
+        return self.imm3
+
+    @angle_denom.setter
+    def angle_denom(self, new_val: Immediate):
+        self.imm3 = new_val
+
+
+@dataclass
 class CreateEPRInstruction(base.Reg5Instruction):
     id: int = 33
     mnemonic: str = "create_epr"
