@@ -1106,12 +1106,12 @@ class Builder:
         elif basis == QubitMeasureBasis.X:
             meas_command = ICmd(
                 instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, 16, 0, 0, denom],
+                operands=[qubit_reg, outcome_reg, 0, 24, 0, denom],  # -pi/2 Y rotation
             )
         elif basis == QubitMeasureBasis.Y:
             meas_command = ICmd(
                 instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, 0, 16, 0, denom],
+                operands=[qubit_reg, outcome_reg, 8, 0, 0, denom],  # pi/2 X rotation
             )
         else:
             meas_command = ICmd(

@@ -877,7 +877,7 @@ def test_measure_basis():
 
         [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
         # check if rotations are correct
-        assert meas_basis.operands[2:] == [16, 0, 0, 4]  # skip register operands
+        assert meas_basis.operands[2:] == [0, 24, 0, 4]  # skip register operands
 
         compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
         print(compiled_subroutine)
