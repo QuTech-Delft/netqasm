@@ -438,7 +438,9 @@ def test_epr_keep_info():
         [
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
-            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
             GenericInstr.SET,
@@ -554,6 +556,9 @@ def test_epr_post():
             PatternWildcard.BRANCH_LABEL,
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.H,
             GenericInstr.ADD,
@@ -646,6 +651,9 @@ def test_epr_min_fidelity_all():
             GenericInstr.BEQ,
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
             PatternWildcard.ANY_ZERO_OR_MORE,
