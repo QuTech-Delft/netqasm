@@ -1,3 +1,4 @@
+from netqasm import NETQASM_VERSION
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr.vanilla import RotXInstruction, RotZInstruction
 from netqasm.lang.ir import GenericInstr, ICmd, ProtoSubroutine
@@ -104,8 +105,8 @@ def test_parse_and_instantiate():
 rot_z R0 {num} {denom}
 """
 
-    expected_text = """
-# NETQASM 0.0
+    expected_text = f"""
+# NETQASM {NETQASM_VERSION[0]}.{NETQASM_VERSION[1]}
 # APPID 0
 rot_z R0 3 1
 """

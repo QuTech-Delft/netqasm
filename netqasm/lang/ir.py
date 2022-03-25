@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 from netqasm.lang.operand import Label, Operand, Template
 
+T_ProtoOperand = Union[int, Label, Operand]
+
 
 class GenericInstr(Enum):
     # Allocation
@@ -121,9 +123,6 @@ def string_to_instruction(instr_str):
     return instr
 
 
-T_ProtoOperand = Union[int, Label, Operand]
-
-
 def _get_lineo_str(lineno):
     if lineno is None:
         lineno = "()"
@@ -220,7 +219,7 @@ class ProtoSubroutine:
 
         self._commands: List[Union[ICmd, BranchLabel]] = []
         if commands is not None:
-            self._commands = commands
+            self.commands = commands
 
         self._arguments: List[str] = []
         if arguments is not None:
@@ -259,12 +258,7 @@ class ProtoSubroutine:
         result = "ProtoSubroutine"
 
         if len(self.arguments) > 0:
-            result += "("
-            for arg_name in self.arguments:
-                result += f"{arg_name}, "
-            if len(self.arguments) > 1:
-                result = result[:-2]
-            result += ")"
+            result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
         result += "\n"
         result += f"  NetQASM version: {self.netqasm_version}\n"
         result += f"  App ID: {self.app_id}\n"
@@ -288,5 +282,5 @@ class ProtoSubroutine:
             cmd.operands = ops
             commands.append(cmd)
 
-        self._commands = commands
+        self.commands = commands
         self._app_id = app_id

@@ -43,7 +43,7 @@ class Subroutine:
 
         self._instructions: List[NetQASMInstruction] = []
         if instructions is not None:
-            self._instructions = instructions
+            self.instructions = instructions
 
         self._arguments: List[str] = []
         if arguments is not None:
@@ -93,24 +93,19 @@ class Subroutine:
                     ops.append(op)
             instrs.append(instr.from_operands(ops))
 
-        self._instructions = instrs
+        self.instructions = instrs
         self._app_id = app_id
 
     def __str__(self):
         result = "Subroutine"
         if len(self.arguments) > 0:
-            result += "("
-            for arg_name in self.arguments:
-                result += f"{arg_name}, "
-            if len(self.arguments) > 1:
-                result = result[:-2]
-            result += ")"
+            result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
         result += "\n"
         result += f"NetQASM version: {self.netqasm_version}\n"
         result += f"App ID: {self.app_id}\n"
 
         result += " LN | HLN | CMD\n"
-        for i, instr in enumerate(self._instructions):
+        for i, instr in enumerate(self.instructions):
             if isinstance(instr, DebugInstruction):
                 result += f"# {instr.text}\n"
             else:
@@ -118,7 +113,7 @@ class Subroutine:
         return result
 
     def __len__(self):
-        return len(self._instructions)
+        return len(self.instructions)
 
     @property
     def cstructs(self):

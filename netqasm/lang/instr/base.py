@@ -209,14 +209,15 @@ class RegImmImmInstruction(NetQASMInstruction):
     @classmethod
     def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 3
-        reg, imm0, imm1 = operands
+        reg = operands[0]
         assert isinstance(reg, Register)
-        assert isinstance(imm0, int) or isinstance(imm0, Immediate)
-        if isinstance(imm0, int):
-            imm0 = Immediate(value=imm0)
-        assert isinstance(imm1, int) or isinstance(imm1, Immediate)
-        if isinstance(imm1, int):
-            imm1 = Immediate(value=imm1)
+    
+        imm0 = Immediate(value=operands[1]) if isinstance(operands[1], int) else operands[1]
+        assert isinstance(imm0, Immediate)
+
+        imm1 = Immediate(value=operands[2]) if isinstance(operands[2], int) else operands[2]
+        assert isinstance(imm1, Immediate)
+
         return cls(reg=reg, imm0=imm0, imm1=imm1)
 
     def _pretty_print(self):
