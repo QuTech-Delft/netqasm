@@ -343,7 +343,7 @@ def test_epr_m():
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         outcomes = epr_socket.create_measure()
-        m = outcomes[0].measurement_outcome
+        m = outcomes[0].raw_measurement_outcome
         with m.if_eq(0):
             m.add(1)
 
@@ -518,7 +518,7 @@ def test_epr_r_create():
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
         outcomes = epr_socket.create(tp=EPRType.R)
-        m = outcomes[0].measurement_outcome
+        m = outcomes[0].raw_measurement_outcome
         with m.if_eq(0):
             m.add(1)
 

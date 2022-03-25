@@ -358,7 +358,7 @@ class Builder:
         )
 
     def _build_cmds_wait_move_epr_to_mem(
-        self, number: int, ent_results_array: Array
+        self, params: EntRequestParams, ent_results_array: Array
     ) -> None:
 
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
@@ -373,13 +373,15 @@ class Builder:
                 pair=pair,
             )
 
-            bell_state = self._get_raw_bell_state(
-                ent_results_array, loop_reg, bell_state_reg
-            )
-            self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
+            if params.expect_phi_plus:
+                # Perform Bell corrections
+                bell_state = self._get_raw_bell_state(
+                    ent_results_array, loop_reg, bell_state_reg
+                )
+                self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
 
             # If it's the last pair, don't move it to a mem qubit
-            with loop_reg.if_ne(number - 1):
+            with loop_reg.if_ne(params.number - 1):
                 reg0 = self._mem_mgr.get_inactive_register(activate=True)
                 reg1 = self._mem_mgr.get_inactive_register(activate=True)
                 assert loop_reg.reg is not None
@@ -388,7 +390,7 @@ class Builder:
                 # It is "number of pairs" - 1 - "current index".
                 sub_cmd = ICmd(
                     instruction=GenericInstr.SUB,
-                    operands=[reg0, number - 1, loop_reg.reg],
+                    operands=[reg0, params.number - 1, loop_reg.reg],
                 )
                 set_0_cmds = ICmd(instruction=GenericInstr.SET, operands=[reg1, 0])
 
@@ -409,7 +411,9 @@ class Builder:
                 self._mem_mgr.remove_active_register(reg0)
                 self._mem_mgr.remove_active_register(reg1)
 
-        self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
+        self._build_cmds_loop_body(
+            post_loop, stop=params.number, loop_register=loop_register
+        )
         self._mem_mgr.remove_active_register(loop_register)
         self._mem_mgr.remove_active_register(qubit_reg)
         self._mem_mgr.remove_active_register(bell_state_reg)
@@ -417,10 +421,9 @@ class Builder:
     def _build_cmds_post_epr(
         self,
         qubit_ids: Array,
-        number: int,
+        params: EntRequestParams,
         ent_results_array: Array,
         tp: EPRType,
-        post_routine: T_PostRoutine,
     ) -> None:
 
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
@@ -436,18 +439,22 @@ class Builder:
             )
             assert tp == EPRType.K or tp == EPRType.R
 
-            bell_state = self._get_raw_bell_state(
-                ent_results_array, loop_reg, bell_state_reg
-            )
-            self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
+            if params.expect_phi_plus:
+                bell_state = self._get_raw_bell_state(
+                    ent_results_array, loop_reg, bell_state_reg
+                )
+                self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
 
             q_id = qubit_ids.get_future_index(loop_register)
             q = FutureQubit(conn=conn, future_id=q_id)
             pair_future = RegFuture(self._connection, loop_register)
-            post_routine(self, q, pair_future)
+            assert params.post_routine is not None
+            params.post_routine(self, q, pair_future)
 
         # TODO use loop context
-        self._build_cmds_loop_body(post_loop, stop=number, loop_register=loop_register)
+        self._build_cmds_loop_body(
+            post_loop, stop=params.number, loop_register=loop_register
+        )
         self._mem_mgr.remove_active_register(loop_register)
         self._mem_mgr.remove_active_register(qubit_reg)
         self._mem_mgr.remove_active_register(bell_state_reg)
@@ -1426,7 +1433,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        if wait_all:
+        if wait_all and params.expect_phi_plus:
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
@@ -1463,7 +1470,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        if wait_all:
+        if wait_all and params.expect_phi_plus:
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
@@ -1850,17 +1857,16 @@ class Builder:
 
         if params.post_routine is None and single_comm_qubit:
             self._build_cmds_wait_move_epr_to_mem(
-                number=params.number, ent_results_array=ent_results_array
+                params=params, ent_results_array=ent_results_array
             )
 
         # Construct and add NetQASM instructions for post routine
         if params.post_routine:
             self._build_cmds_post_epr(
                 qubit_ids_array,
-                params.number,
+                params,
                 ent_results_array,
                 EPRType.K,
-                params.post_routine,
             )
 
         return qubit_futures, ent_results_array
@@ -1894,7 +1900,7 @@ class Builder:
         else:
             self._build_cmds_epr_recv_measure(ent_results_array, wait_all, params)
 
-        results = deserialize_epr_measure_results(params.number, ent_results_array)
+        results = deserialize_epr_measure_results(params, ent_results_array, role)
         return results
 
     def sdk_epr_rsp_create(
@@ -1923,7 +1929,9 @@ class Builder:
             create_args_array, ent_results_array, wait_all, params
         )
 
-        return deserialize_epr_measure_results(params.number, ent_results_array)
+        return deserialize_epr_measure_results(
+            params, ent_results_array, role=EPRRole.CREATE
+        )
 
     def sdk_epr_rsp_recv(
         self,
