@@ -209,6 +209,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
             qubits should ideally still have at the moment the last qubit has been
             generated. For example, when specifying `number=2` and
@@ -331,6 +336,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
@@ -412,6 +422,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node

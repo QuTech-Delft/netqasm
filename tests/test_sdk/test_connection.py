@@ -246,7 +246,7 @@ ret_arr @2
 
 def test_two_epr():
 
-    # set_log_level(logging.DEBUG)
+    set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
