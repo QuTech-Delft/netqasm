@@ -211,11 +211,19 @@ class RegImmImmInstruction(NetQASMInstruction):
         assert len(operands) == 3
         reg = operands[0]
         assert isinstance(reg, Register)
-    
-        imm0 = Immediate(value=operands[1]) if isinstance(operands[1], int) else operands[1]
+
+        imm0 = (
+            Immediate(value=operands[1])
+            if isinstance(operands[1], int)
+            else operands[1]
+        )
         assert isinstance(imm0, Immediate)
 
-        imm1 = Immediate(value=operands[2]) if isinstance(operands[2], int) else operands[2]
+        imm1 = (
+            Immediate(value=operands[2])
+            if isinstance(operands[2], int)
+            else operands[2]
+        )
         assert isinstance(imm1, Immediate)
 
         return cls(reg=reg, imm0=imm0, imm1=imm1)
