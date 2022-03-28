@@ -1243,13 +1243,34 @@ class Builder:
         if isinstance(self._hardware_config, NVHardwareConfig):
             for q in self._mem_mgr.get_active_qubits():
                 # Find a free qubit
-                new_virtual_address = self._mem_mgr.get_new_qubit_address()
                 if q.qubit_id == virtual_address:
-                    # Virtual address is already used. Move it to the new virtual address.
+                    # Virtual address is already used. Move it to a new virtual address.
                     # NOTE: this assumes that the new virtual address is *not* currently used.
-                    self._build_cmds_move_qubit(
-                        source=virtual_address, target=new_virtual_address
-                    )
+                    new_virtual_address = self._mem_mgr.get_new_qubit_address()
+
+                    # Check if the existing qubit was just initialized. If so, we can
+                    # simply change the address used for initialization instead of
+                    # adding move instructions. I.e. instead of
+                    # "init old address" + "move to new address", we just have
+                    # "init new address"
+                    pending_commands = self.subrt_pop_all_pending_commands()
+                    if len(pending_commands) >= 3:
+                        # Check last 3 commands to see if the qubit was just initialized.
+                        # ('type: ignore' since mypy isn't smart enough)
+                        if (
+                            all(isinstance(cmd, ICmd) for cmd in pending_commands[-3:])
+                            and pending_commands[-3].instruction == GenericInstr.SET  # type: ignore
+                            and pending_commands[-2].instruction == GenericInstr.QALLOC  # type: ignore
+                            and pending_commands[-1].instruction == GenericInstr.INIT  # type: ignore
+                        ):
+                            # Update the SET command with the new address.
+                            pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
+                            self.subrt_add_pending_commands(pending_commands)
+                    else:
+                        # Move the existing qubit from the old to the new address.
+                        self._build_cmds_move_qubit(
+                            source=virtual_address, target=new_virtual_address
+                        )
                     # From now on, the original qubit should be referred to with the new virtual address.
                     q.qubit_id = new_virtual_address
 
