@@ -350,6 +350,7 @@ COMMANDS = [
     MeasCommand,
     RegImmImmCommand,
     RegRegImmImmCommand,
+    RegRegImm4Command,
     RegRegRegCommand,
     ImmCommand,
     ImmImmCommand,
