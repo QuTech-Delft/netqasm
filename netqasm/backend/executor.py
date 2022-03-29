@@ -419,7 +419,7 @@ class Executor:
         subroutine_id = self._get_new_subroutine_id()
         self._subroutines[subroutine_id] = subroutine
         self._reset_program_counter(subroutine_id)
-        output = self._execute_commands(subroutine_id, subroutine.commands)
+        output = self._execute_commands(subroutine_id, subroutine.instructions)
         if isinstance(output, GeneratorType):
             yield from output
         self._clear_subroutine(subroutine_id=subroutine_id)
@@ -1474,6 +1474,7 @@ class Executor:
         subroutine = self._subroutines.get(subroutine_id)
         if subroutine is None:
             raise ValueError(f"Unknown subroutine with ID {subroutine_id}")
+        assert subroutine.app_id is not None
         return subroutine.app_id
 
     def _handle_epr_response(self, response: T_LinkLayerResponse) -> None:

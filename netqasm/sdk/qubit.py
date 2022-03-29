@@ -12,6 +12,7 @@ from netqasm.sdk.futures import Future, RegFuture
 
 if TYPE_CHECKING:
     from netqasm import qlink_compat
+    from netqasm.lang.operand import Template
     from netqasm.sdk import connection as sdkconn
     from netqasm.sdk.builder import Builder
 
@@ -249,7 +250,9 @@ class Qubit:
             instr=GenericInstr.S, qubit_id=self.qubit_id
         )
 
-    def rot_X(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
+    def rot_X(
+        self, n: Union[int, Template] = 0, d: int = 0, angle: Optional[float] = None
+    ):
         """Do a rotation around the X-axis of the specified angle.
 
         The angle is interpreted as ǹ * pi / 2 ^d` radians.
@@ -258,7 +261,9 @@ class Qubit:
         automatically converted into a sequence of (n, d) rotations such that the
         discrete (n, d) values approximate the original angle.
 
-        :param n: numerator of discrete angle specification
+        :param n: numerator of discrete angle specification. Can be a Template,
+            in which case the subroutine containing this command should first be
+            instantiated before flushing.
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """
@@ -270,7 +275,9 @@ class Qubit:
             angle=angle,
         )
 
-    def rot_Y(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
+    def rot_Y(
+        self, n: Union[int, Template] = 0, d: int = 0, angle: Optional[float] = None
+    ):
         """Do a rotation around the Y-axis of the specified angle.
 
         The angle is interpreted as ǹ * pi / 2 ^d` radians.
@@ -279,7 +286,9 @@ class Qubit:
         automatically converted into a sequence of (n, d) rotations such that the
         discrete (n, d) values approximate the original angle.
 
-        :param n: numerator of discrete angle specification
+        :param n: numerator of discrete angle specification. Can be a Template,
+            in which case the subroutine containing this command should first be
+            instantiated before flushing.
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """
@@ -291,16 +300,20 @@ class Qubit:
             angle=angle,
         )
 
-    def rot_Z(self, n: int = 0, d: int = 0, angle: Optional[float] = None):
+    def rot_Z(
+        self, n: Union[int, Template] = 0, d: int = 0, angle: Optional[float] = None
+    ):
         """Do a rotation around the Z-axis of the specified angle.
 
-        The angle is interpreted as ǹ * pi / 2 ^d` radians.
-        For example, (n, d) = (1, 2) represents an angle of pi/4 radians.
-        If `angle` is specified, `n` and `d` are ignored and this instruction is
-        automatically converted into a sequence of (n, d) rotations such that the
-        discrete (n, d) values approximate the original angle.
+        The angle is interpreted as ǹ * pi / 2 ^d` radians. For example, (n, d)
+        = (1, 2) represents an angle of pi/4 radians. If `angle` is specified,
+        `n` and `d` are ignored and this instruction is automatically converted
+        into a sequence of (n, d) rotations such that the discrete (n, d) values
+        approximate the original angle.
 
-        :param n: numerator of discrete angle specification
+        :param n: numerator of discrete angle specification. Can be a Template,
+            in which case the subroutine containing this command should first be
+            instantiated before flushing.
         :param d: denomerator of discrete angle specification
         :param angle: exact floating-point angle, defaults to None
         """

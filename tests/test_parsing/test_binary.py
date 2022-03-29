@@ -43,13 +43,13 @@ ret_reg M0
     parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
-    for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
+    for instr, parsed_instr in zip(
+        subroutine.instructions, parsed_subroutine.instructions
+    ):
         print()
-        print(repr(command))
-        print(repr(parsed_command))
-        assert command == parsed_command
-
-    assert subroutine == parsed_subroutine
+        print(repr(instr))
+        print(repr(parsed_instr))
+        assert instr == parsed_instr
 
 
 def test_rotations():
@@ -77,11 +77,11 @@ qfree Q0
     parsed_subroutine = deserialize(data)
     print(parsed_subroutine)
 
-    for command, parsed_command in zip(subroutine.commands, parsed_subroutine.commands):
-        print(f"command: {command}, parsed_command: {parsed_command}")
-        assert command == parsed_command
-
-    assert subroutine == parsed_subroutine
+    for instr, parsed_instr in zip(
+        subroutine.instructions, parsed_subroutine.instructions
+    ):
+        print(f"instr: {instr}, parsed_instr: {parsed_instr}")
+        assert instr == parsed_instr
 
 
 def test_deserialize_subroutine():
@@ -91,7 +91,7 @@ def test_deserialize_subroutine():
     print(raw)
     subroutine = deserialize(raw)
     print(subroutine)
-    for instr in subroutine.commands:
+    for instr in subroutine.instructions:
         if isinstance(instr, CphaseInstruction):
             print(f"reg0: {instr.reg0}, reg1: {instr.reg1}")
 

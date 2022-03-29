@@ -2,4 +2,4 @@
 __version__ = "0.9.0"
 
 # Version of the language
-NETQASM_VERSION = (0, 0)
+NETQASM_VERSION = (0, 10)

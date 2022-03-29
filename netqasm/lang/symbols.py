@@ -7,6 +7,7 @@ class Symbols:
     ARGS_DELIM = ","
     INDEX_BRACKETS = "[]"
     SLICE_DELIM = ":"
+    TEMPLATE_BRACKETS = "{}"
 
     PREAMBLE_START = "#"
     PREAMBLE_NETQASM = "NETQASM"

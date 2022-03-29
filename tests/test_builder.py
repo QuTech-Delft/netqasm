@@ -2,15 +2,15 @@ import math
 from enum import Enum, auto
 from typing import List, Optional, Union
 
-from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, PreSubroutine
+from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, ProtoSubroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.build_types import NVHardwareConfig
-from netqasm.sdk.compiling import NVSubroutineCompiler
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
 from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 logger = get_netqasm_logger()
 
@@ -119,8 +119,8 @@ class PatternMatcher:
             self._cmd_idx += 1
 
 
-class PreSubroutineInspector:
-    def __init__(self, subroutine: PreSubroutine) -> None:
+class ProtoSubroutineInspector:
+    def __init__(self, subroutine: ProtoSubroutine) -> None:
         self._subroutine = subroutine
 
     def contains_instr(self, instr_type: GenericInstr) -> bool:
@@ -148,7 +148,7 @@ def test_simple():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.contains_instr(GenericInstr.QALLOC)
     assert inspector.contains_instr(GenericInstr.SET)
     assert not inspector.contains_instr(GenericInstr.ROT_X)
@@ -189,7 +189,7 @@ def test_create_epr():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
 
     assert inspector.match_pattern(
         [
@@ -229,7 +229,7 @@ def test_branching():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
 
     assert inspector.match_pattern(
         [
@@ -261,7 +261,7 @@ def test_loop_context():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.contains_instr(GenericInstr.QALLOC)
     assert inspector.contains_instr(GenericInstr.SET)
     assert not inspector.contains_instr(GenericInstr.ROT_X)
@@ -289,7 +289,7 @@ def test_looping():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
 
     assert inspector.match_pattern(
         [
@@ -317,7 +317,7 @@ def test_futures():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
 
     assert inspector.match_pattern(
         [
@@ -360,7 +360,7 @@ def test_nested():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
 
     assert inspector.match_pattern(
         [
@@ -424,7 +424,7 @@ def test_epr_keep_info():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
@@ -458,7 +458,7 @@ def test_epr_context():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
@@ -496,7 +496,7 @@ def test_epr_context_future_index():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
@@ -537,7 +537,7 @@ def test_epr_post():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
@@ -569,7 +569,7 @@ def test_try():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.QALLOC,
@@ -594,7 +594,7 @@ def test_loop_until():
         subroutine = conn.builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             PatternWildcard.BRANCH_LABEL,
@@ -629,7 +629,7 @@ def test_epr_min_fidelity_all():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.SET,
@@ -784,7 +784,7 @@ def test_bqc_receiver_NV():
         "Alice",
         epr_sockets=[epr_socket],
         hardware_config=NVHardwareConfig(2),
-        compiler=NVSubroutineCompiler,
+        compiler=NVSubroutineTranspiler,
     ) as conn:
         carbon, electron = epr_socket.recv_keep(2)
 
@@ -800,9 +800,9 @@ def test_bqc_receiver_NV():
         carbon.H()
         _ = carbon.measure()
 
-        presubroutine = conn.builder.subrt_pop_pending_subroutine()
-        print(presubroutine)
-        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        protosubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(protosubroutine)
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(protosubroutine)
         print(compiled_subroutine)
 
 
@@ -818,7 +818,7 @@ def test_bqc_receiver_NV_min_fidelity():
         "Alice",
         epr_sockets=[epr_socket],
         hardware_config=NVHardwareConfig(2),
-        compiler=NVSubroutineCompiler,
+        compiler=NVSubroutineTranspiler,
     ) as conn:
         carbon, electron = epr_socket.recv_keep(
             2, min_fidelity_all_at_end=80, max_tries=25
@@ -836,30 +836,30 @@ def test_bqc_receiver_NV_min_fidelity():
         carbon.H()
         _ = carbon.measure()
 
-        presubroutine = conn.builder.subrt_pop_pending_subroutine()
-        print(presubroutine)
-        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        protosubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(protosubroutine)
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(protosubroutine)
         print(compiled_subroutine)
 
 
 if __name__ == "__main__":
     # set_log_level("DEBUG")
-    test_simple()
-    test_create_epr()
-    test_branching()
-    test_loop_context()
-    test_looping()
-    test_futures()
-    test_nested()
-    test_epr_keep_info()
-    test_epr_context()
-    test_epr_context_future_index()
+    # test_simple()
+    # test_create_epr()
+    # test_branching()
+    # test_loop_context()
+    # test_looping()
+    # test_futures()
+    # test_nested()
+    # test_epr_keep_info()
+    # test_epr_context()
+    # test_epr_context_future_index()
     test_epr_post()
-    test_try()
-    test_loop_until()
-    test_epr_min_fidelity_all()
-    test_create_multiple_eprs()
-    test_create_2_eprs_NV()
-    test_create_3_eprs_NV()
-    test_bqc_receiver_NV()
-    test_bqc_receiver_NV_min_fidelity()
+    # test_try()
+    # test_loop_until()
+    # test_epr_min_fidelity_all()
+    # test_create_multiple_eprs()
+    # test_create_2_eprs_NV()
+    # test_create_3_eprs_NV()
+    # test_bqc_receiver_NV()
+    # test_bqc_receiver_NV_min_fidelity()

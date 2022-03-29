@@ -17,6 +17,7 @@ jobs:
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run tests
       run: make external-tests
+      continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now
   examples:
     name: Run examples
     runs-on: ubuntu-latest
@@ -31,3 +32,4 @@ jobs:
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run examples
       run: make external-examples
+      continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now

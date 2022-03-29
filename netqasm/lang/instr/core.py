@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
-from netqasm.lang.operand import Immediate, Register
+from netqasm.lang.operand import Immediate, Operand, Register, Template
 
 from . import base
 
@@ -82,6 +82,27 @@ class RotationInstruction(base.RegImmImmInstruction):
     @abstractmethod
     def to_matrix(self):
         pass
+
+    @classmethod
+    def from_operands(cls, operands: List[Union[Operand, int]]):
+        assert len(operands) == 3
+        reg, imm0, imm1 = operands
+        assert isinstance(reg, Register)
+
+        if isinstance(imm0, int):
+            imm0 = Immediate(value=imm0)
+        elif isinstance(imm0, Immediate):
+            pass
+        else:
+            assert isinstance(imm0, Template)
+        if isinstance(imm1, int):
+            imm1 = Immediate(value=imm1)
+        elif isinstance(imm1, Immediate):
+            pass
+        else:
+            assert isinstance(imm1, Template)
+        # We allow imm0, imm1 to be Templates
+        return cls(reg=reg, imm0=imm0, imm1=imm1)  # type: ignore
 
 
 @dataclass  # type: ignore

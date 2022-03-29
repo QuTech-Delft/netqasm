@@ -35,7 +35,8 @@ from netqasm.backend.messages import (
     SubroutineMessage,
 )
 from netqasm.lang import operand
-from netqasm.lang.ir import BreakpointAction, BreakpointRole, PreSubroutine
+from netqasm.lang.ir import BreakpointAction, BreakpointRole, ProtoSubroutine
+from netqasm.lang.subroutine import Subroutine
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.sdk.build_types import (
     GenericHardwareConfig,
@@ -43,13 +44,13 @@ from netqasm.sdk.build_types import (
     T_BranchRoutine,
     T_LoopRoutine,
 )
-from netqasm.sdk.compiling import SubroutineCompiler
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.network import NetworkInfo
 from netqasm.sdk.progress_bar import ProgressBar
 from netqasm.sdk.qubit import Qubit
 from netqasm.sdk.shared_memory import SharedMemory, SharedMemoryManager
+from netqasm.sdk.transpile import SubroutineTranspiler
 from netqasm.util.log import LineTracker
 
 from .builder import Builder, SdkLoopUntilContext
@@ -97,7 +98,7 @@ class BaseNetQASMConnection(abc.ABC):
         hardware_config: Optional[HardwareConfig] = None,
         log_config: LogConfig = None,
         epr_sockets: Optional[List[esck.EPRSocket]] = None,
-        compiler: Optional[Type[SubroutineCompiler]] = None,
+        compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,
         _init_app: bool = True,
         _setup_epr_sockets: bool = True,
@@ -213,7 +214,7 @@ class BaseNetQASMConnection(abc.ABC):
         # only convert between NetQASM flavours.
         # The actual conversion from Python DSL statements to IR to NetQASM is
         # done by the Builder.
-        self._compiler: Optional[Type[SubroutineCompiler]] = compiler
+        self._compiler: Optional[Type[SubroutineTranspiler]] = compiler
 
         # Logger for stdout. (Not for log files.)
         self._logger: logging.Logger = get_netqasm_logger(
@@ -490,42 +491,71 @@ class BaseNetQASMConnection(abc.ABC):
         :param callback: if `block` is False, this callback is called when the quantum
             node controller sends the subroutine results.
         """
-        subroutine = self._builder.subrt_pop_pending_subroutine()
-        if subroutine is None:
+        protosubroutine = self._builder.subrt_pop_pending_subroutine()
+        if protosubroutine is None:
             return
 
-        self.commit_subroutine(
-            presubroutine=subroutine,
+        self.commit_protosubroutine(
+            protosubroutine=protosubroutine,
             block=block,
             callback=callback,
         )
 
-    def commit_subroutine(
+    def compile(self) -> Optional[Subroutine]:
+        """Compile the previous SDK commands into a NetQASM subroutine.
+
+        This does this the same as calling `flush()`, except it does not send the
+        subroutine to the quantum node controller for execution. This method can hence
+        be used to pre-compile a subroutine and send it later, possibly after filling
+        in concrete values for templates.
+        """
+        protosubroutine = self._builder.subrt_pop_pending_subroutine()
+        self._logger.info(f"Compiling protosubroutine:\n{protosubroutine}")
+        if protosubroutine is None:
+            return None
+
+        subroutine = self._builder.subrt_compile_subroutine(protosubroutine)
+
+        return subroutine
+
+    def commit_protosubroutine(
         self,
-        presubroutine: PreSubroutine,
+        protosubroutine: ProtoSubroutine,
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
-        """Send a subroutine to the quantum node controller.
+        """Send a protosubroutine to the quantum node controller.
 
-        Takes a `PreSubroutine`, i.e. an intermediate representation of the subroutine
+        Takes a `ProtoSubroutine`, i.e. an intermediate representation of the subroutine
         that comes from the Builder.
-        The PreSubroutine is compiled into a `Subroutine` instance.
+        The ProtoSubroutine is compiled into a `Subroutine` instance.
         """
-        self._logger.debug(f"Flushing presubroutine:\n{presubroutine}")
+        self._logger.debug(f"Flushing protosubroutine:\n{protosubroutine}")
 
         # Parse, assembly and possibly compile the subroutine
-        subroutine = self._builder.subrt_compile_subroutine(presubroutine)
+        subroutine = self._builder.subrt_compile_subroutine(protosubroutine)
         self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
 
+        subroutine.instantiate(self.app_id)
+
         # Commit the subroutine to the quantum device
+        self.commit_subroutine(subroutine, block, callback)
+
+        self._builder._reset()
+
+    def commit_subroutine(
+        self,
+        subroutine: Subroutine,
+        block: bool = True,
+        callback: Optional[Callable] = None,
+    ) -> None:
+        self._logger.info(f"Commiting compiled subroutine:\n{subroutine}")
+
         self._commit_message(
             msg=SubroutineMessage(subroutine=subroutine),
             block=block,
             callback=callback,
         )
-
-        self._builder._reset()
 
     def block(self) -> None:
         """Block until a flushed subroutines finishes.

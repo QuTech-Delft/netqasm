@@ -304,7 +304,7 @@ class Future(BaseFuture):
         else:
             raise NotImplementedError("for type {type(other)}")
 
-        add_operands: List[ir.T_OperandUnion] = [
+        add_operands: List[ir.T_ProtoOperand] = [
             tmp_register,
             tmp_register,
             other_operand,
@@ -335,7 +335,7 @@ class Future(BaseFuture):
         self.builder.subrt_add_pending_commands(commands)
 
     def get_load_commands(self, register: operand.Register) -> List[T_Cmd]:
-        """Return a list of PreSubroutine commands for loading this Future into
+        """Return a list of ProtoSubroutine commands for loading this Future into
         the specified register."""
         return self._get_access_commands(GenericInstr.LOAD, register)
 
@@ -479,7 +479,7 @@ class RegFuture(BaseFuture):
         else:
             raise NotImplementedError("for type {type(other)}")
 
-        add_operands: List[ir.T_OperandUnion] = [
+        add_operands: List[ir.T_ProtoOperand] = [
             self.reg,
             self.reg,
             other_operand,
