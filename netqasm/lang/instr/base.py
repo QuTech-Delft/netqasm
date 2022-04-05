@@ -327,7 +327,7 @@ class RegRegImm4Instruction(NetQASMInstruction):
         return bytes(c_struct)
 
     @classmethod
-    def from_operands(cls, operands: List[Operand]):
+    def from_operands(cls, operands: List[Union[Operand, int]]):
         assert len(operands) == 6
         reg0, reg1, imm0, imm1, imm2, imm3 = operands
         assert isinstance(reg0, Register)

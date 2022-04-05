@@ -858,7 +858,7 @@ def test_measure_Z():
 
         presubroutine = conn.builder.subrt_pop_pending_subroutine()
         print(presubroutine)
-        inspector = PreSubroutineInspector(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
         assert inspector.contains_instr(GenericInstr.MEAS)
 
         compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
@@ -872,7 +872,7 @@ def test_measure_basis():
 
         presubroutine = conn.builder.subrt_pop_pending_subroutine()
         print(presubroutine)
-        inspector = PreSubroutineInspector(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
         assert inspector.contains_instr(GenericInstr.MEAS_BASIS)
 
         [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
@@ -890,7 +890,7 @@ def test_measure_basis_rotation():
 
         presubroutine = conn.builder.subrt_pop_pending_subroutine()
         print(presubroutine)
-        inspector = PreSubroutineInspector(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
         assert inspector.contains_instr(GenericInstr.MEAS_BASIS)
 
         [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
