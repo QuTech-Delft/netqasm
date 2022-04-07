@@ -9,7 +9,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
-from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.qubit import Qubit, QubitMeasureBasis
 from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 logger = get_netqasm_logger()
@@ -129,6 +129,15 @@ class ProtoSubroutineInspector:
             if cmd_instr_type == instr_type:
                 return True
         return False
+
+    def find_instr(self, instr_type: GenericInstr) -> List[ICmd]:
+        instrs: List[ICmd] = []
+        for cmd in self._subroutine.commands:
+            if not isinstance(cmd, ICmd):
+                continue
+            if cmd.instruction == instr_type:
+                instrs.append(cmd)
+        return instrs
 
     def match_pattern(
         self, pattern: List[Union[GenericInstr, PatternWildcard]]
@@ -842,24 +851,77 @@ def test_bqc_receiver_NV_min_fidelity():
         print(compiled_subroutine)
 
 
+def test_measure_Z():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.Z)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS)
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.X)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [0, 24, 0, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis_rotation():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis_rotations=(3, 4, 5))
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [3, 4, 5, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
-    # test_simple()
-    # test_create_epr()
-    # test_branching()
-    # test_loop_context()
-    # test_looping()
-    # test_futures()
-    # test_nested()
-    # test_epr_keep_info()
-    # test_epr_context()
-    # test_epr_context_future_index()
+    test_simple()
+    test_create_epr()
+    test_branching()
+    test_loop_context()
+    test_looping()
+    test_futures()
+    test_nested()
+    test_epr_keep_info()
+    test_epr_context()
+    test_epr_context_future_index()
     test_epr_post()
-    # test_try()
-    # test_loop_until()
-    # test_epr_min_fidelity_all()
-    # test_create_multiple_eprs()
-    # test_create_2_eprs_NV()
-    # test_create_3_eprs_NV()
-    # test_bqc_receiver_NV()
-    # test_bqc_receiver_NV_min_fidelity()
+    test_try()
+    test_loop_until()
+    test_epr_min_fidelity_all()
+    test_create_multiple_eprs()
+    test_create_2_eprs_NV()
+    test_create_3_eprs_NV()
+    test_bqc_receiver_NV()
+    test_bqc_receiver_NV_min_fidelity()
+    test_measure_Z()
+    test_measure_basis()
+    test_measure_basis_rotation()

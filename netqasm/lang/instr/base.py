@@ -286,6 +286,74 @@ class RegRegImmImmInstruction(NetQASMInstruction):
 
 
 @dataclass
+class RegRegImm4Instruction(NetQASMInstruction):
+    """
+    An instruction with 2 Register operands followed by 4 Immediate operands.
+    """
+
+    reg0: Register = None  # type: ignore
+    reg1: Register = None  # type: ignore
+    imm0: Immediate = None  # type: ignore
+    imm1: Immediate = None  # type: ignore
+    imm2: Immediate = None  # type: ignore
+    imm3: Immediate = None  # type: ignore
+
+    @property
+    def operands(self) -> List[Operand]:
+        return [self.reg0, self.reg1, self.imm0, self.imm1, self.imm2, self.imm3]
+
+    @classmethod
+    def deserialize_from(cls, raw: bytes):
+        c_struct = encoding.RegRegImm4Command.from_buffer_copy(raw)
+        assert c_struct.id == cls.id
+        reg0 = Register.from_raw(c_struct.reg0)
+        reg1 = Register.from_raw(c_struct.reg1)
+        imm0 = Immediate(value=c_struct.imm0)
+        imm1 = Immediate(value=c_struct.imm1)
+        imm2 = Immediate(value=c_struct.imm2)
+        imm3 = Immediate(value=c_struct.imm3)
+        return cls(reg0=reg0, reg1=reg1, imm0=imm0, imm1=imm1, imm2=imm2, imm3=imm3)
+
+    def serialize(self) -> bytes:
+        c_struct = encoding.RegRegImm4Command(
+            id=self.id,
+            reg0=self.reg0.cstruct,
+            reg1=self.reg1.cstruct,
+            imm0=self.imm0.value,
+            imm1=self.imm1.value,
+            imm2=self.imm2.value,
+            imm3=self.imm3.value,
+        )
+        return bytes(c_struct)
+
+    @classmethod
+    def from_operands(cls, operands: List[Union[Operand, int]]):
+        assert len(operands) == 6
+        reg0, reg1, imm0, imm1, imm2, imm3 = operands
+        assert isinstance(reg0, Register)
+        assert isinstance(reg1, Register)
+        assert isinstance(imm0, int) or isinstance(imm0, Immediate)
+        if isinstance(imm0, int):
+            imm0 = Immediate(value=imm0)
+        assert isinstance(imm1, int) or isinstance(imm1, Immediate)
+        if isinstance(imm1, int):
+            imm1 = Immediate(value=imm1)
+        assert isinstance(imm2, int) or isinstance(imm2, Immediate)
+        if isinstance(imm2, int):
+            imm2 = Immediate(value=imm2)
+        assert isinstance(imm3, int) or isinstance(imm3, Immediate)
+        if isinstance(imm3, int):
+            imm3 = Immediate(value=imm3)
+        return cls(reg0=reg0, reg1=reg1, imm0=imm0, imm1=imm1, imm2=imm2, imm3=imm3)
+
+    def _pretty_print(self):
+        return (
+            f"{self.mnemonic} {str(self.reg0)} {str(self.reg1)} {str(self.imm0)} "
+            f"{str(self.imm1)} {str(self.imm2)} {str(self.imm3)}"
+        )
+
+
+@dataclass
 class RegRegRegInstruction(NetQASMInstruction):
     """
     An instruction with 3 Register operands.

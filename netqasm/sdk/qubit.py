@@ -5,7 +5,8 @@ as handles to in-memory qubits.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.lang.ir import GenericInstr
 from netqasm.sdk.futures import Future, RegFuture
@@ -19,6 +20,12 @@ if TYPE_CHECKING:
 
 class QubitNotActiveError(MemoryError):
     pass
+
+
+class QubitMeasureBasis(Enum):
+    X = 0
+    Y = auto()
+    Z = auto()
 
 
 class Qubit:
@@ -165,17 +172,31 @@ class Qubit:
         future: Optional[Union[Future, RegFuture]] = None,
         inplace: bool = False,
         store_array: bool = True,
+        basis: QubitMeasureBasis = QubitMeasureBasis.Z,
+        basis_rotations: Optional[Tuple[int, int, int]] = None,
     ) -> Union[Future, RegFuture]:
-        """Measure the qubit in the standard basis and get the measurement outcome.
+        """
+        Measure the qubit in the standard basis and get the measurement outcome.
 
-        :param future: the `Future` to place the outcome in. If None, a Future is
-            created automatically.
-        :param inplace: If False, the measurement is destructive and the qubit is
-            removed from memory. If True, the qubit is left in the post-measurement
-            state.
-        :param store_array: whether to store the outcome in an array. If not, it is
-            placed in a register. Only used if `future` is None.
-        :return: the Future representing the measurement outcome. It is a `Future` if
+        :param future: the `Future` to place the outcome in. If None, a Future
+            is created automatically.
+        :param inplace: If False, the measurement is destructive and the qubit
+            is removed from memory. If True, the qubit is left in the
+            post-measurement state.
+        :param store_array: whether to store the outcome in an array. If not, it
+            is placed in a register. Only used if `future` is None.
+        :param basis: in which of the Pauli bases (X, Y or Z) to measure.
+            Default is Z. Ignored if `basis_rotations` is not None.
+        :param basis_rotations: rotations to apply before measuring in the
+            Z-basis. This can be used to specify arbitrary measurement bases.
+            The 3 values are interpreted as 3 rotation angles, for an X- Y-, and
+            another X-rotation, respectively. Each angle is interpreted as a
+            multiple of pi/16. For example, if `basis_rotations` is (8, 0, 0),
+            an X-rotation is applied with angle 8*pi/16 = pi/2 radians, followed
+            by a Y-rotation of angle 0 and an X-rotation of angle 0. Finally,
+            the measurement is done in the Z-basis.
+        :return: the Future representing the measurement outcome. It is a
+            `Future` if
         the result is in an array (default) or `RegFuture` if the result is in a
         register.
         """
@@ -192,6 +213,8 @@ class Qubit:
             qubit_id=self.qubit_id,
             future=future,
             inplace=inplace,
+            basis=basis,
+            rotations=basis_rotations,
         )
 
         if not inplace:

@@ -60,7 +60,7 @@ from netqasm.sdk.config import LogConfig
 from netqasm.sdk.constraint import SdkConstraint, ValueAtMostConstraint
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
-from netqasm.sdk.qubit import FutureQubit, Qubit
+from netqasm.sdk.qubit import FutureQubit, Qubit, QubitMeasureBasis
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.transpile import NVSubroutineTranspiler, SubroutineTranspiler
 from netqasm.typedefs import T_Cmd
@@ -1077,7 +1077,12 @@ class Builder:
         self._build_cmds_qfree(source)
 
     def _build_cmds_measure(
-        self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
+        self,
+        qubit_id: int,
+        future: Union[Future, RegFuture],
+        inplace: bool,
+        basis: QubitMeasureBasis = QubitMeasureBasis.Z,
+        rotations: Optional[Tuple[int, int, int]] = None,
     ) -> None:
         if isinstance(self._hardware_config, NVHardwareConfig):
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
@@ -1088,10 +1093,32 @@ class Builder:
         outcome_reg = self._mem_mgr.get_new_meas_outcome_register()
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
-        meas_command = ICmd(
-            instruction=GenericInstr.MEAS,
-            operands=[qubit_reg, outcome_reg],
-        )
+
+        # use denominator 4 since we always treat angles as multiples of pi/(2^4)
+        denom = 4
+
+        if rotations is not None:
+            x1, y, x2 = rotations
+            meas_command = ICmd(
+                instruction=GenericInstr.MEAS_BASIS,
+                operands=[qubit_reg, outcome_reg, x1, y, x2, denom],
+            )
+        elif basis == QubitMeasureBasis.X:
+            meas_command = ICmd(
+                instruction=GenericInstr.MEAS_BASIS,
+                operands=[qubit_reg, outcome_reg, 0, 24, 0, denom],  # -pi/2 Y rotation
+            )
+        elif basis == QubitMeasureBasis.Y:
+            meas_command = ICmd(
+                instruction=GenericInstr.MEAS_BASIS,
+                operands=[qubit_reg, outcome_reg, 8, 0, 0, denom],  # pi/2 X rotation
+            )
+        else:
+            meas_command = ICmd(
+                instruction=GenericInstr.MEAS,
+                operands=[qubit_reg, outcome_reg],
+            )
+
         if not inplace:
             free_commands = [
                 ICmd(
