@@ -1,4 +1,4 @@
-# NetQASM (0.9.0)
+# NetQASM (0.9.1)
 [![Documentation](https://readthedocs.org/projects/netqasm/badge/?version=latest)](https://netqasm.readthedocs.io/en/latest/?badge=latest)
 
 Utilities for writing, compiling, and running quantum network applications.
