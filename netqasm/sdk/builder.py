@@ -447,6 +447,12 @@ class Builder:
         self.add_qfree_commands(source)
 
     def _free_up_qubit(self, virtual_address: int) -> None:
+        # For the paper simulations, when using the "nv_vanilla" hardware type,
+        # we want to use the Vanilla compiler, but still have the limitations
+        # of NV hardware (i.e. only qubit 0 is a communication qubit).
+        # Therefore, 'or True' is added to trigger NV-specific compilation,
+        # even though the _compiler attribute is not set (since the vanilla
+        # compiler is used). This holds of all 3 occurrences of 'or True' in this file.
         if self._compiler == NVSubroutineCompiler or True:
             for q in self.active_qubits:
                 # Find a free qubit
@@ -463,6 +469,12 @@ class Builder:
     def add_measure_commands(
         self, qubit_id: int, future: Union[Future, RegFuture], inplace: bool
     ) -> None:
+        # For the paper simulations, when using the "nv_vanilla" hardware type,
+        # we want to use the Vanilla compiler, but still have the limitations
+        # of NV hardware (i.e. only qubit 0 is a communication qubit).
+        # Therefore, 'or True' is added to trigger NV-specific compilation,
+        # even though the _compiler attribute is not set (since the vanilla
+        # compiler is used). This holds of all 3 occurrences of 'or True' in this file.
         if self._compiler == NVSubroutineCompiler or True:
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
@@ -1045,6 +1057,12 @@ class Builder:
                     )
             else:
                 virtual_address = None
+                # For the paper simulations, when using the "nv_vanilla" hardware type,
+                # we want to use the Vanilla compiler, but still have the limitations
+                # of NV hardware (i.e. only qubit 0 is a communication qubit).
+                # Therefore, 'or True' is added to trigger NV-specific compilation,
+                # even though the _compiler attribute is not set (since the vanilla
+                # compiler is used). This holds of all 3 occurrences of 'or True' in this file.
                 if self._compiler == NVSubroutineCompiler or True:
                     # If compiling for NV, only virtual ID 0 can be used to store the entangled qubit.
                     # So, if this qubit is already in use, we need to move it away first.
