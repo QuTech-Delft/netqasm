@@ -470,7 +470,7 @@ def test_epr_keep_info_no_phi_plus():
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
 
-    inspector = PreSubroutineInspector(subroutine)
+    inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
