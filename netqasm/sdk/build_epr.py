@@ -124,11 +124,13 @@ def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[in
     return array
 
 
-def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepResult]:
+def deserialize_epr_keep_results(
+    request: EntRequestParams, array: Array
+) -> List[EprKeepResult]:
     """Convert values in a NetQASM array into EprKeepResult objects."""
-    assert len(array) == num_pairs * SER_RESPONSE_KEEP_LEN
+    assert len(array) == request.number * SER_RESPONSE_KEEP_LEN
     results: List[EprKeepResult] = []
-    for i in range(num_pairs):
+    for i in range(request.number):
         base = i * SER_RESPONSE_KEEP_LEN
         results.append(
             EprKeepResult(

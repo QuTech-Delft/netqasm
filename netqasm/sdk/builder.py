@@ -37,7 +37,7 @@ from netqasm.lang.ir import (
 from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Template
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
-from netqasm.qlink_compat import EPRRole, EPRType, LinkLayerOKTypeK
+from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
 from netqasm.sdk.build_epr import (
     SER_RESPONSE_KEEP_IDX_BELL_STATE,
     SER_RESPONSE_KEEP_LEN,
@@ -1325,17 +1325,17 @@ class Builder:
     def _build_cmds_epr_keep_corrections_single_pair(
         self, bell_state: RegFuture, qubit_reg: operand.Register
     ) -> None:
-        with bell_state.if_eq(1):  # Phi- -> apply Z-gate
+        with bell_state.if_eq(BellState.PHI_MINUS.value):  # Phi- -> apply Z-gate
             correction_cmds = [
                 ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
             ]
             self.subrt_add_pending_commands(correction_cmds)  # type: ignore
-        with bell_state.if_eq(2):  # Psi+ -> apply X-gate
+        with bell_state.if_eq(BellState.PSI_PLUS.value):  # Psi+ -> apply X-gate
             correction_cmds = [
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
             ]
             self.subrt_add_pending_commands(correction_cmds)  # type: ignore
-        with bell_state.if_eq(3):  # Psi- -> apply X-gate and Z-gate
+        with bell_state.if_eq(BellState.PSI_MINUS):  # Psi- -> apply X-gate and Z-gate
             correction_cmds = [
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
                 ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
@@ -1968,7 +1968,7 @@ class Builder:
             qubit_ids_array, ent_results_array, wait_all, params
         )
 
-        epr_results = deserialize_epr_keep_results(params.number, ent_results_array)
+        epr_results = deserialize_epr_keep_results(params, ent_results_array)
         return qubit_futures, epr_results
 
     def sdk_create_epr_keep(
@@ -1984,7 +1984,7 @@ class Builder:
                     role=EPRRole.CREATE, params=params
                 )
 
-                results = deserialize_epr_keep_results(params.number, result_array)
+                results = deserialize_epr_keep_results(params, result_array)
 
                 duration = results[-1].generation_duration
                 max_time = NVEprCompiler.get_max_time_for_fidelity(
@@ -2012,7 +2012,7 @@ class Builder:
         else:
             # otherwise, just do the operation once
             qubits, result_array = self.sdk_epr_keep(role=EPRRole.CREATE, params=params)
-            results = deserialize_epr_keep_results(params.number, result_array)
+            results = deserialize_epr_keep_results(params, result_array)
             return qubits, results
 
     def sdk_recv_epr_keep(
@@ -2029,7 +2029,7 @@ class Builder:
                     role=EPRRole.RECV, params=params, reset_results_array=True
                 )
 
-                results = deserialize_epr_keep_results(params.number, result_array)
+                results = deserialize_epr_keep_results(params, result_array)
 
                 duration = results[-1].generation_duration
                 max_time = NVEprCompiler.get_max_time_for_fidelity(
@@ -2052,7 +2052,7 @@ class Builder:
         else:
             # otherwise, just do the operation once
             qubits, result_array = self.sdk_epr_keep(role=EPRRole.RECV, params=params)
-            results = deserialize_epr_keep_results(params.number, result_array)
+            results = deserialize_epr_keep_results(params, result_array)
             return qubits, results
 
     def sdk_create_epr_measure(
