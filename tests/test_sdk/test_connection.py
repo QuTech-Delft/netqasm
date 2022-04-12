@@ -879,7 +879,6 @@ ret_arr @2
         assert instr == expected_instr
     print(subroutine)
     print(expected)
-    assert subroutine == expected
 
 
 if __name__ == "__main__":
