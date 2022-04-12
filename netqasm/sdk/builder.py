@@ -1335,7 +1335,9 @@ class Builder:
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
             ]
             self.subrt_add_pending_commands(correction_cmds)  # type: ignore
-        with bell_state.if_eq(BellState.PSI_MINUS):  # Psi- -> apply X-gate and Z-gate
+        with bell_state.if_eq(
+            BellState.PSI_MINUS.value
+        ):  # Psi- -> apply X-gate and Z-gate
             correction_cmds = [
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
                 ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),

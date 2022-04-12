@@ -24,7 +24,7 @@ def run_client(alpha: float, theta1: float, r1: int, use_rsp: bool) -> Dict[str,
             # range [0, 32)
             t1 = (16 + round(theta1 * 16 / math.pi)) % 32
             result = epr_socket.create_rsp(rotations_local=(0, 8, t1))[0]
-            outcome = result.measurement_outcome
+            outcome = result.raw_measurement_outcome
         else:
             epr = epr_socket.create_keep()[0]
             epr.rot_Z(angle=theta1)
