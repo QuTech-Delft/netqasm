@@ -5,7 +5,6 @@ from __future__ import annotations
 import abc
 import logging
 from contextlib import contextmanager
-from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable, ContextManager, List, Optional, Tuple, Union
 
 from netqasm.logging.glob import get_netqasm_logger
@@ -18,6 +17,7 @@ from netqasm.qlink_compat import (
     RandomBasis,
     TimeUnit,
 )
+from netqasm.sdk.build_epr import EprMeasBasis, basis_to_rotation
 from netqasm.sdk.builder import EntRequestParams, EprKeepResult, EprMeasureResult
 from netqasm.sdk.futures import RegFuture
 
@@ -29,15 +29,6 @@ if TYPE_CHECKING:
 T_LinkLayerOkList = Union[
     List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
 ]
-
-
-class EPRMeasBasis(Enum):
-    X = 0
-    Y = auto()
-    Z = auto()
-    MX = auto()
-    MY = auto()
-    MZ = auto()
 
 
 class EPRSocket(abc.ABC):
@@ -159,6 +150,7 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> List[Qubit]:
@@ -217,6 +209,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
             qubits should ideally still have at the moment the last qubit has been
             generated. For example, when specifying `number=2` and
@@ -240,6 +237,7 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),
@@ -253,6 +251,7 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Same as create_keep but also return the EPR generation information coming
@@ -272,34 +271,20 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
             ),
         )
         return qubits, info
-
-    def _get_rotations_from_basis(self, basis: EPRMeasBasis) -> Tuple[int, int, int]:
-        if basis == EPRMeasBasis.X:
-            return (0, 24, 0)
-        elif basis == EPRMeasBasis.Y:
-            return (8, 0, 0)
-        elif basis == EPRMeasBasis.Z:
-            return (0, 0, 0)
-        elif basis == EPRMeasBasis.MX:
-            return (0, 8, 0)
-        elif basis == EPRMeasBasis.MY:
-            return (24, 0, 0)
-        elif basis == EPRMeasBasis.MZ:
-            return (16, 0, 0)
-        else:
-            assert False, f"invalid EPRMeasBasis {basis}"
 
     def create_measure(
         self,
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EPRMeasBasis = None,
-        basis_remote: EPRMeasBasis = None,
+        expect_phi_plus: bool = True,
+        basis_local: EprMeasBasis = None,
+        basis_remote: EprMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
@@ -332,7 +317,7 @@ class EPRSocket(abc.ABC):
         The basis to measure in can also be specified. There are 3 ways to specify a
         basis:
 
-        * using one of the `EPRMeasBasis` variants
+        * using one of the `EprMeasBasis` variants
         * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
           and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
@@ -351,6 +336,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
@@ -363,9 +353,9 @@ class EPRSocket(abc.ABC):
         """
 
         if basis_local is not None:
-            rotations_local = self._get_rotations_from_basis(basis_local)
+            rotations_local = basis_to_rotation(basis_local)
         if basis_remote is not None:
-            rotations_remote = self._get_rotations_from_basis(basis_remote)
+            rotations_remote = basis_to_rotation(basis_remote)
 
         return self.conn.builder.sdk_create_epr_measure(
             params=EntRequestParams(
@@ -376,6 +366,7 @@ class EPRSocket(abc.ABC):
                 sequential=False,
                 time_unit=time_unit,
                 max_time=max_time,
+                expect_phi_plus=expect_phi_plus,
                 random_basis_local=random_basis_local,
                 random_basis_remote=random_basis_remote,
                 rotations_local=rotations_local,
@@ -388,7 +379,8 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EPRMeasBasis = None,
+        expect_phi_plus: bool = True,
+        basis_local: EprMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         min_fidelity_all_at_end: Optional[int] = None,
@@ -416,7 +408,7 @@ class EPRSocket(abc.ABC):
         The basis to measure in can also be specified.
         There are 3 ways to specify a basis:
 
-        * using one of the `EPRMeasBasis` variants
+        * using one of the `EprMeasBasis` variants
         * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
           and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
@@ -430,6 +422,11 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
@@ -442,7 +439,7 @@ class EPRSocket(abc.ABC):
         """
 
         if basis_local is not None:
-            rotations_local = self._get_rotations_from_basis(basis_local)
+            rotations_local = basis_to_rotation(basis_local)
 
         return self.conn.builder.sdk_create_epr_rsp(
             params=EntRequestParams(
@@ -453,6 +450,7 @@ class EPRSocket(abc.ABC):
                 sequential=False,
                 time_unit=time_unit,
                 max_time=max_time,
+                expect_phi_plus=expect_phi_plus,
                 random_basis_local=random_basis_local,
                 rotations_local=rotations_local,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
@@ -467,8 +465,8 @@ class EPRSocket(abc.ABC):
         tp: EPRType = EPRType.K,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EPRMeasBasis = None,
-        basis_remote: EPRMeasBasis = None,
+        basis_local: EprMeasBasis = None,
+        basis_remote: EprMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
@@ -515,7 +513,7 @@ class EPRSocket(abc.ABC):
         For "Measure Directly"-type requests, the basis to measure in can also be
         specified. There are 3 ways to specify a basis:
 
-        * using one of the `EPRMeasBasis` variants
+        * using one of the `EprMeasBasis` variants
         * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
           and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is

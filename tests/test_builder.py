@@ -438,6 +438,43 @@ def test_epr_keep_info():
         [
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_keep_info_no_phi_plus():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        eprs, infos = epr_socket.create_keep_with_info(expect_phi_plus=False)
+        epr, info = eprs[0], infos[0]
+
+        _ = epr.measure(store_array=False)
+        with info.generation_duration.if_ge(1337):
+            _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.LOAD,
             GenericInstr.BLT,
@@ -554,6 +591,9 @@ def test_epr_post():
             PatternWildcard.BRANCH_LABEL,
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.H,
             GenericInstr.ADD,
@@ -646,6 +686,9 @@ def test_epr_min_fidelity_all():
             GenericInstr.BEQ,
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
+            GenericInstr.ROT_Z,  # Bell corrections
+            PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
             PatternWildcard.ANY_ZERO_OR_MORE,
@@ -911,6 +954,7 @@ if __name__ == "__main__":
     test_futures()
     test_nested()
     test_epr_keep_info()
+    test_epr_keep_info_no_phi_plus()
     test_epr_context()
     test_epr_context_future_index()
     test_epr_post()

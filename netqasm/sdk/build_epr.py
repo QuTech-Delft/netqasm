@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import List, Optional, Tuple
 
-from netqasm.qlink_compat import BellState, EPRType, RandomBasis, TimeUnit
+from netqasm.qlink_compat import BellState, EPRRole, EPRType, RandomBasis, TimeUnit
 from netqasm.sdk.build_types import T_PostRoutine
-from netqasm.sdk.futures import Array, Future
+from netqasm.sdk.futures import Array, Future, NoValueError
+
+
+class EprMeasBasis(Enum):
+    X = 0
+    Y = auto()
+    Z = auto()
+    MX = auto()
+    MY = auto()
+    MZ = auto()
 
 
 @dataclass
@@ -17,6 +27,7 @@ class EntRequestParams:
     sequential: bool
     time_unit: TimeUnit = TimeUnit.MICRO_SECONDS
     max_time: int = 0
+    expect_phi_plus: bool = True
     min_fidelity_all_at_end: Optional[int] = None
     max_tries: Optional[int] = None
     random_basis_local: Optional[RandomBasis] = None
@@ -113,11 +124,13 @@ def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[in
     return array
 
 
-def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepResult]:
+def deserialize_epr_keep_results(
+    request: EntRequestParams, array: Array
+) -> List[EprKeepResult]:
     """Convert values in a NetQASM array into EprKeepResult objects."""
-    assert len(array) == num_pairs * SER_RESPONSE_KEEP_LEN
+    assert len(array) == request.number * SER_RESPONSE_KEEP_LEN
     results: List[EprKeepResult] = []
-    for i in range(num_pairs):
+    for i in range(request.number):
         base = i * SER_RESPONSE_KEEP_LEN
         results.append(
             EprKeepResult(
@@ -139,21 +152,21 @@ def deserialize_epr_keep_results(num_pairs: int, array: Array) -> List[EprKeepRe
 
 
 def deserialize_epr_measure_results(
-    num_pairs: int, array: Array
+    request: EntRequestParams, array: Array, role: EPRRole
 ) -> List[EprMeasureResult]:
     """Convert values in a NetQASM array into EprMeasureResult objects."""
-    assert len(array) == num_pairs * SER_RESPONSE_MEASURE_LEN
+    assert len(array) == request.number * SER_RESPONSE_MEASURE_LEN
     results: List[EprMeasureResult] = []
-    for i in range(num_pairs):
+    for i in range(request.number):
         base = i * SER_RESPONSE_MEASURE_LEN
         results.append(
             EprMeasureResult(
-                measurement_outcome=array.get_future_index(
+                raw_measurement_outcome=array.get_future_index(
                     base + SER_RESPONSE_MEASURE_IDX_MEASUREMENT_OUTCOME
                 ),
-                measurement_basis=array.get_future_index(
-                    base + SER_RESPONSE_MEASURE_IDX_MEASUREMENT_BASIS
-                ),
+                measurement_basis_local=request.rotations_local,
+                measurement_basis_remote=request.rotations_remote,
+                post_process=(request.expect_phi_plus and role == EPRRole.CREATE),
                 remote_node_id=array.get_future_index(
                     base + SER_RESPONSE_MEASURE_IDX_REMOTE_NODE_ID
                 ),
@@ -181,13 +194,138 @@ class EprKeepResult:
         return BellState(self.raw_bell_state.value)
 
 
+def rotation_to_basis(rotations: Tuple[int, int, int]) -> Optional[EprMeasBasis]:
+    if rotations == (0, 24, 0):
+        return EprMeasBasis.X
+    elif rotations == (8, 0, 0):
+        return EprMeasBasis.Y
+    elif rotations == (0, 0, 0):
+        return EprMeasBasis.Z
+    elif rotations == (0, 8, 0):
+        return EprMeasBasis.MX
+    elif rotations == (24, 0, 0):
+        return EprMeasBasis.MY
+    elif rotations == (16, 0, 0):
+        return EprMeasBasis.MZ
+    else:
+        return None
+
+
+def basis_to_rotation(basis: EprMeasBasis) -> Tuple[int, int, int]:
+    if basis == EprMeasBasis.X:
+        return (0, 24, 0)
+    elif basis == EprMeasBasis.Y:
+        return (8, 0, 0)
+    elif basis == EprMeasBasis.Z:
+        return (0, 0, 0)
+    elif basis == EprMeasBasis.MX:
+        return (0, 8, 0)
+    elif basis == EprMeasBasis.MY:
+        return (24, 0, 0)
+    elif basis == EprMeasBasis.MZ:
+        return (16, 0, 0)
+    else:
+        assert False, f"invalid EprMeasBasis {basis}"
+
+
 @dataclass
 class EprMeasureResult:
-    measurement_outcome: Future
-    measurement_basis: Future
+    raw_measurement_outcome: Future
+    measurement_basis_local: Tuple[int, int, int]
+    measurement_basis_remote: Tuple[int, int, int]
+    post_process: bool
     remote_node_id: Future
     generation_duration: Future
     raw_bell_state: Future
+
+    @property
+    def measurement_outcome(self) -> int:
+        """Get the measurement outcome, possibly post-processed.
+
+        The outcome is post-processed only if the EPR create request indicated
+        that the produced Bell state should be the Phi+ state, while the physically
+        produced Bell state actually was another Bell state. In this case, the outcome
+        is post-processed such that the statistics are *as if* the Phi+ state was
+        produced and measured.
+
+        Post-processing involves classical bit flips based on the physical Bell
+        state produced and the measurement basis specified. If a Phi+ (or Phi_00)
+        Bell state was actually produced physically, no post-processing is applied.
+        If another Bell state was produced, a bit flip may be applied such that
+        it looks like the Phi+ state was produced after all.
+
+        If no post-processing is desired, use the `raw_measurement_outcome` instead.
+
+        :return: post-processed measurement outcome
+        """
+        try:
+            if not self.post_process:
+                return int(self.raw_measurement_outcome)
+
+            # else
+            local = rotation_to_basis(self.measurement_basis_local)
+            remote = rotation_to_basis(self.measurement_basis_remote)
+            if local != remote:
+                raise RuntimeError(
+                    f"The local and remote measurement bases are not equal "
+                    f"(local={local}, remote={remote}. Post-processed measurement "
+                    f"outcome is not available. Use `raw_measurement_outcome` in "
+                    f"combination with `measurement_basis_local` to interpret the "
+                    f"outcome instead."
+                )
+            # We have local == remote.
+            if local is None:  # not one of X, Y, Z
+                raise RuntimeError(
+                    f"The measurement basis is not one of X, Y, or Z (instead it is "
+                    f"{local}. Post-processed measurement outcome is not available. "
+                    f"Use `raw_measurement_outcome in combination with "
+                    f"`measurement_basis_local` to interpet the outcome instead."
+                )
+
+            # This may raise a NoValueError
+            m = int(self.raw_measurement_outcome)
+            assert m == 0 or m == 1
+
+            # Correct for Bell flips.
+            if self.bell_state == BellState.PHI_MINUS:
+                # correct for Z-gate applied to Phi+
+                if local in [
+                    EprMeasBasis.X,
+                    EprMeasBasis.MX,
+                    EprMeasBasis.Y,
+                    EprMeasBasis.MY,
+                ]:
+                    m = m ^ 1
+            elif self.bell_state == BellState.PSI_PLUS:
+                # correct for X-gate applied to Phi+
+                if local in [
+                    EprMeasBasis.Y,
+                    EprMeasBasis.MY,
+                    EprMeasBasis.Z,
+                    EprMeasBasis.MZ,
+                ]:
+                    m = m ^ 1
+            elif self.bell_state == BellState.PSI_MINUS:
+                # correct for X-gate and Z-gate applied to Phi+
+                if local in [
+                    EprMeasBasis.X,
+                    EprMeasBasis.MX,
+                    EprMeasBasis.Z,
+                    EprMeasBasis.MZ,
+                ]:
+                    m = m ^ 1
+
+            return m
+
+        except NoValueError:
+            raise ValueError(
+                "The `measurement_outcome` property can only be used after "
+                "the subroutine that produces this outcome has been flushed. "
+                "This is because classical post-processing is done which can only "
+                "happen when the outcome is available. "
+                "To use the outcome as a future (without post-processing), use "
+                "the `raw_measurement_outcome` attribute."
+            )
 
     @property
     def bell_state(self) -> BellState:
