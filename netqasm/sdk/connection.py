@@ -549,13 +549,15 @@ class BaseNetQASMConnection(abc.ABC):
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
-        self._logger.info(f"Commiting compiled subroutine:\n{subroutine}")
+        self._logger.info(f"Committing compiled subroutine:\n{subroutine}")
 
         self._commit_message(
             msg=SubroutineMessage(subroutine=subroutine),
             block=block,
             callback=callback,
         )
+
+        self._builder._reset()
 
     def block(self) -> None:
         """Block until a flushed subroutines finishes.

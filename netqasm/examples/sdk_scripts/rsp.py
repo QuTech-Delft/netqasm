@@ -4,9 +4,12 @@ from typing import Any, Dict, Union
 from netqasm.lang.operand import Template
 from netqasm.logging.glob import set_log_level
 from netqasm.runtime.application import default_app_instance
+from netqasm.runtime.settings import set_is_using_hardware
+from netqasm.sdk.build_types import NVHardwareConfig
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.external import NetQASMConnection, Socket, simulate_application
 from netqasm.sdk.futures import Future, RegFuture
+from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 PRECOMPILE: bool = True
 
@@ -14,7 +17,12 @@ PRECOMPILE: bool = True
 def run_client(alpha: float, theta1: float, r1: int, use_rsp: bool) -> Dict[str, Any]:
     epr_socket = EPRSocket("server")
     csocket = Socket("client", "server")
-    conn = NetQASMConnection("client", epr_sockets=[epr_socket])
+    conn = NetQASMConnection(
+        "client",
+        epr_sockets=[epr_socket],
+        compiler=NVSubroutineTranspiler,
+        hardware_config=NVHardwareConfig,
+    )
 
     with conn:
         outcome: Union[Future, RegFuture]
@@ -43,7 +51,12 @@ def run_client(alpha: float, theta1: float, r1: int, use_rsp: bool) -> Dict[str,
 def run_server(use_rsp: bool) -> Dict[str, Any]:
     epr_socket = EPRSocket("client")
     csocket = Socket("server", "client")
-    conn = NetQASMConnection("server", epr_sockets=[epr_socket])
+    conn = NetQASMConnection(
+        "server",
+        epr_sockets=[epr_socket],
+        compiler=NVSubroutineTranspiler,
+        hardware_config=NVHardwareConfig,
+    )
 
     with conn:
         if use_rsp:
@@ -80,6 +93,7 @@ def run_server(use_rsp: bool) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     set_log_level("INFO")
+    set_is_using_hardware(True)
 
     app_instance = default_app_instance(
         [

@@ -9,7 +9,7 @@ import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla
-from netqasm.lang.operand import Immediate, Register, RegisterName
+from netqasm.lang.operand import Immediate, Register, RegisterName, Template
 from netqasm.lang.subroutine import Subroutine
 from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.util.log import HostLine
@@ -585,7 +585,7 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
                 imm0, imm1 = instr.angle_num, instr.angle_denom
             return [
                 nv.RotZInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1  # type: ignore
                 ),
             ]
         elif isinstance(instr, vanilla.RotXInstruction):
@@ -595,7 +595,7 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
                 imm0, imm1 = instr.angle_num, instr.angle_denom
             return [
                 nv.RotXInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1  # type: ignore
                 ),
             ]
         elif isinstance(instr, vanilla.RotYInstruction):
@@ -605,7 +605,7 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
                 imm0, imm1 = instr.angle_num, instr.angle_denom
             return [
                 nv.RotYInstruction(
-                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1  # type: ignore
                 ),
             ]
         else:
@@ -616,12 +616,23 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
 
 def get_hardware_num_denom(
     instr: core.RotationInstruction,
-) -> Tuple[Immediate, Immediate]:
+) -> Tuple[Union[Immediate, Template], Immediate]:
     if instr.angle_denom.value not in [0, 1, 2, 3, 4]:
         raise ValueError(
             f"Instruction {instr} not supported: angle_denom is {instr.angle_denom}."
         )
-
-    denom_diff = 4 - instr.angle_denom.value
-    angle_num = instr.angle_num.value * (2 ** denom_diff)
-    return (Immediate(angle_num), Immediate(4))
+    if isinstance(instr.angle_num, Template):
+        # We allow a template for angle numerators, but we cannot scale the value
+        # based on the denominator. So, we can only deal with this if the denominator
+        # is the default value, i.e. 4.
+        if instr.angle_denom.value != 4:
+            raise ValueError(
+                f"Cannot use template in instruction {instr} since "
+                "denominator is not 4."
+            )
+        return (instr.angle_num, Immediate(4))
+    else:
+        assert isinstance(instr.angle_num, Immediate)
+        denom_diff = 4 - instr.angle_denom.value
+        angle_num = instr.angle_num.value * (2 ** denom_diff)
+        return (Immediate(angle_num), Immediate(4))
