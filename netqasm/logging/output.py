@@ -136,7 +136,7 @@ class InstrLogger(StructuredLogger):
             command, instructions.core.ControlledRotationInstruction
         ):
             num = command.angle_num.value
-            denom = 2 ** command.angle_denom.value
+            denom = 2**command.angle_denom.value
             angle = {"num": num, "den": denom}
         else:
             angle = None

@@ -42,18 +42,18 @@ def get_angle_spec_from_float(angle: float, tol: float = 1e-4) -> List[Tuple[int
     rest = angle / np.pi
 
     # Max value of `n`
-    n_max = 2 ** IMMEDIATE_BITS - 1
+    n_max = 2**IMMEDIATE_BITS - 1
 
     nds = []
     while rest > tol:
         # Find the largest `d` such that `rest <= n_max / 2 ^ d`
         d = int(np.floor(np.log2(n_max / rest)))
         # Find largest `n` such that `rest >= n / 2 ^ d`
-        n = int(np.floor(rest * 2 ** d))
+        n = int(np.floor(rest * 2**d))
         # Shouldn't happen, but lets make sure
         assert n <= n_max, "Something went wrong, n is bigger than n_max"
         nds.append((n, d))
-        rest -= n / 2 ** d
+        rest -= n / 2**d
 
     # Check if some of the (n, d)'s can be simplified, i.e. if `n = b * 2 ^ m` for some `m` and `b`
     for i, (n, d) in enumerate(nds):

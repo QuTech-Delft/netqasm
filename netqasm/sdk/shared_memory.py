@@ -27,7 +27,7 @@ class RegisterGroup:
     """A register group (like "R", or "Q") in shared memory."""
 
     def __init__(self):
-        self._size: int = 2 ** REG_INDEX_BITS
+        self._size: int = 2**REG_INDEX_BITS
         self._register: Dict[int, Optional[int]] = {}
 
     def __len__(self) -> int:

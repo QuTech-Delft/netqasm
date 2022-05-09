@@ -47,7 +47,7 @@ class GateHInstruction(core.SingleQubitInstruction):
     def to_matrix(self) -> np.ndarray:
         X = GateXInstruction().to_matrix()
         Z = GateZInstruction().to_matrix()
-        return (X + Z) / np.sqrt(2)
+        return (X + Z) / np.sqrt(2)  # type: ignore
 
 
 @dataclass
@@ -57,7 +57,7 @@ class RotXInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -68,7 +68,7 @@ class RotYInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [0, 1, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -79,7 +79,7 @@ class RotZInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [0, 0, 1]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -90,12 +90,12 @@ class ControlledRotXInstruction(core.ControlledRotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_controlled_rotation_matrix(axis, angle)
 
     def to_matrix_target_only(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -106,10 +106,10 @@ class ControlledRotYInstruction(core.ControlledRotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_controlled_rotation_matrix(axis, angle)
 
     def to_matrix_target_only(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)

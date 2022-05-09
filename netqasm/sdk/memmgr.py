@@ -124,7 +124,7 @@ class MemoryManager:
 
     def get_inactive_register(self, activate: bool = False) -> operand.Register:
         """Get an un-used register."""
-        for i in range(2 ** REG_INDEX_BITS):
+        for i in range(2**REG_INDEX_BITS):
             register = parse_register(f"R{i}")
             if not self.is_register_active(register):
                 if activate:

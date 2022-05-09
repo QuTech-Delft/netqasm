@@ -543,7 +543,7 @@ def _replace_constants(commands: List[Union[ICmd, BranchLabel]]):
     current_registers = get_current_registers(commands)
 
     def reg_and_set_cmd(value, tmp_registers: List[Register], lineno=None):
-        for i in range(2 ** REG_INDEX_BITS):
+        for i in range(2**REG_INDEX_BITS):
             register = Register(RegisterName.R, i)
             if str(register) not in current_registers and register not in tmp_registers:
                 break

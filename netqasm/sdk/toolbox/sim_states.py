@@ -30,7 +30,7 @@ def to_dm(q: NetSquidQubit) -> np.ndarray:
     if get_simulator() != Simulator.NETSQUID:
         raise RuntimeError("`to_dm` function only possible with NetSquid simulator")
 
-    return ns.qubits.reduced_dm(q)
+    return ns.qubits.reduced_dm(q)  # type: ignore
 
 
 def get_fidelity(q1: NetSquidQubit, q2: np.ndarray) -> float:

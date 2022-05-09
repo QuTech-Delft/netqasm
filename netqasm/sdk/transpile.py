@@ -623,5 +623,5 @@ def get_hardware_num_denom(
         )
 
     denom_diff = 4 - instr.angle_denom.value
-    angle_num = instr.angle_num.value * (2 ** denom_diff)
+    angle_num = instr.angle_num.value * (2**denom_diff)
     return (Immediate(angle_num), Immediate(4))
