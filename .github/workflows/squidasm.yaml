@@ -12,7 +12,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Install netqasm
-      run: make install
+      run: make install-tests
     - name: Install squidasm
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run tests
@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: 3.8
     - name: Install netqasm
-      run: make install
+      run: make install-tests
     - name: Install squidasm
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run examples
