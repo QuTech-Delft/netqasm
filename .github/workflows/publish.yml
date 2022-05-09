@@ -20,7 +20,7 @@ jobs:
     - name: Set outputs
       id: vars
       run: |
-        echo "::set-output name=package_version::$(cat ./netqasm/__init__.py | cut -d "'" -f2)"
+        echo "::set-output name=package_version::$(cat ./netqasm/__init__.py | cut -d "\"" -f2)"
     - name: Override package 📦 version
       if: startsWith(github.ref, 'refs/tags') == 0
       run: |
