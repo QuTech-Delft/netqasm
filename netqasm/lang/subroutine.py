@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple, Union
 
-from netqasm import NETQASM_VERSION
 from netqasm.lang import encoding
 from netqasm.lang.instr import DebugInstruction, NetQASMInstruction
 from netqasm.lang.operand import Operand, Template
+from netqasm.lang.version import NETQASM_VERSION
 from netqasm.util.string import rspaces
 
 

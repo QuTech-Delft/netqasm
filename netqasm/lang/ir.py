@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
-from netqasm import NETQASM_VERSION
 from netqasm.lang.symbols import Symbols
+from netqasm.lang.version import NETQASM_VERSION
 from netqasm.util.string import rspaces
 
 if TYPE_CHECKING:

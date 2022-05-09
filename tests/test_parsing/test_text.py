@@ -1,11 +1,11 @@
 import pytest
 
-from netqasm import NETQASM_VERSION
 from netqasm.lang import instr as instructions
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.operand import Address, ArrayEntry, Immediate, Register
 from netqasm.lang.parsing import parse_text_subroutine
 from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.version import NETQASM_VERSION
 from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 
 

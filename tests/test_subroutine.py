@@ -1,4 +1,3 @@
-from netqasm import NETQASM_VERSION
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr.vanilla import RotXInstruction, RotZInstruction
 from netqasm.lang.ir import GenericInstr, ICmd, ProtoSubroutine
@@ -6,6 +5,7 @@ from netqasm.lang.operand import Register, Template
 from netqasm.lang.parsing import parse_text_subroutine
 from netqasm.lang.parsing.text import parse_text_protosubroutine
 from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.version import NETQASM_VERSION
 
 
 def test_protosubroutine_instantiation():
