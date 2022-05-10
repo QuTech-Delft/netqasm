@@ -22,7 +22,9 @@ copyright = "2021, QuTech"
 author = "QuTech"
 
 # The full version, including alpha/beta/rc tags
-release = "0.9.0"
+from importlib.metadata import version
+
+release = version("netqasm")
 
 
 # -- General configuration ---------------------------------------------------
