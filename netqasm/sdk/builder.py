@@ -1265,8 +1265,9 @@ class Builder:
                         ):
                             # Update the SET command with the new address.
                             pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
-                            self.subrt_add_pending_commands(pending_commands)
+                        self.subrt_add_pending_commands(pending_commands)
                     else:
+                        self.subrt_add_pending_commands(pending_commands)
                         # Move the existing qubit from the old to the new address.
                         self._build_cmds_move_qubit(
                             source=virtual_address, target=new_virtual_address
