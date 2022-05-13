@@ -1,5 +1,7 @@
-# Version of the package
-__version__ = "0.9.0"
+from importlib.metadata import PackageNotFoundError, version
 
-# Version of the language
-NETQASM_VERSION = (0, 10)
+try:
+    __version__ = version("netqasm")
+except PackageNotFoundError:
+    # package is not installed
+    pass

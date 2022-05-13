@@ -20,7 +20,6 @@ from typing import (
     Union,
 )
 
-from netqasm import NETQASM_VERSION
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
 from netqasm.lang.encoding import RegisterName
@@ -37,6 +36,7 @@ from netqasm.lang.ir import (
 from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Template
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.version import NETQASM_VERSION
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
 from netqasm.sdk.build_epr import (
     SER_RESPONSE_KEEP_IDX_BELL_STATE,

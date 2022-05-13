@@ -1,6 +1,5 @@
 import logging
 
-from netqasm import NETQASM_VERSION
 from netqasm.backend.messages import deserialize_host_msg as deserialize_message
 from netqasm.backend.network_stack import CREATE_FIELDS
 from netqasm.backend.network_stack import OK_FIELDS_K as OK_FIELDS
@@ -10,6 +9,7 @@ from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Immediate, Reg
 from netqasm.lang.parsing import deserialize as deserialize_subroutine
 from netqasm.lang.parsing.text import parse_text_subroutine
 from netqasm.lang.subroutine import Subroutine
+from netqasm.lang.version import NETQASM_VERSION
 from netqasm.logging.glob import set_log_level
 from netqasm.qlink_compat import EPRType, TimeUnit
 from netqasm.sdk.connection import DebugConnection

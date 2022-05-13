@@ -131,7 +131,7 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.ndarray:
                 virt_id1=qreg_values[instr.reg1],
             )
 
-    return sub_matrix.matrix
+    return sub_matrix.matrix  # type: ignore
 
 
 @pytest.mark.parametrize(

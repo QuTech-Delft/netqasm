@@ -44,7 +44,7 @@ class GateHInstruction(core.SingleQubitInstruction):
     def to_matrix(self) -> np.ndarray:
         X = GateXInstruction().to_matrix()
         Z = GateZInstruction().to_matrix()
-        return (X + Z) / np.sqrt(2)
+        return (X + Z) / np.sqrt(2)  # type: ignore
 
 
 @dataclass
@@ -64,7 +64,7 @@ class GateKInstruction(core.SingleQubitInstruction):
     def to_matrix(self) -> np.ndarray:
         Y = GateYInstruction().to_matrix()
         Z = GateZInstruction().to_matrix()
-        return (Y + Z) / np.sqrt(2)
+        return (Y + Z) / np.sqrt(2)  # type: ignore
 
 
 @dataclass
@@ -83,7 +83,7 @@ class RotXInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [1, 0, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -94,7 +94,7 @@ class RotYInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [0, 1, 0]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -105,7 +105,7 @@ class RotZInstruction(core.RotationInstruction):
 
     def to_matrix(self) -> np.ndarray:
         axis = [0, 0, 1]
-        angle = self.angle_num.value * np.pi / 2 ** self.angle_denom.value
+        angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
 
 
@@ -147,4 +147,4 @@ class MovInstruction(core.TwoQubitInstruction):
     def to_matrix_target_only(self) -> np.ndarray:  # type: ignore
         # NOTE: The mov instruction is not meant to be viewed as control-target gate.
         # Therefore, it is OK to not explicitly define a matrix.
-        return None
+        return None  # type: ignore

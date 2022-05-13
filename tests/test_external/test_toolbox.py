@@ -25,7 +25,7 @@ def test(angle, tol, expected_nds):
     if expected_nds is not None:
         assert nds == expected_nds
     print(nds)
-    approx = sum(n * np.pi / 2 ** d for n, d, in nds)
+    approx = sum(n * np.pi / 2**d for n, d, in nds)
     print(approx)
     assert np.abs(approx - angle) < tol
 

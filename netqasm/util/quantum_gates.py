@@ -31,14 +31,14 @@ STATIC_QUBIT_GATE_TO_MATRIX = {
 }
 
 
-def get_rotation_matrix(axis, angle):
+def get_rotation_matrix(axis, angle) -> np.ndarray:
     """Returns a single-qubit rotation matrix given an axis and an angle"""
     norm = linalg.norm(axis)
     if norm == 0:
         raise ValueError("Axis need to have non-negative norm")
     axis = axis / norm
     rot_mat = linalg.expm(-1j * angle / 2 * sum(a * P for a, P in zip(axis, PAULIS)))
-    return rot_mat
+    return rot_mat  # type: ignore
 
 
 def get_controlled_rotation_matrix(axis, angle) -> np.ndarray:
@@ -70,7 +70,7 @@ def gate_to_matrix(instr, angle=None):
         }[instr]
         if isinstance(angle, tuple):
             n, d = angle
-            angle = n * np.pi / 2 ** d
+            angle = n * np.pi / 2**d
         return get_rotation_matrix(axis=axis, angle=angle)
     else:
         raise ValueError(f"{instr} is not a quantum gate")

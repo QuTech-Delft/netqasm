@@ -6,13 +6,14 @@ jobs:
   tests:
     name: Run tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # if squidasm is not compatible, it might get stuck. Waiting any longer won't help!
     steps:
     - uses: actions/checkout@master
     - uses: actions/setup-python@master
       with:
         python-version: 3.8
     - name: Install netqasm
-      run: make install
+      run: make install-tests
     - name: Install squidasm
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run tests
@@ -21,13 +22,14 @@ jobs:
   examples:
     name: Run examples
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # if squidasm is not compatible, it might get stuck. Waiting any longer won't help!
     steps:
     - uses: actions/checkout@master
     - uses: actions/setup-python@master
       with:
         python-version: 3.8
     - name: Install netqasm
-      run: make install
+      run: make install-tests
     - name: Install squidasm
       run: pip install --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org squidasm
     - name: Run examples

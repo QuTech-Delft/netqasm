@@ -802,7 +802,7 @@ class Executor:
             yield from output
 
     def _get_rotation_angle_from_operands(self, app_id: int, n: int, d: int) -> float:
-        return float(n * np.pi / 2 ** d)
+        return float(n * np.pi / 2**d)
 
     def _do_single_qubit_rotation(
         self,
