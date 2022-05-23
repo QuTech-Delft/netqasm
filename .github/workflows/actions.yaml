@@ -12,7 +12,7 @@ jobs:
       with:
         python-version: 3.8
     - run: |
-        make install-tests
+        make install-dev
         make lint
 
   tests:
@@ -24,7 +24,7 @@ jobs:
       with:
         python-version: 3.8
     - run: |
-        make install-tests
+        make install-dev
         make tests
 
   examples:
@@ -36,5 +36,5 @@ jobs:
       with:
         python-version: 3.8
     - run: |
-        make install-tests
+        make install-dev
         make examples
