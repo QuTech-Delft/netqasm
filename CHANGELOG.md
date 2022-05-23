@@ -1,6 +1,19 @@
 CHANGELOG
 =========
 
+2022-05-23 (0.11.0)
+-------------------
+- Added support for automatically handling generated EPR pairs that are not Phi+ (by adding gates or doing post-processing)
+- Added SDK feature to pre-compile subroutines and only later send them to the quantum controller
+- Renamed `PreSubroutine` to `ProtoSubroutine`
+- Improved NV-specific compilation
+- Updated how package installation and dependency configuration is handled.
+
+
+2022-04-07 (0.9.1)
+------------------
+- Updated versions of dependencies to prevent installation conflicts.
+
 2022-02-25 (0.9.0)
 ------------------
 - Refactored SDK code
