@@ -16,6 +16,7 @@ jobs:
       run: make install-dev
     - name: Install squidasm
       run: pip install -e .[squidasm] --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org
+      continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now
     - name: Run tests
       run: make external-tests
       continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now
@@ -32,6 +33,7 @@ jobs:
       run: make install-dev
     - name: Install squidasm
       run: pip install -e .[squidasm] --extra-index-url https://${{ secrets.NETSQUIDPYPI_USER }}:${{ secrets.NETSQUIDPYPI_PWD }}@pypi.netsquid.org
+      continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now
     - name: Run examples
       run: make external-examples
       continue-on-error: true  # Allow failure because squidasm's develop branch may not be up-to-date with the changes in NetQASM we're checking right now
