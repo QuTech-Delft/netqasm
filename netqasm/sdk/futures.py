@@ -151,9 +151,20 @@ class BaseFuture(int):
     def __init__(self, connection: sdkconn.BaseNetQASMConnection):
         self._value: Optional[int] = None
         self._connection: sdkconn.BaseNetQASMConnection = connection
+        self._subrt_result: Optional[str] = None
 
     def __repr__(self):
         return f"{self.__class__} with value={self.value}"
+
+    @property
+    def subrt_result(self) -> str:
+        if self._subrt_result is None:
+            raise RuntimeError("subrt result not defined for this Future")
+        return self._subrt_result
+
+    @subrt_result.setter
+    def subrt_result(self, result_name: str) -> None:
+        self._subrt_result = result_name
 
     @property
     def builder(self) -> Builder:
@@ -255,17 +266,20 @@ class Future(BaseFuture):
     def __str__(self) -> str:
         value = self.value
         if value is None:
-            return (
-                f"{self.__class__.__name__} to be stored in array with address "
-                f"{self._address} at index {self._index}.\n"
-                "To access the value, the subroutine must first be executed which can be done by flushing."
-            )
+            return f"Future__@{self._address}[{self._index}]"
+            # return (
+            #     f"{self.__class__.__name__} to be stored in array with address "
+            #     f"{self._address} at index {self._index}.\n"
+            #     "To access the value, the subroutine must first be executed which can be done by flushing."
+            # )
         else:
             return str(value)
 
     def _try_get_value(self) -> Optional[int]:
         if not isinstance(self._index, int):
             raise NonConstantIndexError("index is not constant and cannot be resolved")
+        if self._connection.shared_memory is None:
+            return None
         value = self._connection.shared_memory.get_array_part(
             address=self._address, index=self._index
         )
@@ -435,15 +449,18 @@ class RegFuture(BaseFuture):
         assert self.reg is not None
         value = self.value
         if value is None:
-            return (
-                f"{self.__class__.__name__} to be stored in reg {self.reg} "
-                "To access the value, the subroutine must first be executed which can be done by flushing."
-            )
+            return f"RegFuture__{self.reg}"
+            # return (
+            #     f"{self.__class__.__name__} to be stored in reg {self.reg} "
+            #     "To access the value, the subroutine must first be executed which can be done by flushing."
+            # )
         else:
             return str(value)
 
     def _try_get_value(self) -> Optional[int]:
         assert self.reg is not None
+        if self._connection.shared_memory is None:
+            return None
         try:
             value = self._connection.shared_memory.get_register(self.reg)
         except KeyError:

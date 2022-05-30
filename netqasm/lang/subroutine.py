@@ -95,8 +95,10 @@ class Subroutine:
 
         self.instructions = instrs
         self._app_id = app_id
+        if self._netqasm_version is None:
+            self._netqasm_version = NETQASM_VERSION
 
-    def __str__(self):
+    def pretty_print(self):
         result = "Subroutine"
         if len(self.arguments) > 0:
             result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
@@ -110,6 +112,23 @@ class Subroutine:
                 result += f"# {instr.text}\n"
             else:
                 result += f"{rspaces(i)} {instr.debug_str}\n"
+        result += "EndSubroutine"
+        return result
+
+    def print_instructions(self) -> str:
+        return "\n".join(instr._pretty_print() for instr in self.instructions)
+
+    def __str__(self):
+        result = "Subroutine"
+        if len(self.arguments) > 0:
+            result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
+        result += "\n"
+        for i, instr in enumerate(self.instructions):
+            if isinstance(instr, DebugInstruction):
+                result += f"# {instr.text}\n"
+            else:
+                result += f"  {instr._pretty_print()}\n"
+        result += "EndSubroutine"
         return result
 
     def __len__(self):
