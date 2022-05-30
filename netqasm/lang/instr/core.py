@@ -262,6 +262,21 @@ class SetInstruction(base.RegImmInstruction):
     def writes_to(self) -> List[Register]:
         return [self.reg]
 
+    @classmethod
+    def from_operands(cls, operands: List[Union[Operand, int]]):
+        assert len(operands) == 2
+        reg, imm = operands
+        assert isinstance(reg, Register)
+
+        if isinstance(imm, int):
+            imm = Immediate(value=imm)
+        elif isinstance(imm, Immediate):
+            pass
+        else:
+            assert isinstance(imm, Template)
+
+        return cls(reg=reg, imm=imm)  # type: ignore
+
 
 @dataclass
 class StoreInstruction(base.RegEntryInstruction):

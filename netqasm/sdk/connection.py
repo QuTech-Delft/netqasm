@@ -12,6 +12,7 @@ import logging
 import math
 import os
 import pickle
+from contextlib import contextmanager
 from itertools import count
 from typing import (
     TYPE_CHECKING,
@@ -515,6 +516,7 @@ class BaseNetQASMConnection(abc.ABC):
             return None
 
         subroutine = self._builder.subrt_compile_subroutine(protosubroutine)
+        self._builder._reset()
 
         return subroutine
 
@@ -549,7 +551,7 @@ class BaseNetQASMConnection(abc.ABC):
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
-        self._logger.info(f"Commiting compiled subroutine:\n{subroutine}")
+        self._logger.info(f"Committing compiled subroutine:\n{subroutine}")
 
         self._commit_message(
             msg=SubroutineMessage(subroutine=subroutine),

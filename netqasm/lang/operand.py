@@ -163,4 +163,4 @@ class Template(Operand):
         assert isinstance(self.name, str)
 
     def __str__(self):
-        return self.name
+        return "{" + self.name + "}"

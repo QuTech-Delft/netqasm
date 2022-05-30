@@ -126,7 +126,10 @@ def _create_subroutine(
             instr_name, args = _split_instr_and_args(words[0])
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
-            operands = _parse_operands(words[1:])
+            if instr in _ALLOW_LABEL_INSTRUCTIONS:
+                operands = _parse_operands(words[1:], allow_label=True)
+            else:
+                operands = _parse_operands(words[1:], allow_label=False)
             command = ICmd(
                 instruction=instr,
                 args=args,
@@ -185,20 +188,20 @@ def _parse_constant(constant: str) -> int:
     return int(constant)
 
 
-def _parse_operands(words: List[str]):
+def _parse_operands(words: List[str], allow_label=True):
     operands = []
     for word in words:
-        operand = _parse_operand(word.strip())
+        operand = _parse_operand(word.strip(), allow_label=allow_label)
         operands.append(operand)
 
     return operands
 
 
-def _parse_operand(word: str):
+def _parse_operand(word: str, allow_label=True):
     if word.startswith(Symbols.ADDRESS_START):
         return parse_address(word)
     else:
-        return _parse_value(word, allow_label=True, allow_template=True)
+        return _parse_value(word, allow_label=allow_label, allow_template=True)
 
 
 def _parse_value(
@@ -509,6 +512,16 @@ def _make_args_operands(subroutine):
         command.operands = command.args + command.operands
         command.args = []
 
+
+_ALLOW_LABEL_INSTRUCTIONS = [
+    GenericInstr.JMP,
+    GenericInstr.BEQ,
+    GenericInstr.BNE,
+    GenericInstr.BEZ,
+    GenericInstr.BNZ,
+    GenericInstr.BLT,
+    GenericInstr.BGE,
+]
 
 _REPLACE_CONSTANTS_EXCEPTION = [
     (GenericInstr.SET, 1),
