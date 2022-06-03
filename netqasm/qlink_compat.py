@@ -68,9 +68,9 @@ class Basis(Enum):
 # What Bell state is generated
 class BellState(Enum):
     PHI_PLUS = 0  # |00> + |11>
-    PHI_MINUS = auto()  # |00> - |11>
-    PSI_PLUS = auto()  # |01> + |10>
-    PSI_MINUS = auto()  # |01> - |10>
+    PSI_PLUS = 1  # |01> + |10>
+    PSI_MINUS = 2  # |01> - |10>
+    PHI_MINUS = 3  # |00> - |11>
 
 
 # Unit for max_time argument
