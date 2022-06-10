@@ -201,7 +201,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 50
+beq R2 R5 51
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -212,14 +212,15 @@ set R5 1
 add R4 R4 R5
 jmp 30
 load R1 @0[R3]
-set R5 1
-bne R1 R5 40
-rot_z R0 16 4
-set R5 2
-bne R1 R5 43
-rot_x R0 16 4
+set R0 0
 set R5 3
-bne R1 R5 47
+bne R1 R5 41
+rot_z R0 16 4
+set R5 1
+bne R1 R5 44
+rot_x R0 16 4
+set R5 2
+bne R1 R5 48
 rot_x R0 16 4
 rot_z R0 16 4
 set R5 1
@@ -292,7 +293,7 @@ set R6 20
 wait_all @0[R5:R6]
 set R2 0
 set R5 2
-beq R2 R5 53
+beq R2 R5 54
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -303,14 +304,15 @@ set R5 1
 add R4 R4 R5
 jmp 33
 load R1 @0[R3]
-set R5 1
-bne R1 R5 43
-rot_z R0 16 4
-set R5 2
-bne R1 R5 46
-rot_x R0 16 4
+set R0 0
 set R5 3
-bne R1 R5 50
+bne R1 R5 44
+rot_z R0 16 4
+set R5 1
+bne R1 R5 47
+rot_x R0 16 4
+set R5 2
+bne R1 R5 51
 rot_x R0 16 4
 rot_z R0 16 4
 set R5 1
@@ -839,7 +841,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 56
+beq R2 R5 57
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -850,14 +852,15 @@ set R5 1
 add R4 R4 R5
 jmp 36
 load R1 @0[R3]
-set R5 1
-bne R1 R5 46
-rot_z R0 16 4
-set R5 2
-bne R1 R5 49
-rot_x R0 16 4
+set R0 0
 set R5 3
-bne R1 R5 53
+bne R1 R5 47
+rot_z R0 16 4
+set R5 1
+bne R1 R5 50
+rot_x R0 16 4
+set R5 2
+bne R1 R5 54
 rot_x R0 16 4
 rot_z R0 16 4
 set R5 1

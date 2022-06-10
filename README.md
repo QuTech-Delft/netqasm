@@ -24,16 +24,38 @@ NetQASM is available as [a package on PyPI](https://pypi.org/project/netqasm/) a
 pip install netqasm
 ```
 
+If you also want to run NetQASM applications on an actual simulator, you may install `squidasm`, with:
+
+```
+pip install squidasm --extra-index-url=https://pypi.netsquid.org
+```
+which whill prompt for your NetSquid username and password.
+
 ### From source
-Clone this repository run the install script:
+Clone this repository and create an editable install with:
 
 ```
-git clone https://github.com/QuTech-Delft/netqasm
-cd netqasm
-make install
+pip install -e .
 ```
 
-To verify the installation:
+Additionally you may want to install the `dev` dependencies in order to run the tests and linter:
+
+```
+pip install -e .[dev]
+```
+
+The `squidasm` simulator can also be installed, with:
+
+```
+pip install -e .[squidasm] --extra-index-url=https://pypi.netsquid.org
+```
+
+> Alternatively, you can use the `make install` and `make install-dev` Makefile commands.
+For also installing `squidasm`, use `make install-squidasm`.
+This requires you to have the `NETSQUIDPYPI_USER` and
+`NETSQUIDPYPI_PWD` environment variables set to your NetSquid username and password respectively.
+
+To verify the installation and run all tests and examples:
 ```sh
 make verify
 ```

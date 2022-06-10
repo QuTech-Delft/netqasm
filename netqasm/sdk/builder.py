@@ -358,7 +358,7 @@ class Builder:
         )
 
     def _build_cmds_wait_move_epr_to_mem(
-        self, params: EntRequestParams, ent_results_array: Array
+        self, params: EntRequestParams, ent_results_array: Array, role: EPRRole
     ) -> None:
 
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
@@ -373,11 +373,15 @@ class Builder:
                 pair=pair,
             )
 
-            if params.expect_phi_plus:
+            if params.expect_phi_plus and role == EPRRole.CREATE:
                 # Perform Bell corrections
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
                 )
+                set_qubit_reg_cmd = ICmd(
+                    instruction=GenericInstr.SET, operands=[qubit_reg, 0]
+                )
+                self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
                 self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
 
             # If it's the last pair, don't move it to a mem qubit
@@ -424,6 +428,7 @@ class Builder:
         params: EntRequestParams,
         ent_results_array: Array,
         tp: EPRType,
+        role: EPRRole,
     ) -> None:
 
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
@@ -439,10 +444,14 @@ class Builder:
             )
             assert tp == EPRType.K or tp == EPRType.R
 
-            if params.expect_phi_plus:
+            if params.expect_phi_plus and role == EPRRole.CREATE:
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
                 )
+                set_qubit_reg_cmd = ICmd(
+                    instruction=GenericInstr.SET, operands=[qubit_reg, 0]
+                )
+                self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
                 self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
 
             q_id = qubit_ids.get_future_index(loop_register)
@@ -1382,6 +1391,10 @@ class Builder:
             bell_state = self._get_raw_bell_state(
                 ent_results_array, index, bell_state_reg
             )
+            set_qubit_reg_cmd = ICmd(
+                instruction=GenericInstr.SET, operands=[qubit_reg, 0]
+            )
+            self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
             self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
 
         self._build_cmds_loop_body(
@@ -1493,11 +1506,6 @@ class Builder:
             wait_cmds = []
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
-
-        if wait_all and params.expect_phi_plus:
-            self._build_cmds_epr_keep_corrections(
-                qubit_ids_array, ent_results_array, params
-            )
 
     def _build_cmds_epr_create_measure(
         self,
@@ -1881,16 +1889,13 @@ class Builder:
 
         if params.post_routine is None and single_comm_qubit:
             self._build_cmds_wait_move_epr_to_mem(
-                params=params, ent_results_array=ent_results_array
+                params=params, ent_results_array=ent_results_array, role=role
             )
 
         # Construct and add NetQASM instructions for post routine
         if params.post_routine:
             self._build_cmds_post_epr(
-                qubit_ids_array,
-                params,
-                ent_results_array,
-                EPRType.K,
+                qubit_ids_array, params, ent_results_array, EPRType.K, role
             )
 
         return qubit_futures, ent_results_array

@@ -13,9 +13,6 @@ help:
 	@echo "external-tests    Runs the external tests (downstream dependencies)."
 	@echo "examples          Runs the examples and makes sure they work."
 	@echo "lint              Runs the linter."
-	@echo "test-deps         Installs the requirements needed for running tests and linter."
-	@echo "external-test-deps Installs the requirements needed for running external tests."
-	@echo "python-deps       Installs the requirements needed for using the package."
 	@echo "docs              Creates the html documentation"
 	@echo "clean             Removes all .pyc files."
 
@@ -58,15 +55,15 @@ docs html:
 install:
 	@$(PYTHON3) -m pip install -e .
 
-install-tests:
-	@$(PYTHON3) -m pip install -e .[tests]
+install-dev:
+	@$(PYTHON3) -m pip install -e .[dev]
 
 install-squidasm:
 	@$(PYTHON3) -m pip install -e .[squidasm] ${EXTERNAL_PIP_FLAGS}
 
-verify: clean install install-tests lint tests examples _verified
+verify: clean install install-dev lint tests examples _verified
 
 _verified:
 	@echo "Everything OK!"
 
-.PHONY: clean lint tests verify install install-tests install-squidasm examples docs
+.PHONY: clean lint tests verify install install-dev install-squidasm examples docs
