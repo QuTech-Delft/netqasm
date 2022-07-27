@@ -137,7 +137,7 @@ class CphaseInstruction(core.TwoQubitInstruction):
 class MovInstruction(core.TwoQubitInstruction):
     """Move source qubit to target qubit (target is overwritten)"""
 
-    id: int = 41
+    id: int = 51
     mnemonic: str = "mov"
 
     def to_matrix(self) -> np.ndarray:

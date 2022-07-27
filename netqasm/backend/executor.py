@@ -37,6 +37,8 @@ from netqasm.lang import instr as ins
 from netqasm.lang import operand
 from netqasm.lang.encoding import RegisterName
 from netqasm.lang.instr.base import NetQASMInstruction
+from netqasm.lang.instr.core import MeasBasisInstruction
+from netqasm.lang.instr.vanilla import RotXInstruction, RotYInstruction
 from netqasm.lang.operand import Address, ArrayEntry, ArraySlice
 from netqasm.lang.parsing import parse_address
 from netqasm.logging.glob import get_netqasm_logger
@@ -370,6 +372,7 @@ class Executor:
             "undef",
             "lea",
             "meas",
+            "meas_basis",
             "create_epr",
             "recv_epr",
             "wait_all",
@@ -888,6 +891,54 @@ class Executor:
         :return: [description]
         """
         return None
+
+    @inc_program_counter
+    def _instr_meas_basis(
+        self, subroutine_id: int, instr: MeasBasisInstruction
+    ) -> Generator[Any, None, None]:
+        assert instr.angle_denom.value == 4
+        app_id = self._get_app_id(subroutine_id=subroutine_id)
+        q_address = self._get_register(app_id=app_id, register=instr.qreg)
+        assert q_address is not None
+        self._logger.debug(
+            f"Measuring the qubit at address {q_address}, "
+            f"placing the outcome in register {instr.creg}"
+        )
+        do_rot1 = self._handle_single_qubit_rotation(
+            subroutine_id=subroutine_id,
+            instr=RotXInstruction(
+                reg=instr.qreg, imm0=instr.angle_num_x1, imm1=instr.angle_denom
+            ),
+        )
+        do_rot2 = self._handle_single_qubit_rotation(
+            subroutine_id=subroutine_id,
+            instr=RotYInstruction(
+                reg=instr.qreg, imm0=instr.angle_num_y, imm1=instr.angle_denom
+            ),
+        )
+        do_rot3 = self._handle_single_qubit_rotation(
+            subroutine_id=subroutine_id,
+            instr=RotXInstruction(
+                reg=instr.qreg, imm0=instr.angle_num_x2, imm1=instr.angle_denom
+            ),
+        )
+        if isinstance(do_rot1, Generator):
+            yield from do_rot1
+        if isinstance(do_rot2, Generator):
+            yield from do_rot2
+        if isinstance(do_rot3, Generator):
+            yield from do_rot3
+        do_meas = self._do_meas(subroutine_id=subroutine_id, q_address=q_address)
+        outcome: int
+        if isinstance(do_meas, Generator):
+            outcome = yield from do_meas  # type: ignore
+        else:
+            outcome = do_meas
+        self._set_register(app_id=app_id, register=instr.creg, value=outcome)
+
+        # HACK
+        self._program_counters[subroutine_id] -= 3
+        return outcome  # type: ignore
 
     @inc_program_counter
     def _instr_meas(
