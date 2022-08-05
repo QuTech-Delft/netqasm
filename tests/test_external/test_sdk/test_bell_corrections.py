@@ -17,7 +17,8 @@ logger = get_netqasm_logger()
 def simulate_different_bell_state(
     subrt: Subroutine, bell_state: BellState
 ) -> Subroutine:
-    orig_instr: LoadInstruction = subrt.instructions[27]
+    # Change "Load bell state index from array" instruction into a simple "set"
+    orig_instr: LoadInstruction = subrt.instructions[27]  # type: ignore
     subrt.instructions[27] = SetInstruction(
         reg=orig_instr.reg, imm=Immediate(bell_state.value)
     )
@@ -45,7 +46,7 @@ def run_alice():
 
 def run_bob_phi_plus():
     epr_socket = EPRSocket("Alice")
-    with NetQASMConnection("Bob", epr_sockets=[epr_socket]) as conn:
+    with NetQASMConnection("Bob", epr_sockets=[epr_socket]):
         epr_socket.recv_keep()
 
 
