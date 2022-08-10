@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from itertools import count
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 from netqasm.lang import operand
 from netqasm.lang.encoding import REG_INDEX_BITS, RegisterName
@@ -48,6 +48,12 @@ class MemoryManager:
     def get_active_qubits(self) -> List[Qubit]:
         """Get all qubit locations that are in use."""
         return self._active_qubits
+
+    def get_active_qubit_by_id(self, id: int) -> Optional[Qubit]:
+        for q in self._active_qubits:
+            if q.qubit_id == id:
+                return q
+        return None
 
     def is_qubit_active(self, q: Qubit) -> bool:
         """Check if a qubit location is in use."""

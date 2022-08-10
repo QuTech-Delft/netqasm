@@ -6,6 +6,7 @@ as handles to in-memory qubits.
 from __future__ import annotations
 
 from enum import Enum, auto
+from tabnanny import check
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.lang.ir import GenericInstr
@@ -55,6 +56,7 @@ class Qubit:
         add_new_command: bool = True,
         ent_info: Optional[qlink_compat.LinkLayerOKTypeK] = None,
         virtual_address: Optional[int] = None,
+        check_initialize: bool = True,
     ):
         """Qubit constructor. This is the standard way to allocate a new qubit in
         an application.
@@ -74,7 +76,10 @@ class Qubit:
             self._qubit_id = virtual_address
 
         if add_new_command:
-            self.builder._build_cmds_new_qubit(qubit_id=self.qubit_id)
+            # Qubit ID might be changed by builder
+            self._qubit_id = self.builder._build_cmds_new_qubit(
+                qubit_id=self.qubit_id, check_initialize=check_initialize
+            )
 
         self._active: bool = False
         self._activate()

@@ -725,6 +725,7 @@ class Builder:
                         add_new_command=add_new_command,
                         ent_info=ent_info_slice,
                         virtual_address=final_id,
+                        check_initialize=False,
                     )
                     qubits.append(q)
         else:  # generic hardware
@@ -1111,7 +1112,7 @@ class Builder:
     def _build_cmds_move_qubit(self, source: int, target: int) -> None:
         # Moves a qubit from one position to another (assumes that target is free)
         assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
-        self._build_cmds_new_qubit(target)
+        self._build_cmds_new_qubit(target, check_initialize=False)
         self._build_cmds_two_qubit(GenericInstr.MOV, source, target)
         self._build_cmds_qfree(source)
 
@@ -1180,7 +1181,24 @@ class Builder:
         commands = [meas_command] + free_commands + outcome_commands  # type: ignore
         self.subrt_add_pending_commands(commands)  # type: ignore
 
-    def _build_cmds_new_qubit(self, qubit_id: int) -> None:
+    def _build_cmds_new_qubit(
+        self, qubit_id: int, check_initialize: bool = True
+    ) -> int:
+        """Returns the ID that is chosen for this qubit."""
+        if (
+            check_initialize
+            and isinstance(self._hardware_config, NVHardwareConfig)
+            and qubit_id != 0
+        ):
+            # NV: only ID 0 can be used for initializing qubits.
+            # If 0 is already used by another qubit, we have to move it to `qubit_id`
+            # and then the new qubit created here will get 0.
+            if (q := self._mem_mgr.get_active_qubit_by_id(0)) is not None:
+                # Move existing qubit away from 0.
+                self._build_cmds_move_qubit(source=0, target=qubit_id)
+                q.qubit_id = qubit_id
+            # Regardless of moving existing qubits or not, the new qubit must have 0.
+            qubit_id = 0
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
         qalloc_command = ICmd(
@@ -1193,6 +1211,7 @@ class Builder:
         )
         commands = [qalloc_command, init_command]
         self.subrt_add_pending_commands(commands)  # type: ignore
+        return qubit_id
 
     def _build_cmds_init_qubit(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1316,17 +1335,16 @@ class Builder:
                     # "init old address" + "move to new address", we just have
                     # "init new address"
                     pending_commands = self.subrt_pop_all_pending_commands()
-                    if len(pending_commands) >= 3:
+                    if len(pending_commands) >= 3 and (
                         # Check last 3 commands to see if the qubit was just initialized.
                         # ('type: ignore' since mypy isn't smart enough)
-                        if (
-                            all(isinstance(cmd, ICmd) for cmd in pending_commands[-3:])
-                            and pending_commands[-3].instruction == GenericInstr.SET  # type: ignore
-                            and pending_commands[-2].instruction == GenericInstr.QALLOC  # type: ignore
-                            and pending_commands[-1].instruction == GenericInstr.INIT  # type: ignore
-                        ):
-                            # Update the SET command with the new address.
-                            pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
+                        all(isinstance(cmd, ICmd) for cmd in pending_commands[-3:])
+                        and pending_commands[-3].instruction == GenericInstr.SET  # type: ignore
+                        and pending_commands[-2].instruction == GenericInstr.QALLOC  # type: ignore
+                        and pending_commands[-1].instruction == GenericInstr.INIT  # type: ignore
+                    ):
+                        # Update the SET command with the new address.
+                        pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
                         self.subrt_add_pending_commands(pending_commands)
                     else:
                         self.subrt_add_pending_commands(pending_commands)
