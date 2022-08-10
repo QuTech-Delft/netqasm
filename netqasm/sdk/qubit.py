@@ -6,7 +6,6 @@ as handles to in-memory qubits.
 from __future__ import annotations
 
 from enum import Enum, auto
-from tabnanny import check
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.lang.ir import GenericInstr
