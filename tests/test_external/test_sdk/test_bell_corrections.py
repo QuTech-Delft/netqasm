@@ -18,8 +18,21 @@ def simulate_different_bell_state(
     subrt: Subroutine, bell_state: BellState
 ) -> Subroutine:
     # Change "Load bell state index from array" instruction into a simple "set"
-    orig_instr: LoadInstruction = subrt.instructions[27]  # type: ignore
-    subrt.instructions[27] = SetInstruction(
+    # It is always the second 'load' instruction in the subroutine.
+    found_first_load = False
+    instr_index = None
+    for i, instr in enumerate(subrt.instructions):
+        if isinstance(instr, LoadInstruction):
+            if not found_first_load:
+                found_first_load = True
+            else:
+                instr_index = i
+                break
+
+    assert instr_index is not None
+
+    orig_instr: LoadInstruction = subrt.instructions[instr_index]  # type: ignore
+    subrt.instructions[instr_index] = SetInstruction(
         reg=orig_instr.reg, imm=Immediate(bell_state.value)
     )
     return subrt
