@@ -150,7 +150,6 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> List[Qubit]:
@@ -209,11 +208,6 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
-        :param expect_phi_plus: whether to assume that the EPR pairs that are created
-            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
-            will make sure that if the physical link actually produced another Bell
-            state, the behavior seen by the application is still as if a Phi+ state
-            was actually produced.
         :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
             qubits should ideally still have at the moment the last qubit has been
             generated. For example, when specifying `number=2` and
@@ -237,7 +231,6 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
-                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),
@@ -251,7 +244,6 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
         """Same as create_keep but also return the EPR generation information coming
@@ -271,7 +263,6 @@ class EPRSocket(abc.ABC):
                 sequential=sequential,
                 time_unit=time_unit,
                 max_time=max_time,
-                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
             ),
         )
@@ -282,7 +273,6 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        expect_phi_plus: bool = True,
         basis_local: EprMeasBasis = None,
         basis_remote: EprMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
@@ -336,11 +326,6 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
-        :param expect_phi_plus: whether to assume that the EPR pairs that are created
-            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
-            will make sure that if the physical link actually produced another Bell
-            state, the behavior seen by the application is still as if a Phi+ state
-            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
@@ -366,7 +351,6 @@ class EPRSocket(abc.ABC):
                 sequential=False,
                 time_unit=time_unit,
                 max_time=max_time,
-                expect_phi_plus=expect_phi_plus,
                 random_basis_local=random_basis_local,
                 random_basis_remote=random_basis_remote,
                 rotations_local=rotations_local,
@@ -379,15 +363,15 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        expect_phi_plus: bool = True,
         basis_local: EprMeasBasis = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         min_fidelity_all_at_end: Optional[int] = None,
+        max_tries: Optional[int] = None,
     ) -> List[EprMeasureResult]:
         """Ask the network stack to do remote preparation with the remote node.
 
-        A `create_rsp` operation must always be matched by a `recv_erp` operation
+        A `create_rsp` operation must always be matched by a `recv_epr` operation
         on the remote node.
 
         This operation returns a list of Linklayer response objects. These objects
@@ -422,19 +406,21 @@ class EPRSocket(abc.ABC):
             willing to wait for entanglement generation of a single pair. If generation
             does not succeed within this time, the whole subroutine that this request
             is part of is reset and run again by the quantum node controller.
-        :param expect_phi_plus: whether to assume that the EPR pairs that are created
-            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
-            will make sure that if the physical link actually produced another Bell
-            state, the behavior seen by the application is still as if a Phi+ state
-            was actually produced.
         :param basis_local: basis to measure in on this node for M-type requests
-        :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
-        :param rotations_remote: rotations to apply before measuring on remote node
         :param random_basis_local: random bases to choose from when measuring on this
             node
-        :param random_basis_remote: random bases to choose from when measuring on
-            the remote node
+        :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
+            qubits should ideally still have at the moment the last qubit has been
+            generated. For example, when specifying `number=2` and
+            `min_fidelity_all_at_end=80`, the the program will automatically try to
+            make sure that both qubits have a fidelity of at least 80% when the
+            second qubit has been generated. It will attempt to do this by
+            automatically re-trying the entanglement generation if the fidelity
+            constraint is not satisfied. This is however an *attempt*, and not
+            a guarantee!.
+        :param max_tries: maximum number of re-tries should be made to try and achieve
+            the `min_fidelity_all_at_end` constraint.
         :return: list of entanglement info objects per created pair.
         """
 
@@ -450,10 +436,10 @@ class EPRSocket(abc.ABC):
                 sequential=False,
                 time_unit=time_unit,
                 max_time=max_time,
-                expect_phi_plus=expect_phi_plus,
                 random_basis_local=random_basis_local,
                 rotations_local=rotations_local,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
+                max_tries=max_tries,
             )
         )
 
@@ -657,6 +643,7 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> List[Qubit]:
@@ -672,6 +659,11 @@ class EPRSocket(abc.ABC):
         :param post_routine: callback function used when `sequential` is True
         :param sequential: whether to call the callback after each pair generation,
             defaults to False
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
             qubits should ideally still have at the moment the last qubit has been
             generated. For example, when specifying `number=2` and
@@ -696,6 +688,7 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),
@@ -707,6 +700,7 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
@@ -725,6 +719,7 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=post_routine,
                 sequential=sequential,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),
@@ -734,6 +729,7 @@ class EPRSocket(abc.ABC):
     def recv_measure(
         self,
         number: int = 1,
+        expect_phi_plus: bool = True,
     ) -> List[EprMeasureResult]:
         """Ask the network stack to wait for the remote node to generate EPR pairs,
         which are immediately measured (on both nodes).
@@ -744,9 +740,11 @@ class EPRSocket(abc.ABC):
         For more information see the documentation of `create_measure`.
 
         :param number: number of pairs to generate, defaults to 1
-        :param post_routine: callback function used when `sequential` is True
-        :param sequential: whether to call the callback after each pair generation,
-            defaults to False
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
         :return: list of entanglement info objects per created pair.
         """
         if self.conn is None:
@@ -757,6 +755,7 @@ class EPRSocket(abc.ABC):
                 remote_node_id=self.remote_node_id,
                 epr_socket_id=self._epr_socket_id,
                 number=number,
+                expect_phi_plus=expect_phi_plus,
                 post_routine=None,
                 sequential=False,
             ),
@@ -765,6 +764,7 @@ class EPRSocket(abc.ABC):
     def recv_rsp(
         self,
         number: int = 1,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> List[Qubit]:
@@ -776,6 +776,22 @@ class EPRSocket(abc.ABC):
         For more information see the documentation of `create_rsp`.
 
         :param number: number of pairs to generate, defaults to 1
+        :param expect_phi_plus: whether to assume that the EPR pairs that are created
+            are in the Phi+ (or Phi_00) state. Defaults to True. If True, the compiler
+            will make sure that if the physical link actually produced another Bell
+            state, the behavior seen by the application is still as if a Phi+ state
+            was actually produced.
+        :param min_fidelity_all_at_end: the minimum fidelity that *all* entangled
+            qubits should ideally still have at the moment the last qubit has been
+            generated. For example, when specifying `number=2` and
+            `min_fidelity_all_at_end=80`, the the program will automatically try to
+            make sure that both qubits have a fidelity of at least 80% when the
+            second qubit has been generated. It will attempt to do this by
+            automatically re-trying the entanglement generation if the fidelity
+            constraint is not satisfied. This is however an *attempt*, and not
+            a guarantee!.
+        :param max_tries: maximum number of re-tries should be made to try and achieve
+            the `min_fidelity_all_at_end` constraint.
         :return: list of qubits created
         """
         if self.conn is None:
@@ -788,6 +804,7 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=None,
                 sequential=False,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),
@@ -797,6 +814,7 @@ class EPRSocket(abc.ABC):
     def recv_rsp_with_info(
         self,
         number: int = 1,
+        expect_phi_plus: bool = True,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> Tuple[List[Qubit], List[EprKeepResult]]:
@@ -818,6 +836,7 @@ class EPRSocket(abc.ABC):
                 number=number,
                 post_routine=None,
                 sequential=False,
+                expect_phi_plus=expect_phi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),

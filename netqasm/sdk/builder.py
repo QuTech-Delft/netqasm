@@ -373,7 +373,7 @@ class Builder:
                 pair=pair,
             )
 
-            if params.expect_phi_plus and role == EPRRole.CREATE:
+            if params.expect_phi_plus and role == EPRRole.RECV:
                 # Perform Bell corrections
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
@@ -444,7 +444,7 @@ class Builder:
             )
             assert tp == EPRType.K or tp == EPRType.R
 
-            if params.expect_phi_plus and role == EPRRole.CREATE:
+            if params.expect_phi_plus and role == EPRRole.RECV:
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
                 )
@@ -1470,11 +1470,6 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        if wait_all and params.expect_phi_plus:
-            self._build_cmds_epr_keep_corrections(
-                qubit_ids_array, ent_results_array, params
-            )
-
     def _build_cmds_epr_recv_keep(
         self,
         qubit_ids_array: Array,
@@ -1506,6 +1501,11 @@ class Builder:
             wait_cmds = []
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
+
+        if wait_all and params.expect_phi_plus:
+            self._build_cmds_epr_keep_corrections(
+                qubit_ids_array, ent_results_array, params
+            )
 
     def _build_cmds_epr_create_measure(
         self,
@@ -1641,6 +1641,11 @@ class Builder:
             wait_cmds = []
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
+
+        if wait_all and params.expect_phi_plus:
+            self._build_cmds_epr_keep_corrections(
+                qubit_ids_array, ent_results_array, params
+            )
 
     def _build_cmds_loop_body(
         self,
@@ -2010,7 +2015,7 @@ class Builder:
             assert params.max_tries is not None
             with self.sdk_new_loop_until_context(params.max_tries) as loop:
                 qubits, result_array = self.sdk_epr_keep(
-                    role=EPRRole.CREATE, params=params
+                    role=EPRRole.CREATE, params=params, reset_results_array=True
                 )
 
                 results = deserialize_epr_keep_results(params, result_array)

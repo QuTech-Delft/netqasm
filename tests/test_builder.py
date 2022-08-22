@@ -414,7 +414,7 @@ def test_nested():
     )
 
 
-def test_epr_keep_info():
+def test_epr_create_keep_info():
     DebugConnection.node_ids = {
         "Alice": 0,
         "Bob": 1,
@@ -438,6 +438,41 @@ def test_epr_keep_info():
         [
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            GenericInstr.SET,
+            GenericInstr.QALLOC,
+            GenericInstr.INIT,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_epr_recv_keep_info():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        eprs, infos = epr_socket.recv_keep_with_info()
+        epr, info = eprs[0], infos[0]
+
+        _ = epr.measure(store_array=False)
+        with info.generation_duration.if_ge(1337):
+            _ = Qubit(conn)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.ROT_Z,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
@@ -451,7 +486,7 @@ def test_epr_keep_info():
     )
 
 
-def test_epr_keep_info_no_phi_plus():
+def test_epr_recv_keep_info_no_phi_plus():
     DebugConnection.node_ids = {
         "Alice": 0,
         "Bob": 1,
@@ -460,7 +495,7 @@ def test_epr_keep_info_no_phi_plus():
     epr_socket = EPRSocket("Bob")
 
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
-        eprs, infos = epr_socket.create_keep_with_info(expect_phi_plus=False)
+        eprs, infos = epr_socket.recv_keep_with_info(expect_phi_plus=False)
         epr, info = eprs[0], infos[0]
 
         _ = epr.measure(store_array=False)
@@ -473,7 +508,7 @@ def test_epr_keep_info_no_phi_plus():
     inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
-            GenericInstr.CREATE_EPR,
+            GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.LOAD,
@@ -561,7 +596,7 @@ def test_epr_context_future_index():
     )
 
 
-def test_epr_post():
+def test_create_epr_post():
     DebugConnection.node_ids = {
         "Alice": 0,
         "Bob": 1,
@@ -587,6 +622,51 @@ def test_epr_post():
     assert inspector.match_pattern(
         [
             GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.LOAD,
+            GenericInstr.H,
+            GenericInstr.ADD,
+            GenericInstr.LOAD,
+            GenericInstr.MEAS,
+            GenericInstr.QFREE,
+            GenericInstr.STORE,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_recv_epr_post():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        outcomes = conn.new_array(10)
+
+        def post_create(_: DebugConnection, q: Qubit, index: RegFuture):
+            q.H()
+            index.add(1)
+            outcome = outcomes.get_future_index(index)
+            q.measure(outcome)
+
+        epr_socket.recv_keep(number=10, post_routine=post_create, sequential=True)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
             PatternWildcard.ANY_ZERO_OR_MORE,
             PatternWildcard.BRANCH_LABEL,
             PatternWildcard.ANY_ZERO_OR_MORE,
@@ -664,7 +744,7 @@ def test_loop_until():
     )
 
 
-def test_epr_min_fidelity_all():
+def test_create_epr_min_fidelity_all():
     DebugConnection.node_ids = {
         "Alice": 0,
         "Bob": 1,
@@ -681,10 +761,54 @@ def test_epr_min_fidelity_all():
     inspector = ProtoSubroutineInspector(subroutine)
     assert inspector.match_pattern(
         [
+            GenericInstr.BEQ,
             GenericInstr.SET,
             PatternWildcard.BRANCH_LABEL,
             GenericInstr.BEQ,
+            GenericInstr.UNDEF,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
             GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.LOAD,
+            GenericInstr.BLT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.UNDEF,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+        ]
+    )
+
+
+def test_recv_epr_min_fidelity_all():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_keep(number=2, min_fidelity_all_at_end=80, max_tries=100)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.BEQ,
+            GenericInstr.SET,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.BEQ,
+            GenericInstr.UNDEF,
+            GenericInstr.ADD,
+            GenericInstr.JMP,
+            PatternWildcard.BRANCH_LABEL,
+            GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.ROT_Z,  # Bell corrections
@@ -944,6 +1068,230 @@ def test_measure_basis_rotation():
         print(compiled_subroutine)
 
 
+def test_create_keep_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.create_keep(number=1)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_keep_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_keep(number=1, expect_phi_plus=False)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_keep_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_keep(number=1, expect_phi_plus=True)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.SET,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_create_measure_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.create_measure(number=1)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_measure_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_measure(number=1, expect_phi_plus=False)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_measure_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_measure(number=1, expect_phi_plus=True)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_create_rsp_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.create_rsp(number=1)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_rsp_no_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_rsp(number=1, expect_phi_plus=False)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_recv_rsp_corrections():
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        epr_socket.recv_rsp(number=1, expect_phi_plus=True)
+
+        subroutine = conn._builder.subrt_pop_pending_subroutine()
+        print(subroutine)
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.RECV_EPR,
+            GenericInstr.WAIT_ALL,
+            GenericInstr.SET,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.BNE,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
 if __name__ == "__main__":
     # set_log_level("DEBUG")
     test_simple()
@@ -953,14 +1301,17 @@ if __name__ == "__main__":
     test_looping()
     test_futures()
     test_nested()
-    test_epr_keep_info()
-    test_epr_keep_info_no_phi_plus()
+    test_epr_create_keep_info()
+    test_epr_recv_keep_info()
+    test_epr_recv_keep_info_no_phi_plus()
     test_epr_context()
     test_epr_context_future_index()
-    test_epr_post()
+    test_create_epr_post()
+    test_recv_epr_post()
     test_try()
     test_loop_until()
-    test_epr_min_fidelity_all()
+    test_create_epr_min_fidelity_all()
+    test_recv_epr_min_fidelity_all()
     test_create_multiple_eprs()
     test_create_2_eprs_NV()
     test_create_3_eprs_NV()
@@ -969,3 +1320,15 @@ if __name__ == "__main__":
     test_measure_Z()
     test_measure_basis()
     test_measure_basis_rotation()
+
+    test_create_keep_no_corrections()
+    test_recv_keep_no_corrections()
+    test_recv_keep_corrections()
+
+    test_create_measure_no_corrections()
+    test_recv_measure_no_corrections()
+    test_recv_measure_corrections()
+
+    test_create_rsp_no_corrections()
+    test_recv_rsp_no_corrections()
+    test_recv_rsp_corrections()
