@@ -1316,17 +1316,16 @@ class Builder:
                     # "init old address" + "move to new address", we just have
                     # "init new address"
                     pending_commands = self.subrt_pop_all_pending_commands()
-                    if len(pending_commands) >= 3:
-                        # Check last 3 commands to see if the qubit was just initialized.
-                        # ('type: ignore' since mypy isn't smart enough)
-                        if (
-                            all(isinstance(cmd, ICmd) for cmd in pending_commands[-3:])
-                            and pending_commands[-3].instruction == GenericInstr.SET  # type: ignore
-                            and pending_commands[-2].instruction == GenericInstr.QALLOC  # type: ignore
-                            and pending_commands[-1].instruction == GenericInstr.INIT  # type: ignore
-                        ):
-                            # Update the SET command with the new address.
-                            pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
+                    # Check last 3 commands to see if the qubit was just initialized.
+                    # ('type: ignore' since mypy isn't smart enough)
+                    if len(pending_commands) >= 3 and (
+                        all(isinstance(cmd, ICmd) for cmd in pending_commands[-3:])
+                        and pending_commands[-3].instruction == GenericInstr.SET  # type: ignore
+                        and pending_commands[-2].instruction == GenericInstr.QALLOC  # type: ignore
+                        and pending_commands[-1].instruction == GenericInstr.INIT  # type: ignore
+                    ):
+                        # Update the SET command with the new address.
+                        pending_commands[-3].operands[1] = new_virtual_address  # type: ignore
                         self.subrt_add_pending_commands(pending_commands)
                     else:
                         self.subrt_add_pending_commands(pending_commands)
