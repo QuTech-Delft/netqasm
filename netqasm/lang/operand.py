@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Union
+from typing import List, Tuple, Union
 
 from netqasm.lang import encoding
 from netqasm.lang.encoding import RegisterName
@@ -18,6 +20,21 @@ class Immediate(Operand):
         return str(self.value)
 
 
+class RegisterMeta:
+    @classmethod
+    def prefixes(cls) -> List[str]:
+        return ["R", "C", "Q", "M"]
+
+    @classmethod
+    def parse(cls, name: str) -> Tuple[RegisterName, int]:
+        assert len(name) >= 2
+        assert name[0] in cls.prefixes()
+        group = RegisterName[name[0]]
+        index = int(name[1:])
+        assert index < 16
+        return group, index
+
+
 @dataclass(eq=True, frozen=True)
 class Register(Operand):
     name: RegisterName
@@ -29,6 +46,11 @@ class Register(Operand):
 
     def __str__(self):
         return f"{self.name.name}{self.index}"
+
+    @classmethod
+    def from_str(cls, name: str) -> Register:
+        reg_name, index = RegisterMeta.parse(name)
+        return Register(reg_name, index)
 
     @property
     def cstruct(self):

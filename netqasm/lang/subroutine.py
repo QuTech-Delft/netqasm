@@ -38,7 +38,9 @@ class Subroutine:
         netqasm_version: Tuple[int, int] = NETQASM_VERSION,
         app_id: Optional[int] = None,
     ) -> None:
+        # TODO: remove?
         self._netqasm_version: Tuple[int, int] = netqasm_version
+        # TODO: remove?
         self._app_id: Optional[int] = app_id
 
         self._instructions: List[NetQASMInstruction] = []
@@ -130,6 +132,12 @@ class Subroutine:
                 result += f"  {instr._pretty_print()}\n"
         result += "EndSubroutine"
         return result
+
+    def __eq__(self, other: Subroutine) -> bool:
+        return (
+            self.instructions == other.instructions
+            and self.arguments == other.arguments
+        )
 
     def __len__(self):
         return len(self.instructions)
