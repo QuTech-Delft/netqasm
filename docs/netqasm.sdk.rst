@@ -1,5 +1,5 @@
 netqasm\.sdk
-================
+============
 
 .. toctree::
    :caption: Modules
@@ -7,7 +7,6 @@ netqasm\.sdk
 
    api_sdk/netqasm.sdk.builder
    api_sdk/netqasm.sdk.classical_communication
-   api_sdk/netqasm.sdk.compiling
    api_sdk/netqasm.sdk.config
    api_sdk/netqasm.sdk.connection
    api_sdk/netqasm.sdk.epr_socket
