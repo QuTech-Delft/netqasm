@@ -11,7 +11,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 # import os
+import re
 # import sys
+
 # sys.path.insert(0, os.path.abspath('.'))
 
 
@@ -26,6 +28,8 @@ from importlib.metadata import version as get_release_version
 
 release = get_release_version("netqasm")
 
+# The short X.Y version.
+version = re.match(r'^(\d+\.\d+)', release).expand(r'\1')
 
 # -- General configuration ---------------------------------------------------
 

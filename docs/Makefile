@@ -19,7 +19,6 @@ help:
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-
 python-deps:
 	@${PYTHON3} -m pip install -r requirements.txt
 
