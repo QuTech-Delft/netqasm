@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+2022-11-15 (0.12.2)
+-------------------
+- Update SquidASM to 0.10.0.
+
+2022-09-29 (0.12.1)
+-------------------
+- Fix Builder not moving qubits
+
 2022-08-22 (0.12.0)
 -------------------
 - Implemented Bell corrections for RSP.
