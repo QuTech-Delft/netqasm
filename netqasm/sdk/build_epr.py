@@ -166,7 +166,7 @@ def deserialize_epr_measure_results(
                 ),
                 measurement_basis_local=request.rotations_local,
                 measurement_basis_remote=request.rotations_remote,
-                post_process=(request.expect_phi_plus and role == EPRRole.CREATE),
+                post_process=(request.expect_phi_plus and role == EPRRole.RECV),
                 remote_node_id=array.get_future_index(
                     base + SER_RESPONSE_MEASURE_IDX_REMOTE_NODE_ID
                 ),

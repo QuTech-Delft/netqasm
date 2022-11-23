@@ -1,6 +1,19 @@
 CHANGELOG
 =========
 
+2022-11-15 (0.12.2)
+-------------------
+- Update SquidASM to 0.10.0.
+
+2022-09-29 (0.12.1)
+-------------------
+- Fix Builder not moving qubits
+
+2022-08-22 (0.12.0)
+-------------------
+- Implemented Bell corrections for RSP.
+- Moved Bell correction logic to receiver side.
+
 2022-05-23 (0.11.0)
 -------------------
 - Added support for automatically handling generated EPR pairs that are not Phi+ (by adding gates or doing post-processing)
