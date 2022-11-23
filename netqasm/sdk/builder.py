@@ -60,7 +60,7 @@ from netqasm.sdk.build_types import (
 )
 from netqasm.sdk.config import LogConfig
 from netqasm.sdk.constraint import SdkConstraint, ValueAtMostConstraint
-from netqasm.sdk.futures import Array, BaseFuture, Future, RegFuture, T_CValue
+from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit, QubitMeasureBasis
 from netqasm.sdk.toolbox import get_angle_spec_from_float

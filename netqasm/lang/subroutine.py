@@ -133,7 +133,9 @@ class Subroutine:
         result += "EndSubroutine"
         return result
 
-    def __eq__(self, other: Subroutine) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Subroutine):
+            return NotImplemented
         return (
             self.instructions == other.instructions
             and self.arguments == other.arguments
