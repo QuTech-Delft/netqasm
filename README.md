@@ -107,13 +107,39 @@ explore a commercial market, please contact us for a license agreement.
 
 
 
-## Development
+# Development
 For code formatting, [`black`](https://github.com/psf/black) and [`isort`](https://github.com/PyCQA/isort) are used.
 Type hints should be added as much as possible.
 Types are checked using [`mypy`](https://github.com/python/mypy).
 
 Before code is pushed, make sure that the `make lint` command succeeds, which runs `black`, `isort`, `flake8` and `mypy`.
 
+## Branches
+A form of "git flow" is used for branch and release management. The main active branch is `develop`.
+New features are developed in new separate branches, preferrably with a name representing the new feature.
+To get the new features in the main branch, open a pull request for merging the feature branch into the `develop` branch.
+These pull requests are then reviewed by maintainers of the repository.
+A `master` or `main` branch is not used.
+
+
+## Releases (for maintainers only)
+When a release is made, a new branch `release-X.Y` (e.g. `release-0.12`) is created from the `develop` branch.
+Only small fixes (patches) may be pushed onto this release branch. Bigger new features need to go into separate branches, merged into `develop`, and will hence end up in a later release.
+**Tags** are *only* applied on commits in the release branch. The first tag on a new release branch needs to be `vX.Y.0`, e.g. `v0.12.0`.
+Patches (i.e. commits on the release branch) may then be tagged with `vX.Y.1`, `vX.Y.2` etc.
+Pushing a 'tag' automatically triggers the Github Action for publishing the corresponding version to PyPI.
+Whenever a new tag is pushed for a patch, the corresponding commit (on the release branch) should be merged into `develop`.
+
+Example list of steps for releasing a new version:
+- (0) `develop` contains all the features that are needed for the release
+- (1) create a `release-X.Y` branch from `develop` and switch to this branch
+- (2) create a tag `vX.Y.0` on this branch
+- (3) push the release branch as well as the tag (pushing the tag will automatically publish to PyPI)
+- (4) develop a small fix (patch) as a commit on the `release-X.Y` branch
+- (5) push the new commit and see if all the workflows (in Github Actions) succeed for `release-X.Y`
+- (6) add a tag `vX.Y.1` to this latest commit
+- (7) push the new tag; the patch will automatically be published on PyPI
+- (8) create a pull request for merging `release-X.Y` into `develop`
 
 # Contributors
 In alphabetical order:
