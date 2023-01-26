@@ -85,7 +85,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     # Global dict to track app names per node.
     # Currently only used for logging purposes, specifically only in
-    # `netqasm.runtime.process_logs._create_app_instr_logs`.
+    # `netqasm.runtime.process_logs.create_app_instr_logs`.
     # Dict[node_name, Dict[app_id, app_name]]
     _app_names: Dict[str, Dict[int, str]] = {}
 
