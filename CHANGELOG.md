@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2022-12-13 (0.13.0)
+-------------------
+- Use nodes' app names for instruction logging.
+
 2022-11-15 (0.12.2)
 -------------------
 - Update SquidASM to 0.10.0.
