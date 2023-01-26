@@ -19,7 +19,7 @@ from netqasm.runtime.application import (
     post_function_from_path,
 )
 from netqasm.runtime.env import get_example_apps, init_folder, new_folder
-from netqasm.runtime.process_logs import _create_app_instr_logs
+from netqasm.runtime.process_logs import create_app_instr_logs
 from netqasm.runtime.settings import (
     Formalism,
     Simulator,
@@ -353,7 +353,7 @@ def simulate(
         enable_logging=log_to_files,
         hardware=hardware,
     )
-    _create_app_instr_logs(log_cfg.log_subroutines_dir)
+    create_app_instr_logs(log_cfg.log_subroutines_dir)
 
     if timer:
         print(f"finished simulation in {round(time.perf_counter() - start, 2)} seconds")
