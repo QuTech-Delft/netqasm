@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2022-01-26 (0.13.1)
+-------------------
+- Add instructions on updating CHANGELOG.md
+
 2022-12-13 (0.13.0)
 -------------------
 - Use nodes' app names for instruction logging.
