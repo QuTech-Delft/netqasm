@@ -132,14 +132,16 @@ Whenever a new tag is pushed for a patch, the corresponding commit (on the relea
 
 Example list of steps for releasing a new version:
 - (0) `develop` contains all the features that are needed for the release
-- (1) create a `release-X.Y` branch from `develop` and switch to this branch
-- (2) create a tag `vX.Y.0` on this branch
-- (3) push the release branch as well as the tag (pushing the tag will automatically publish to PyPI)
-- (4) develop a small fix (patch) as a commit on the `release-X.Y` branch
-- (5) push the new commit and see if all the workflows (in Github Actions) succeed for `release-X.Y`
-- (6) add a tag `vX.Y.1` to this latest commit
-- (7) push the new tag; the patch will automatically be published on PyPI
-- (8) create a pull request for merging `release-X.Y` into `develop`
+- (1) update `CHANGELOG.md` with the new version number and the changes (this will require a final PR to `develop`)
+- (2) create a `release-X.Y` branch from `develop` and switch to this branch
+- (3) create a tag `vX.Y.0` on this branch
+- (4) push the release branch as well as the tag (pushing the tag will automatically publish to PyPI)
+- (5) develop a small fix (patch) as a commit on the `release-X.Y` branch
+- (6) update `CHANGELOG.md` with the new (minor) version number and the changes
+- (7) push the new commit and see if all the workflows (in Github Actions) succeed for `release-X.Y`
+- (8) add a tag `vX.Y.1` to this latest commit
+- (9) push the new tag; the patch will automatically be published on PyPI
+- (10) create a pull request for merging `release-X.Y` into `develop`
 
 # Contributors
 In alphabetical order:
