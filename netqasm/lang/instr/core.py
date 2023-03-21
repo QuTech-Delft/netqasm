@@ -94,14 +94,14 @@ class RotationInstruction(base.RegImmImmInstruction):
         elif isinstance(imm0, Immediate):
             pass
         else:
-            assert isinstance(imm0, Template)
+            assert isinstance(imm0, Template) or isinstance(imm0, Register)
         if isinstance(imm1, int):
             imm1 = Immediate(value=imm1)
         elif isinstance(imm1, Immediate):
             pass
         else:
-            assert isinstance(imm1, Template)
-        # We allow imm0, imm1 to be Templates
+            assert isinstance(imm1, Template) or isinstance(imm1, Register)
+        # We allow imm0, imm1 to be Templates OR registers
         return cls(reg=reg, imm0=imm0, imm1=imm1)  # type: ignore
 
 
