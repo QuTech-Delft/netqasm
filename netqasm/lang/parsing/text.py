@@ -26,7 +26,7 @@ from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.util.string import group_by_word, is_number, is_variable_name
 
 T_Cmd = Union[ICmd, BranchLabel]
-T_ParsedValue = Union[int, Register, Label, Template]
+T_ParsedValue = Union[int, Register, Label, Template, str]
 
 
 def parse_text_protosubroutine(text: str) -> ProtoSubroutine:
@@ -205,7 +205,10 @@ def _parse_operand(word: str, allow_label=True):
 
 
 def _parse_value(
-    value: str, allow_label: bool = False, allow_template: bool = False
+    value: str,
+    allow_label: bool = False,
+    allow_template: bool = False,
+    allow_keywords: Optional[List[str]] = None,
 ) -> T_ParsedValue:
     # Try to parse a constant
     try:
@@ -218,6 +221,11 @@ def _parse_value(
         return parse_register(value)
     except NetQASMSyntaxError:
         pass
+
+    if allow_keywords:
+        for keyword in allow_keywords:
+            if value == keyword:
+                return value
 
     if allow_label:
         # Parse a label
@@ -271,9 +279,9 @@ def parse_register(register: str) -> Register:
 
 def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
     base_address, index_str = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
-    base_address_int: int = _parse_base_address(base_address)
+    base_address_int_or_str: Union[int, str] = _parse_base_address(base_address)
     index = _parse_index(index_str)
-    address_parsed = Address(base_address_int)
+    address_parsed = Address(base_address_int_or_str)
     if index is None:
         return address_parsed
     elif isinstance(index, tuple):
@@ -291,12 +299,17 @@ def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
         raise TypeError(f"Index cannot have type {type(index)}")
 
 
-def _parse_base_address(base_address: str) -> int:
+def _parse_base_address(base_address: str) -> Union[int, str]:
     if not base_address.startswith(Symbols.ADDRESS_START):
         raise NetQASMSyntaxError(f"Expected address, got {base_address}")
-    value = _parse_value(base_address.lstrip(Symbols.ADDRESS_START))
+    keywords = ["input", "output"]
+    value = _parse_value(
+        base_address.lstrip(Symbols.ADDRESS_START), allow_keywords=keywords
+    )
     if not isinstance(value, int):
-        raise TypeError(f"Address should be an int, not a {type(value)}")
+        if not isinstance(value, str) and value in keywords:
+            raise TypeError(f"Address should be an int, not a {type(value)}")
+    assert isinstance(value, int) or isinstance(value, str)
     return value
 
 

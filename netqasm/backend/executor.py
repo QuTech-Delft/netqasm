@@ -589,6 +589,7 @@ class Executor:
         address = instr.address
         self._logger.debug(f"Storing address of {address} to register {register}")
         app_id = self._get_app_id(subroutine_id=subroutine_id)
+        assert isinstance(address.address, int)
         self._set_register(app_id=app_id, register=register, value=address.address)
 
     @inc_program_counter
@@ -623,6 +624,7 @@ class Executor:
 
     def _initialize_array(self, app_id: int, address: Address, length: int) -> None:
         arrays = self._app_arrays[app_id]
+        assert isinstance(address.address, int)
         arrays.init_new_array(address.address, length)
 
     def _handle_branch_instr(
@@ -1279,6 +1281,7 @@ class Executor:
             shared_memory.set_array_part(address=address, index=index, value=value)  # type: ignore
         elif isinstance(entry, Address):
             self._logger.debug(f"Updating host about array {entry} with value {value}")
+            assert isinstance(entry.address, int)
             address = entry.address
             shared_memory.init_new_array(address=address, new_array=value)  # type: ignore
         else:
@@ -1315,6 +1318,7 @@ class Executor:
         return position
 
     def _get_array(self, app_id: int, address: Address) -> List[Optional[int]]:
+        assert isinstance(address.address, int)
         return self._app_arrays[app_id]._get_array(address.address)
 
     def _get_array_entry(self, app_id: int, array_entry: ArrayEntry) -> Optional[int]:
@@ -1340,7 +1344,8 @@ class Executor:
     def _expand_array_part(
         self, app_id: int, array_part: Union[ArrayEntry, ArraySlice]
     ) -> Tuple[int, Union[int, slice]]:
-        address: int = array_part.address.address
+        address = array_part.address.address
+        assert isinstance(address, int)
         index: Union[int, slice]
         if isinstance(array_part, ArrayEntry):
             if isinstance(array_part.index, int):

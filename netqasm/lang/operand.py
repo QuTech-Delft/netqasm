@@ -68,7 +68,7 @@ class Register(Operand):
 
 @dataclass(eq=True, frozen=True)
 class Address(Operand):
-    address: int
+    address: Union[int, str]
 
     def _assert_types(self):
         assert isinstance(self.address, int)
