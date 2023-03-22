@@ -445,6 +445,18 @@ class SubmInstruction(ClassicalOpModInstruction):
 
 
 @dataclass
+class MulInstruction(ClassicalOpInstruction):
+    id: int = 200
+    mnemonic: str = "mul"
+
+
+@dataclass
+class DivInstruction(ClassicalOpInstruction):
+    id: int = 201
+    mnemonic: str = "div"
+
+
+@dataclass
 class MeasInstruction(base.RegRegInstruction):
     id: int = 32
     mnemonic: str = "meas"

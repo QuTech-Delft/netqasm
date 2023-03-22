@@ -41,6 +41,8 @@ class GenericInstr(Enum):
     SUB = auto()
     ADDM = auto()
     SUBM = auto()
+    MUL = auto()
+    DIV = auto()
     # Single-qubit gates
     X = auto()
     Y = auto()
