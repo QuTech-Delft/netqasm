@@ -868,7 +868,7 @@ class DebugInstruction(NetQASMInstruction):
 
     @property
     def operands(self) -> List[Operand]:
-        pass
+        return []
 
     @classmethod
     def deserialize_from(cls, raw: bytes):

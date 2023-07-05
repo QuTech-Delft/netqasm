@@ -201,7 +201,7 @@ class Builder:
         connection: BaseNetQASMConnection,
         app_id: int,
         hardware_config: Optional[HardwareConfig] = None,
-        log_config: LogConfig = None,
+        log_config: Optional[LogConfig] = None,
         compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,
     ):
