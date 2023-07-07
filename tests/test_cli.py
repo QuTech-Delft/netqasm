@@ -3,7 +3,7 @@ import os
 from click.testing import CliRunner
 
 import netqasm
-from netqasm.runtime.cli import cli
+from netqasm.runtime.cli import cli  # type: ignore # TODO: Fix mypy not seeing cli in cli.py
 from netqasm.runtime.env import EXAMPLE_APPS_DIR
 from netqasm.util.yaml import load_yaml
 
