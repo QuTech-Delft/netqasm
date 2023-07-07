@@ -3,9 +3,10 @@ import os
 from click.testing import CliRunner
 
 import netqasm
-from netqasm.runtime.cli import cli  # type: ignore # TODO: Fix mypy not seeing cli in cli.py
 from netqasm.runtime.env import EXAMPLE_APPS_DIR
 from netqasm.util.yaml import load_yaml
+
+from netqasm.runtime.cli import cli  # type: ignore # TODO: Fix mypy not seeing cli in cli.py # isort:skip
 
 TEMPLATE_EXAMPLE_NAME = "teleport"
 TEMPLATE_EXAMPLE_DIR = os.path.join(EXAMPLE_APPS_DIR, TEMPLATE_EXAMPLE_NAME)
