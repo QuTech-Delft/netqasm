@@ -16,7 +16,7 @@ jobs:
     - name: Install netqasm
       run: make install-dev
     - name: Install projectq
-      run: pip install -Iv projectq==0.5.1
+      run: pip install -Iv projectq
     - name: Run examples
       env:
           NETQASM_SIMULATOR: simulaqron
