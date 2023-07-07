@@ -107,7 +107,7 @@ def load_yaml_file(path: str) -> Any:
     return load_yaml(path)
 
 
-def app_instance_from_path(app_dir: str = None) -> ApplicationInstance:
+def app_instance_from_path(app_dir: Optional[str] = None) -> ApplicationInstance:
     """
     Create an Application Instance based on files in a directory.
     Uses the current working directory if `app_dir` is None.
@@ -168,7 +168,7 @@ def default_app_instance(programs: List[Tuple[str, Callable]]) -> ApplicationIns
 
 
 def network_cfg_from_path(
-    app_dir: str = None, network_config_file: str = None
+    app_dir: Optional[str] = None, network_config_file: Optional[str] = None
 ) -> Optional[NetworkConfig]:
     if network_config_file is None:
         network_config_file = "network.yaml"
@@ -184,7 +184,7 @@ def network_cfg_from_path(
 
 
 def post_function_from_path(
-    app_dir: str = None, post_function_file: str = None
+    app_dir: Optional[str] = None, post_function_file: Optional[str] = None
 ) -> Optional[Callable]:
     if post_function_file is None:
         post_function_file = "post_function.yaml"

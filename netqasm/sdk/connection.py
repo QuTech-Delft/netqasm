@@ -96,7 +96,7 @@ class BaseNetQASMConnection(abc.ABC):
         app_id: Optional[int] = None,
         max_qubits: int = 5,
         hardware_config: Optional[HardwareConfig] = None,
-        log_config: LogConfig = None,
+        log_config: Optional[LogConfig] = None,
         epr_sockets: Optional[List[esck.EPRSocket]] = None,
         compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,

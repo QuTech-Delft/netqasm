@@ -103,7 +103,10 @@ class Socket(abc.ABC):
         raise NotImplementedError
 
     def recv_silent(
-        self, block: bool = True, timeout: Optional[float] = None, maxsize: int = None
+        self,
+        block: bool = True,
+        timeout: Optional[float] = None,
+        maxsize: Optional[int] = None,
     ) -> str:
         """Receive a message without logging"""
         raise NotImplementedError

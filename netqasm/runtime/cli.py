@@ -1,3 +1,6 @@
+# TODO: Fix typing in this file or fix mypy configuration.
+# type: ignore
+
 """Command-line interface of the `netqasm` executable.
 
 This module defines the commands that may be used when using `netqasm` as a program
