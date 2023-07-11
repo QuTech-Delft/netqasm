@@ -356,8 +356,9 @@ def simulate(
         enable_logging=log_to_files,
         hardware=hardware,
     )
-    create_app_instr_logs(log_cfg.log_subroutines_dir)
-    make_last_log(log_cfg.log_subroutines_dir)
+    if log_to_files:
+        create_app_instr_logs(log_cfg.log_subroutines_dir)
+        make_last_log(log_cfg.log_subroutines_dir)
 
     if timer:
         print(f"finished simulation in {round(time.perf_counter() - start, 2)} seconds")
