@@ -10,6 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+from importlib.metadata import version as get_release_version
 # import os
 import re
 # import sys
@@ -24,8 +25,6 @@ copyright = "2023, QuTech"
 author = "QuTech"
 
 # The full version, including alpha/beta/rc tags
-from importlib.metadata import version as get_release_version
-
 release = get_release_version("netqasm")
 
 # The short X.Y version.
