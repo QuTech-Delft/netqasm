@@ -20,7 +20,7 @@ import re
 # -- Project information -----------------------------------------------------
 
 project = "netqasm"
-copyright = "2021, QuTech"
+copyright = "2023, QuTech"
 author = "QuTech"
 
 # The full version, including alpha/beta/rc tags
