@@ -5,7 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = .
-BUILDDIR      = _build
+BUILDDIR      = build
 PYTHON3       = python
 # TODO handle like this?
 export NETQASM_SIMULATOR = debug
