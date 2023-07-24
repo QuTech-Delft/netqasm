@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2022-07-24 (0.13.3)
+-------------------
+- Fixed an issue with LAST instruction logs.
+
 2022-07-07 (0.13.2)
 -------------------
 - Relaxed version requirements on dependencies
