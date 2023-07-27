@@ -4,7 +4,7 @@
 *.log
 **/log/*
 *.pkl
-/docs/build/*
+/docs/_build/*
 /build/*
 /dist/*
 /*.egg-info/*

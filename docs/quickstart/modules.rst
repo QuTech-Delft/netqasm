@@ -50,7 +50,7 @@ NetQASM connection
      :noindex:
      :special-members: __enter__, __exit__
      :members:
-   :undoc-members: app_name, node_name, app_id, flush, block
+     :undoc-members: app_name, node_name, app_id, flush, block
 
 Qubit
 -----
@@ -61,7 +61,7 @@ Qubit
    .. autoclass:: Qubit
      :noindex:
      :members:
-   :undoc-members: qubit_id, entanglement_info, remote_entangled_node, measure,
+     :undoc-members: qubit_id, entanglement_info, remote_entangled_node, measure,
                 X, Y, Z, H, S, K, T,
                 rot_X, rot_Y, rot_Z,
                 cnot, cphase, reset, free
@@ -74,8 +74,8 @@ EPR socket
 
    .. autoclass:: EPRSocket
      :members:
-   :undoc-members: conn, remote_app_name, remote_node_id, epr_socket_id, remote_epr_socket_id, min_fidelity,
-                create, recv,
+     :undoc-members: conn, remote_app_name, remote_node_id, epr_socket_id, remote_epr_socket_id, min_fidelity,
+                     create, recv,
      :noindex:
 
       .. automethod:: create_context(number=1, sequential=False)
@@ -92,19 +92,18 @@ Futures
 
    .. autoclass:: Future
      :members:
-   :undoc-members: add, value
+     :undoc-members: add, value
      :noindex:
 
    .. autoclass:: Array
      :members:
-   :undoc-members: get_future_index, get_future_slice, foreach, enumerate
+     :undoc-members: get_future_index, get_future_slice, foreach, enumerate
      :noindex:
 
    .. autoclass:: RegFuture
      :members:
-   :undoc-members: add, value
+     :undoc-members: add, value
      :noindex:
-
 
 Classical communication
 -----------------------
