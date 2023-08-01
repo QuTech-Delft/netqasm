@@ -451,9 +451,9 @@ class MulInstruction(ClassicalOpInstruction):
 
 
 @dataclass
-class QuotInstruction(ClassicalOpInstruction):
+class DivInstruction(ClassicalOpInstruction):
     id: int = 202
-    mnemonic: str = "quot"
+    mnemonic: str = "div"
 
 
 @dataclass
