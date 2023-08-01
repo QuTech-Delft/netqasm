@@ -717,7 +717,7 @@ class Executor:
             return (a - b) % mod
         elif isinstance(instr, ins.core.MulInstruction):
             return a * b
-        elif isinstance(instr, ins.core.QuotInstruction):
+        elif isinstance(instr, ins.core.DivInstruction):
             return a // b
         elif isinstance(instr, ins.core.RemInstruction):
             return a % b
