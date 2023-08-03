@@ -452,13 +452,13 @@ class MulInstruction(ClassicalOpInstruction):
 
 @dataclass
 class DivInstruction(ClassicalOpInstruction):
-    id: int = 202
+    id: int = 201
     mnemonic: str = "div"
 
 
 @dataclass
 class RemInstruction(ClassicalOpInstruction):
-    id: int = 203
+    id: int = 202
     mnemonic: str = "rem"
 
 
