@@ -33,6 +33,7 @@ CORE_INSTRUCTIONS: List[Type[NetQASMInstruction]] = [
     core.SubmInstruction,
     core.MulInstruction,
     core.DivInstruction,
+    core.RemInstruction,
     core.MeasInstruction,
     core.MeasBasisInstruction,
     core.CreateEPRInstruction,

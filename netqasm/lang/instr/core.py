@@ -457,6 +457,12 @@ class DivInstruction(ClassicalOpInstruction):
 
 
 @dataclass
+class RemInstruction(ClassicalOpInstruction):
+    id: int = 202
+    mnemonic: str = "rem"
+
+
+@dataclass
 class MeasInstruction(base.RegRegInstruction):
     id: int = 32
     mnemonic: str = "meas"
