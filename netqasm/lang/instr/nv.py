@@ -13,44 +13,6 @@ from . import core
 
 
 @dataclass
-class GateXInstruction(core.SingleQubitInstruction):
-    id: int = 20
-    mnemonic: str = "x"
-
-    def to_matrix(self) -> np.ndarray:
-        return np.array([[0, 1], [1, 0]])
-
-
-@dataclass
-class GateYInstruction(core.SingleQubitInstruction):
-    id: int = 21
-    mnemonic: str = "y"
-
-    def to_matrix(self) -> np.ndarray:
-        return np.array([[0, -1j], [1j, 0]])
-
-
-@dataclass
-class GateZInstruction(core.SingleQubitInstruction):
-    id: int = 22
-    mnemonic: str = "z"
-
-    def to_matrix(self) -> np.ndarray:
-        return np.array([[1, 0], [0, -1]])
-
-
-@dataclass
-class GateHInstruction(core.SingleQubitInstruction):
-    id: int = 23
-    mnemonic: str = "h"
-
-    def to_matrix(self) -> np.ndarray:
-        X = GateXInstruction().to_matrix()
-        Z = GateZInstruction().to_matrix()
-        return (X + Z) / np.sqrt(2)  # type: ignore
-
-
-@dataclass
 class RotXInstruction(core.RotationInstruction):
     id: int = 27
     mnemonic: str = "rot_x"

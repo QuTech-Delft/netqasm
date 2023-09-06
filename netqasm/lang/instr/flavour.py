@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Type
 
-from . import NetQASMInstruction, core, nv, vanilla
+from . import NetQASMInstruction, core, nv, trapped_ion, vanilla
 
 
 @dataclass
@@ -111,6 +111,23 @@ class NVFlavour(Flavour):
             nv.RotZInstruction,
             nv.ControlledRotXInstruction,
             nv.ControlledRotYInstruction,
+        ]
+
+    def __init__(self):
+        super().__init__(self.instrs)
+
+
+class TrappedIonFlavour(Flavour):
+    @property
+    def instrs(self):
+        return [
+            trapped_ion.RotZInstruction,
+            trapped_ion.AllQubitsRotXInstruction,
+            trapped_ion.AllQubitsRotYInstruction,
+            trapped_ion.AllQubitsRotZInstruction,
+            trapped_ion.AllQubitsInitInstruction,
+            trapped_ion.AllQubitsMeasInstruction,
+            trapped_ion.BichromaticInstruction,
         ]
 
     def __init__(self):
