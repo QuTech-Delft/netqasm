@@ -308,7 +308,7 @@ class BaseNetQASMConnection(abc.ABC):
         self.close(
             clear_app=self._clear_app_on_exit,
             stop_backend=self._stop_backend_on_exit,
-            exception=exc_type is not None
+            exception=exc_type is not None,
         )
 
     def _get_new_app_id(self, app_id: Optional[int]) -> int:
@@ -343,7 +343,12 @@ class BaseNetQASMConnection(abc.ABC):
     def clear(self) -> None:
         self._pop_app_id()
 
-    def close(self, clear_app: bool = True, stop_backend: bool = False, exception: bool = False) -> None:
+    def close(
+        self,
+        clear_app: bool = True,
+        stop_backend: bool = False,
+        exception: bool = False,
+    ) -> None:
         """Close a connection.
 
         By default, this method is automatically called when a connection context ends.
