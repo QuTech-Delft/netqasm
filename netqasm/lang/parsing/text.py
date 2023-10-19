@@ -549,6 +549,15 @@ _REPLACE_CONSTANTS_EXCEPTION = [
     (GenericInstr.BREAKPOINT, 1),
 ]
 
+for instr in [
+    GenericInstr.ROT_X_ALL,
+    GenericInstr.ROT_Y_ALL,
+    GenericInstr.ROT_Z_ALL,
+    GenericInstr.BICHROMATIC,
+]:
+    for index in [0, 1]:
+        _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
+
 for instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
     for index in [1, 2]:
         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
