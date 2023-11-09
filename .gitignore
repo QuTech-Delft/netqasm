@@ -12,3 +12,4 @@ htmlcov/
 .coverage
 .idea/*
 .vscode/*
+venv
