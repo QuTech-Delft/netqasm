@@ -517,7 +517,7 @@ class BaseNetQASMConnection(abc.ABC):
         in concrete values for templates.
         """
         protosubroutine = self._builder.subrt_pop_pending_subroutine()
-        self._logger.info(f"Compiling protosubroutine:\n{protosubroutine}")
+        self._logger.debug(f"Compiling protosubroutine:\n{protosubroutine}")
         if protosubroutine is None:
             return None
 
@@ -541,7 +541,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         # Parse, assembly and possibly compile the subroutine
         subroutine = self._builder.subrt_compile_subroutine(protosubroutine)
-        self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
+        self._logger.debug(f"Flushing compiled subroutine:\n{subroutine}")
 
         subroutine.instantiate(self.app_id)
 
@@ -556,7 +556,7 @@ class BaseNetQASMConnection(abc.ABC):
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
-        self._logger.info(f"Commiting compiled subroutine:\n{subroutine}")
+        self._logger.debug(f"Commiting compiled subroutine:\n{subroutine}")
 
         self._commit_message(
             msg=SubroutineMessage(subroutine=subroutine),
