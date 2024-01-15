@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2024-01-15 (0.15.0)
+-------------------
+- Change level of subroutine compilation logging from `INFO` to `DEBUG` to avoid cluttering.
+
 2023-10-10 (0.14.0)
 -------------------
 - Fix connection getting flushed during exception handling
