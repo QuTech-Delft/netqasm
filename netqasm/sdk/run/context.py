@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 from netqasm.sdk.connection import BaseNetQASMConnection
 
+
 class Context(ABC):
     def __init__(self):
         pass

@@ -3,9 +3,10 @@ External program interface.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict
 
 from netqasm.sdk.run import Context
+
 
 class Program(ABC):
     def __init__(self):
