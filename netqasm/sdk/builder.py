@@ -1371,7 +1371,11 @@ class Builder:
             ):  # Psi- -> apply X-gate and Z-gate
                 correction_cmds = [
                     ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
-                    ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
+                    # ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
+                    # Decompose Z180 into Y90, X180, -Y90
+                    ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
+                    ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
+                    ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
                 ]
                 self.subrt_add_pending_commands(correction_cmds)  # type: ignore
         else:
