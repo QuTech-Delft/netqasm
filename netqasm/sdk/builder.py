@@ -1526,8 +1526,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        # if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
-        if params.expect_phi_plus or params.expect_psi_plus:
+        if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
@@ -1667,8 +1666,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        # if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
-        if params.expect_phi_plus or params.expect_psi_plus:
+        if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
