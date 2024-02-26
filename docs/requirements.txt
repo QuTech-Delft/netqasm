@@ -1,5 +1,5 @@
-sphinx>=3.5.3,<4.0.0
-sphinx-rtd-theme>=0.5.2,<1.0.0
+sphinx>=7.2.6
+sphinx-rtd-theme>=2.0.0
 sphinx-autodoc-typehints>=1.11.1,<2.0.0
-jinja2<3.0.0
+jinja2>=3.0
 MarkupSafe==2.0.1
