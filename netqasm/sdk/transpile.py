@@ -9,6 +9,7 @@ import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla
+from netqasm.lang.instr.flavour import REIDSFlavour
 from netqasm.lang.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
 from netqasm.runtime.settings import get_is_using_hardware
@@ -17,7 +18,8 @@ from netqasm.util.log import HostLine
 
 class SubroutineTranspiler(abc.ABC):
     def __init__(self, subroutine: Subroutine, debug: bool = False):
-        pass
+        self._subroutine: Subroutine = subroutine
+        self._debug: bool = debug
 
     @abc.abstractmethod
     def transpile(self) -> Subroutine:
@@ -31,10 +33,9 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
     """
 
     def __init__(self, subroutine: Subroutine, debug=False):
-        self._subroutine: Subroutine = subroutine
+        super().__init__(subroutine, debug)
         self._used_registers: Set[Register] = set()
         self._register_values: Dict[Register, Immediate] = dict()
-        self._debug: bool = debug
 
     def get_reg_value(self, reg: Register) -> Immediate:
         """Get the value of a register at this moment"""
@@ -612,6 +613,49 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
             raise ValueError(
                 f"Don't know how to map instruction {instr} of type {type(instr)}"
             )
+
+
+class REIDSSubroutineTranspiler(SubroutineTranspiler):
+    """
+    A transpiler that converts a subroutine with the vanilla flavour
+    to a subroutine with the REIDS flavour.
+    """
+
+    def __init__(self, subroutine: Subroutine, debug: bool = False):
+        super().__init__(subroutine, debug)
+        self._flavour = REIDSFlavour()
+
+    def transpile(self) -> Subroutine:
+        add_no_op_at_end: bool = False
+
+        for instr in self._subroutine.instructions:
+            try:
+                self._flavour.id_map[instr.id]
+            except KeyError as e:
+                raise ValueError(
+                    f"Instruction {instr} not supported: Unsupported instruction for REIDS flavour."
+                ) from e
+
+            if (
+                isinstance(instr, core.BranchUnaryInstruction)
+                or isinstance(instr, core.BranchBinaryInstruction)
+                or isinstance(instr, core.JmpInstruction)
+            ):
+                original_line = instr.line.value
+                if original_line == len(self._subroutine.instructions):
+                    # There was a label in the original subroutine at the very end.
+                    # Since this label is now removed, we should put a "no-op"
+                    # instruction there so there is something to jump to.
+                    add_no_op_at_end = True
+
+        if add_no_op_at_end:
+            self._subroutine.instructions += [
+                core.SetInstruction(
+                    lineno=None, reg=Register(RegisterName.C, 15), imm=Immediate(1337)
+                )
+            ]
+
+        return self._subroutine
 
 
 def get_hardware_num_denom(

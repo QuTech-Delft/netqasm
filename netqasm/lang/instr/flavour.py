@@ -112,3 +112,12 @@ class NVFlavour(Flavour):
 
     def __init__(self):
         super().__init__(self.instrs)
+
+
+class REIDSFlavour(Flavour):
+    @property
+    def instrs(self):
+        return []
+
+    def __init__(self):
+        super().__init__(self.instrs)
