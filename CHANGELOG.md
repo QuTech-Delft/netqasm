@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2024-03-20 (0.16.0)
+-------------------
+- Added the REIDS flavour.
+
 2024-01-15 (0.15.0)
 -------------------
 - Change level of subroutine compilation logging from `INFO` to `DEBUG` to avoid cluttering.
