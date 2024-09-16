@@ -273,8 +273,8 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EprMeasBasis = None,
-        basis_remote: EprMeasBasis = None,
+        basis_local: Optional[EprMeasBasis] = None,
+        basis_remote: Optional[EprMeasBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
@@ -363,7 +363,7 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EprMeasBasis = None,
+        basis_local: Optional[EprMeasBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
         min_fidelity_all_at_end: Optional[int] = None,
@@ -451,8 +451,8 @@ class EPRSocket(abc.ABC):
         tp: EPRType = EPRType.K,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: EprMeasBasis = None,
-        basis_remote: EprMeasBasis = None,
+        basis_local: Optional[EprMeasBasis] = None,
+        basis_remote: Optional[EprMeasBasis] = None,
         rotations_local: Tuple[int, int, int] = (0, 0, 0),
         rotations_remote: Tuple[int, int, int] = (0, 0, 0),
         random_basis_local: Optional[RandomBasis] = None,
@@ -644,6 +644,7 @@ class EPRSocket(abc.ABC):
         post_routine: Optional[Callable] = None,
         sequential: bool = False,
         expect_phi_plus: bool = True,
+        expect_psi_plus: bool = False,
         min_fidelity_all_at_end: Optional[int] = None,
         max_tries: Optional[int] = None,
     ) -> List[Qubit]:
@@ -681,6 +682,10 @@ class EPRSocket(abc.ABC):
         if self.conn is None:
             raise RuntimeError("EPRSocket does not have an open connection")
 
+        assert not (
+            expect_phi_plus and expect_psi_plus
+        ), "cannot ask for both phi+ and psi+"
+
         qubits, _ = self.conn._builder.sdk_recv_epr_keep(
             params=EntRequestParams(
                 remote_node_id=self.remote_node_id,
@@ -689,6 +694,7 @@ class EPRSocket(abc.ABC):
                 post_routine=post_routine,
                 sequential=sequential,
                 expect_phi_plus=expect_phi_plus,
+                expect_psi_plus=expect_psi_plus,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
             ),

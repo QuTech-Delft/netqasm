@@ -1,6 +1,38 @@
 CHANGELOG
 =========
 
+2024-09-13 (1.0.0)
+-------------------
+- Fix bell state corrections when compiling for hardware
+
+2024-03-20 (0.16.0)
+-------------------
+- Added the REIDS flavour.
+
+2024-01-15 (0.15.0)
+-------------------
+- Change level of subroutine compilation logging from `INFO` to `DEBUG` to avoid cluttering.
+
+2023-10-10 (0.14.0)
+-------------------
+- Fix connection getting flushed during exception handling
+
+2023-07-24 (0.13.3)
+-------------------
+- Fixed an issue with LAST instruction logs.
+
+2023-07-07 (0.13.2)
+-------------------
+- Relaxed version requirements on dependencies
+
+2023-01-26 (0.13.1)
+-------------------
+- Add instructions on updating CHANGELOG.md
+
+2022-12-13 (0.13.0)
+-------------------
+- Use nodes' app names for instruction logging.
+
 2022-11-15 (0.12.2)
 -------------------
 - Update SquidASM to 0.10.0.

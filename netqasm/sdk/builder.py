@@ -38,6 +38,7 @@ from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.version import NETQASM_VERSION
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
+from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.sdk.build_epr import (
     SER_RESPONSE_KEEP_IDX_BELL_STATE,
     SER_RESPONSE_KEEP_LEN,
@@ -201,7 +202,7 @@ class Builder:
         connection: BaseNetQASMConnection,
         app_id: int,
         hardware_config: Optional[HardwareConfig] = None,
-        log_config: LogConfig = None,
+        log_config: Optional[LogConfig] = None,
         compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,
     ):
@@ -377,7 +378,9 @@ class Builder:
                 pair=pair,
             )
 
-            if params.expect_phi_plus and role == EPRRole.RECV:
+            if (
+                params.expect_phi_plus or params.expect_psi_plus
+            ) and role == EPRRole.RECV:
                 # Perform Bell corrections
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
@@ -386,7 +389,9 @@ class Builder:
                     instruction=GenericInstr.SET, operands=[qubit_reg, 0]
                 )
                 self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
-                self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
+                self._build_cmds_epr_keep_corrections_single_pair(
+                    bell_state, qubit_reg, params
+                )
 
             # If it's the last pair, don't move it to a mem qubit
             with loop_reg.if_ne(params.number - 1):
@@ -448,7 +453,9 @@ class Builder:
             )
             assert tp == EPRType.K or tp == EPRType.R
 
-            if params.expect_phi_plus and role == EPRRole.RECV:
+            if (
+                params.expect_phi_plus or params.expect_psi_plus
+            ) and role == EPRRole.RECV:
                 bell_state = self._get_raw_bell_state(
                     ent_results_array, loop_reg, bell_state_reg
                 )
@@ -456,7 +463,9 @@ class Builder:
                     instruction=GenericInstr.SET, operands=[qubit_reg, 0]
                 )
                 self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
-                self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
+                self._build_cmds_epr_keep_corrections_single_pair(
+                    bell_state, qubit_reg, params
+                )
 
             q_id = qubit_ids.get_future_index(loop_register)
             q = FutureQubit(conn=conn, future_id=q_id)
@@ -1357,26 +1366,43 @@ class Builder:
         )
 
     def _build_cmds_epr_keep_corrections_single_pair(
-        self, bell_state: RegFuture, qubit_reg: operand.Register
+        self,
+        bell_state: RegFuture,
+        qubit_reg: operand.Register,
+        params: EntRequestParams,
     ) -> None:
-        with bell_state.if_eq(BellState.PHI_MINUS.value):  # Phi- -> apply Z-gate
-            correction_cmds = [
-                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
-            ]
-            self.subrt_add_pending_commands(correction_cmds)  # type: ignore
-        with bell_state.if_eq(BellState.PSI_PLUS.value):  # Psi+ -> apply X-gate
-            correction_cmds = [
-                ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
-            ]
-            self.subrt_add_pending_commands(correction_cmds)  # type: ignore
-        with bell_state.if_eq(
-            BellState.PSI_MINUS.value
-        ):  # Psi- -> apply X-gate and Z-gate
-            correction_cmds = [
+        x180 = [ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])]
+
+        if get_is_using_hardware():
+            # For hardware, don't use Z-gates.
+            # Decompose Z180 into Y90, X180, -Y90
+            z180 = [
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
-                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
             ]
-            self.subrt_add_pending_commands(correction_cmds)  # type: ignore
+        else:
+            z180 = [ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])]
+
+        if params.expect_phi_plus:
+            with bell_state.if_eq(BellState.PHI_MINUS.value):  # Phi- -> apply Z-gate
+                self.subrt_add_pending_commands(z180)  # type: ignore
+            with bell_state.if_eq(BellState.PSI_PLUS.value):  # Psi+ -> apply X-gate
+                self.subrt_add_pending_commands(x180)  # type: ignore
+            with bell_state.if_eq(
+                BellState.PSI_MINUS.value
+            ):  # Psi- -> apply X-gate and Z-gate
+                self.subrt_add_pending_commands(x180 + z180)  # type: ignore
+        else:
+            assert params.expect_psi_plus
+            with bell_state.if_eq(BellState.PHI_PLUS.value):  # Phi+ -> apply X-gate
+                self.subrt_add_pending_commands(x180)  # type: ignore
+            with bell_state.if_eq(
+                BellState.PHI_MINUS.value
+            ):  # Phi- -> apply X-gate and Z-gate
+                self.subrt_add_pending_commands(x180 + z180)  # type: ignore
+            with bell_state.if_eq(BellState.PSI_MINUS.value):  # Psi- -> apply Z-gate
+                self.subrt_add_pending_commands(z180)  # type: ignore
 
     def _build_cmds_epr_keep_corrections(
         self, qubit_ids_array: Array, ent_results_array: Array, params: EntRequestParams
@@ -1398,7 +1424,9 @@ class Builder:
                 instruction=GenericInstr.SET, operands=[qubit_reg, 0]
             )
             self.subrt_add_pending_command(set_qubit_reg_cmd)  # type: ignore
-            self._build_cmds_epr_keep_corrections_single_pair(bell_state, qubit_reg)
+            self._build_cmds_epr_keep_corrections_single_pair(
+                bell_state, qubit_reg, params
+            )
 
         self._build_cmds_loop_body(
             loop, stop=params.number, loop_register=loop_register
@@ -1505,7 +1533,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        if wait_all and params.expect_phi_plus:
+        if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
@@ -1645,7 +1673,7 @@ class Builder:
 
         self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
-        if wait_all and params.expect_phi_plus:
+        if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
                 qubit_ids_array, ent_results_array, params
             )
@@ -1874,6 +1902,8 @@ class Builder:
             wait_all = False
         else:
             wait_all = True
+
+        self._connection._logger.info(f"wait_all = {wait_all}")
 
         if reset_results_array:
             self._build_cmds_undefine_array(ent_results_array)

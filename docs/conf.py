@@ -10,22 +10,25 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+from importlib.metadata import version as get_release_version
 # import os
+import re
 # import sys
+
 # sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = "netqasm"
-copyright = "2021, QuTech"
+copyright = "2023, QuTech"
 author = "QuTech"
 
 # The full version, including alpha/beta/rc tags
-from importlib.metadata import version
+release = get_release_version("netqasm")
 
-release = version("netqasm")
-
+# The short X.Y version.
+version = re.match(r'^(\d+\.\d+)', release).expand(r'\1')
 
 # -- General configuration ---------------------------------------------------
 
@@ -84,4 +87,4 @@ html_theme = "sphinx_rtd_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+# html_static_path = ["_static"]

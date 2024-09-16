@@ -1,3 +1,6 @@
+# TODO: Fix typing in this file or fix mypy configuration.
+# type: ignore
+
 """Command-line interface of the `netqasm` executable.
 
 This module defines the commands that may be used when using `netqasm` as a program
@@ -19,6 +22,7 @@ from netqasm.runtime.application import (
     post_function_from_path,
 )
 from netqasm.runtime.env import get_example_apps, init_folder, new_folder
+from netqasm.runtime.process_logs import create_app_instr_logs, make_last_log
 from netqasm.runtime.settings import (
     Formalism,
     Simulator,
@@ -352,6 +356,10 @@ def simulate(
         enable_logging=log_to_files,
         hardware=hardware,
     )
+    if log_to_files:
+        create_app_instr_logs(log_cfg.log_subroutines_dir)
+        make_last_log(log_cfg.log_subroutines_dir)
+
     if timer:
         print(f"finished simulation in {round(time.perf_counter() - start, 2)} seconds")
 

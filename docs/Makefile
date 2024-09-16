@@ -5,8 +5,8 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SOURCEDIR     = .
-BUILDDIR      = build
-PYTHON3       = python3
+BUILDDIR      = _build
+PYTHON3       = python
 # TODO handle like this?
 export NETQASM_SIMULATOR = debug
 
@@ -18,7 +18,6 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
 
 python-deps:
 	@${PYTHON3} -m pip install -r requirements.txt

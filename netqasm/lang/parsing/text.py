@@ -46,7 +46,7 @@ def parse_text_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    flavour: Flavour = None,
+    flavour: Optional[Flavour] = None,
 ) -> Subroutine:
     """
     Convert a text representation of a subroutine into a Subroutine object.
@@ -70,7 +70,7 @@ def assemble_subroutine(
     assign_branch_labels=True,
     make_args_operands=True,
     replace_constants=True,
-    flavour: Flavour = None,
+    flavour: Optional[Flavour] = None,
 ) -> Subroutine:
     """
     Convert a `ProtoSubroutine` into a `Subroutine`, given a Flavour (default: vanilla).

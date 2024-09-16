@@ -85,7 +85,7 @@ class BaseNetQASMConnection(abc.ABC):
 
     # Global dict to track app names per node.
     # Currently only used for logging purposes, specifically only in
-    # `netqasm.runtime.process_logs._create_app_instr_logs`.
+    # `netqasm.runtime.process_logs.create_app_instr_logs`.
     # Dict[node_name, Dict[app_id, app_name]]
     _app_names: Dict[str, Dict[int, str]] = {}
 
@@ -96,7 +96,7 @@ class BaseNetQASMConnection(abc.ABC):
         app_id: Optional[int] = None,
         max_qubits: int = 5,
         hardware_config: Optional[HardwareConfig] = None,
-        log_config: LogConfig = None,
+        log_config: Optional[LogConfig] = None,
         epr_sockets: Optional[List[esck.EPRSocket]] = None,
         compiler: Optional[Type[SubroutineTranspiler]] = None,
         return_arrays: bool = True,
@@ -308,6 +308,7 @@ class BaseNetQASMConnection(abc.ABC):
         self.close(
             clear_app=self._clear_app_on_exit,
             stop_backend=self._stop_backend_on_exit,
+            exception=exc_type is not None,
         )
 
     def _get_new_app_id(self, app_id: Optional[int]) -> int:
@@ -342,13 +343,19 @@ class BaseNetQASMConnection(abc.ABC):
     def clear(self) -> None:
         self._pop_app_id()
 
-    def close(self, clear_app: bool = True, stop_backend: bool = False) -> None:
+    def close(
+        self,
+        clear_app: bool = True,
+        stop_backend: bool = False,
+        exception: bool = False,
+    ) -> None:
         """Close a connection.
 
         By default, this method is automatically called when a connection context ends.
         """
-        # Flush all pending commands
-        self.flush()
+        if not exception:
+            # Flush all pending commands
+            self.flush()
 
         self._pop_app_id()
 
@@ -510,7 +517,7 @@ class BaseNetQASMConnection(abc.ABC):
         in concrete values for templates.
         """
         protosubroutine = self._builder.subrt_pop_pending_subroutine()
-        self._logger.info(f"Compiling protosubroutine:\n{protosubroutine}")
+        self._logger.debug(f"Compiling protosubroutine:\n{protosubroutine}")
         if protosubroutine is None:
             return None
 
@@ -535,7 +542,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         # Parse, assembly and possibly compile the subroutine
         subroutine = self._builder.subrt_compile_subroutine(protosubroutine)
-        self._logger.info(f"Flushing compiled subroutine:\n{subroutine}")
+        self._logger.debug(f"Flushing compiled subroutine:\n{subroutine}")
 
         subroutine.instantiate(self.app_id)
 
@@ -550,7 +557,7 @@ class BaseNetQASMConnection(abc.ABC):
         block: bool = True,
         callback: Optional[Callable] = None,
     ) -> None:
-        self._logger.info(f"Committing compiled subroutine:\n{subroutine}")
+        self._logger.debug(f"Committing compiled subroutine:\n{subroutine}")
 
         self._commit_message(
             msg=SubroutineMessage(subroutine=subroutine),

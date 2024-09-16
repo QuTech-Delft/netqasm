@@ -12,6 +12,7 @@ from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.version import NETQASM_VERSION
 from netqasm.logging.glob import set_log_level
 from netqasm.qlink_compat import EPRType, TimeUnit
+from netqasm.runtime.settings import set_is_using_hardware
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.qubit import Qubit
@@ -295,6 +296,91 @@ ret_arr @2
         assert instr == expected_instr
     print(subroutine)
     print(expected)
+
+
+def test_epr_k_recv_hardware():
+    set_is_using_hardware(True)
+
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        q1 = epr_socket.recv_keep()[0]
+        q1.H()
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    print(subroutine)
+
+    expected_text = """
+# NETQASM 0.0
+# APPID 0
+set R5 10
+array R5 @0
+set R5 1
+array R5 @1
+set R5 0
+set R6 0
+store R5 @1[R6]
+set R5 1
+set R6 0
+set R7 1
+set R8 0
+recv_epr R5 R6 R7 R8
+set R5 0
+set R6 10
+wait_all @0[R5:R6]
+set R2 0
+set R5 1
+beq R2 R5 46
+load R0 @1[R2]
+set R3 9
+set R4 0
+beq R4 R2 27
+set R5 10
+add R3 R3 R5
+set R5 1
+add R4 R4 R5
+jmp 21
+load R1 @0[R3]
+set R0 0
+set R5 3
+bne R1 R5 34
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
+set R5 1
+bne R1 R5 37
+rot_x R0 16 4
+set R5 2
+bne R1 R5 43
+rot_x R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
+set R5 1
+add R2 R2 R5
+jmp 16
+set Q0 0
+h Q0
+ret_arr @0
+ret_arr @1
+"""
+
+    expected = parse_text_subroutine(expected_text)
+
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
+        print()
+        assert instr == expected_instr
+    print(subroutine)
+    print(expected)
+
+    set_is_using_hardware(False)
 
 
 def test_two_epr_k_create():
