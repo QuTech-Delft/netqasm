@@ -69,13 +69,13 @@ def _gen_create_ghz(num_nodes, do_corrections=False):
     for i in range(num_nodes):
         node = f"node{i}"
         if i == 0:
-            down_node = None
-        else:
-            down_node = f"node{i - 1}"
-        if i == num_nodes - 1:
             up_node = None
         else:
-            up_node = f"node{i + 1}"
+            up_node = f"node{i - 1}"
+        if i == num_nodes - 1:
+            down_node = None
+        else:
+            down_node = f"node{i + 1}"
         app_instance.app.programs += [
             Program(
                 party=node,

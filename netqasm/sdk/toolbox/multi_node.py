@@ -24,7 +24,7 @@ def create_ghz(
     up_socket: Optional[socket.Socket] = None,
     do_corrections: bool = False,
 ) -> Tuple[Qubit, Union[futures.Future, futures.RegFuture, int]]:
-    r"""Local protocol to create a GHZ state between mutliples nodes.
+    r"""Local protocol to create a GHZ state between multiple nodes.
 
     EPR pairs are generated in a line and turned into a GHZ state by performing half of a Bell measurement.
     That is, CNOT and H are applied but only the control qubit is measured.
@@ -41,11 +41,11 @@ def create_ghz(
     Depending on if down_epr_socket and/or up_epr_socket is specified the node,
     either takes the role of the:
 
-    * "start", which intialises the process and creates an EPR
-      with the next node using the `up_epr_socket`.
-    * "middle", which receives an EPR pair on the `down_epr_socket` and then
-      creates one on the `up_epr_socket`.
-    * "end", which receives an EPR pair on the `down_epr_socket`.
+    * "start", which initialises the process and creates an EPR
+      with the next node using the `down_epr_socket`.
+    * "middle", which receives an EPR pair on the `up_epr_socket` and then
+      creates one on the `down_epr_socket`.
+    * "end", which receives an EPR pair on the `up_epr_socket`.
 
     NOTE There has to be exactly one "start" and exactly one "end" but zero or more "middle".
     NOTE Both `down_epr_socket` and `up_epr_socket` cannot be `None`.
@@ -72,27 +72,27 @@ def create_ghz(
     if down_epr_socket is None and up_epr_socket is None:
         raise TypeError("Both down_epr_socket and up_epr_socket cannot be None")
 
-    if down_epr_socket is None:
-        assert up_epr_socket is not None
+    if up_epr_socket is None:
+        assert down_epr_socket is not None
         # Start role
         role = _Role.start
-        q = up_epr_socket.create_keep()[0]
-        assert isinstance(q, Qubit)
-        conn = up_epr_socket.conn
-        m = 0
-    else:
-        assert down_epr_socket is not None
-        q = down_epr_socket.recv_keep()[0]
+        q = down_epr_socket.create_keep()[0]
         assert isinstance(q, Qubit)
         conn = down_epr_socket.conn
-        if up_epr_socket is None:
+        m = 0
+    else:
+        assert up_epr_socket is not None
+        q = up_epr_socket.recv_keep()[0]
+        assert isinstance(q, Qubit)
+        conn = up_epr_socket.conn
+        if down_epr_socket is None:
             # End role
             role = _Role.end
             m = 0
         else:
             # Middle role
             role = _Role.middle
-            q_up: Qubit = up_epr_socket.create_keep()[0]  # type: ignore
+            q_up: Qubit = down_epr_socket.create_keep()[0]  # type: ignore
             # merge the states by doing half a Bell measurement
             q.cnot(q_up)
             m = q_up.measure()
@@ -102,17 +102,17 @@ def create_ghz(
 
     if do_corrections:
         if role == _Role.start:
-            assert up_socket is not None
-            up_socket.send(str(0))
-        else:
             assert down_socket is not None
-            corr = int(down_socket.recv(maxsize=1))
+            down_socket.send(str(0))
+        else:
+            assert up_socket is not None
+            corr = int(up_socket.recv(maxsize=1))
             if corr == 1:
                 q.X()
             if role == _Role.middle:
-                assert up_socket is not None
+                assert down_socket is not None
                 corr = (corr + m) % 2
-                up_socket.send(str(corr))
+                down_socket.send(str(corr))
         m = 0
 
     return q, m
