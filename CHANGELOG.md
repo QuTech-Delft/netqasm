@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2024-11-07 (1.0.1a1)
+--------------------
+- Add axes selection to Qubit.measure
+
 2024-09-13 (1.0.0)
 -------------------
 - Fix bell state corrections when compiling for hardware
