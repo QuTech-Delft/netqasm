@@ -1166,7 +1166,7 @@ class Builder:
             first, second, third = {
                 QubitMeasureAxes.XYX: (0, 24, 0),
                 QubitMeasureAxes.YZY: (24, 0, 0),
-                QubitMeasureAxes.ZXZ: (0, 24, 8),
+                QubitMeasureAxes.ZXZ: (24, 24, 8),
             }[axes]
 
             meas_command = ICmd(
@@ -1184,7 +1184,7 @@ class Builder:
         elif basis == QubitMeasureBasis.Y:
             first, second, third = {
                 QubitMeasureAxes.XYX: (8, 0, 0),
-                QubitMeasureAxes.YZY: (8, 24, 0),
+                QubitMeasureAxes.YZY: (8, 24, 24),
                 QubitMeasureAxes.ZXZ: (0, 8, 0),
             }[axes]
 
