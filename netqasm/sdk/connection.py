@@ -205,6 +205,7 @@ class BaseNetQASMConnection(abc.ABC):
             connection=self,
             app_id=self._app_id,
             hardware_config=hardware_config,
+            log_config=log_config,
             compiler=compiler,
             return_arrays=return_arrays,
         )

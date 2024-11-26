@@ -12,3 +12,5 @@ htmlcov/
 .coverage
 .idea/*
 .vscode/*
+.venv*/
+.python-version
