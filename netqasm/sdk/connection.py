@@ -676,7 +676,7 @@ class BaseNetQASMConnection(abc.ABC):
 
         :param max_iterations: the maximum number of times to loop
         """
-        return self.builder.sdk_new_loop_until_context(max_iterations)
+        return self._builder.sdk_new_loop_until_context(max_iterations)
 
     def if_eq(self, a: T_CValue, b: T_CValue, body: T_BranchRoutine) -> None:
         """Execute a function if a == b.
