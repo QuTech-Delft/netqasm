@@ -14,6 +14,8 @@ had to specify this concrete name. This allows the same application code to be u
 with different implementations of `NetQASMConnection`.
 """
 
+# mypy: disable-error-code="no-redef"
+
 from netqasm.runtime.settings import Simulator, get_is_using_hardware, get_simulator
 
 simulator = get_simulator()
@@ -21,30 +23,46 @@ is_using_hardware = get_is_using_hardware()
 
 if is_using_hardware:
     try:
-        from qnodeos.sdk.connection import (
-            QNodeOSConnection as NetQASMConnection,  # type: ignore
+        from qnodeos.connection import (
+            ABCQNodeOSConnection,
+            ApplicationRole,
+            ConnectionSpecification,
+            QNodeOSConnectionFactory,
+            TcpIPConnectionSpecification,
         )
-        from qnodeos.sdk.socket import Socket  # type: ignore
-
-        from netqasm.runtime.hardware import run_application  # type: ignore
+        from qnodeos.socket import (
+            ABCAppSocket,
+            AppSocketRole,
+            ClientAppSocket,
+            ServerAppSocket,
+        )
     except ModuleNotFoundError:
-        raise ModuleNotFoundError("to use QNodeOS , `qnodeos` needs to be installed")
+        raise ModuleNotFoundError("To use QNodeOS , `qnodeos` needs to be installed")
+
+    import warnings
+
+    from netqasm.runtime.hardware import run_application
+    from netqasm.sdk.classical_communication import ThreadSocket as Socket
+    from netqasm.sdk.connection import DebugConnection as NetQASMConnection
+
+    warnings.warn(
+        "QNodeOS has dropped support for `NetQASMConnection` and `Socket`."
+        " Use `qnodeos.connection.QNodeOSConnectionFactory` to create connections and"
+        " use `qnodeos.socket.[Client,Server]AppSocket` to replace `Socket`.",
+        category=DeprecationWarning,
+    )
+
+
 elif simulator == Simulator.NETSQUID:
     try:
-        from squidasm.nqasm.multithread import (
-            NetSquidConnection as NetQASMConnection,  # type: ignore
-        )
-        from squidasm.run.multithread.simulate import (
-            simulate_application,  # type: ignore
-        )
-        from squidasm.util.sim import get_qubit_state  # type: ignore
+        from squidasm.nqasm.multithread import NetSquidConnection as NetQASMConnection
+        from squidasm.run.multithread.simulate import simulate_application
+        from squidasm.util.sim import get_qubit_state
 
         from netqasm.sdk.classical_communication import (
-            ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
+            ThreadBroadcastChannel as BroadcastChannel,
         )
-        from netqasm.sdk.classical_communication import (
-            ThreadSocket as Socket,  # type: ignore
-        )
+        from netqasm.sdk.classical_communication import ThreadSocket as Socket
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             f"to use {Simulator.NETSQUID.value} as simulator, `squidasm` needs to be installed"
@@ -52,14 +70,12 @@ elif simulator == Simulator.NETSQUID:
 elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
     try:
         from squidasm.nqasm.singlethread.connection import (
-            NetSquidConnection as NetQASMConnection,  # type: ignore
+            NetSquidConnection as NetQASMConnection,
         )
-        from squidasm.nqasm.singlethread.csocket import (
-            NetSquidSocket as Socket,  # type: ignore
-        )
+        from squidasm.nqasm.singlethread.csocket import NetSquidSocket as Socket
 
         from netqasm.sdk.classical_communication import (
-            ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
+            ThreadBroadcastChannel as BroadcastChannel,
         )
 
     except ModuleNotFoundError:
@@ -68,30 +84,22 @@ elif simulator == Simulator.NETSQUID_SINGLE_THREAD:
         )
 elif simulator == Simulator.SIMULAQRON:
     try:
-        from simulaqron.run.run import (
-            run_applications as simulate_application,  # type: ignore
-        )
-        from simulaqron.sdk.broadcast_channel import BroadcastChannel  # type: ignore
-        from simulaqron.sdk.connection import (
-            SimulaQronConnection as NetQASMConnection,  # type: ignore
-        )
-        from simulaqron.sdk.socket import Socket  # type: ignore
-        from simulaqron.sim_util import get_qubit_state  # type: ignore
+        from simulaqron.run.run import run_applications as simulate_application
+        from simulaqron.sdk.broadcast_channel import BroadcastChannel
+        from simulaqron.sdk.connection import SimulaQronConnection as NetQASMConnection
+        from simulaqron.sdk.socket import Socket
+        from simulaqron.sim_util import get_qubit_state
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             f"to use {Simulator.SIMULAQRON.value} as simulator, `simulaqron` needs to be installed"
         )
 elif simulator == Simulator.DEBUG:
-    from netqasm.runtime.debug import get_qubit_state  # type: ignore
     from netqasm.runtime.debug import run_application  # type: ignore
+    from netqasm.runtime.debug import get_qubit_state
     from netqasm.sdk.classical_communication import (
-        ThreadBroadcastChannel as BroadcastChannel,  # type: ignore
+        ThreadBroadcastChannel as BroadcastChannel,
     )
-    from netqasm.sdk.classical_communication import (
-        ThreadSocket as Socket,  # type: ignore
-    )
-    from netqasm.sdk.connection import (
-        DebugConnection as NetQASMConnection,  # type: ignore
-    )
+    from netqasm.sdk.classical_communication import ThreadSocket as Socket
+    from netqasm.sdk.connection import DebugConnection as NetQASMConnection
 else:
     raise ValueError(f"Unknown simulator {simulator}")
