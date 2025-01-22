@@ -58,6 +58,8 @@ def run_server(use_rsp: bool) -> Dict[str, Any]:
             epr.H()
             outcome = epr.measure(store_array=False)
             subroutine = conn.compile()
+            if subroutine is None:
+                raise RuntimeError("Failed to compile subroutine")
 
             delta1 = float(csocket.recv())
             numerator = int(delta1 / (math.pi / 16))

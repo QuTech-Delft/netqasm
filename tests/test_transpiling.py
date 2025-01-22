@@ -24,7 +24,7 @@ def pad_single_matrix(m: np.ndarray, index: int, total: int) -> np.ndarray:
         if i == index:
             matrix = np.kron(matrix, m)
         else:
-            matrix = np.kron(matrix, np.eye(2))
+            matrix = np.kron(matrix, np.eye(2))  # type:ignore
     return matrix
 
 
@@ -41,7 +41,7 @@ def pad_controlled_single_matrix(
         if i == ctrl_index:
             matrix0 = np.kron(matrix0, np.array([[1, 0], [0, 0]]))
         else:
-            matrix0 = np.kron(matrix0, np.eye(2))
+            matrix0 = np.kron(matrix0, np.eye(2))  # type:ignore
 
     matrix1 = np.eye(1)
     for i in range(total):
@@ -50,7 +50,7 @@ def pad_controlled_single_matrix(
         elif i == target_index:
             matrix1 = np.kron(matrix1, m)
         else:
-            matrix1 = np.kron(matrix1, np.eye(2))
+            matrix1 = np.kron(matrix1, np.eye(2))  # type:ignore
 
     return matrix0 + matrix1
 
@@ -67,7 +67,7 @@ class SubroutineMatrix:
         self._matrix = np.eye(1)
         for i, id in enumerate(virt_ids):
             self._matrix_indices[id] = i
-            self._matrix = np.kron(self._matrix, np.eye(2))
+            self._matrix = np.kron(self._matrix, np.eye(2))  # type:ignore
 
     def apply_single_qubit_instr(self, instr_matrix: np.ndarray, virt_id: int):
         m = pad_single_matrix(
