@@ -295,13 +295,15 @@ class Builder:
         self._mem_mgr.add_array_to_return(array)
         return array
 
-    def new_register(self, init_value: int = 0) -> RegFuture:
+    def new_register(self, init_value: int = 0, return_reg: bool = True) -> RegFuture:
         reg = self._mem_mgr.get_inactive_register(activate=True)
         self.subrt_add_pending_command(
             ICmd(instruction=GenericInstr.SET, operands=[reg, init_value])
         )
-        self._mem_mgr.add_register_to_return(reg)
-        return RegFuture(connection=self._connection, reg=reg)
+        reg_future = RegFuture(connection=self._connection, reg=reg)
+        if return_reg:
+            self._mem_mgr.add_register_to_return(reg)
+        return reg_future
 
     def subrt_add_pending_commands(self, commands: List[T_Cmd]) -> None:
         calling_lineno = self._line_tracker.get_line()
@@ -328,7 +330,9 @@ class Builder:
         if len(self._pending_commands) > 0:
             commands = self.subrt_pop_all_pending_commands()
             return ProtoSubroutine(
-                commands=commands, netqasm_version=NETQASM_VERSION, app_id=self.app_id
+                commands=commands,
+                netqasm_version=NETQASM_VERSION,
+                app_id=self.app_id,
             )
         else:
             return None

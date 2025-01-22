@@ -21,6 +21,7 @@ class GenericInstr(Enum):
     QALLOC = auto()
     # Initialization
     INIT = auto()
+    INIT_ALL = auto()
     ARRAY = auto()
     SET = auto()
     # Memory
@@ -41,6 +42,9 @@ class GenericInstr(Enum):
     SUB = auto()
     ADDM = auto()
     SUBM = auto()
+    MUL = auto()
+    DIV = auto()
+    REM = auto()
     # Single-qubit gates
     X = auto()
     Y = auto()
@@ -56,9 +60,15 @@ class GenericInstr(Enum):
     # Two-qubit gates
     CNOT = auto()
     CPHASE = auto()
+    # All-qubit gates
+    ROT_X_ALL = auto()
+    ROT_Y_ALL = auto()
+    ROT_Z_ALL = auto()
+    BICHROMATIC = auto()
     # Measurement
     MEAS = auto()
     MEAS_BASIS = auto()
+    MEAS_ALL = auto()
     # Entanglement generation
     CREATE_EPR = auto()
     RECV_EPR = auto()

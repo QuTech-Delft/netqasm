@@ -94,14 +94,14 @@ class RotationInstruction(base.RegImmImmInstruction):
         elif isinstance(imm0, Immediate):
             pass
         else:
-            assert isinstance(imm0, Template)
+            assert isinstance(imm0, Template) or isinstance(imm0, Register)
         if isinstance(imm1, int):
             imm1 = Immediate(value=imm1)
         elif isinstance(imm1, Immediate):
             pass
         else:
-            assert isinstance(imm1, Template)
-        # We allow imm0, imm1 to be Templates
+            assert isinstance(imm1, Template) or isinstance(imm1, Register)
+        # We allow imm0, imm1 to be Templates OR registers
         return cls(reg=reg, imm0=imm0, imm1=imm1)  # type: ignore
 
 
@@ -261,6 +261,21 @@ class SetInstruction(base.RegImmInstruction):
 
     def writes_to(self) -> List[Register]:
         return [self.reg]
+
+    @classmethod
+    def from_operands(cls, operands: List[Union[Operand, int]]):
+        assert len(operands) == 2
+        reg, imm = operands
+        assert isinstance(reg, Register)
+
+        if isinstance(imm, int):
+            imm = Immediate(value=imm)
+        elif isinstance(imm, Immediate):
+            pass
+        else:
+            assert isinstance(imm, Template)
+
+        return cls(reg=reg, imm=imm)  # type: ignore
 
 
 @dataclass
@@ -427,6 +442,24 @@ class AddmInstruction(ClassicalOpModInstruction):
 class SubmInstruction(ClassicalOpModInstruction):
     id: int = 19
     mnemonic: str = "subm"
+
+
+@dataclass
+class MulInstruction(ClassicalOpInstruction):
+    id: int = 200
+    mnemonic: str = "mul"
+
+
+@dataclass
+class DivInstruction(ClassicalOpInstruction):
+    id: int = 201
+    mnemonic: str = "div"
+
+
+@dataclass
+class RemInstruction(ClassicalOpInstruction):
+    id: int = 202
+    mnemonic: str = "rem"
 
 
 @dataclass

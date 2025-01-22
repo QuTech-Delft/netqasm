@@ -38,7 +38,9 @@ class Subroutine:
         netqasm_version: Tuple[int, int] = NETQASM_VERSION,
         app_id: Optional[int] = None,
     ) -> None:
+        # TODO: remove?
         self._netqasm_version: Tuple[int, int] = netqasm_version
+        # TODO: remove?
         self._app_id: Optional[int] = app_id
 
         self._instructions: List[NetQASMInstruction] = []
@@ -95,8 +97,10 @@ class Subroutine:
 
         self.instructions = instrs
         self._app_id = app_id
+        if self._netqasm_version is None:
+            self._netqasm_version = NETQASM_VERSION
 
-    def __str__(self):
+    def pretty_print(self):
         result = "Subroutine"
         if len(self.arguments) > 0:
             result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
@@ -110,7 +114,32 @@ class Subroutine:
                 result += f"# {instr.text}\n"
             else:
                 result += f"{rspaces(i)} {instr.debug_str}\n"
+        result += "EndSubroutine"
         return result
+
+    def print_instructions(self) -> str:
+        return "\n".join(instr._pretty_print() for instr in self.instructions)
+
+    def __str__(self):
+        result = "Subroutine"
+        if len(self.arguments) > 0:
+            result += "(" + ",".join(arg_name for arg_name in self.arguments) + ")"
+        result += "\n"
+        for i, instr in enumerate(self.instructions):
+            if isinstance(instr, DebugInstruction):
+                result += f"# {instr.text}\n"
+            else:
+                result += f"  {instr._pretty_print()}\n"
+        result += "EndSubroutine"
+        return result
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Subroutine):
+            return NotImplemented
+        return (
+            self.instructions == other.instructions
+            and self.arguments == other.arguments
+        )
 
     def __len__(self):
         return len(self.instructions)

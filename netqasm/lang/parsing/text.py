@@ -26,7 +26,7 @@ from netqasm.util.error import NetQASMInstrError, NetQASMSyntaxError
 from netqasm.util.string import group_by_word, is_number, is_variable_name
 
 T_Cmd = Union[ICmd, BranchLabel]
-T_ParsedValue = Union[int, Register, Label, Template]
+T_ParsedValue = Union[int, Register, Label, Template, str]
 
 
 def parse_text_protosubroutine(text: str) -> ProtoSubroutine:
@@ -126,7 +126,10 @@ def _create_subroutine(
             instr_name, args = _split_instr_and_args(words[0])
             instr = string_to_instruction(instr_name)
             args = _parse_args(args)
-            operands = _parse_operands(words[1:])
+            if instr in _ALLOW_LABEL_INSTRUCTIONS:
+                operands = _parse_operands(words[1:], allow_label=True)
+            else:
+                operands = _parse_operands(words[1:], allow_label=False)
             command = ICmd(
                 instruction=instr,
                 args=args,
@@ -185,24 +188,27 @@ def _parse_constant(constant: str) -> int:
     return int(constant)
 
 
-def _parse_operands(words: List[str]):
+def _parse_operands(words: List[str], allow_label=True):
     operands = []
     for word in words:
-        operand = _parse_operand(word.strip())
+        operand = _parse_operand(word.strip(), allow_label=allow_label)
         operands.append(operand)
 
     return operands
 
 
-def _parse_operand(word: str):
+def _parse_operand(word: str, allow_label=True):
     if word.startswith(Symbols.ADDRESS_START):
         return parse_address(word)
     else:
-        return _parse_value(word, allow_label=True, allow_template=True)
+        return _parse_value(word, allow_label=allow_label, allow_template=True)
 
 
 def _parse_value(
-    value: str, allow_label: bool = False, allow_template: bool = False
+    value: str,
+    allow_label: bool = False,
+    allow_template: bool = False,
+    allow_keywords: Optional[List[str]] = None,
 ) -> T_ParsedValue:
     # Try to parse a constant
     try:
@@ -215,6 +221,11 @@ def _parse_value(
         return parse_register(value)
     except NetQASMSyntaxError:
         pass
+
+    if allow_keywords:
+        for keyword in allow_keywords:
+            if value == keyword:
+                return value
 
     if allow_label:
         # Parse a label
@@ -268,9 +279,9 @@ def parse_register(register: str) -> Register:
 
 def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
     base_address, index_str = _split_of_bracket(address, Symbols.INDEX_BRACKETS)
-    base_address_int: int = _parse_base_address(base_address)
+    base_address_int_or_str: Union[int, str] = _parse_base_address(base_address)
     index = _parse_index(index_str)
-    address_parsed = Address(base_address_int)
+    address_parsed = Address(base_address_int_or_str)
     if index is None:
         return address_parsed
     elif isinstance(index, tuple):
@@ -288,12 +299,17 @@ def parse_address(address: str) -> Union[Address, ArraySlice, ArrayEntry]:
         raise TypeError(f"Index cannot have type {type(index)}")
 
 
-def _parse_base_address(base_address: str) -> int:
+def _parse_base_address(base_address: str) -> Union[int, str]:
     if not base_address.startswith(Symbols.ADDRESS_START):
         raise NetQASMSyntaxError(f"Expected address, got {base_address}")
-    value = _parse_value(base_address.lstrip(Symbols.ADDRESS_START))
+    keywords = ["input", "output"]
+    value = _parse_value(
+        base_address.lstrip(Symbols.ADDRESS_START), allow_keywords=keywords
+    )
     if not isinstance(value, int):
-        raise TypeError(f"Address should be an int, not a {type(value)}")
+        if not isinstance(value, str) and value in keywords:
+            raise TypeError(f"Address should be an int, not a {type(value)}")
+    assert isinstance(value, int) or isinstance(value, str)
     return value
 
 
@@ -510,6 +526,16 @@ def _make_args_operands(subroutine):
         command.args = []
 
 
+_ALLOW_LABEL_INSTRUCTIONS = [
+    GenericInstr.JMP,
+    GenericInstr.BEQ,
+    GenericInstr.BNE,
+    GenericInstr.BEZ,
+    GenericInstr.BNZ,
+    GenericInstr.BLT,
+    GenericInstr.BGE,
+]
+
 _REPLACE_CONSTANTS_EXCEPTION = [
     (GenericInstr.SET, 1),
     (GenericInstr.JMP, 0),
@@ -522,6 +548,15 @@ _REPLACE_CONSTANTS_EXCEPTION = [
     (GenericInstr.BREAKPOINT, 0),
     (GenericInstr.BREAKPOINT, 1),
 ]
+
+for instr in [
+    GenericInstr.ROT_X_ALL,
+    GenericInstr.ROT_Y_ALL,
+    GenericInstr.ROT_Z_ALL,
+    GenericInstr.BICHROMATIC,
+]:
+    for index in [0, 1]:
+        _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
 
 for instr in [GenericInstr.ROT_X, GenericInstr.ROT_Y, GenericInstr.ROT_Z]:
     for index in [1, 2]:
