@@ -51,7 +51,7 @@ def get_controlled_rotation_matrix(axis, angle) -> np.ndarray:
     inv_controlled_gate = np.kron(ctrl_zero, target_pos) + np.kron(ctrl_one, np.eye(2))
     controlled_gate = np.kron(ctrl_one, target_neg) + np.kron(ctrl_zero, np.eye(2))
 
-    return inv_controlled_gate @ controlled_gate
+    return inv_controlled_gate @ controlled_gate  # type: ignore
 
 
 def gate_to_matrix(instr, angle=None):
