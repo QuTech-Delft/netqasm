@@ -1,6 +1,19 @@
 CHANGELOG
 =========
 
+2025-03-26 (2.0.0)
+-------------------
+- Added new "mul", "div" and "rem" instructions in the core NetQASM specification.
+- Added new "TrappedIonFlavour" to support new trapped-ion flavours of QPUs.
+  This new flavour supports RotZ instructions, instructions to rotate all qubits
+  (x, y and z axes), init all qubits, measure all qubits and bichromatic instruction.
+- Instructions for gates "X", "Y", "Z" and "H" are no longer supported on nv-center
+  flavour QPUs.
+- Branching instructions now support destination using labels
+- Updated the connection with QNodeOS to support QNodeOS 2.0. Warning: This breaks
+  compatibility with older versions of QNodeOS.
+- Added support for performing rotations right before measuring a qubit. 
+
 2024-09-13 (1.0.0)
 -------------------
 - Fix bell state corrections when compiling for hardware
