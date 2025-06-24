@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2025-06-24 (2.0.1)
+------------------
+- Removed `wait_all` log message in Builder.
+
 2025-03-26 (2.0.0)
 -------------------
 - Added new "mul", "div" and "rem" instructions in the core NetQASM specification.
