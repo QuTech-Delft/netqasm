@@ -2111,7 +2111,7 @@ class Builder:
                     # Otherwise: free the qubits.
                     if not params.sequential:
                         for q in qubits:
-                            q.free()
+                            q.free(deactivate=False)
 
                 loop.set_cleanup_code(cleanup)
 

@@ -374,13 +374,17 @@ class Qubit:
         r"""Reset the qubit to the state \|0>."""
         self.builder._build_cmds_init_qubit(qubit_id=self.qubit_id)
 
-    def free(self) -> None:
+    def free(self, deactivate: bool = True) -> None:
         """
         Free the qubit and its virtual ID.
 
         After freeing, the underlying physical qubit can be used to store another state.
         """
         self.builder._build_cmds_qfree(qubit_id=self.qubit_id)
+        # Similarly as qubit measurements, which deactivate qubits if the measurement
+        # was not done in place, when freeing a qubit, we should *always* deactivate it.
+        if deactivate:
+            self._deactivate()
 
 
 class FutureQubit(Qubit):

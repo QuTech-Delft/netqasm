@@ -115,6 +115,72 @@ def test_simple():
     print(expected)
 
 
+def test_explicit_qfree():
+    set_log_level(logging.DEBUG)
+    with DebugConnection("Alice") as alice:
+        q0 = Qubit(alice)
+        q1 = Qubit(alice)  # noqa: F841
+        q0.free()
+        q2 = Qubit(alice)  # noqa: F841
+
+    # 4 messages: init, subroutine, stop app and stop backend
+    assert len(alice.storage) == 4
+    raw_subroutine = deserialize_message(raw=alice.storage[1]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    expected = Subroutine(
+        netqasm_version=NETQASM_VERSION,
+        app_id=0,
+        instructions=[
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.QAllocInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.QAllocInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            # Free Q0
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.QFreeInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            # Since we released qubit #0, we expect the next instruction
+            # ot use qubit ID #0
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.Q, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.QAllocInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+            instructions.core.InitInstruction(
+                reg=Register(RegisterName.Q, 0),
+            ),
+        ],
+    )
+    for instr, expected_instr in zip(subroutine.instructions, expected.instructions):
+        print(repr(instr))
+        print(repr(expected_instr))
+        assert instr == expected_instr
+    print(subroutine)
+    print(expected)
+
+
 def test_rotations():
     set_log_level(logging.DEBUG)
     with DebugConnection("Alice") as alice:
