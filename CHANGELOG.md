@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+2025-09-24 (2.0.2)
+------------------
+- Fixed bug to correctly deactivate qubits when invoking `free` on them whenever it is
+  appropriate.
+
 2025-03-26 (2.0.0)
 -------------------
 - Added new "mul", "div" and "rem" instructions in the core NetQASM specification.
