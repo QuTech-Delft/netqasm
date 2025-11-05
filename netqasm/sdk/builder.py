@@ -1130,6 +1130,12 @@ class Builder:
         self._build_cmds_two_qubit(GenericInstr.MOV, source, target)
         self._build_cmds_qfree(source)
 
+    def _build_cmds_swap_qubits(self, qubit1: int, qubit2: int) -> None:
+        # Swap the state of two qubits. Both qubits should be active.
+        assert qubit1 in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
+        assert qubit2 in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
+        self._build_cmds_two_qubit(GenericInstr.SWP, qubit1, qubit2)
+
     def _build_cmds_measure(
         self,
         qubit_id: int,

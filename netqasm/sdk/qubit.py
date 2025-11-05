@@ -370,14 +370,7 @@ class Qubit:
             target_qubit_id=target.qubit_id,
         )
 
-    def swap(self, target: Qubit) -> None:
-        """Swap the state of the qubit with the state of another qubit.
-
-        :param target: target qubit to swap states with.
-        """
-        raise NotImplementedError()
-
-    def move(self, target: Qubit) -> None:
+    def move(self, target:Qubit)->None:
         """Move the state of the qubit to the target qubit,
         overwriting any state present in the target.
 
@@ -385,6 +378,15 @@ class Qubit:
         """
         self.builder._build_cmds_move_qubit(
             source=self.qubit_id, target=target.qubit_id
+        )
+
+    def swap(self, target: Qubit) -> None:
+        """Swap the state of the qubit with the state of another qubit.
+
+        :param target: target qubit to swap states with.
+        """
+        self.builder._build_cmds_swap_qubits(
+            qubit1=self.qubit_id, qubit2=target.qubit_id
         )
 
     def reset(self) -> None:

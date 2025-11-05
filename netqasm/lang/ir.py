@@ -92,6 +92,9 @@ class GenericInstr(Enum):
     # Breakpoint
     BREAKPOINT = auto()
 
+    # Swap the state of two qubits
+    SWP = auto()
+
 
 class BreakpointAction(Enum):
     NOP = 0
