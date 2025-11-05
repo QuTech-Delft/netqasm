@@ -370,7 +370,7 @@ class Qubit:
             target_qubit_id=target.qubit_id,
         )
 
-    def move(self, target:Qubit)->None:
+    def move(self, target: Qubit) -> None:
         """Move the state of the qubit to the target qubit,
         overwriting any state present in the target.
 
