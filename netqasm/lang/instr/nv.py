@@ -75,3 +75,36 @@ class ControlledRotYInstruction(core.ControlledRotationInstruction):
         axis = [1, 0, 0]
         angle = self.angle_num.value * np.pi / 2**self.angle_denom.value
         return get_rotation_matrix(axis, angle)
+
+
+@dataclass
+class MovInstruction(core.TwoQubitInstruction):
+    """Move source qubit to target qubit (target is overwritten)"""
+
+    id: int = 51
+    mnemonic: str = "mov"
+
+    def to_matrix(self) -> np.ndarray:
+        # NOTE: Currently this is represented as a full SWAP.
+        return np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+    def to_matrix_target_only(self) -> np.ndarray:  # type: ignore
+        # NOTE: The mov instruction is not meant to be viewed as control-target gate.
+        # Therefore, it is OK to not explicitly define a matrix.
+        return None  # type: ignore
+
+
+@dataclass
+class SwpInstruction(core.TwoQubitInstruction):
+    """Swap the states of two qubits"""
+
+    id: int = 52
+    mnemonic: str = "swp"
+
+    def to_matrix(self) -> np.ndarray:
+        return np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+    def to_matrix_target_only(self) -> np.ndarray:  # type: ignore
+        # NOTE: The swp instruction is not meant to be viewed as control-target gate.
+        # Therefore, it is OK to not explicitly define a matrix.
+        return None  # type: ignore

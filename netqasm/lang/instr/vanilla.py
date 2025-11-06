@@ -137,7 +137,7 @@ class CphaseInstruction(core.TwoQubitInstruction):
 class MovInstruction(core.TwoQubitInstruction):
     """Move source qubit to target qubit (target is overwritten)"""
 
-    id: int = 41
+    id: int = 51
     mnemonic: str = "mov"
 
     def to_matrix(self) -> np.ndarray:
@@ -146,5 +146,21 @@ class MovInstruction(core.TwoQubitInstruction):
 
     def to_matrix_target_only(self) -> np.ndarray:  # type: ignore
         # NOTE: The mov instruction is not meant to be viewed as control-target gate.
+        # Therefore, it is OK to not explicitly define a matrix.
+        return None  # type: ignore
+
+
+@dataclass
+class SwpInstruction(core.TwoQubitInstruction):
+    """Swap the states of two qubits"""
+
+    id: int = 52
+    mnemonic: str = "swp"
+
+    def to_matrix(self) -> np.ndarray:
+        return np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+    def to_matrix_target_only(self) -> np.ndarray:  # type: ignore
+        # NOTE: The swp instruction is not meant to be viewed as control-target gate.
         # Therefore, it is OK to not explicitly define a matrix.
         return None  # type: ignore
