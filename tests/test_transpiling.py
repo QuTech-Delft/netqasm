@@ -221,6 +221,8 @@ t Q0
 rot_x Q0 1 2
 rot_y Q0 1 2
 rot_z Q0 1 2
+mov Q0 Q1
+swp Q0 Q1
 """
     original_subroutine = parse_text_subroutine(text_subroutine)
     print(f"before transpiling: {original_subroutine}")
@@ -286,6 +288,9 @@ def test_transpiling_nv_using_sdk():
         q.rot_X(n=1, d=2)
         q.rot_Y(n=1, d=2)
         q.rot_Z(n=1, d=2)
+        q2 = Qubit(alice)
+        q.move(q2)
+        q.swap(q2)
 
     assert len(alice.storage) == 4
     raw_subroutine = deserialize_message(raw=alice.storage[1]).subroutine
