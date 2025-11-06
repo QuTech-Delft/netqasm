@@ -8,7 +8,7 @@ flavour.
 import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla
+from netqasm.lang.instr import NetQASMInstruction, core, nv, vanilla
 from netqasm.lang.instr.flavour import REIDSFlavour
 from netqasm.lang.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
@@ -51,77 +51,16 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
                 return reg
         raise RuntimeError("Could not find free register")
 
-    def swap(
-        self,
+    @staticmethod
+    def _swap(
         lineno: Optional[HostLine],
-        electron: Register,
-        carbon: Register,
+        reg0: Register,
+        reg1: Register,
     ) -> List[NetQASMInstruction]:
         """
-        Swap the states of the electron and a carbon.
-        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
-        for the circuit.
+        Swap the states of two qubits.
         """
-        gates: List[NetQASMInstruction] = []
-
-        if self._debug:
-            gates += [DebugInstruction(text="begin SWAP")]
-
-        gates += [
-            nv.ControlledRotXInstruction(
-                lineno=lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(8),
-                imm1=Immediate(4),
-            ),
-            nv.RotXInstruction(
-                lineno=lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-            nv.RotYInstruction(
-                lineno=lineno, reg=electron, imm0=Immediate(16), imm1=Immediate(4)
-            ),
-            nv.RotZInstruction(
-                lineno=lineno, reg=carbon, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-            nv.ControlledRotXInstruction(
-                lineno=lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(8),
-                imm1=Immediate(4),
-            ),
-            nv.RotXInstruction(
-                lineno=lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.RotYInstruction(
-                lineno=lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.RotXInstruction(
-                lineno=lineno, reg=carbon, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.RotZInstruction(
-                lineno=lineno, reg=carbon, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.ControlledRotXInstruction(
-                lineno=lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(8),
-                imm1=Immediate(4),
-            ),
-            nv.RotYInstruction(
-                lineno=lineno, reg=electron, imm0=Immediate(16), imm1=Immediate(4)
-            ),
-            nv.RotZInstruction(
-                lineno=lineno, reg=carbon, imm0=Immediate(16), imm1=Immediate(4)
-            ),
-        ]
-
-        if self._debug:
-            gates += [DebugInstruction(text="end SWAP")]
-
-        return gates
+        return [nv.SwpInstruction(lineno=lineno, reg0=reg0, reg1=reg1)]
 
     def transpile(self) -> Subroutine:
         """
@@ -196,89 +135,25 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
         self._subroutine.instructions = new_commands
         return self._subroutine
 
-    def _move_electron_carbon(
-        self, instr: vanilla.MovInstruction
-    ) -> List[NetQASMInstruction]:
-        """
-        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
-        for the circuit.
-        """
-        electron = instr.reg0
-        carbon = instr.reg1
-        return [
-            nv.RotYInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.ControlledRotYInstruction(
-                lineno=instr.lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(24),
-                imm1=Immediate(4),
-            ),
-            nv.RotXInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-            nv.ControlledRotXInstruction(
-                lineno=instr.lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(8),
-                imm1=Immediate(4),
-            ),
-        ]
-
-    def _move_carbon_electron(
-        self, instr: vanilla.MovInstruction
-    ) -> List[NetQASMInstruction]:
-        """
-        See https://gitlab.tudelft.nl/qinc-wehner/netqasm/netqasm-docs/-/blob/master/nv-gates-docs.md
-        for the circuit.
-        """
-        electron = instr.reg1
-        carbon = instr.reg0
-        return [
-            nv.RotYInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(8), imm1=Immediate(4)
-            ),
-            nv.ControlledRotYInstruction(
-                lineno=instr.lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(24),
-                imm1=Immediate(4),
-            ),
-            nv.RotXInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-            nv.ControlledRotXInstruction(
-                lineno=instr.lineno,
-                reg0=electron,
-                reg1=carbon,
-                imm0=Immediate(8),
-                imm1=Immediate(4),
-            ),
-            nv.RotYInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-            nv.RotZInstruction(
-                lineno=instr.lineno, reg=electron, imm0=Immediate(24), imm1=Immediate(4)
-            ),
-        ]
-
     def _handle_two_qubit_gate(
         self, instr: core.TwoQubitInstruction
     ) -> List[NetQASMInstruction]:
+        # These gates can have register arguments that have values unknown at transpile-time.
+        # They are thus handled before trying to resolve the register values.
+        if isinstance(instr, vanilla.MovInstruction):
+            return [
+                nv.MovInstruction(lineno=instr.lineno, reg0=instr.reg0, reg1=instr.reg1)
+            ]
+        elif isinstance(instr, vanilla.SwpInstruction):
+            return self._swap(lineno=instr.lineno, reg0=instr.reg0, reg1=instr.reg1)
+
         try:
             qubit_id0 = self.get_reg_value(instr.reg0).value
             qubit_id1 = self.get_reg_value(instr.reg1).value
-        except KeyError:
-            # Register values are not known at transpile time.
-            # We may assume that this is a MOV operation from the communication
-            # qubit to a memory qubit. (This is the only time a gate uses
-            # operands that are not known at transpile time.)
-            assert isinstance(instr, vanilla.MovInstruction)
-            return self._move_electron_carbon(instr)
+        except KeyError as e:
+            raise AssertionError(
+                "Value of register unknown at transpile-time for two-qubit gate"
+            ) from e
 
         assert qubit_id0 != qubit_id1
 
@@ -300,13 +175,6 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
                 return self._map_cphase_electron_carbon(swapped)
             else:
                 return self._map_cphase_carbon_carbon(instr)
-        elif isinstance(instr, vanilla.MovInstruction):
-            if qubit_id0 == 0 and qubit_id1 != 0:
-                return self._move_electron_carbon(instr)
-            elif qubit_id0 != 0 and qubit_id1 == 0:
-                return self._move_carbon_electron(instr)
-            else:
-                raise RuntimeError(f"Cannot move qubit {qubit_id0} to {qubit_id1}")
         else:
             raise ValueError(
                 f"Don't know how to map instruction {instr} of type {type(instr)}"
@@ -361,9 +229,9 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
 
         result: List[NetQASMInstruction] = [set_electron]
         result += (
-            self.swap(instr.lineno, electron, carbon)
+            self._swap(instr.lineno, electron, carbon)
             + self._map_cphase_electron_carbon(instr)
-            + self.swap(instr.lineno, electron, carbon)
+            + self._swap(instr.lineno, electron, carbon)
         )
         return result
 
@@ -452,9 +320,9 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
 
         result: List[NetQASMInstruction] = [set_electron]
         result += (
-            self.swap(instr.lineno, electron, carbon)
+            self._swap(instr.lineno, electron, carbon)
             + self._map_cnot_electron_carbon(instr)
-            + self.swap(instr.lineno, electron, carbon)
+            + self._swap(instr.lineno, electron, carbon)
         )
         return result
 
