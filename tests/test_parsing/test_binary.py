@@ -1,3 +1,10 @@
+from netqasm.lang.instr.core import (
+    ArrayInstruction,
+    MeasBasisInstruction,
+    RetArrInstruction,
+    SetInstruction,
+    StoreInstruction,
+)
 from netqasm.lang.instr.vanilla import CphaseInstruction
 from netqasm.lang.parsing import deserialize, parse_text_subroutine
 
@@ -97,6 +104,61 @@ def test_deserialize_subroutine():
 
     subroutine2 = deserialize(raw)
     print(subroutine2)
+
+
+def test_meas_base_binary_subroutine():
+    # TODO - There migth be a bug in the deserialization:
+    # Subroutine
+    #   set R0 1
+    #   array R0 @2
+    #   set Q0 0
+    #   meas_basis Q0 M0 0 24 0 4
+    #   set R0 0
+    #   store M0 @2[R0]
+    #   ret_arr @2
+    # EndSubroutine
+    # deserializes as:
+    # Subroutine
+    #   set R0 1
+    #   array R0 @2
+    #   set Q0 0
+    #   mov Q0 M0 ### This should be meas_basis... `meas_basis` and `mov` share the same id: "#40 or #41"
+    #   set R0 0
+    #   store M0 @2[R0]
+    #   ret_arr @2
+    # EndSubroutine
+    subroutine = """
+# NETQASM 0.0
+# APPID 0
+  set R0 1
+  array R0 @2
+  set Q0 0
+  meas_basis Q0 M0 0 24 0 4
+  set R0 0
+  store M0 @2[R0]
+  ret_arr @2
+"""
+    parsed_subroutine = parse_text_subroutine(subroutine)
+    print(f"parsed_subroutine: {parsed_subroutine}")
+    assert isinstance(parsed_subroutine.instructions[0], SetInstruction)
+    assert isinstance(parsed_subroutine.instructions[1], ArrayInstruction)
+    assert isinstance(parsed_subroutine.instructions[2], SetInstruction)
+    assert isinstance(parsed_subroutine.instructions[3], MeasBasisInstruction)
+    assert isinstance(parsed_subroutine.instructions[4], SetInstruction)
+    assert isinstance(parsed_subroutine.instructions[5], StoreInstruction)
+    assert isinstance(parsed_subroutine.instructions[6], RetArrInstruction)
+    bin_subroutine = bytes(parsed_subroutine)
+    print(f"binary subroutine: {bin_subroutine}")
+
+    deserialized_subroutine = deserialize(bin_subroutine)
+    print(f"deserialized subroutine: {deserialized_subroutine}")
+    assert isinstance(deserialized_subroutine.instructions[0], SetInstruction)
+    assert isinstance(deserialized_subroutine.instructions[1], ArrayInstruction)
+    assert isinstance(deserialized_subroutine.instructions[2], SetInstruction)
+    assert isinstance(deserialized_subroutine.instructions[3], MeasBasisInstruction)
+    assert isinstance(deserialized_subroutine.instructions[4], SetInstruction)
+    assert isinstance(deserialized_subroutine.instructions[5], StoreInstruction)
+    assert isinstance(deserialized_subroutine.instructions[6], RetArrInstruction)
 
 
 if __name__ == "__main__":
