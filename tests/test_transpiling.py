@@ -179,7 +179,7 @@ def _subroutine_as_matrix(subroutine: Subroutine) -> np.ndarray:
         set Q0 0
         set Q1 1
         set Q2 2
-        cphase Q1 Q2
+        cphase Q0 Q1
         h Q1
         cnot Q2 Q0
         """
