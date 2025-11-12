@@ -107,26 +107,6 @@ def test_deserialize_subroutine():
 
 
 def test_meas_base_binary_subroutine():
-    # TODO - There migth be a bug in the deserialization:
-    # Subroutine
-    #   set R0 1
-    #   array R0 @2
-    #   set Q0 0
-    #   meas_basis Q0 M0 0 24 0 4
-    #   set R0 0
-    #   store M0 @2[R0]
-    #   ret_arr @2
-    # EndSubroutine
-    # deserializes as:
-    # Subroutine
-    #   set R0 1
-    #   array R0 @2
-    #   set Q0 0
-    #   mov Q0 M0 ### This should be meas_basis... `meas_basis` and `mov` share the same id: "#40 or #41"
-    #   set R0 0
-    #   store M0 @2[R0]
-    #   ret_arr @2
-    # EndSubroutine
     subroutine = """
 # NETQASM 0.0
 # APPID 0
@@ -165,3 +145,4 @@ if __name__ == "__main__":
     test()
     test_rotations()
     test_deserialize_subroutine()
+    test_meas_base_binary_subroutine()
