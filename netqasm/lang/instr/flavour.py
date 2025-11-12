@@ -96,6 +96,7 @@ class VanillaFlavour(Flavour):
             vanilla.CnotInstruction,
             vanilla.CphaseInstruction,
             vanilla.MovInstruction,
+            vanilla.SwpInstruction,
         ]
 
     def __init__(self):
@@ -111,6 +112,8 @@ class NVFlavour(Flavour):
             nv.RotZInstruction,
             nv.ControlledRotXInstruction,
             nv.ControlledRotYInstruction,
+            nv.MovInstruction,
+            nv.SwpInstruction,
         ]
 
     def __init__(self):
