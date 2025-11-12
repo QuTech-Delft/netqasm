@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2025-11-12 (2.1.0)
+------------------
+- Add support for MOV and SWP commands for Vanilla nad NV flavours.
+
 2025-09-24 (2.0.2)
 ------------------
 - Fixed bug to correctly deactivate qubits when invoking `free` on them whenever it is
