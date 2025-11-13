@@ -290,6 +290,7 @@ def test_transpiling_nv_using_sdk():
         q.rot_Z(n=1, d=2)
         q2 = Qubit(alice)
         q.move(q2)
+        q = Qubit(alice)
         q.swap(q2)
 
     assert len(alice.storage) == 4

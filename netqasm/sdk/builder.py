@@ -1128,7 +1128,6 @@ class Builder:
             self._build_cmds_new_qubit(target)
         # Overwrite the state of the target qubit with the state of the source.
         self._build_cmds_two_qubit(GenericInstr.MOV, source, target)
-        self._build_cmds_qfree(source)
 
     def _build_cmds_swap_qubits(self, qubit1: int, qubit2: int) -> None:
         # Swap the state of two qubits. Both qubits should be active.

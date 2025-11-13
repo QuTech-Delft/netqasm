@@ -379,6 +379,7 @@ class Qubit:
         self.builder._build_cmds_move_qubit(
             source=self.qubit_id, target=target.qubit_id
         )
+        self.free()
 
     def swap(self, target: Qubit) -> None:
         """Swap the state of the qubit with the state of another qubit.
