@@ -1122,12 +1122,11 @@ class Builder:
         self.subrt_add_pending_command(qubit_command)
 
     def _build_cmds_move_qubit(self, source: int, target: int) -> None:
-        # Moves a qubit from one position to another.
-        if target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]:
-            # If the target is free, allocate it.
-            self._build_cmds_new_qubit(target)
-        # Overwrite the state of the target qubit with the state of the source.
+        # Moves a qubit from one position to another (assumes that target is free)
+        assert target not in [q.qubit_id for q in self._mem_mgr.get_active_qubits()]
+        self._build_cmds_new_qubit(target)
         self._build_cmds_two_qubit(GenericInstr.MOV, source, target)
+        self._build_cmds_qfree(source)
 
     def _build_cmds_swap_qubits(self, qubit1: int, qubit2: int) -> None:
         # Swap the state of two qubits. Both qubits should be active.
