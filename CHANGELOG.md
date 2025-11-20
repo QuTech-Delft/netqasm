@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+2025-11-13 (2.1.1)
+------------------
+- Fix qubit not getting freed in memory manager after move.
+
 2025-11-12 (2.1.0)
 ------------------
 - Add support for MOV and SWP commands for Vanilla nad NV flavours.
