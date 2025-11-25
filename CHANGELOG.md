@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+2025-11-20 (2.2.0)
+------------------
+- Remove MOV instruction due to incompatibility with NetQASM's memory management paradigm.
+  Users that still require moving a qubit to another one are encouraged to use the SWP
+  instruction instead.
+
 2025-11-13 (2.1.1)
 ------------------
 - Fix qubit not getting freed in memory manager after move.
