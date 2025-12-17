@@ -8,7 +8,7 @@ flavour.
 import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla
+from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla, trapped_ion_individual
 from netqasm.lang.instr.flavour import REIDSFlavour
 from netqasm.lang.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
@@ -669,3 +669,314 @@ def get_hardware_num_denom(
     denom_diff = 4 - instr.angle_denom.value
     angle_num = instr.angle_num.value * (2**denom_diff)
     return (Immediate(angle_num), Immediate(4))
+
+
+class TISubroutineTranspiler(SubroutineTranspiler):
+    """A transpiler that converts a subroutine with the vanilla flavour to a subroutine
+    with the trapped-ion flavour.
+    """
+
+    def __init__(self, subroutine: Subroutine, debug=False):
+        super().__init__(subroutine, debug)
+        self._used_registers: Set[Register] = set()
+        self._register_values: Dict[Register, Immediate] = dict()
+
+    def get_reg_value(self, reg: Register) -> Immediate:
+        """Get the value of a register at this moment"""
+        return self._register_values[reg]
+
+    def get_unused_register(self) -> Register:
+        """
+        Naive approach: try to use Q0 if possible, otherwise Q1, etc.
+        """
+        for i in range(16):
+            reg = Register(RegisterName.Q, i)
+            if reg not in self._used_registers:
+                return reg
+        raise RuntimeError("Could not find free register")
+
+    def transpile(self) -> Subroutine:
+        """
+        Very simple transpiling pass: iterate over all instructions once and rewrite them in-line.
+        While iterating, keep track of which registers are in use and what their values are.
+        """
+        # TODO this, and other methods, are a copy of NVSubroutineTranspiler,
+        # These should be refactored to reuse the copied code
+        new_commands: List[NetQASMInstruction] = []
+
+        index_changes = {}  # map index in commands to index in new_commands
+
+        for i, instr in enumerate(self._subroutine.instructions):
+            # check which registers are being written to
+            affected_regs = instr.writes_to()
+
+            for reg in affected_regs:
+                if reg.name != RegisterName.Q:
+                    continue  # for now we are only interested in Q-register values
+
+                if isinstance(instr, core.SetInstruction):
+                    # OK, value is a known Immediate. Update register value:
+                    self._register_values[reg] = instr.imm
+                else:
+                    pass
+                    # don't allow writing to a Q-register by any other instruction type
+                    # TODO
+                    # raise RuntimeError(
+                    #     f"Cannot transpile: the instruction {instr} writes to"
+                    #     " a Q-register but the value cannot be determined"
+                    #     " at transpile time.")
+
+            for op in instr.operands:
+                # update used registers
+                if isinstance(op, Register):
+                    self._used_registers.update([op])
+
+            index_changes[i] = len(new_commands)
+
+            if isinstance(instr, core.SingleQubitInstruction) or isinstance(
+                instr, core.RotationInstruction
+            ):
+                new_commands += self._handle_single_qubit_gate(instr)
+            elif isinstance(instr, core.TwoQubitInstruction):
+                new_commands += self._handle_two_qubit_gate(instr)
+            else:
+                new_commands += [instr]
+
+        add_no_op_at_end = False
+
+        for instr in new_commands:
+            if (
+                isinstance(instr, core.BranchUnaryInstruction)
+                or isinstance(instr, core.BranchBinaryInstruction)
+                or isinstance(instr, core.JmpInstruction)
+            ):
+                original_line = instr.line.value
+                if original_line == len(self._subroutine.instructions):
+                    # There was a label in the original subroutine at the very end.
+                    # Since this label is now removed, we should put a "no-op"
+                    # instruction there so there is something to jump to.
+                    add_no_op_at_end = True
+                    instr.line = Immediate(len(new_commands))
+                else:
+                    instr.line = Immediate(index_changes[instr.line.value])
+
+        if add_no_op_at_end:
+            new_commands += [
+                core.SetInstruction(
+                    lineno=None, reg=Register(RegisterName.C, 15), imm=Immediate(1337)
+                )
+            ]
+
+        self._subroutine.instructions = new_commands
+        return self._subroutine
+
+    def _handle_two_qubit_gate(
+        self, instr: core.TwoQubitInstruction
+    ) -> List[NetQASMInstruction]:
+        try:
+            qubit_id0 = self.get_reg_value(instr.reg0).value
+            qubit_id1 = self.get_reg_value(instr.reg1).value
+        except KeyError:
+            # Register values are not known at transpile time.
+            # We may assume that this is a MOV operation from the communication
+            # qubit to a memory qubit. (This is the only time a gate uses
+            # operands that are not known at transpile time.)
+            assert isinstance(instr, vanilla.MovInstruction)
+            # self._transpile_two_qubit_gate(instr)
+            raise NotImplementedError("")
+
+        assert qubit_id0 != qubit_id1
+
+        if qubit_id0 == qubit_id1 - 1 or qubit_id0 == qubit_id1 + 1:
+            # Qubits are adjacent, just transpile down
+            return self._transpile_two_qubit_gate(instr)
+
+        else:
+            # Non-neighbor qubits the qubits have to be moved around first and possibly after applying the gate
+            # SWAP q1, q2
+            # Apply _transpile_two_qubit_gate on q2, and q3
+            # SWAP q1, q2
+            raise NotImplementedError("")
+
+    def _transpile_two_qubit_gate(self, instr: core.TwoQubitInstruction):
+        # Convert two qubit gate (CNOT, CPhase or MOV) into single qubit rotations + BichromaticInstruction (MS gate)
+
+        # TODO this is not correct, just an example of how you would do this
+        # TODO Different implementation per CNOT or CPHASE or MOV
+        if isinstance(instr, vanilla.CnotInstruction):
+            return [
+            trapped_ion_individual.RotXInstruction(
+                lineno=instr.lineno,
+                reg=instr.reg0,
+                imm0=Immediate(24),
+                imm1=Immediate(4)),
+
+            trapped_ion_individual.MSGateInstruction(
+                lineno=instr.lineno,
+                reg0=instr.reg0,
+                reg1=instr.reg1,
+            )]  # TODO This is just a draft, not acually the proper CNOT transpile
+        elif isinstance(instr, vanilla.CphaseInstruction):
+            return []  # TODO add instructions
+        elif isinstance(instr, vanilla.MovInstruction):
+            return []  # TODO add instructions
+        else:
+            raise KeyError("")
+
+
+
+    def _handle_single_qubit_gate(
+        self,
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
+    ) -> List[NetQASMInstruction]:
+        return self._map_single_gate(instr)
+
+    def _map_single_gate(
+        self,
+        instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
+    ) -> List[NetQASMInstruction]:
+        if isinstance(instr, vanilla.GateXInstruction):
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(16),
+                    imm1=Immediate(4),
+                )
+            ]
+        elif isinstance(instr, vanilla.GateYInstruction):
+            return [
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(16),
+                    imm1=Immediate(4),
+                )
+            ]
+        elif isinstance(instr, vanilla.GateZInstruction):
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(16),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(8),
+                    imm1=Immediate(4),
+                ),
+            ]
+        elif isinstance(instr, vanilla.GateHInstruction):
+            return [
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(8),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(16),
+                    imm1=Immediate(4),
+                ),
+            ]
+        elif isinstance(instr, vanilla.GateKInstruction):
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(16),
+                    imm1=Immediate(4),
+                ),
+            ]
+        elif isinstance(instr, vanilla.GateSInstruction):
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(8),
+                    imm1=Immediate(4),
+                ),
+            ]
+        elif isinstance(instr, vanilla.GateTInstruction):
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(28),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg,
+                    imm0=Immediate(8),
+                    imm1=Immediate(4),
+                ),
+            ]
+        elif isinstance(instr, vanilla.RotZInstruction):
+            if get_is_using_hardware() and instr.angle_denom.value != 4:
+                imm0, imm1 = get_hardware_num_denom(instr)
+            else:
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                trapped_ion_individual.RotZInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                ),
+            ]
+        elif isinstance(instr, vanilla.RotXInstruction):
+            if get_is_using_hardware() and instr.angle_denom.value != 4:
+                imm0, imm1 = get_hardware_num_denom(instr)
+            else:
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                ),
+            ]
+        elif isinstance(instr, vanilla.RotYInstruction):
+            if get_is_using_hardware() and instr.angle_denom.value != 4:
+                imm0, imm1 = get_hardware_num_denom(instr)
+            else:
+                imm0, imm1 = instr.angle_num, instr.angle_denom
+            return [
+                trapped_ion_individual.RotYInstruction(
+                    lineno=instr.lineno, reg=instr.reg, imm0=imm0, imm1=imm1
+                ),
+            ]
+        else:
+            raise ValueError(
+                f"Don't know how to map instruction {instr} of type {type(instr)}"
+            )
