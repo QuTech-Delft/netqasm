@@ -8,7 +8,14 @@ flavour.
 import abc
 from typing import Dict, List, Optional, Set, Tuple, Union
 
-from netqasm.lang.instr import DebugInstruction, NetQASMInstruction, core, nv, vanilla, trapped_ion_individual
+from netqasm.lang.instr import (
+    DebugInstruction,
+    NetQASMInstruction,
+    core,
+    nv,
+    trapped_ion_individual,
+    vanilla,
+)
 from netqasm.lang.instr.flavour import REIDSFlavour
 from netqasm.lang.operand import Immediate, Register, RegisterName
 from netqasm.lang.subroutine import Subroutine
@@ -805,25 +812,24 @@ class TISubroutineTranspiler(SubroutineTranspiler):
         # TODO Different implementation per CNOT or CPHASE or MOV
         if isinstance(instr, vanilla.CnotInstruction):
             return [
-            trapped_ion_individual.RotXInstruction(
-                lineno=instr.lineno,
-                reg=instr.reg0,
-                imm0=Immediate(24),
-                imm1=Immediate(4)),
-
-            trapped_ion_individual.MSGateInstruction(
-                lineno=instr.lineno,
-                reg0=instr.reg0,
-                reg1=instr.reg1,
-            )]  # TODO This is just a draft, not acually the proper CNOT transpile
+                trapped_ion_individual.RotXInstruction(
+                    lineno=instr.lineno,
+                    reg=instr.reg0,
+                    imm0=Immediate(24),
+                    imm1=Immediate(4),
+                ),
+                trapped_ion_individual.MSGateInstruction(
+                    lineno=instr.lineno,
+                    reg0=instr.reg0,
+                    reg1=instr.reg1,
+                ),
+            ]  # TODO This is just a draft, not acually the proper CNOT transpile
         elif isinstance(instr, vanilla.CphaseInstruction):
             return []  # TODO add instructions
         elif isinstance(instr, vanilla.MovInstruction):
             return []  # TODO add instructions
         else:
             raise KeyError("")
-
-
 
     def _handle_single_qubit_gate(
         self,

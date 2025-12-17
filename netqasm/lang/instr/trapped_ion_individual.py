@@ -3,11 +3,10 @@ from typing import List, Union
 
 import numpy as np
 
-from netqasm.lang.operand import Immediate, Operand, Register, Template
+from netqasm.lang.operand import Operand
 from netqasm.util.quantum_gates import get_rotation_matrix
 
-from . import base, core
-
+from . import core
 
 
 @dataclass
