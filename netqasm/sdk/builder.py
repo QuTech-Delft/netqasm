@@ -1903,8 +1903,8 @@ class Builder:
         )
 
         has_mem_qubits: bool = (
-                self._hardware_config is not None
-                and self._hardware_config.mem_qubit_count > 0
+            self._hardware_config is not None
+            and self._hardware_config.mem_qubit_count > 0
         )
 
         # If there is a post routine, handle pairs one by one.
