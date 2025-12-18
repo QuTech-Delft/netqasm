@@ -1902,6 +1902,11 @@ class Builder:
             and self._hardware_config.comm_qubit_count == 1
         )
 
+        has_mem_qubits: bool = (
+                self._hardware_config is not None
+                and self._hardware_config.mem_qubit_count > 0
+        )
+
         # If there is a post routine, handle pairs one by one.
         # If there is only one comm qubit, handle pairs one by one.
         if params.post_routine is not None or single_comm_qubit:
@@ -1929,7 +1934,7 @@ class Builder:
                 qubit_ids_array, ent_results_array, wait_all, params
             )
 
-        if params.post_routine is None and single_comm_qubit:
+        if params.post_routine is None and single_comm_qubit and has_mem_qubits:
             self._build_cmds_wait_move_epr_to_mem(
                 params=params, ent_results_array=ent_results_array, role=role
             )
