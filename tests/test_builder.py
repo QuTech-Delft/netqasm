@@ -4,7 +4,7 @@ from typing import List, Optional, Union
 
 from netqasm.lang.ir import BranchLabel, GenericInstr, ICmd, ProtoSubroutine
 from netqasm.logging.glob import get_netqasm_logger
-from netqasm.sdk.build_types import NVHardwareConfig
+from netqasm.sdk.build_types import GenericHardwareConfig, NVHardwareConfig
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
@@ -1087,6 +1087,68 @@ def test_create_keep_no_corrections():
         [
             GenericInstr.CREATE_EPR,
             GenericInstr.WAIT_ALL,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_create_keep_single_comm_qubit_no_memory_qubits():
+    """
+    Check that if there is a single communication qubit, but no memory qubits,
+    the subroutine for creating an EPR pair does not contain a MOV instruction.
+    """
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        conn.builder._hardware_config = GenericHardwareConfig(1)
+
+        epr_socket.create_keep(number=1)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            GenericInstr.RET_ARR,
+        ]
+    )
+
+
+def test_create_keep_single_comm_qubit_has_memory_qubits():
+    """
+    Check that if there is a single communication qubit and there are memory qubits,
+    the subroutine for creating an EPR pair does contain a MOV instruction.
+    """
+    DebugConnection.node_ids = {
+        "Alice": 0,
+        "Bob": 1,
+    }
+
+    epr_socket = EPRSocket("Bob")
+
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
+        conn.builder._hardware_config = GenericHardwareConfig(1)
+        conn.builder._hardware_config._mem_qubit_count = 1
+
+        epr_socket.create_keep(number=1)
+
+        subroutine = conn.builder.subrt_pop_pending_subroutine()
+
+    inspector = ProtoSubroutineInspector(subroutine)
+    assert inspector.match_pattern(
+        [
+            GenericInstr.CREATE_EPR,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.WAIT_ALL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MOV,
+            PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.RET_ARR,
         ]
     )
