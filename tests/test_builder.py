@@ -753,7 +753,15 @@ def test_create_epr_min_fidelity_all():
     epr_socket = EPRSocket("Bob")
 
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
-        epr_socket.create_keep(number=2, min_fidelity_all_at_end=80, max_tries=100)
+        qubits = epr_socket.create_keep(
+            number=2, min_fidelity_all_at_end=80, max_tries=100
+        )
+
+        # Check that qubits can be used for following instructions
+        q1, q2 = qubits
+        q1.cnot(q2)
+        q1.measure()
+        q2.measure()
 
         subroutine = conn._builder.subrt_pop_pending_subroutine()
         print(subroutine)
@@ -779,6 +787,14 @@ def test_create_epr_min_fidelity_all():
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.JMP,
             PatternWildcard.BRANCH_LABEL,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.CNOT,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.MEAS,
+            PatternWildcard.ANY_ZERO_OR_MORE,
+            GenericInstr.RET_ARR,
         ]
     )
 
