@@ -11,6 +11,7 @@ from itertools import count
 from typing import (
     TYPE_CHECKING,
     Dict,
+    Final,
     Iterator,
     List,
     Optional,
@@ -33,7 +34,14 @@ from netqasm.lang.ir import (
     T_ProtoOperand,
     flip_branch_instr,
 )
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Template
+from netqasm.lang.operand import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+    Register,
+    Template,
+)
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.version import NETQASM_VERSION
@@ -365,7 +373,6 @@ class Builder:
     def _build_cmds_wait_move_epr_to_mem(
         self, params: EntRequestParams, ent_results_array: Array, role: EPRRole
     ) -> None:
-
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         qubit_reg = self._mem_mgr.get_inactive_register(activate=True)
         bell_state_reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -439,7 +446,6 @@ class Builder:
         tp: EPRType,
         role: EPRRole,
     ) -> None:
-
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         qubit_reg = self._mem_mgr.get_inactive_register(activate=True)
         bell_state_reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -1011,8 +1017,11 @@ class Builder:
 
     def _foreach_context_exit(self, context_id: int, array: Array) -> None:
         body_commands = self.subrt_pop_all_pending_commands()
-        pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
-            context_id, None  # type: ignore
+        pre_context_commands: Tuple[
+            List[T_Cmd], operand.Register
+        ] = self._pre_context_commands.pop(  # type: ignore
+            context_id,
+            None,  # type: ignore
         )
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
@@ -1137,96 +1146,95 @@ class Builder:
     def _build_cmds_measure(
         self,
         qubit_id: int,
-        future: Union[Future, RegFuture],
+        future: Future | RegFuture,
         inplace: bool,
         basis: QubitMeasureBasis = QubitMeasureBasis.Z,
-        rotations: Optional[Tuple[int, int, int]] = None,
+        rotations: tuple[int, int, int] | None = None,
         axes: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> None:
-        if isinstance(self._hardware_config, NVHardwareConfig):
+        if (
+            isinstance(self._hardware_config, NVHardwareConfig)
+            and not isinstance(qubit_id, Future)
+            and qubit_id != 0
+        ):
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
-            if not isinstance(qubit_id, Future):
-                if qubit_id != 0:
-                    self._build_cmds_free_up_qubit_location(virtual_address=0)
+            self._build_cmds_free_up_qubit_location(virtual_address=0)
+
         outcome_reg = self._mem_mgr.get_new_meas_outcome_register()
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
 
-        # use denominator 4 since we always treat angles as multiples of pi/(2^4)
-        denom = 4
-
-        if rotations is not None:
-            first, second, third = rotations
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, first, second, third, denom, axes],
-            )
-        elif basis == QubitMeasureBasis.X:
-            first, second, third = {
-                QubitMeasureAxes.XYX: (0, 24, 0),
-                QubitMeasureAxes.YZY: (24, 0, 0),
-                QubitMeasureAxes.ZXZ: (24, 24, 8),
-            }[axes]
-
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[
-                    qubit_reg,
-                    outcome_reg,
-                    first,
-                    second,
-                    third,
-                    denom,
-                    axes,
-                ],  # -pi/2 Y rotation
-            )
-        elif basis == QubitMeasureBasis.Y:
-            first, second, third = {
-                QubitMeasureAxes.XYX: (8, 0, 0),
-                QubitMeasureAxes.YZY: (8, 24, 24),
-                QubitMeasureAxes.ZXZ: (0, 8, 0),
-            }[axes]
-
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[
-                    qubit_reg,
-                    outcome_reg,
-                    first,
-                    second,
-                    third,
-                    denom,
-                    axes,
-                ],  # pi/2 X rotation
-            )
-        else:
+        if rotations is None or basis is QubitMeasureBasis.Z:
             meas_command = ICmd(
                 instruction=GenericInstr.MEAS,
                 operands=[qubit_reg, outcome_reg],
             )
+        else:
+            if rotations is None:
+                rotations = {
+                    QubitMeasureBasis.X: {
+                        QubitMeasureAxes.XYX: (0, 24, 0),
+                        QubitMeasureAxes.YZY: (24, 0, 0),
+                        QubitMeasureAxes.ZXZ: (24, 24, 8),
+                    },
+                    QubitMeasureBasis.Y: {
+                        QubitMeasureAxes.XYX: (8, 0, 0),
+                        QubitMeasureAxes.YZY: (8, 24, 24),
+                        QubitMeasureAxes.ZXZ: (0, 8, 0),
+                    },
+                }[basis][axes]
 
-        if not inplace:
-            free_commands = [
+            meas_command = self._create_meas_basis_with_rotations(
+                qubit_reg, outcome_reg, rotations, axes
+            )
+
+        free_command: list[ICmd] = (
+            []
+            if inplace
+            else [
                 ICmd(
                     instruction=GenericInstr.QFREE,
                     operands=[qubit_reg],
                 )
             ]
-        else:
-            free_commands = []
-        if future is not None:
-            if isinstance(future, Future):
-                outcome_commands = future._get_store_commands(outcome_reg)
-                self._mem_mgr.meas_register_set_unused(outcome_reg)
-            elif isinstance(future, RegFuture):
-                future.reg = outcome_reg
-                self._mem_mgr.add_register_to_return(outcome_reg)
-                outcome_commands = []
-            else:
-                outcome_commands = []
-        commands = [meas_command] + free_commands + outcome_commands  # type: ignore
+        )
+
+        outcome_commands: list[ICmd] = []
+        if isinstance(future, Future):
+            outcome_commands + future._get_store_commands(outcome_reg)
+            self._mem_mgr.meas_register_set_unused(outcome_reg)
+        elif isinstance(future, RegFuture):
+            future.reg = outcome_reg
+            self._mem_mgr.add_register_to_return(outcome_reg)
+
+        commands: list[ICmd] = [meas_command] + free_command + outcome_commands
         self.subrt_add_pending_commands(commands)  # type: ignore
+
+    def _create_meas_basis_with_rotations(
+        self,
+        qubit_reg: Register,
+        outcome_reg: Register,
+        rotations: tuple[int, int, int],
+        axes: QubitMeasureAxes,
+    ) -> ICmd:
+        # use denominator 4 since we always treat angles as multiples of pi/(2^4)
+        denominator: Final[int] = 4
+
+        first, second, third = rotations
+        meas_command = ICmd(
+            instruction=GenericInstr.MEAS_BASIS,
+            operands=[
+                qubit_reg,
+                outcome_reg,
+                first,
+                second,
+                third,
+                denominator,
+                axes,
+            ],
+        )
+        return meas_command
 
     def _build_cmds_new_qubit(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1527,7 +1535,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -1559,7 +1569,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -1599,7 +1611,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -1632,7 +1646,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -1667,7 +1683,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -1699,7 +1717,9 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
+            ent_results_array.address,
+            start=0,
+            stop=len(ent_results_array),  # type: ignore
         )
         if wait_all:
             wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
@@ -2051,7 +2071,8 @@ class Builder:
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
         ent_results_array = self._alloc_ent_results_array(
-            number=params.number, tp=EPRType.K  # Keep since we are receiving RSP
+            number=params.number,
+            tp=EPRType.K,  # Keep since we are receiving RSP
         )
 
         qubit_ids_array: Optional[Array] = None
