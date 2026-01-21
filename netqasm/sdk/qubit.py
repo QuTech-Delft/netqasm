@@ -5,7 +5,7 @@ as handles to in-memory qubits.
 """
 from __future__ import annotations
 
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from netqasm.lang.ir import GenericInstr
@@ -26,6 +26,12 @@ class QubitMeasureBasis(Enum):
     X = 0
     Y = auto()
     Z = auto()
+
+
+class QubitMeasureAxes(IntEnum):
+    XYX = 0
+    YZY = 1
+    ZXZ = 2
 
 
 class Qubit:
@@ -174,6 +180,7 @@ class Qubit:
         store_array: bool = True,
         basis: QubitMeasureBasis = QubitMeasureBasis.Z,
         basis_rotations: Optional[Tuple[int, int, int]] = None,
+        basis_rotation_axes: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> Union[Future, RegFuture]:
         """
         Measure the qubit in the standard basis and get the measurement outcome.
@@ -189,12 +196,12 @@ class Qubit:
             Default is Z. Ignored if `basis_rotations` is not None.
         :param basis_rotations: rotations to apply before measuring in the
             Z-basis. This can be used to specify arbitrary measurement bases.
-            The 3 values are interpreted as 3 rotation angles, for an X- Y-, and
-            another X-rotation, respectively. Each angle is interpreted as a
-            multiple of pi/16. For example, if `basis_rotations` is (8, 0, 0),
-            an X-rotation is applied with angle 8*pi/16 = pi/2 radians, followed
+            The 3 values are interpreted as 3 rotation angles, around the axes specified by basis_rotation_axes.
+            Each angle is interpreted as a multiple of pi/16. For example, if `basis_rotations` is (8, 0, 0) and
+            basis_rotation_axes is XYX, an X-rotation is applied with angle 8*pi/16 = pi/2 radians, followed
             by a Y-rotation of angle 0 and an X-rotation of angle 0. Finally,
             the measurement is done in the Z-basis.
+        :param basis_rotation_axes: Axes around which the rotations from basis_rotations should be performed, in order.
         :return: the Future representing the measurement outcome. It is a
             `Future` if
         the result is in an array (default) or `RegFuture` if the result is in a
@@ -215,6 +222,7 @@ class Qubit:
             inplace=inplace,
             basis=basis,
             rotations=basis_rotations,
+            axes=basis_rotation_axes,
         )
 
         if not inplace:
