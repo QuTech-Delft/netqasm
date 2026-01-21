@@ -1165,7 +1165,7 @@ class Builder:
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
 
-        if rotations is None or basis is QubitMeasureBasis.Z:
+        if rotations is None and basis is QubitMeasureBasis.Z:
             meas_command = ICmd(
                 instruction=GenericInstr.MEAS,
                 operands=[qubit_reg, outcome_reg],
