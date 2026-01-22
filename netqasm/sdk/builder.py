@@ -1221,9 +1221,15 @@ class Builder:
         # use denominator 4 since we always treat angles as multiples of pi/(2^4)
         denominator: Final[int] = 4
 
+        instruction: GenericInstr = {
+            QubitMeasureAxes.XYX: GenericInstr.MEAS_BASIS,
+            QubitMeasureAxes.YZY: GenericInstr.MEAS_BASIS_YZY,
+            QubitMeasureAxes.ZXZ: GenericInstr.MEAS_BASIS_ZXZ,
+        }[axes]
+
         first, second, third = rotations
         meas_command = ICmd(
-            instruction=GenericInstr.MEAS_BASIS,
+            instruction=instruction,
             operands=[
                 qubit_reg,
                 outcome_reg,
@@ -1231,7 +1237,6 @@ class Builder:
                 second,
                 third,
                 denominator,
-                axes,
             ],
         )
         return meas_command
