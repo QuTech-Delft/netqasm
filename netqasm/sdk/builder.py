@@ -1540,7 +1540,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
@@ -1574,7 +1574,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
@@ -1616,7 +1616,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
@@ -1651,7 +1651,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
@@ -1688,7 +1688,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
@@ -1722,7 +1722,7 @@ class Builder:
 
         # wait
         arr_slice = ArraySlice(
-            ent_results_array.address,
+            Address(ent_results_array.address),
             start=0,
             stop=len(ent_results_array),  # type: ignore
         )
