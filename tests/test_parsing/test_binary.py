@@ -1,6 +1,8 @@
 from netqasm.lang.instr.core import (
     ArrayInstruction,
     MeasBasisInstruction,
+    MeasBasisYZYInstruction,
+    MeasBasisZXZInstruction,
     RetArrInstruction,
     SetInstruction,
     StoreInstruction,
@@ -114,6 +116,8 @@ def test_meas_base_binary_subroutine():
   array R0 @2
   set Q0 0
   meas_basis Q0 M0 0 24 0 4
+  meas_basis_yzy Q0 M0 0 24 0 4
+  meas_basis_zxz Q0 M0 0 24 0 4
   set R0 0
   store M0 @2[R0]
   ret_arr @2
@@ -124,9 +128,11 @@ def test_meas_base_binary_subroutine():
     assert isinstance(parsed_subroutine.instructions[1], ArrayInstruction)
     assert isinstance(parsed_subroutine.instructions[2], SetInstruction)
     assert isinstance(parsed_subroutine.instructions[3], MeasBasisInstruction)
-    assert isinstance(parsed_subroutine.instructions[4], SetInstruction)
-    assert isinstance(parsed_subroutine.instructions[5], StoreInstruction)
-    assert isinstance(parsed_subroutine.instructions[6], RetArrInstruction)
+    assert isinstance(parsed_subroutine.instructions[4], MeasBasisYZYInstruction)
+    assert isinstance(parsed_subroutine.instructions[5], MeasBasisZXZInstruction)
+    assert isinstance(parsed_subroutine.instructions[6], SetInstruction)
+    assert isinstance(parsed_subroutine.instructions[7], StoreInstruction)
+    assert isinstance(parsed_subroutine.instructions[8], RetArrInstruction)
     bin_subroutine = bytes(parsed_subroutine)
     print(f"binary subroutine: {bin_subroutine}")
 
@@ -136,9 +142,11 @@ def test_meas_base_binary_subroutine():
     assert isinstance(deserialized_subroutine.instructions[1], ArrayInstruction)
     assert isinstance(deserialized_subroutine.instructions[2], SetInstruction)
     assert isinstance(deserialized_subroutine.instructions[3], MeasBasisInstruction)
-    assert isinstance(deserialized_subroutine.instructions[4], SetInstruction)
-    assert isinstance(deserialized_subroutine.instructions[5], StoreInstruction)
-    assert isinstance(deserialized_subroutine.instructions[6], RetArrInstruction)
+    assert isinstance(deserialized_subroutine.instructions[4], MeasBasisYZYInstruction)
+    assert isinstance(deserialized_subroutine.instructions[5], MeasBasisZXZInstruction)
+    assert isinstance(deserialized_subroutine.instructions[6], SetInstruction)
+    assert isinstance(deserialized_subroutine.instructions[7], StoreInstruction)
+    assert isinstance(deserialized_subroutine.instructions[8], RetArrInstruction)
 
 
 if __name__ == "__main__":

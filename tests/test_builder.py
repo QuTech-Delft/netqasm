@@ -9,7 +9,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
-from netqasm.sdk.qubit import Qubit, QubitMeasureBasis
+from netqasm.sdk.qubit import Qubit, QubitMeasureAxes, QubitMeasureBasis
 from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 logger = get_netqasm_logger()
@@ -1079,6 +1079,42 @@ def test_measure_basis_rotation():
         [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
         # check if rotations are correct
         assert meas_basis.operands[2:] == [3, 4, 5, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis_yzy():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.Y, basis_rotation_axes=QubitMeasureAxes.YZY)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS_YZY)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS_YZY)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [8, 24, 24, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis_zxz():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.Y, basis_rotation_axes=QubitMeasureAxes.ZXZ)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS_ZXZ)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS_ZXZ)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [0, 8, 0, 4]  # skip register operands
 
         compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
         print(compiled_subroutine)
