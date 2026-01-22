@@ -1200,7 +1200,7 @@ class Builder:
             ]
         )
 
-        outcome_commands: list[ICmd] = []
+        outcome_commands: list[ICmd | BranchLabel] = []
         if isinstance(future, Future):
             outcome_commands += future._get_store_commands(outcome_reg)
             self._mem_mgr.meas_register_set_unused(outcome_reg)
@@ -1208,7 +1208,9 @@ class Builder:
             future.reg = outcome_reg
             self._mem_mgr.add_register_to_return(outcome_reg)
 
-        commands: list[ICmd] = [meas_command] + free_command + outcome_commands
+        commands: list[ICmd | BranchLabel] = (
+            list[ICmd | BranchLabel]([meas_command]) + free_command + outcome_commands
+        )
         self.subrt_add_pending_commands(commands)  # type: ignore
 
     def _create_meas_basis_with_rotations(
