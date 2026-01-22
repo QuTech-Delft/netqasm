@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, IntEnum, auto
-from typing import List, Optional, Tuple
+from types import MappingProxyType
+from typing import Final
 
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, RandomBasis, TimeUnit
 from netqasm.sdk.build_types import T_PostRoutine
@@ -24,18 +25,18 @@ class EntRequestParams:
     remote_node_id: int
     epr_socket_id: int
     number: int
-    post_routine: Optional[T_PostRoutine]
+    post_routine: T_PostRoutine | None
     sequential: bool
     time_unit: TimeUnit = TimeUnit.MICRO_SECONDS
     max_time: int = 0
     expect_phi_plus: bool = True
     expect_psi_plus: bool = False
-    min_fidelity_all_at_end: Optional[int] = None
-    max_tries: Optional[int] = None
-    random_basis_local: Optional[RandomBasis] = None
-    random_basis_remote: Optional[RandomBasis] = None
-    rotations_local: Tuple[int, int, int] = (0, 0, 0)
-    rotations_remote: Tuple[int, int, int] = (0, 0, 0)
+    min_fidelity_all_at_end: int | None = None
+    max_tries: int | None = None
+    random_basis_local: RandomBasis | None = None
+    random_basis_remote: RandomBasis | None = None
+    rotations_local: tuple[int, int, int] = (0, 0, 0)
+    rotations_remote: tuple[int, int, int] = (0, 0, 0)
     axes_local: QubitMeasureAxes = QubitMeasureAxes.XYX
     axes_remote: QubitMeasureAxes = QubitMeasureAxes.XYX
 
@@ -97,7 +98,7 @@ class SerializedMeasureResultIndex(IntEnum):
     BELL_STATE = 9
 
 
-def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[int]]:
+def serialize_request(tp: EPRType, params: EntRequestParams) -> list[int | None]:
     """Convert an EntRequestParams object into a list of values that can be put
     in a NetQASM array."""
     array: list[int | None] = [None for _ in range(len(SerializedCreateRequestIndex))]
@@ -149,10 +150,10 @@ def serialize_request(tp: EPRType, params: EntRequestParams) -> List[Optional[in
 
 def deserialize_epr_keep_results(
     request: EntRequestParams, array: Array
-) -> List[EprKeepResult]:
+) -> list[EprKeepResult]:
     """Convert values in a NetQASM array into EprKeepResult objects."""
     assert len(array) == request.number * len(SerializedKeepResultIndex)
-    results: List[EprKeepResult] = []
+    results: list[EprKeepResult] = []
     for i in range(request.number):
         base = i * len(SerializedKeepResultIndex)
         results.append(
@@ -176,10 +177,10 @@ def deserialize_epr_keep_results(
 
 def deserialize_epr_measure_results(
     request: EntRequestParams, array: Array, role: EPRRole
-) -> List[EprMeasureResult]:
+) -> list[EprMeasureResult]:
     """Convert values in a NetQASM array into EprMeasureResult objects."""
     assert len(array) == request.number * len(SerializedMeasureResultIndex)
-    results: List[EprMeasureResult] = []
+    results: list[EprMeasureResult] = []
     for i in range(request.number):
         base = i * len(SerializedMeasureResultIndex)
         results.append(
@@ -217,45 +218,81 @@ class EprKeepResult:
         return BellState(self.raw_bell_state.value)
 
 
-def rotation_to_basis(rotations: Tuple[int, int, int]) -> Optional[EprMeasBasis]:
-    if rotations == (0, 24, 0):
-        return EprMeasBasis.X
-    elif rotations == (8, 0, 0):
-        return EprMeasBasis.Y
-    elif rotations == (0, 0, 0):
-        return EprMeasBasis.Z
-    elif rotations == (0, 8, 0):
-        return EprMeasBasis.MX
-    elif rotations == (24, 0, 0):
-        return EprMeasBasis.MY
-    elif rotations == (16, 0, 0):
-        return EprMeasBasis.MZ
-    else:
-        return None
+_BASIS_TO_ROTATION_MAPPING: Final[
+    MappingProxyType[
+        QubitMeasureAxes, MappingProxyType[EprMeasBasis, tuple[int, int, int]]
+    ]
+] = MappingProxyType(
+    {
+        QubitMeasureAxes.XYX: MappingProxyType(
+            {
+                EprMeasBasis.X: (0, 24, 0),
+                EprMeasBasis.Y: (8, 0, 0),
+                EprMeasBasis.Z: (0, 0, 0),
+                EprMeasBasis.MX: (0, 8, 0),
+                EprMeasBasis.MY: (24, 0, 0),
+                EprMeasBasis.MZ: (16, 0, 0),
+            }
+        ),
+        QubitMeasureAxes.YZY: MappingProxyType(
+            {
+                EprMeasBasis.X: (24, 0, 0),
+                EprMeasBasis.Y: (8, 24, 24),
+                EprMeasBasis.Z: (0, 0, 0),
+                # FIXME: Check with Bart what the correct decompositions are for the negative bases.
+                # EprMeasBasis.MX: (0, 8, 0),
+                # EprMeasBasis.MY: (24, 0, 0),
+                # EprMeasBasis.MZ: (16, 0, 0),
+            }
+        ),
+        QubitMeasureAxes.ZXZ: MappingProxyType(
+            {
+                EprMeasBasis.X: (24, 24, 8),
+                EprMeasBasis.Y: (0, 8, 0),
+                EprMeasBasis.Z: (0, 0, 0),
+                # FIXME: Check with Bart what the correct decompositions are for the negative bases.
+                # EprMeasBasis.MX: (0, 8, 0),
+                # EprMeasBasis.MY: (24, 0, 0),
+                # EprMeasBasis.MZ: (16, 0, 0),
+            }
+        ),
+    }
+)
+
+_ROTATION_TO_BASIS_MAPPING: Final[
+    MappingProxyType[
+        QubitMeasureAxes, MappingProxyType[tuple[int, int, int], EprMeasBasis]
+    ]
+] = MappingProxyType(
+    {
+        axes: MappingProxyType(
+            {
+                rotation: basis
+                for basis, rotation in _BASIS_TO_ROTATION_MAPPING[axes].items()
+            }
+        )
+        for axes in _BASIS_TO_ROTATION_MAPPING.keys()
+    }
+)
 
 
-def basis_to_rotation(basis: EprMeasBasis) -> Tuple[int, int, int]:
-    if basis == EprMeasBasis.X:
-        return (0, 24, 0)
-    elif basis == EprMeasBasis.Y:
-        return (8, 0, 0)
-    elif basis == EprMeasBasis.Z:
-        return (0, 0, 0)
-    elif basis == EprMeasBasis.MX:
-        return (0, 8, 0)
-    elif basis == EprMeasBasis.MY:
-        return (24, 0, 0)
-    elif basis == EprMeasBasis.MZ:
-        return (16, 0, 0)
-    else:
-        assert False, f"invalid EprMeasBasis {basis}"
+def rotation_to_basis(
+    rotations: tuple[int, int, int], axes: QubitMeasureAxes
+) -> EprMeasBasis | None:
+    return _ROTATION_TO_BASIS_MAPPING[axes].get(rotations, None)
+
+
+def basis_to_rotation(
+    basis: EprMeasBasis, axes: QubitMeasureAxes
+) -> tuple[int, int, int]:
+    return _BASIS_TO_ROTATION_MAPPING[axes][basis]
 
 
 @dataclass
 class EprMeasureResult:
     raw_measurement_outcome: Future
-    measurement_basis_local: Tuple[int, int, int]
-    measurement_basis_remote: Tuple[int, int, int]
+    measurement_basis_local: tuple[int, int, int]
+    measurement_basis_remote: tuple[int, int, int]
     post_process: bool
     remote_node_id: Future
     generation_duration: Future

@@ -50,8 +50,10 @@ from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.sdk.build_epr import (
     EntRequestParams,
     EprKeepResult,
+    EprMeasBasis,
     EprMeasureResult,
     SerializedKeepResultIndex,
+    basis_to_rotation,
     deserialize_epr_keep_results,
     deserialize_epr_measure_results,
     serialize_request,
@@ -1171,18 +1173,7 @@ class Builder:
             )
         else:
             if rotations is None:
-                rotations = {
-                    QubitMeasureBasis.X: {
-                        QubitMeasureAxes.XYX: (0, 24, 0),
-                        QubitMeasureAxes.YZY: (24, 0, 0),
-                        QubitMeasureAxes.ZXZ: (24, 24, 8),
-                    },
-                    QubitMeasureBasis.Y: {
-                        QubitMeasureAxes.XYX: (8, 0, 0),
-                        QubitMeasureAxes.YZY: (8, 24, 24),
-                        QubitMeasureAxes.ZXZ: (0, 8, 0),
-                    },
-                }[basis][axes]
+                rotations = basis_to_rotation(EprMeasBasis(basis), axes)
 
             meas_command = self._create_meas_basis_with_rotations(
                 qubit_reg, outcome_reg, rotations, axes

@@ -22,7 +22,7 @@ class QubitNotActiveError(MemoryError):
     pass
 
 
-class QubitMeasureBasis(Enum):
+class QubitMeasureBasis(IntEnum):
     X = 0
     Y = auto()
     Z = auto()
