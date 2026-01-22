@@ -48,11 +48,10 @@ from netqasm.lang.version import NETQASM_VERSION
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
 from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.sdk.build_epr import (
-    SER_RESPONSE_KEEP_IDX_BELL_STATE,
-    SER_RESPONSE_KEEP_LEN,
     EntRequestParams,
     EprKeepResult,
     EprMeasureResult,
+    SerializedKeepResultIndex,
     deserialize_epr_keep_results,
     deserialize_epr_measure_results,
     serialize_request,
@@ -1494,7 +1493,8 @@ class Builder:
         # set index_reg to index (in single element) of raw_bell_state
         self.subrt_add_pending_command(
             ICmd(
-                GenericInstr.SET, operands=[index_reg, SER_RESPONSE_KEEP_IDX_BELL_STATE]
+                GenericInstr.SET,
+                operands=[index_reg, SerializedKeepResultIndex.BELL_STATE],
             )
         )
 
@@ -1503,7 +1503,7 @@ class Builder:
             self.subrt_add_pending_command(
                 ICmd(
                     GenericInstr.ADD,
-                    operands=[index_reg, index_reg, SER_RESPONSE_KEEP_LEN],
+                    operands=[index_reg, index_reg, len(SerializedKeepResultIndex)],
                 )
             )
 
