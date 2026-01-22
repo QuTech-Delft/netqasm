@@ -1202,7 +1202,7 @@ class Builder:
 
         outcome_commands: list[ICmd] = []
         if isinstance(future, Future):
-            outcome_commands + future._get_store_commands(outcome_reg)
+            outcome_commands += future._get_store_commands(outcome_reg)
             self._mem_mgr.meas_register_set_unused(outcome_reg)
         elif isinstance(future, RegFuture):
             future.reg = outcome_reg
