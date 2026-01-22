@@ -536,7 +536,7 @@ _ALLOW_LABEL_INSTRUCTIONS = [
     GenericInstr.BGE,
 ]
 
-_REPLACE_CONSTANTS_EXCEPTION = [
+_REPLACE_CONSTANTS_EXCEPTION: list[tuple[GenericInstr, int]] = [
     (GenericInstr.SET, 1),
     (GenericInstr.JMP, 0),
     (GenericInstr.BEZ, 1),
@@ -571,7 +571,13 @@ for instr in [
         _REPLACE_CONSTANTS_EXCEPTION.append((instr, index))
 
 for index in [2, 3, 4, 5]:
-    _REPLACE_CONSTANTS_EXCEPTION.append((GenericInstr.MEAS_BASIS, index))
+    _REPLACE_CONSTANTS_EXCEPTION.extend(
+        (
+            (GenericInstr.MEAS_BASIS, index),
+            (GenericInstr.MEAS_BASIS_YZY, index),
+            (GenericInstr.MEAS_BASIS_ZXZ, index),
+        )
+    )
 
 
 def _replace_constants(commands: List[Union[ICmd, BranchLabel]]):
