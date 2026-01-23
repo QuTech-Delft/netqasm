@@ -142,8 +142,12 @@ def serialize_request(tp: EPRType, params: EntRequestParams) -> list[int | None]
             array[
                 SerializedCreateRequestIndex.RANDOM_BASIS_REMOTE
             ] = params.random_basis_remote.value
-        array[SerializedCreateRequestIndex.ROTATION_AXES_LOCAL] = params.axes_local
-        array[SerializedCreateRequestIndex.ROTATION_AXES_REMOTE] = params.axes_remote
+        if params.axes_local != 0:
+            array[SerializedCreateRequestIndex.ROTATION_AXES_LOCAL] = params.axes_local
+        if params.axes_remote != 0:
+            array[
+                SerializedCreateRequestIndex.ROTATION_AXES_REMOTE
+            ] = params.axes_remote
 
     return array
 

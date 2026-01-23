@@ -769,7 +769,7 @@ def test_epr_m():
         expected_instr = expected.instructions[i]
         print(repr(expected_instr))
         print()
-        assert instr == expected_instr
+        assert instr == expected_instr, f"Instruction {i} did not match"
     print(subroutine)
     print(expected)
 
@@ -795,7 +795,7 @@ def test_epr_r_create():
 # APPID 0
 set R1 10
 array R1 @0
-set R1 20
+set R1 22
 array R1 @1
 set R1 2
 set R2 0
