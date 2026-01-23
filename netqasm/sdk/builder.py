@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from itertools import count
-from typing import TYPE_CHECKING, Final, Iterator
+from typing import TYPE_CHECKING, Final, Iterator, Sequence
 
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
@@ -1400,6 +1400,7 @@ class Builder:
         qubit_reg: operand.Register,
         params: EntRequestParams,
     ) -> None:
+        # FIXME: Figure out with Bart what the versions of these corrections is for YZY and ZXZ.
         x180 = [ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])]
 
         if get_is_using_hardware():
@@ -1497,6 +1498,34 @@ class Builder:
         self._mem_mgr.remove_active_register(index_reg)
         return RegFuture(self._connection, target_reg)
 
+    def _build_cmds_epr_generic(
+        self,
+        instruction,
+        epr_cmd_operands: Sequence[int | Register],
+        ent_results_array: Array,
+        wait_all: bool,
+        params: EntRequestParams,
+    ) -> None:
+        epr_cmd = ICmd(
+            instruction=instruction,
+            args=[params.remote_node_id, params.epr_socket_id],
+            operands=epr_cmd_operands,  # type: ignore
+        )
+        self.subrt_add_pending_command(epr_cmd)
+
+        # wait
+        arr_slice = ArraySlice(
+            Address(ent_results_array.address),
+            start=0,
+            stop=len(ent_results_array),
+        )
+        wait_cmds: list[ICmd | BranchLabel] = (
+            [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
+            if wait_all
+            else []
+        )
+        self.subrt_add_pending_commands(wait_cmds)
+
     def _build_cmds_epr_create_keep(
         self,
         create_args_array: Array,
@@ -1504,7 +1533,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1513,25 +1541,13 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.CREATE_EPR,
+            epr_cmd_operands,
+            ent_results_array,
+            wait_all,
+            params,
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_keep(
         self,
@@ -1539,7 +1555,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1547,25 +1562,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
         if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
@@ -1578,9 +1577,8 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
+        epr_cmd_operands: list[int | Register] = [
             # NOTE since the qubit IDs array won't be used just set it to some
             # constant register for now
             operand.Register(RegisterName.C, 0),
@@ -1589,34 +1587,21 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.CREATE_EPR,
+            epr_cmd_operands,
+            ent_results_array,
+            wait_all,
+            params,
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_measure(
         self,
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
+        epr_cmd_operands: list[int | Register] = [
             # NOTE since the qubit IDs array won't be used just set it to some
             # constant register for now
             operand.Register(RegisterName.C, 0),
@@ -1624,25 +1609,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_create_rsp(
         self,
@@ -1650,36 +1619,11 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
-            # NOTE since the qubit IDs array won't be used just set it to some
-            # constant register for now
-            operand.Register(RegisterName.C, 0),
-            create_args_array.address,
-            ent_results_array.address,
-        ]
-
-        # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        # Currently, nothing changes between RSP and Measure Create calls.
+        self._build_cmds_epr_create_measure(
+            create_args_array, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_rsp(
         self,
@@ -1687,7 +1631,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1695,25 +1638,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            Address(ent_results_array.address),
-            start=0,
-            stop=len(ent_results_array),  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
         if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
@@ -2134,39 +2061,38 @@ class Builder:
         """Build commands for a 'receive and keep' EPR operation and return the
         created qubits and result futures."""
 
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                qubits, result_array = self.sdk_epr_keep(
-                    role=EPRRole.RECV, params=params, reset_results_array=True
-                )
-
-                results = deserialize_epr_keep_results(params, result_array)
-
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-
-                def cleanup(_: BaseNetQASMConnection):
-                    result_array.undefine()
-                    # If the request was sequential, each pair has already been
-                    # measured and does not need to be freed.
-                    # Otherwise: free the qubits.
-                    if not params.sequential:
-                        for q in qubits:
-                            q.free(deactivate=False)
-
-                loop.set_cleanup_code(cleanup)
-
-            return qubits, results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             qubits, result_array = self.sdk_epr_keep(role=EPRRole.RECV, params=params)
             results = deserialize_epr_keep_results(params, result_array)
             return qubits, results
+
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            qubits, result_array = self.sdk_epr_keep(
+                role=EPRRole.RECV, params=params, reset_results_array=True
+            )
+
+            results = deserialize_epr_keep_results(params, result_array)
+
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+            def cleanup(_: BaseNetQASMConnection):
+                result_array.undefine()
+                # If the request was sequential, each pair has already been
+                # measured and does not need to be freed.
+                # Otherwise: free the qubits.
+                if not params.sequential:
+                    for q in qubits:
+                        q.free(deactivate=False)
+
+            loop.set_cleanup_code(cleanup)
+
+        return qubits, results
 
     def sdk_create_epr_measure(
         self, params: EntRequestParams
@@ -2181,44 +2107,41 @@ class Builder:
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
 
     def sdk_create_epr_rsp(self, params: EntRequestParams) -> list[EprMeasureResult]:
-        """Build commands for a 'create remote state preperation' EPR operation
+        """Build commands for a 'create remote state preparation' EPR operation
         and return the result futures."""
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                results = self.sdk_epr_rsp_create(params=params)
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-
-            return results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             return self.sdk_epr_rsp_create(params=params)
+
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            results = self.sdk_epr_rsp_create(params=params)
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+        return results
 
     def sdk_recv_epr_rsp(
         self, params: EntRequestParams
     ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Build commands for a 'receive remote state preparation' EPR operation
         and return the created qubits and result futures."""
-
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                qubits, results = self.sdk_epr_rsp_recv(params=params)
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-            return qubits, results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             return self.sdk_epr_rsp_recv(params=params)
+
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            qubits, results = self.sdk_epr_rsp_recv(params=params)
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+        return qubits, results
 
     @contextmanager
     def sdk_loop_context(

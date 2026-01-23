@@ -33,6 +33,8 @@ def create_measure_result(
         remote_node_id=remote_node,
         generation_duration=duration,
         raw_bell_state=raw_bell_state,
+        rotation_axes_local=QubitMeasureAxes.XYX,
+        rotation_axes_remote=QubitMeasureAxes.XYX,
     )
 
 

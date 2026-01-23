@@ -200,6 +200,8 @@ def deserialize_epr_measure_results(
                 raw_bell_state=array.get_future_index(
                     base + SerializedMeasureResultIndex.BELL_STATE
                 ),
+                rotation_axes_local=request.axes_local,
+                rotation_axes_remote=request.axes_remote,
             )
         )
     return results
@@ -297,6 +299,8 @@ class EprMeasureResult:
     remote_node_id: Future
     generation_duration: Future
     raw_bell_state: Future
+    rotation_axes_local: QubitMeasureAxes
+    rotation_axes_remote: QubitMeasureAxes
 
     @property
     def measurement_outcome(self) -> int:
@@ -323,8 +327,12 @@ class EprMeasureResult:
                 return int(self.raw_measurement_outcome)
 
             # else
-            local = rotation_to_basis(self.measurement_basis_local)
-            remote = rotation_to_basis(self.measurement_basis_remote)
+            local = rotation_to_basis(
+                self.measurement_basis_local, self.rotation_axes_local
+            )
+            remote = rotation_to_basis(
+                self.measurement_basis_remote, self.rotation_axes_remote
+            )
             if local != remote:
                 raise RuntimeError(
                     f"The local and remote measurement bases are not equal "

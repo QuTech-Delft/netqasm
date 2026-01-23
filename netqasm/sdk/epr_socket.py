@@ -21,7 +21,7 @@ from netqasm.sdk.build_epr import EprMeasBasis, basis_to_rotation
 from netqasm.sdk.builder import EntRequestParams, EprKeepResult, EprMeasureResult
 from netqasm.sdk.futures import RegFuture
 
-from .qubit import FutureQubit, Qubit
+from .qubit import FutureQubit, Qubit, QubitMeasureAxes
 
 if TYPE_CHECKING:
     from netqasm.sdk import connection
@@ -277,6 +277,8 @@ class EPRSocket(abc.ABC):
         rotations_remote: tuple[int, int, int] = (0, 0, 0),
         random_basis_local: RandomBasis | None = None,
         random_basis_remote: RandomBasis | None = None,
+        rotation_axes_local: QubitMeasureAxes = QubitMeasureAxes.XYX,
+        rotation_axes_remote: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> list[EprMeasureResult]:
         """Ask the network stack to generate EPR pairs with the remote node and
         measure them immediately (on both nodes).
@@ -306,8 +308,9 @@ class EPRSocket(abc.ABC):
         basis:
 
         * using one of the `EprMeasBasis` variants
-        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
-          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+        * by specifying 3 rotation angles, interpreted as three sequential rotations
+          around the axes specified through `rotation_axes_local` and `rotation_axes_remote`.
+          For example, setting `rotations_local` to (8, 0, 0) with `rotation_axes_local` set to XYX
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
           applied to the qubit.
         * using one of the `RandomBasis` variants, in which case one of the bases of
@@ -332,13 +335,17 @@ class EPRSocket(abc.ABC):
             node
         :param random_basis_remote: random bases to choose from when measuring on
             the remote node
+        :param rotation_axes_local: Sequence of axes to rotate around before
+            measuring on the local node
+        :param rotation_axes_remote: Sequence of axes to rotate around before
+            measuring on the remote node
         :return: list of entanglement info objects per created pair.
         """
 
         if basis_local is not None:
-            rotations_local = basis_to_rotation(basis_local)
+            rotations_local = basis_to_rotation(basis_local, rotation_axes_local)
         if basis_remote is not None:
-            rotations_remote = basis_to_rotation(basis_remote)
+            rotations_remote = basis_to_rotation(basis_remote, rotation_axes_remote)
 
         return self.conn.builder.sdk_create_epr_measure(
             params=EntRequestParams(
@@ -353,6 +360,8 @@ class EPRSocket(abc.ABC):
                 random_basis_remote=random_basis_remote,
                 rotations_local=rotations_local,
                 rotations_remote=rotations_remote,
+                axes_local=rotation_axes_local,
+                axes_remote=rotation_axes_remote,
             ),
         )
 
@@ -366,6 +375,7 @@ class EPRSocket(abc.ABC):
         random_basis_local: RandomBasis | None = None,
         min_fidelity_all_at_end: int | None = None,
         max_tries: int | None = None,
+        rotation_axes_local: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> list[EprMeasureResult]:
         """Ask the network stack to do remote preparation with the remote node.
 
@@ -391,8 +401,9 @@ class EPRSocket(abc.ABC):
         There are 3 ways to specify a basis:
 
         * using one of the `EprMeasBasis` variants
-        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
-          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+        * by specifying 3 rotation angles, interpreted as three sequential rotations
+          around the axes specified through `rotation_axes_local`.
+          For example, setting `rotations_local` to (8, 0, 0) with `rotation_axes_local` set to XYX
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
           applied to the qubit.
         * using one of the `RandomBasis` variants, in which case one of the bases of
@@ -419,11 +430,13 @@ class EPRSocket(abc.ABC):
             a guarantee!.
         :param max_tries: maximum number of re-tries should be made to try and achieve
             the `min_fidelity_all_at_end` constraint.
+        :param rotation_axes_local: Sequence of axes to rotate around before
+            measuring on the local node
         :return: list of entanglement info objects per created pair.
         """
 
         if basis_local is not None:
-            rotations_local = basis_to_rotation(basis_local)
+            rotations_local = basis_to_rotation(basis_local, rotation_axes_local)
 
         return self.conn.builder.sdk_create_epr_rsp(
             params=EntRequestParams(
@@ -438,6 +451,7 @@ class EPRSocket(abc.ABC):
                 rotations_local=rotations_local,
                 min_fidelity_all_at_end=min_fidelity_all_at_end,
                 max_tries=max_tries,
+                axes_local=rotation_axes_local,
             )
         )
 
@@ -455,6 +469,8 @@ class EPRSocket(abc.ABC):
         rotations_remote: tuple[int, int, int] = (0, 0, 0),
         random_basis_local: RandomBasis | None = None,
         random_basis_remote: RandomBasis | None = None,
+        rotation_axes_local: QubitMeasureAxes = QubitMeasureAxes.XYX,
+        rotation_axes_remote: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> list[Qubit] | list[EprMeasureResult] | list[LinkLayerOKTypeM]:
         """Ask the network stack to generate EPR pairs with the remote node.
 
@@ -498,8 +514,9 @@ class EPRSocket(abc.ABC):
         specified. There are 3 ways to specify a basis:
 
         * using one of the `EprMeasBasis` variants
-        * by specifying 3 rotation angles, interpreted as an X-rotation, a Y-rotation
-          and another X-rotation. For example, setting `rotations_local` to (8, 0, 0)
+        * by specifying 3 rotation angles, interpreted as three sequential rotations
+          around the axes specified through `rotation_axes_local` and `rotation_axes_remote`.
+          For example, setting `rotations_local` to (8, 0, 0) with `rotation_axes_local` set to XYX
           means that before measuring, an X-rotation of 8*pi/16 = pi/2 radians is
           applied to the qubit.
         * using one of the `RandomBasis` variants, in which case one of the bases of
@@ -551,13 +568,17 @@ class EPRSocket(abc.ABC):
         :param basis_local: basis to measure in on this node for M-type requests
         :param basis_remote: basis to measure in on the remote node for M-type requests
         :param rotations_local: rotations to apply before measuring on this node
-            (for M-type requests)
+            (for M- or R-type requests)
         :param rotations_remote: rotations to apply before measuring on remote node
             (for M-type requests)
         :param random_basis_local: random bases to choose from when measuring on this
-            node (for M-type requests)
+            node (for M- or R-type requests)
         :param random_basis_remote: random bases to choose from when measuring on
             the remote node (for M-type requests)
+        :param rotation_axes_local: Sequence of axes to rotate around before
+            measuring on the local node (for M- or R-type requests)
+        :param rotation_axes_remote: Sequence of axes to rotate around before
+            measuring on the remote node (for M-type requests)
         :return: For K-type requests: list of qubits created. For M-type requests:
             list of entanglement info objects per created pair.
         """
@@ -586,6 +607,8 @@ class EPRSocket(abc.ABC):
                 rotations_remote=rotations_remote,
                 random_basis_local=random_basis_local,
                 random_basis_remote=random_basis_remote,
+                rotation_axes_local=rotation_axes_local,
+                rotation_axes_remote=rotation_axes_remote,
             )
         elif tp == EPRType.R:
             return self.create_rsp(
@@ -594,6 +617,7 @@ class EPRSocket(abc.ABC):
                 max_time=max_time,
                 basis_local=basis_local,
                 random_basis_local=random_basis_local,
+                rotation_axes_local=rotation_axes_local,
             )
         assert False
 
