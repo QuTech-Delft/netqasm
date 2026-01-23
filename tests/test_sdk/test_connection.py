@@ -249,7 +249,7 @@ array R0 @1
 set R0 0
 set R1 0
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
@@ -478,7 +478,7 @@ store R0 @1[R1]
 set R0 1
 set R1 1
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
@@ -937,7 +937,7 @@ array R0 @1
 set R0 0
 set R1 0
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
