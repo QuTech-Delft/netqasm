@@ -5,7 +5,7 @@ from __future__ import annotations
 import abc
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, ContextManager, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, ContextManager
 
 from netqasm.logging.glob import get_netqasm_logger
 from netqasm.qlink_compat import (
@@ -26,9 +26,9 @@ from .qubit import FutureQubit, Qubit
 if TYPE_CHECKING:
     from netqasm.sdk import connection
 
-T_LinkLayerOkList = Union[
-    List[LinkLayerOKTypeK], List[LinkLayerOKTypeM], List[LinkLayerOKTypeR]
-]
+T_LinkLayerOkList = (
+    list[LinkLayerOKTypeK] | list[LinkLayerOKTypeM] | list[LinkLayerOKTypeR]
+)
 
 
 class EPRSocket(abc.ABC):
@@ -82,11 +82,9 @@ class EPRSocket(abc.ABC):
         :param min_fidelity: minimum desired fidelity for EPR pairs generated over this
             socket, in percentages (i.e. range 0-100). Defaults to 100.
         """
-        self._conn: Optional[connection.BaseNetQASMConnection] = None
+        self._conn: connection.BaseNetQASMConnection | None = None
         self._remote_app_name: str = remote_app_name
-        self._remote_node_id: Optional[
-            int
-        ] = None  # Gets set when the connection is set
+        self._remote_node_id: int | None = None  # Gets set when the connection is set
         self._epr_socket_id: int = epr_socket_id
         self._remote_epr_socket_id: int = remote_epr_socket_id
 
@@ -146,13 +144,13 @@ class EPRSocket(abc.ABC):
     def create_keep(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> List[Qubit]:
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> list[Qubit]:
         """Ask the network stack to generate EPR pairs with the remote node and keep
         them in memory.
 
@@ -240,12 +238,12 @@ class EPRSocket(abc.ABC):
     def create_keep_with_info(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        min_fidelity_all_at_end: Optional[int] = None,
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        min_fidelity_all_at_end: int | None = None,
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Same as create_keep but also return the EPR generation information coming
         from the network stack.
 
@@ -273,13 +271,13 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: Optional[EprMeasBasis] = None,
-        basis_remote: Optional[EprMeasBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-    ) -> List[EprMeasureResult]:
+        basis_local: EprMeasBasis | None = None,
+        basis_remote: EprMeasBasis | None = None,
+        rotations_local: tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: RandomBasis | None = None,
+        random_basis_remote: RandomBasis | None = None,
+    ) -> list[EprMeasureResult]:
         """Ask the network stack to generate EPR pairs with the remote node and
         measure them immediately (on both nodes).
 
@@ -363,12 +361,12 @@ class EPRSocket(abc.ABC):
         number: int = 1,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: Optional[EprMeasBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        random_basis_local: Optional[RandomBasis] = None,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> List[EprMeasureResult]:
+        basis_local: EprMeasBasis | None = None,
+        rotations_local: tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: RandomBasis | None = None,
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> list[EprMeasureResult]:
         """Ask the network stack to do remote preparation with the remote node.
 
         A `create_rsp` operation must always be matched by a `recv_epr` operation
@@ -446,18 +444,18 @@ class EPRSocket(abc.ABC):
     def create(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-        basis_local: Optional[EprMeasBasis] = None,
-        basis_remote: Optional[EprMeasBasis] = None,
-        rotations_local: Tuple[int, int, int] = (0, 0, 0),
-        rotations_remote: Tuple[int, int, int] = (0, 0, 0),
-        random_basis_local: Optional[RandomBasis] = None,
-        random_basis_remote: Optional[RandomBasis] = None,
-    ) -> Union[List[Qubit], List[EprMeasureResult], List[LinkLayerOKTypeM]]:
+        basis_local: EprMeasBasis | None = None,
+        basis_remote: EprMeasBasis | None = None,
+        rotations_local: tuple[int, int, int] = (0, 0, 0),
+        rotations_remote: tuple[int, int, int] = (0, 0, 0),
+        random_basis_local: RandomBasis | None = None,
+        random_basis_remote: RandomBasis | None = None,
+    ) -> list[Qubit] | list[EprMeasureResult] | list[LinkLayerOKTypeM]:
         """Ask the network stack to generate EPR pairs with the remote node.
 
         A `create` operation must always be matched by a `recv` operation on the remote
@@ -605,7 +603,7 @@ class EPRSocket(abc.ABC):
         sequential: bool = False,
         time_unit: TimeUnit = TimeUnit.MICRO_SECONDS,
         max_time: int = 0,
-    ) -> ContextManager[Tuple[FutureQubit, RegFuture]]:
+    ) -> ContextManager[tuple[FutureQubit, RegFuture]]:
         """Create a context that is executed for each generated EPR pair consecutively.
 
         Creates EPR pairs with a remote node and handles each pair by
@@ -641,13 +639,13 @@ class EPRSocket(abc.ABC):
     def recv_keep(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         expect_phi_plus: bool = True,
         expect_psi_plus: bool = False,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> List[Qubit]:
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> list[Qubit]:
         """Ask the network stack to wait for the remote node to generate EPR pairs,
         which are kept in memory.
 
@@ -704,12 +702,12 @@ class EPRSocket(abc.ABC):
     def recv_keep_with_info(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         expect_phi_plus: bool = True,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Same as recv_keep but also return the EPR generation information coming
         from the network stack.
 
@@ -736,7 +734,7 @@ class EPRSocket(abc.ABC):
         self,
         number: int = 1,
         expect_phi_plus: bool = True,
-    ) -> List[EprMeasureResult]:
+    ) -> list[EprMeasureResult]:
         """Ask the network stack to wait for the remote node to generate EPR pairs,
         which are immediately measured (on both nodes).
 
@@ -771,9 +769,9 @@ class EPRSocket(abc.ABC):
         self,
         number: int = 1,
         expect_phi_plus: bool = True,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> List[Qubit]:
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> list[Qubit]:
         """Ask the network stack to wait for remote state preparation from another node.
 
         A `recv_rsp` operation must always be matched by a `create_rsp` operation on
@@ -821,9 +819,9 @@ class EPRSocket(abc.ABC):
         self,
         number: int = 1,
         expect_phi_plus: bool = True,
-        min_fidelity_all_at_end: Optional[int] = None,
-        max_tries: Optional[int] = None,
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+        min_fidelity_all_at_end: int | None = None,
+        max_tries: int | None = None,
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Same as recv_rsp but also return the EPR generation information coming
         from the network stack.
 
@@ -852,10 +850,10 @@ class EPRSocket(abc.ABC):
     def recv(
         self,
         number: int = 1,
-        post_routine: Optional[Callable] = None,
+        post_routine: Callable | None = None,
         sequential: bool = False,
         tp: EPRType = EPRType.K,
-    ) -> Union[List[Qubit], List[EprMeasureResult], List[LinkLayerOKTypeR]]:
+    ) -> list[Qubit] | list[EprMeasureResult] | list[LinkLayerOKTypeR]:
         """Ask the network stack to wait for the remote node to generate EPR pairs.
 
         A `recv` operation must always be matched by a `create` operation on the remote
