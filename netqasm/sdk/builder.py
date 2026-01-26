@@ -1500,7 +1500,7 @@ class Builder:
 
     def _build_cmds_epr_generic(
         self,
-        instruction,
+        instruction: GenericInstr,
         epr_cmd_operands: Sequence[int | Register],
         ent_results_array: Array,
         wait_all: bool,
