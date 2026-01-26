@@ -1433,6 +1433,8 @@ if __name__ == "__main__":
     test_bqc_receiver_NV_min_fidelity()
     test_measure_Z()
     test_measure_basis()
+    test_measure_basis_yzy()
+    test_measure_basis_zxz()
     test_measure_basis_rotation()
 
     test_create_keep_no_corrections()
