@@ -245,10 +245,9 @@ _BASIS_TO_ROTATION_MAPPING: Final[
                 EprMeasBasis.X: (24, 0, 0),
                 EprMeasBasis.Y: (8, 24, 24),
                 EprMeasBasis.Z: (0, 0, 0),
-                # FIXME: Check with Bart what the correct decompositions are for the negative bases.
-                # EprMeasBasis.MX: (0, 8, 0),
-                # EprMeasBasis.MY: (24, 0, 0),
-                # EprMeasBasis.MZ: (16, 0, 0),
+                EprMeasBasis.MX: (8, 0, 0),
+                EprMeasBasis.MY: (8, 8, 24),
+                EprMeasBasis.MZ: (16, 0, 0),
             }
         ),
         QubitMeasureAxes.ZXZ: MappingProxyType(
@@ -256,10 +255,9 @@ _BASIS_TO_ROTATION_MAPPING: Final[
                 EprMeasBasis.X: (24, 24, 8),
                 EprMeasBasis.Y: (0, 8, 0),
                 EprMeasBasis.Z: (0, 0, 0),
-                # FIXME: Check with Bart what the correct decompositions are for the negative bases.
-                # EprMeasBasis.MX: (0, 8, 0),
-                # EprMeasBasis.MY: (24, 0, 0),
-                # EprMeasBasis.MZ: (16, 0, 0),
+                EprMeasBasis.MX: (24, 8, 24),
+                EprMeasBasis.MY: (0, 24, 0),
+                EprMeasBasis.MZ: (0, 16, 0),
             }
         ),
     }

@@ -35,7 +35,6 @@ from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.version import NETQASM_VERSION
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
-from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.sdk.build_epr import (
     EntRequestParams,
     EprKeepResult,
@@ -1400,19 +1399,33 @@ class Builder:
         qubit_reg: operand.Register,
         params: EntRequestParams,
     ) -> None:
-        # FIXME: Figure out with Bart what the versions of these corrections is for YZY and ZXZ.
-        x180 = [ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])]
+        x180: Final[list[ICmd]] = {
+            QubitMeasureAxes.XYX: [
+                ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
+            ],
+            QubitMeasureAxes.YZY: [
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
+            ],
+            QubitMeasureAxes.ZXZ: [
+                ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
+            ],
+        }[params.axes_local]
 
-        if get_is_using_hardware():
-            # For hardware, don't use Z-gates.
-            # Decompose Z180 into Y90, X180, -Y90
-            z180 = [
+        z180: Final[list[ICmd]] = {
+            QubitMeasureAxes.XYX: [
                 ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
                 ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
-            ]
-        else:
-            z180 = [ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])]
+            ],
+            QubitMeasureAxes.YZY: [
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
+            ],
+            QubitMeasureAxes.ZXZ: [
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
+            ],
+        }[params.axes_local]
 
         if params.expect_phi_plus:
             with bell_state.if_eq(BellState.PHI_MINUS.value):  # Phi- -> apply Z-gate

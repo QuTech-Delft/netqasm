@@ -226,7 +226,6 @@ def test_rotations():
 
 
 def test_epr_k_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -287,7 +286,6 @@ ret_arr @2
 
 
 def test_epr_k_recv():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -321,7 +319,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 42
+beq R2 R5 46
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -334,15 +332,19 @@ jmp 21
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 32
-rot_z R0 16 4
+bne R1 R5 34
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 35
+bne R1 R5 37
 rot_x R0 16 4
 set R5 2
-bne R1 R5 39
+bne R1 R5 43
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 16
@@ -350,7 +352,6 @@ set Q0 0
 h Q0
 ret_arr @0
 ret_arr @1
-ret_arr @2
 """
 
     expected = parse_text_subroutine(expected_text)
@@ -451,7 +452,6 @@ ret_arr @1
 
 
 def test_two_epr_k_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -517,7 +517,6 @@ ret_arr @2
 
 
 def test_two_epr_k_recv():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -555,7 +554,7 @@ set R6 20
 wait_all @0[R5:R6]
 set R2 0
 set R5 2
-beq R2 R5 45
+beq R2 R5 49
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -568,15 +567,19 @@ jmp 24
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 35
-rot_z R0 16 4
+bne R1 R5 37
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 38
+bne R1 R5 40
 rot_x R0 16 4
 set R5 2
-bne R1 R5 42
+bne R1 R5 46
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 19
@@ -586,7 +589,6 @@ set Q0 1
 h Q0
 ret_arr @0
 ret_arr @1
-ret_arr @2
     """
 
     expected = parse_text_subroutine(expected_text)
@@ -601,7 +603,6 @@ ret_arr @2
 
 
 def test_epr_m():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -1124,7 +1125,6 @@ def test_epr_measure_zxz_basis():
 
 
 def test_epr_r_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -1187,7 +1187,6 @@ ret_arr @1
 
 
 def test_epr_r_receive():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -1220,7 +1219,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 42
+beq R2 R5 46
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -1233,15 +1232,19 @@ jmp 21
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 32
-rot_z R0 16 4
+bne R1 R5 34
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 35
+bne R1 R5 37
 rot_x R0 16 4
 set R5 2
-bne R1 R5 39
+bne R1 R5 43
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 16
@@ -1262,7 +1265,6 @@ ret_arr @1
 
 
 def test_epr_max_time():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")

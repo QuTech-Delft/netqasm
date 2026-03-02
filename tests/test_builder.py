@@ -315,7 +315,6 @@ def test_looping():
 
 def test_futures():
     with DebugConnection("Alice") as conn:
-
         q = Qubit(conn)
         m = q.measure()
         with m.if_ne(0):
@@ -347,7 +346,6 @@ def test_futures():
 
 def test_nested():
     with DebugConnection("Alice") as conn:
-
         q = Qubit(conn)
         m = q.measure()
         with m.if_eq(0):
@@ -474,7 +472,9 @@ def test_epr_recv_keep_info():
             GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
@@ -530,7 +530,6 @@ def test_epr_context():
     epr_socket = EPRSocket("Bob")
 
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
-
         with epr_socket.create_context(5) as (qubit, index):
             with index.if_eq(1337):
                 qubit.H()
@@ -672,7 +671,9 @@ def test_recv_epr_post():
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.H,
@@ -690,7 +691,6 @@ def test_recv_epr_post():
 
 def test_try():
     with DebugConnection("Alice") as conn:
-
         with conn.try_until_success(max_tries=1):
             q = Qubit(conn)
             q.measure()
@@ -713,7 +713,6 @@ def test_try():
 
 def test_loop_until():
     with DebugConnection("Alice") as conn:
-
         with conn.loop_until(max_iterations=10) as loop:
             q = Qubit(conn)
             m = q.measure()
@@ -827,7 +826,9 @@ def test_recv_epr_min_fidelity_all():
             GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
