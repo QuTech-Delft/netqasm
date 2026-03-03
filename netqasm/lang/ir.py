@@ -67,7 +67,10 @@ class GenericInstr(Enum):
     BICHROMATIC = auto()
     # Measurement
     MEAS = auto()
+    # For backwards-compatibility, MEAS_BASIS was not renamed to MEAS_BASIS_XYX.
     MEAS_BASIS = auto()
+    MEAS_BASIS_YZY = auto()
+    MEAS_BASIS_ZXZ = auto()
     MEAS_ALL = auto()
     # Entanglement generation
     CREATE_EPR = auto()

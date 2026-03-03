@@ -9,7 +9,7 @@ from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.constraint import ValueAtMostConstraint
 from netqasm.sdk.epr_socket import EPRSocket
 from netqasm.sdk.futures import RegFuture
-from netqasm.sdk.qubit import Qubit, QubitMeasureBasis
+from netqasm.sdk.qubit import Qubit, QubitMeasureAxes, QubitMeasureBasis
 from netqasm.sdk.transpile import NVSubroutineTranspiler
 
 logger = get_netqasm_logger()
@@ -315,7 +315,6 @@ def test_looping():
 
 def test_futures():
     with DebugConnection("Alice") as conn:
-
         q = Qubit(conn)
         m = q.measure()
         with m.if_ne(0):
@@ -347,7 +346,6 @@ def test_futures():
 
 def test_nested():
     with DebugConnection("Alice") as conn:
-
         q = Qubit(conn)
         m = q.measure()
         with m.if_eq(0):
@@ -474,7 +472,9 @@ def test_epr_recv_keep_info():
             GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
@@ -530,7 +530,6 @@ def test_epr_context():
     epr_socket = EPRSocket("Bob")
 
     with DebugConnection("Alice", epr_sockets=[epr_socket]) as conn:
-
         with epr_socket.create_context(5) as (qubit, index):
             with index.if_eq(1337):
                 qubit.H()
@@ -672,7 +671,9 @@ def test_recv_epr_post():
             PatternWildcard.ANY_ZERO_OR_MORE,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.H,
@@ -690,7 +691,6 @@ def test_recv_epr_post():
 
 def test_try():
     with DebugConnection("Alice") as conn:
-
         with conn.try_until_success(max_tries=1):
             q = Qubit(conn)
             q.measure()
@@ -713,7 +713,6 @@ def test_try():
 
 def test_loop_until():
     with DebugConnection("Alice") as conn:
-
         with conn.loop_until(max_iterations=10) as loop:
             q = Qubit(conn)
             m = q.measure()
@@ -827,7 +826,9 @@ def test_recv_epr_min_fidelity_all():
             GenericInstr.RECV_EPR,
             GenericInstr.WAIT_ALL,
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
-            GenericInstr.ROT_Z,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
+            GenericInstr.ROT_X,  # Bell corrections
+            GenericInstr.ROT_Y,  # Bell corrections
             PatternWildcard.ANY_ZERO_OR_MORE,  # Bell corrections
             GenericInstr.LOAD,
             GenericInstr.BLT,
@@ -1079,6 +1080,42 @@ def test_measure_basis_rotation():
         [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS)
         # check if rotations are correct
         assert meas_basis.operands[2:] == [3, 4, 5, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis_yzy():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.Y, basis_rotation_axes=QubitMeasureAxes.YZY)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS_YZY)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS_YZY)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [8, 24, 24, 4]  # skip register operands
+
+        compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
+        print(compiled_subroutine)
+
+
+def test_measure_basis_zxz():
+    with DebugConnection("Alice") as conn:
+        q = Qubit(conn)
+        q.measure(basis=QubitMeasureBasis.Y, basis_rotation_axes=QubitMeasureAxes.ZXZ)
+
+        presubroutine = conn.builder.subrt_pop_pending_subroutine()
+        print(presubroutine)
+        inspector = ProtoSubroutineInspector(presubroutine)
+        assert inspector.contains_instr(GenericInstr.MEAS_BASIS_ZXZ)
+
+        [meas_basis] = inspector.find_instr(GenericInstr.MEAS_BASIS_ZXZ)
+        # check if rotations are correct
+        assert meas_basis.operands[2:] == [0, 8, 0, 4]  # skip register operands
 
         compiled_subroutine = conn.builder.subrt_compile_subroutine(presubroutine)
         print(compiled_subroutine)
@@ -1397,6 +1434,8 @@ if __name__ == "__main__":
     test_bqc_receiver_NV_min_fidelity()
     test_measure_Z()
     test_measure_basis()
+    test_measure_basis_yzy()
+    test_measure_basis_zxz()
     test_measure_basis_rotation()
 
     test_create_keep_no_corrections()

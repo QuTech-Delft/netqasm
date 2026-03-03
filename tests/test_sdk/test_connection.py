@@ -13,9 +13,10 @@ from netqasm.lang.version import NETQASM_VERSION
 from netqasm.logging.glob import set_log_level
 from netqasm.qlink_compat import EPRType, TimeUnit
 from netqasm.runtime.settings import set_is_using_hardware
+from netqasm.sdk.build_epr import EprMeasBasis
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.epr_socket import EPRSocket
-from netqasm.sdk.qubit import Qubit
+from netqasm.sdk.qubit import Qubit, QubitMeasureAxes
 
 DebugConnection.node_ids = {
     "Alice": 0,
@@ -225,7 +226,6 @@ def test_rotations():
 
 
 def test_epr_k_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -249,7 +249,7 @@ array R0 @1
 set R0 0
 set R1 0
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
@@ -286,7 +286,6 @@ ret_arr @2
 
 
 def test_epr_k_recv():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -320,7 +319,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 42
+beq R2 R5 46
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -333,15 +332,19 @@ jmp 21
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 32
-rot_z R0 16 4
+bne R1 R5 34
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 35
+bne R1 R5 37
 rot_x R0 16 4
 set R5 2
-bne R1 R5 39
+bne R1 R5 43
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 16
@@ -349,7 +352,6 @@ set Q0 0
 h Q0
 ret_arr @0
 ret_arr @1
-ret_arr @2
 """
 
     expected = parse_text_subroutine(expected_text)
@@ -450,7 +452,6 @@ ret_arr @1
 
 
 def test_two_epr_k_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -478,7 +479,7 @@ store R0 @1[R1]
 set R0 1
 set R1 1
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
@@ -516,7 +517,6 @@ ret_arr @2
 
 
 def test_two_epr_k_recv():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -554,7 +554,7 @@ set R6 20
 wait_all @0[R5:R6]
 set R2 0
 set R5 2
-beq R2 R5 45
+beq R2 R5 49
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -567,15 +567,19 @@ jmp 24
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 35
-rot_z R0 16 4
+bne R1 R5 37
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 38
+bne R1 R5 40
 rot_x R0 16 4
 set R5 2
-bne R1 R5 42
+bne R1 R5 46
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 19
@@ -585,7 +589,6 @@ set Q0 1
 h Q0
 ret_arr @0
 ret_arr @1
-ret_arr @2
     """
 
     expected = parse_text_subroutine(expected_text)
@@ -600,7 +603,6 @@ ret_arr @2
 
 
 def test_epr_m():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -769,13 +771,360 @@ def test_epr_m():
         expected_instr = expected.instructions[i]
         print(repr(expected_instr))
         print()
-        assert instr == expected_instr
+        assert instr == expected_instr, f"Instruction {i} did not match"
+    print(subroutine)
+    print(expected)
+
+
+def test_epr_measure_yzy_basis():
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        epr_socket.create_measure(
+            basis_local=EprMeasBasis.Y, rotation_axes_local=QubitMeasureAxes.YZY
+        )
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    print(subroutine)
+    expected = Subroutine(
+        netqasm_version=NETQASM_VERSION,
+        app_id=0,
+        instructions=[
+            # Allocate return values array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(0),
+            ),
+            # Allocate entanglement parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(CREATE_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(1),
+            ),
+            # Store type (Measure = 1) in predefined offset (type offset = 0) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store amount of qubits (1) in predefined offset (amount offset = 1) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store local rotations (8,24,24) in predefined offset
+            # (local rotation offsets = 14,15,16) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(8),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(14),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(24),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(15),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(24),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(16),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store local rotation axes (YZY = 1) in predefined offset
+            # (local axes offset = 20) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(20),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Call Create EPR for Remote Node ID=1, Socket=0, address of Qubit Address Array 0,
+            # address of Argument array = 1, address of Entanglement Result Array = 1
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(0),
+            ),
+            instructions.core.CreateEPRInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 1),
+                reg2=Register(RegisterName.C, 0),
+                reg3=Register(RegisterName.R, 2),
+                reg4=Register(RegisterName.R, 3),
+            ),
+            # Wait for the qubits results in result_array[0:OK_FIELDS] to be ready
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.WaitAllInstruction(
+                slice=ArraySlice(
+                    address=Address(0),
+                    start=Register(RegisterName.R, 0),
+                    stop=Register(RegisterName.R, 1),
+                ),
+            ),
+            # Return the measurement (0) and parameter (1) arrays.
+            instructions.core.RetArrInstruction(
+                address=Address(0),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(1),
+            ),
+        ],
+    )
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
+        print()
+        assert instr == expected_instr, f"Instruction {i} did not match"
+    print(subroutine)
+    print(expected)
+
+
+def test_epr_measure_zxz_basis():
+    set_log_level(logging.DEBUG)
+
+    epr_socket = EPRSocket(remote_app_name="Bob")
+    with DebugConnection("Alice", epr_sockets=[epr_socket]) as alice:
+        epr_socket.create_measure(
+            basis_local=EprMeasBasis.Y, rotation_axes_local=QubitMeasureAxes.ZXZ
+        )
+
+    # 5 messages: init, open_epr_socket, subroutine, stop app and stop backend
+    assert len(alice.storage) == 5
+    raw_subroutine = deserialize_message(raw=alice.storage[2]).subroutine
+    subroutine = deserialize_subroutine(raw_subroutine)
+    print(subroutine)
+    expected = Subroutine(
+        netqasm_version=NETQASM_VERSION,
+        app_id=0,
+        instructions=[
+            # Allocate return values array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(0),
+            ),
+            # Allocate entanglement parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(CREATE_FIELDS),
+            ),
+            instructions.core.ArrayInstruction(
+                reg=Register(RegisterName.R, 0),
+                address=Address(1),
+            ),
+            # Store type (Measure = 1) in predefined offset (type offset = 0) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store amount of qubits (1) in predefined offset (amount offset = 1) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(1),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store local rotations (0,8,0) in predefined offset
+            # (local rotation offsets = 14,15,16) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(14),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(8),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(15),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(16),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Store local rotation axes (ZXZ = 2) in predefined offset
+            # (local axes offset = 20) in parameter array
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(2),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(20),
+            ),
+            instructions.core.StoreInstruction(
+                reg=Register(RegisterName.R, 0),
+                entry=ArrayEntry(1, index=Register(RegisterName.R, 1)),
+            ),
+            # Call Create EPR for Remote Node ID=1, Socket=0, address of Qubit Address Array 0,
+            # address of Argument array = 1, address of Entanglement Result Array = 1
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 2),
+                imm=Immediate(1),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 3),
+                imm=Immediate(0),
+            ),
+            instructions.core.CreateEPRInstruction(
+                reg0=Register(RegisterName.R, 0),
+                reg1=Register(RegisterName.R, 1),
+                reg2=Register(RegisterName.C, 0),
+                reg3=Register(RegisterName.R, 2),
+                reg4=Register(RegisterName.R, 3),
+            ),
+            # Wait for the qubits results in result_array[0:OK_FIELDS] to be ready
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 0),
+                imm=Immediate(0),
+            ),
+            instructions.core.SetInstruction(
+                reg=Register(RegisterName.R, 1),
+                imm=Immediate(OK_FIELDS),
+            ),
+            instructions.core.WaitAllInstruction(
+                slice=ArraySlice(
+                    address=Address(0),
+                    start=Register(RegisterName.R, 0),
+                    stop=Register(RegisterName.R, 1),
+                ),
+            ),
+            # Return the measurement (0) and parameter (1) arrays.
+            instructions.core.RetArrInstruction(
+                address=Address(0),
+            ),
+            instructions.core.RetArrInstruction(
+                address=Address(1),
+            ),
+        ],
+    )
+    for i, instr in enumerate(subroutine.instructions):
+        print(repr(instr))
+        expected_instr = expected.instructions[i]
+        print(repr(expected_instr))
+        print()
+        assert instr == expected_instr, f"Instruction {i} did not match"
     print(subroutine)
     print(expected)
 
 
 def test_epr_r_create():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -795,7 +1144,7 @@ def test_epr_r_create():
 # APPID 0
 set R1 10
 array R1 @0
-set R1 20
+set R1 22
 array R1 @1
 set R1 2
 set R2 0
@@ -838,7 +1187,6 @@ ret_arr @1
 
 
 def test_epr_r_receive():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -871,7 +1219,7 @@ set R6 10
 wait_all @0[R5:R6]
 set R2 0
 set R5 1
-beq R2 R5 42
+beq R2 R5 46
 load R0 @1[R2]
 set R3 9
 set R4 0
@@ -884,15 +1232,19 @@ jmp 21
 load R1 @0[R3]
 set R0 0
 set R5 3
-bne R1 R5 32
-rot_z R0 16 4
+bne R1 R5 34
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
-bne R1 R5 35
+bne R1 R5 37
 rot_x R0 16 4
 set R5 2
-bne R1 R5 39
+bne R1 R5 43
 rot_x R0 16 4
-rot_z R0 16 4
+rot_y R0 8 4
+rot_x R0 16 4
+rot_y R0 24 4
 set R5 1
 add R2 R2 R5
 jmp 16
@@ -913,7 +1265,6 @@ ret_arr @1
 
 
 def test_epr_max_time():
-
     set_log_level(logging.DEBUG)
 
     epr_socket = EPRSocket(remote_app_name="Bob")
@@ -937,7 +1288,7 @@ array R0 @1
 set R0 0
 set R1 0
 store R0 @1[R1]
-set R0 20
+set R0 22
 array R0 @2
 set R0 0
 set R1 0
@@ -986,6 +1337,8 @@ if __name__ == "__main__":
     test_two_epr_k_create()
     test_two_epr_k_recv()
     test_epr_m()
+    test_epr_measure_yzy_basis()
+    test_epr_measure_zxz_basis()
     test_epr_r_create()
     test_epr_r_receive()
     test_epr_max_time()

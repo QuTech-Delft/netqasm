@@ -8,17 +8,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from itertools import count
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Final, Iterator, Sequence
 
 from netqasm.backend.network_stack import OK_FIELDS_K, OK_FIELDS_M
 from netqasm.lang import operand
@@ -33,18 +23,25 @@ from netqasm.lang.ir import (
     T_ProtoOperand,
     flip_branch_instr,
 )
-from netqasm.lang.operand import Address, ArrayEntry, ArraySlice, Label, Template
+from netqasm.lang.operand import (
+    Address,
+    ArrayEntry,
+    ArraySlice,
+    Label,
+    Register,
+    Template,
+)
 from netqasm.lang.parsing.text import assemble_subroutine, parse_register
 from netqasm.lang.subroutine import Subroutine
 from netqasm.lang.version import NETQASM_VERSION
 from netqasm.qlink_compat import BellState, EPRRole, EPRType, LinkLayerOKTypeK
-from netqasm.runtime.settings import get_is_using_hardware
 from netqasm.sdk.build_epr import (
-    SER_RESPONSE_KEEP_IDX_BELL_STATE,
-    SER_RESPONSE_KEEP_LEN,
     EntRequestParams,
     EprKeepResult,
+    EprMeasBasis,
     EprMeasureResult,
+    SerializedKeepResultIndex,
+    basis_to_rotation,
     deserialize_epr_keep_results,
     deserialize_epr_measure_results,
     serialize_request,
@@ -63,7 +60,7 @@ from netqasm.sdk.config import LogConfig
 from netqasm.sdk.constraint import SdkConstraint, ValueAtMostConstraint
 from netqasm.sdk.futures import Array, Future, RegFuture, T_CValue
 from netqasm.sdk.memmgr import MemoryManager
-from netqasm.sdk.qubit import FutureQubit, Qubit, QubitMeasureBasis
+from netqasm.sdk.qubit import FutureQubit, Qubit, QubitMeasureAxes, QubitMeasureBasis
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.transpile import NVSubroutineTranspiler, SubroutineTranspiler
 from netqasm.typedefs import T_Cmd
@@ -77,7 +74,7 @@ class LabelManager:
     """Simple manager class for providing unique branch labels."""
 
     def __init__(self) -> None:
-        self._labels: Set[str] = set()
+        self._labels: set[str] = set()
 
     def new_label(self, start_with: str = "") -> str:
         if start_with not in self._labels:
@@ -100,8 +97,8 @@ class SdkIfContext:
         id: int,
         builder: Builder,
         condition: GenericInstr,
-        op0: Optional[T_CValue],
-        op1: Optional[T_CValue],
+        op0: T_CValue | None,
+        op1: T_CValue | None,
     ):
         self._id = id
         self._builder = builder
@@ -150,9 +147,9 @@ class SdkLoopUntilContext:
     def __init__(self, id: int, builder: Builder, max_iterations: int):
         self._id = id
         self._builder = builder
-        self._exit_condition: Optional[SdkConstraint] = None
-        self._cleanup_code: Optional[T_CleanupRoutine] = None
-        self._loop_register: Optional[RegFuture] = None
+        self._exit_condition: SdkConstraint | None = None
+        self._cleanup_code: T_CleanupRoutine | None = None
+        self._loop_register: RegFuture | None = None
         self._max_iterations = max_iterations
 
     def set_exit_condition(self, constraint: SdkConstraint) -> None:
@@ -160,7 +157,7 @@ class SdkLoopUntilContext:
         self._exit_condition = constraint
 
     @property
-    def exit_condition(self) -> Optional[SdkConstraint]:
+    def exit_condition(self) -> SdkConstraint | None:
         """Get the exit condition for this while loop."""
         return self._exit_condition
 
@@ -169,7 +166,7 @@ class SdkLoopUntilContext:
         self._cleanup_code = cleanup_code
 
     @property
-    def cleanup_code(self) -> Optional[T_CleanupRoutine]:
+    def cleanup_code(self) -> T_CleanupRoutine | None:
         """Get the cleanup code for this while loop."""
         return self._cleanup_code
 
@@ -178,7 +175,7 @@ class SdkLoopUntilContext:
         self._loop_register = register
 
     @property
-    def loop_register(self) -> Optional[RegFuture]:
+    def loop_register(self) -> RegFuture | None:
         """Get the register used that holds the iteration index for this while loop."""
         return self._loop_register
 
@@ -201,9 +198,9 @@ class Builder:
         self,
         connection: BaseNetQASMConnection,
         app_id: int,
-        hardware_config: Optional[HardwareConfig] = None,
-        log_config: Optional[LogConfig] = None,
-        compiler: Optional[Type[SubroutineTranspiler]] = None,
+        hardware_config: HardwareConfig | None = None,
+        log_config: LogConfig | None = None,
+        compiler: type[SubroutineTranspiler] | None = None,
         return_arrays: bool = True,
     ):
         """Builder constructor. Typically not used directly by the Host script.
@@ -224,7 +221,7 @@ class Builder:
         self._connection = connection
         self._app_id = app_id
 
-        self._pending_commands: List[T_Cmd] = []
+        self._pending_commands: list[T_Cmd] = []
 
         self._mem_mgr: MemoryManager = MemoryManager()
 
@@ -233,8 +230,8 @@ class Builder:
 
         self._next_context_id: int = 0
         # Storing commands before an conditional statement
-        self._pre_context_commands: Dict[int, List[T_Cmd]] = {}
-        self._pre_context_registers: Dict[int, List[operand.Register]] = {}
+        self._pre_context_commands: dict[int, list[T_Cmd]] = {}
+        self._pre_context_registers: dict[int, list[operand.Register]] = {}
 
         self._label_mgr = LabelManager()
 
@@ -249,7 +246,7 @@ class Builder:
         self._track_lines: bool = log_config.track_lines
 
         # Commited subroutines saved for logging/debugging
-        self._committed_subroutines: List[Subroutine] = []
+        self._committed_subroutines: list[Subroutine] = []
 
         self._hardware_config = hardware_config
         if self._hardware_config is None:
@@ -258,7 +255,7 @@ class Builder:
         self._max_qubits: int = self._hardware_config.qubit_count
 
         # What compiler (if any) to be used
-        self._compiler: Optional[Type[SubroutineTranspiler]] = compiler
+        self._compiler: type[SubroutineTranspiler] | None = compiler
 
         # If an NV compiler is specified but not an NV hardware config,
         # make sure an NV config is used after all.
@@ -281,7 +278,7 @@ class Builder:
         return self._mem_mgr.get_new_qubit_address()
 
     def alloc_array(
-        self, length: int = 1, init_values: Optional[List[Optional[int]]] = None
+        self, length: int = 1, init_values: list[int | None] | None = None
     ) -> Array:
         address = self._mem_mgr.get_new_array_address()
         lineno = self._line_tracker.get_line()
@@ -305,7 +302,7 @@ class Builder:
             self._mem_mgr.add_register_to_return(reg)
         return reg_future
 
-    def subrt_add_pending_commands(self, commands: List[T_Cmd]) -> None:
+    def subrt_add_pending_commands(self, commands: list[T_Cmd]) -> None:
         calling_lineno = self._line_tracker.get_line()
         for command in commands:
             if command.lineno is None:
@@ -318,12 +315,12 @@ class Builder:
             command.lineno = self._line_tracker.get_line()
         self._pending_commands.append(command)
 
-    def subrt_pop_all_pending_commands(self) -> List[T_Cmd]:
+    def subrt_pop_all_pending_commands(self) -> list[T_Cmd]:
         commands = self._pending_commands
         self._pending_commands = []
         return commands
 
-    def subrt_pop_pending_subroutine(self) -> Optional[ProtoSubroutine]:
+    def subrt_pop_pending_subroutine(self) -> ProtoSubroutine | None:
         # Add commands for initialising and returning arrays
         self._build_cmds_allocated_arrays()
         self._build_cmds_return_registers()
@@ -350,7 +347,7 @@ class Builder:
         self._committed_subroutines.append(subroutine)
 
     @property
-    def committed_subroutines(self) -> List[Subroutine]:
+    def committed_subroutines(self) -> list[Subroutine]:
         return self._committed_subroutines
 
     def _get_qubit_register(self, reg_index: int = 0) -> operand.Register:
@@ -365,7 +362,6 @@ class Builder:
     def _build_cmds_wait_move_epr_to_mem(
         self, params: EntRequestParams, ent_results_array: Array, role: EPRRole
     ) -> None:
-
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         qubit_reg = self._mem_mgr.get_inactive_register(activate=True)
         bell_state_reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -439,7 +435,6 @@ class Builder:
         tp: EPRType,
         role: EPRRole,
     ) -> None:
-
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
         qubit_reg = self._mem_mgr.get_inactive_register(activate=True)
         bell_state_reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -549,7 +544,7 @@ class Builder:
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> Tuple[List[T_Cmd], operand.Register, Array, FutureQubit, operand.Register]:
+    ) -> tuple[list[T_Cmd], operand.Register, Array, FutureQubit, operand.Register]:
         self._assert_epr_args(
             number=params.number,
             post_routine=lambda: None,  # type: ignore
@@ -595,7 +590,7 @@ class Builder:
 
     def _post_epr_context(
         self,
-        pre_commands: List[T_Cmd],
+        pre_commands: list[T_Cmd],
         number: int,
         loop_register: operand.Register,
         ent_results_array: Array,
@@ -621,7 +616,7 @@ class Builder:
     def _assert_epr_args(
         self,
         number: int,
-        post_routine: Optional[T_PostRoutine],
+        post_routine: T_PostRoutine | None,
         sequential: bool,
     ) -> None:
         if sequential and number > 1:
@@ -672,7 +667,7 @@ class Builder:
 
     def _get_qubit_futures(
         self, number: int, sequential: bool, ent_results_array: Array
-    ) -> List[Qubit]:
+    ) -> list[Qubit]:
         ent_info_slices = self._create_ent_info_k_slices(
             num_pairs=number, ent_results_array=ent_results_array
         )
@@ -684,10 +679,10 @@ class Builder:
 
     def _create_ent_info_k_slices(
         self, num_pairs: int, ent_results_array: Array
-    ) -> List[LinkLayerOKTypeK]:
+    ) -> list[LinkLayerOKTypeK]:
         ent_info_slices = []
         for i in range(num_pairs):
-            ent_info_slice_futures: List[Future] = ent_results_array.get_future_slice(
+            ent_info_slice_futures: list[Future] = ent_results_array.get_future_slice(
                 slice(i * OK_FIELDS_K, (i + 1) * OK_FIELDS_K)
             )
             ent_info_slice = LinkLayerOKTypeK(*ent_info_slice_futures)
@@ -695,9 +690,9 @@ class Builder:
         return ent_info_slices
 
     def _create_ent_qubits(
-        self, ent_info_slices: List[LinkLayerOKTypeK], sequential: bool
-    ) -> List[Qubit]:
-        qubits: List[Qubit] = []
+        self, ent_info_slices: list[LinkLayerOKTypeK], sequential: bool
+    ) -> list[Qubit]:
+        qubits: list[Qubit] = []
         num_pairs = len(ent_info_slices)
 
         if isinstance(self._hardware_config, NVHardwareConfig):
@@ -741,7 +736,7 @@ class Builder:
                     )
                     qubits.append(q)
         else:  # generic hardware
-            virt_id: Optional[int]
+            virt_id: int | None
             if sequential:
                 # use one and the same virtual ID for all qubits
                 virt_id = self._mem_mgr.get_new_qubit_address()
@@ -765,7 +760,7 @@ class Builder:
 
     def _get_condition_operand(
         self, value: T_CValue
-    ) -> Tuple[List[ICmd], T_ProtoOperand]:
+    ) -> tuple[list[ICmd], T_ProtoOperand]:
         if isinstance(value, Future):
             # Register for checking branching based on condition
             reg = self._mem_mgr.get_inactive_register(activate=True)
@@ -785,10 +780,10 @@ class Builder:
         self,
         branch_instruction: GenericInstr,
         op: T_CValue,
-    ) -> Tuple[List[ICmd], List[BranchLabel]]:
+    ) -> tuple[list[ICmd], list[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
-        if_start: List[ICmd] = []
+        if_start: list[ICmd] = []
 
         using_new_temp_reg = False
 
@@ -815,13 +810,13 @@ class Builder:
         branch_instruction: GenericInstr,
         op0: T_CValue,
         op1: T_CValue,
-    ) -> Tuple[List[ICmd], List[BranchLabel]]:
+    ) -> tuple[list[ICmd], list[BranchLabel]]:
         # Exit label
         exit_label = self._label_mgr.new_label(start_with="IF_EXIT")
-        cond_operands: List[T_ProtoOperand] = []
-        if_start: List[ICmd] = []
+        cond_operands: list[T_ProtoOperand] = []
+        if_start: list[ICmd] = []
 
-        temp_regs_to_remove: List[operand.Register] = []
+        temp_regs_to_remove: list[operand.Register] = []
 
         for x in [op0, op1]:
             cmds, cond_operand = self._get_condition_operand(x)
@@ -859,7 +854,7 @@ class Builder:
 
     def _loop_get_register(
         self,
-        register: Optional[Union[operand.Register, str]],
+        register: operand.Register | str | None,
         activate: bool = False,
     ) -> operand.Register:
         if register is None:
@@ -884,7 +879,7 @@ class Builder:
         entry_label: str,
         exit_label: str,
         loop_register: operand.Register,
-    ) -> List[T_Cmd]:
+    ) -> list[T_Cmd]:
         return [
             ICmd(instruction=GenericInstr.SET, operands=[loop_register, start]),
             BranchLabel(entry_label),
@@ -900,7 +895,7 @@ class Builder:
         entry_label: str,
         exit_label: str,
         loop_register: operand.Register,
-    ) -> List[T_Cmd]:
+    ) -> list[T_Cmd]:
         return [
             ICmd(
                 instruction=GenericInstr.ADD,
@@ -916,7 +911,7 @@ class Builder:
         exit_label: str,
         stop: int,
         loop_register: operand.Register,
-    ) -> List[T_Cmd]:
+    ) -> list[T_Cmd]:
         return [
             ICmd(instruction=GenericInstr.SET, operands=[loop_register, 0]),
             BranchLabel(entry_label),
@@ -930,14 +925,14 @@ class Builder:
         self,
         context: SdkLoopUntilContext,
         exit_label: str,
-    ) -> List[T_Cmd]:
-        commands: List[ICmd] = []
+    ) -> list[T_Cmd]:
+        commands: list[ICmd] = []
         condition = context.exit_condition
 
         if isinstance(condition, ValueAtMostConstraint):
-            if_start: List[ICmd] = []
+            if_start: list[ICmd] = []
 
-            temp_regs_to_remove: List[operand.Register] = []
+            temp_regs_to_remove: list[operand.Register] = []
 
             cmds, cond_operand = self._get_condition_operand(condition.future)
             if_start.extend(cmds)
@@ -958,7 +953,7 @@ class Builder:
 
     def _loop_until_get_exit_commands(
         self, entry_label: str, exit_label: str, loop_register: operand.Register
-    ) -> List[T_Cmd]:
+    ) -> list[T_Cmd]:
         return [
             ICmd(
                 instruction=GenericInstr.ADD,
@@ -977,7 +972,7 @@ class Builder:
         context_id: int,
         condition: GenericInstr,
         op0: T_CValue,
-        op1: Optional[T_CValue],
+        op1: T_CValue | None,
     ) -> None:
         # pop commands that were added while evaluting the context body
         body_commands = self.subrt_pop_all_pending_commands()
@@ -997,7 +992,7 @@ class Builder:
 
     def _foreach_context_enter(
         self, context_id: int, array: Array, return_index: bool
-    ) -> Union[Tuple[operand.Register, Future], Future]:
+    ) -> tuple[operand.Register, Future] | Future:
         pre_commands = self.subrt_pop_all_pending_commands()
         loop_register = self._mem_mgr.get_inactive_register(activate=True)
 
@@ -1011,8 +1006,11 @@ class Builder:
 
     def _foreach_context_exit(self, context_id: int, array: Array) -> None:
         body_commands = self.subrt_pop_all_pending_commands()
-        pre_context_commands: Tuple[List[T_Cmd], operand.Register] = self._pre_context_commands.pop(  # type: ignore
-            context_id, None  # type: ignore
+        pre_context_commands: tuple[
+            list[T_Cmd], operand.Register
+        ] = self._pre_context_commands.pop(  # type: ignore
+            context_id,
+            None,  # type: ignore
         )
         if pre_context_commands is None:
             raise RuntimeError("Something went wrong, no pre_context_commands")
@@ -1070,9 +1068,9 @@ class Builder:
         self,
         instruction: GenericInstr,
         virtual_qubit_id: int,
-        n: Union[int, Template] = 0,
+        n: int | Template = 0,
         d: int = 0,
-        angle: Optional[float] = None,
+        angle: float | None = None,
     ) -> None:
         if angle is not None:
             nds = get_angle_spec_from_float(angle=angle)
@@ -1137,67 +1135,91 @@ class Builder:
     def _build_cmds_measure(
         self,
         qubit_id: int,
-        future: Union[Future, RegFuture],
+        future: Future | RegFuture,
         inplace: bool,
         basis: QubitMeasureBasis = QubitMeasureBasis.Z,
-        rotations: Optional[Tuple[int, int, int]] = None,
+        rotations: tuple[int, int, int] | None = None,
+        axes: QubitMeasureAxes = QubitMeasureAxes.XYX,
     ) -> None:
-        if isinstance(self._hardware_config, NVHardwareConfig):
+        if (
+            isinstance(self._hardware_config, NVHardwareConfig)
+            and not isinstance(qubit_id, Future)
+            and qubit_id != 0
+        ):
             # If compiling for NV, only virtual ID 0 can be used to measure a qubit.
             # So, if this qubit is already in use, we need to move it away first.
-            if not isinstance(qubit_id, Future):
-                if qubit_id != 0:
-                    self._build_cmds_free_up_qubit_location(virtual_address=0)
+            self._build_cmds_free_up_qubit_location(virtual_address=0)
+
         outcome_reg = self._mem_mgr.get_new_meas_outcome_register()
         qubit_reg = self._get_qubit_register()
         self._build_cmds_set_register_value(qubit_reg, qubit_id)
 
-        # use denominator 4 since we always treat angles as multiples of pi/(2^4)
-        denom = 4
-
-        if rotations is not None:
-            x1, y, x2 = rotations
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, x1, y, x2, denom],
-            )
-        elif basis == QubitMeasureBasis.X:
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, 0, 24, 0, denom],  # -pi/2 Y rotation
-            )
-        elif basis == QubitMeasureBasis.Y:
-            meas_command = ICmd(
-                instruction=GenericInstr.MEAS_BASIS,
-                operands=[qubit_reg, outcome_reg, 8, 0, 0, denom],  # pi/2 X rotation
-            )
-        else:
+        if rotations is None and basis is QubitMeasureBasis.Z:
             meas_command = ICmd(
                 instruction=GenericInstr.MEAS,
                 operands=[qubit_reg, outcome_reg],
             )
+        else:
+            if rotations is None:
+                rotations = basis_to_rotation(EprMeasBasis(basis), axes)
 
-        if not inplace:
-            free_commands = [
+            meas_command = self._create_meas_basis_with_rotations(
+                qubit_reg, outcome_reg, rotations, axes
+            )
+
+        free_command: list[ICmd] = (
+            []
+            if inplace
+            else [
                 ICmd(
                     instruction=GenericInstr.QFREE,
                     operands=[qubit_reg],
                 )
             ]
-        else:
-            free_commands = []
-        if future is not None:
-            if isinstance(future, Future):
-                outcome_commands = future._get_store_commands(outcome_reg)
-                self._mem_mgr.meas_register_set_unused(outcome_reg)
-            elif isinstance(future, RegFuture):
-                future.reg = outcome_reg
-                self._mem_mgr.add_register_to_return(outcome_reg)
-                outcome_commands = []
-            else:
-                outcome_commands = []
-        commands = [meas_command] + free_commands + outcome_commands  # type: ignore
+        )
+
+        outcome_commands: list[ICmd | BranchLabel] = []
+        if isinstance(future, Future):
+            outcome_commands += future._get_store_commands(outcome_reg)
+            self._mem_mgr.meas_register_set_unused(outcome_reg)
+        elif isinstance(future, RegFuture):
+            future.reg = outcome_reg
+            self._mem_mgr.add_register_to_return(outcome_reg)
+
+        commands: list[ICmd | BranchLabel] = (
+            list[ICmd | BranchLabel]([meas_command]) + free_command + outcome_commands
+        )
         self.subrt_add_pending_commands(commands)  # type: ignore
+
+    def _create_meas_basis_with_rotations(
+        self,
+        qubit_reg: Register,
+        outcome_reg: Register,
+        rotations: tuple[int, int, int],
+        axes: QubitMeasureAxes,
+    ) -> ICmd:
+        # use denominator 4 since we always treat angles as multiples of pi/(2^4)
+        denominator: Final[int] = 4
+
+        instruction: GenericInstr = {
+            QubitMeasureAxes.XYX: GenericInstr.MEAS_BASIS,
+            QubitMeasureAxes.YZY: GenericInstr.MEAS_BASIS_YZY,
+            QubitMeasureAxes.ZXZ: GenericInstr.MEAS_BASIS_ZXZ,
+        }[axes]
+
+        first, second, third = rotations
+        meas_command = ICmd(
+            instruction=instruction,
+            operands=[
+                qubit_reg,
+                outcome_reg,
+                first,
+                second,
+                third,
+                denominator,
+            ],
+        )
+        return meas_command
 
     def _build_cmds_new_qubit(self, qubit_id: int) -> None:
         qubit_reg = self._get_qubit_register()
@@ -1243,7 +1265,7 @@ class Builder:
                 self._build_cmds_return_array(array)
 
     def _build_cmds_init_array(self, array: Array) -> None:
-        commands: List[T_Cmd] = []
+        commands: list[T_Cmd] = []
 
         array_cmd = ICmd(
             instruction=GenericInstr.ARRAY,
@@ -1293,7 +1315,7 @@ class Builder:
         self.subrt_add_pending_commands(commands)
 
     def _build_cmds_set_register_value(
-        self, register: operand.Register, value: Union[Future, int]
+        self, register: operand.Register, value: Future | int
     ) -> None:
         if isinstance(value, Future):
             set_reg_cmds = value.get_load_commands(register)
@@ -1313,7 +1335,7 @@ class Builder:
         )
 
     def _build_cmds_return_registers(self) -> None:
-        ret_reg_instrs: List[T_Cmd] = []
+        ret_reg_instrs: list[T_Cmd] = []
         for reg in self._mem_mgr.get_registers_to_return():
             ret_reg_instrs.append(
                 ICmd(instruction=GenericInstr.RET_REG, operands=[reg])
@@ -1377,18 +1399,33 @@ class Builder:
         qubit_reg: operand.Register,
         params: EntRequestParams,
     ) -> None:
-        x180 = [ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])]
+        x180: Final[list[ICmd]] = {
+            QubitMeasureAxes.XYX: [
+                ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
+            ],
+            QubitMeasureAxes.YZY: [
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4]),
+                ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
+            ],
+            QubitMeasureAxes.ZXZ: [
+                ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4])
+            ],
+        }[params.axes_local]
 
-        if get_is_using_hardware():
-            # For hardware, don't use Z-gates.
-            # Decompose Z180 into Y90, X180, -Y90
-            z180 = [
+        z180: Final[list[ICmd]] = {
+            QubitMeasureAxes.XYX: [
                 ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 8, 4]),
                 ICmd(instruction=GenericInstr.ROT_X, operands=[qubit_reg, 16, 4]),
                 ICmd(instruction=GenericInstr.ROT_Y, operands=[qubit_reg, 24, 4]),
-            ]
-        else:
-            z180 = [ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])]
+            ],
+            QubitMeasureAxes.YZY: [
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
+            ],
+            QubitMeasureAxes.ZXZ: [
+                ICmd(instruction=GenericInstr.ROT_Z, operands=[qubit_reg, 16, 4])
+            ],
+        }[params.axes_local]
 
         if params.expect_phi_plus:
             with bell_state.if_eq(BellState.PHI_MINUS.value):  # Phi- -> apply Z-gate
@@ -1450,7 +1487,8 @@ class Builder:
         # set index_reg to index (in single element) of raw_bell_state
         self.subrt_add_pending_command(
             ICmd(
-                GenericInstr.SET, operands=[index_reg, SER_RESPONSE_KEEP_IDX_BELL_STATE]
+                GenericInstr.SET,
+                operands=[index_reg, SerializedKeepResultIndex.BELL_STATE],
             )
         )
 
@@ -1459,7 +1497,7 @@ class Builder:
             self.subrt_add_pending_command(
                 ICmd(
                     GenericInstr.ADD,
-                    operands=[index_reg, index_reg, SER_RESPONSE_KEEP_LEN],
+                    operands=[index_reg, index_reg, len(SerializedKeepResultIndex)],
                 )
             )
 
@@ -1473,6 +1511,34 @@ class Builder:
         self._mem_mgr.remove_active_register(index_reg)
         return RegFuture(self._connection, target_reg)
 
+    def _build_cmds_epr_generic(
+        self,
+        instruction: GenericInstr,
+        epr_cmd_operands: Sequence[int | Register],
+        ent_results_array: Array,
+        wait_all: bool,
+        params: EntRequestParams,
+    ) -> None:
+        epr_cmd = ICmd(
+            instruction=instruction,
+            args=[params.remote_node_id, params.epr_socket_id],
+            operands=epr_cmd_operands,  # type: ignore
+        )
+        self.subrt_add_pending_command(epr_cmd)
+
+        # wait
+        arr_slice = ArraySlice(
+            Address(ent_results_array.address),
+            start=0,
+            stop=len(ent_results_array),
+        )
+        wait_cmds: list[ICmd | BranchLabel] = (
+            [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
+            if wait_all
+            else []
+        )
+        self.subrt_add_pending_commands(wait_cmds)
+
     def _build_cmds_epr_create_keep(
         self,
         create_args_array: Array,
@@ -1480,7 +1546,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1489,23 +1554,13 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.CREATE_EPR,
+            epr_cmd_operands,
+            ent_results_array,
+            wait_all,
+            params,
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_keep(
         self,
@@ -1513,7 +1568,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1521,23 +1575,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
         if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
@@ -1550,9 +1590,8 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
+        epr_cmd_operands: list[int | Register] = [
             # NOTE since the qubit IDs array won't be used just set it to some
             # constant register for now
             operand.Register(RegisterName.C, 0),
@@ -1561,32 +1600,21 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.CREATE_EPR,
+            epr_cmd_operands,
+            ent_results_array,
+            wait_all,
+            params,
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_measure(
         self,
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
+        epr_cmd_operands: list[int | Register] = [
             # NOTE since the qubit IDs array won't be used just set it to some
             # constant register for now
             operand.Register(RegisterName.C, 0),
@@ -1594,23 +1622,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_create_rsp(
         self,
@@ -1618,34 +1632,11 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
-        epr_cmd_operands = [
-            # NOTE since the qubit IDs array won't be used just set it to some
-            # constant register for now
-            operand.Register(RegisterName.C, 0),
-            create_args_array.address,
-            ent_results_array.address,
-        ]
-
-        # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.CREATE_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        # Currently, nothing changes between RSP and Measure Create calls.
+        self._build_cmds_epr_create_measure(
+            create_args_array, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
     def _build_cmds_epr_recv_rsp(
         self,
@@ -1653,7 +1644,6 @@ class Builder:
         ent_results_array: Array,
         wait_all: bool,
         params: EntRequestParams,
-        **kwargs,
     ) -> None:
         epr_cmd_operands = [
             qubit_ids_array.address,
@@ -1661,23 +1651,9 @@ class Builder:
         ]
 
         # epr command
-        epr_cmd = ICmd(
-            instruction=GenericInstr.RECV_EPR,
-            args=[params.remote_node_id, params.epr_socket_id],
-            operands=epr_cmd_operands,  # type: ignore
+        self._build_cmds_epr_generic(
+            GenericInstr.RECV_EPR, epr_cmd_operands, ent_results_array, wait_all, params
         )
-        self.subrt_add_pending_command(epr_cmd)
-
-        # wait
-        arr_slice = ArraySlice(
-            ent_results_array.address, start=0, stop=len(ent_results_array)  # type: ignore
-        )
-        if wait_all:
-            wait_cmds = [ICmd(instruction=GenericInstr.WAIT_ALL, operands=[arr_slice])]
-        else:
-            wait_cmds = []
-
-        self.subrt_add_pending_commands(wait_cmds)  # type: ignore
 
         if wait_all and (params.expect_phi_plus or params.expect_psi_plus):
             self._build_cmds_epr_keep_corrections(
@@ -1690,7 +1666,7 @@ class Builder:
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[Union[operand.Register, str]] = None,
+        loop_register: operand.Register | str | None = None,
     ) -> None:
         """An effective loop-statement where body is a function executed, a number of times specified
         by `start`, `stop` and `step`.
@@ -1724,8 +1700,8 @@ class Builder:
 
     def _build_cmds_loop(
         self,
-        pre_commands: List[T_Cmd],
-        body_commands: List[T_Cmd],
+        pre_commands: list[T_Cmd],
+        body_commands: list[T_Cmd],
         stop: int,
         start: int,
         step: int,
@@ -1758,8 +1734,8 @@ class Builder:
 
     def _build_cmds_loop_until(
         self,
-        pre_commands: List[T_Cmd],
-        body_commands: List[T_Cmd],
+        pre_commands: list[T_Cmd],
+        body_commands: list[T_Cmd],
         context: SdkLoopUntilContext,
         loop_register: operand.Register,
     ) -> None:
@@ -1806,7 +1782,7 @@ class Builder:
         self,
         condition: GenericInstr,
         op0: T_CValue,
-        op1: Optional[T_CValue],
+        op1: T_CValue | None,
         body: T_BranchRoutine,
     ) -> None:
         """Used to build effective if-statements"""
@@ -1829,11 +1805,11 @@ class Builder:
 
     def _build_cmds_condition(
         self,
-        pre_commands: List[T_Cmd],
-        body_commands: List[T_Cmd],
+        pre_commands: list[T_Cmd],
+        body_commands: list[T_Cmd],
         condition: GenericInstr,
         op0: T_CValue,
-        op1: Optional[T_CValue],
+        op1: T_CValue | None,
     ) -> None:
         if len(body_commands) == 0:
             self.subrt_add_pending_commands(commands=pre_commands)
@@ -1856,7 +1832,7 @@ class Builder:
                 op0=op0,
                 op1=op1,
             )
-        commands: List[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
+        commands: list[T_Cmd] = pre_commands + if_start + body_commands + if_end  # type: ignore
 
         self.subrt_add_pending_commands(commands=commands)
 
@@ -1865,7 +1841,7 @@ class Builder:
         role: EPRRole,
         params: EntRequestParams,
         reset_results_array: bool = False,
-    ) -> Tuple[List[Qubit], Array]:
+    ) -> tuple[list[Qubit], Array]:
         """Build commands for an EPR keep operation and return the result futures."""
         self._check_epr_args(tp=EPRType.K, params=params)
 
@@ -1878,7 +1854,7 @@ class Builder:
         )
 
         # SDK handles to result values (Qubit objects).
-        qubit_futures: List[Qubit] = self._get_qubit_futures(
+        qubit_futures: list[Qubit] = self._get_qubit_futures(
             params.number, params.sequential, ent_results_array
         )
         assert all(isinstance(q, Qubit) for q in qubit_futures)
@@ -1951,7 +1927,7 @@ class Builder:
         self,
         role: EPRRole,
         params: EntRequestParams,
-    ) -> List[EprMeasureResult]:
+    ) -> list[EprMeasureResult]:
         """Build commands for an EPR measure operation and return the result futures."""
         self._check_epr_args(tp=EPRType.M, params=params)
 
@@ -1982,7 +1958,7 @@ class Builder:
     def sdk_epr_rsp_create(
         self,
         params: EntRequestParams,
-    ) -> List[EprMeasureResult]:
+    ) -> list[EprMeasureResult]:
         """Build commands for a 'create remote state preparation' EPR operation
         and return the result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
@@ -2012,7 +1988,7 @@ class Builder:
     def sdk_epr_rsp_recv(
         self,
         params: EntRequestParams,
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Build commands for a 'receive remote state preparation' EPR operation
         and return the created qubits and result futures."""
         self._check_epr_args(tp=EPRType.R, params=params)
@@ -2022,10 +1998,11 @@ class Builder:
         # Entanglement results array.
         # This will be filled in by the quantum node controller.
         ent_results_array = self._alloc_ent_results_array(
-            number=params.number, tp=EPRType.K  # Keep since we are receiving RSP
+            number=params.number,
+            tp=EPRType.K,  # Keep since we are receiving RSP
         )
 
-        qubit_ids_array: Optional[Array] = None
+        qubit_ids_array: Array | None = None
 
         # SDK handles to result values (Qubit objects).
         qubit_futures = self._get_qubit_futures(
@@ -2049,7 +2026,7 @@ class Builder:
 
     def sdk_create_epr_keep(
         self, params: EntRequestParams
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Build commands for a 'create and keep' EPR operation and return the
         created qubits and result futures."""
         if params.min_fidelity_all_at_end is not None:
@@ -2093,95 +2070,91 @@ class Builder:
 
     def sdk_recv_epr_keep(
         self, params: EntRequestParams
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Build commands for a 'receive and keep' EPR operation and return the
         created qubits and result futures."""
 
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                qubits, result_array = self.sdk_epr_keep(
-                    role=EPRRole.RECV, params=params, reset_results_array=True
-                )
-
-                results = deserialize_epr_keep_results(params, result_array)
-
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-
-                def cleanup(_: BaseNetQASMConnection):
-                    result_array.undefine()
-                    # If the request was sequential, each pair has already been
-                    # measured and does not need to be freed.
-                    # Otherwise: free the qubits.
-                    if not params.sequential:
-                        for q in qubits:
-                            q.free(deactivate=False)
-
-                loop.set_cleanup_code(cleanup)
-
-            return qubits, results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             qubits, result_array = self.sdk_epr_keep(role=EPRRole.RECV, params=params)
             results = deserialize_epr_keep_results(params, result_array)
             return qubits, results
 
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            qubits, result_array = self.sdk_epr_keep(
+                role=EPRRole.RECV, params=params, reset_results_array=True
+            )
+
+            results = deserialize_epr_keep_results(params, result_array)
+
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+            def cleanup(_: BaseNetQASMConnection):
+                result_array.undefine()
+                # If the request was sequential, each pair has already been
+                # measured and does not need to be freed.
+                # Otherwise: free the qubits.
+                if not params.sequential:
+                    for q in qubits:
+                        q.free(deactivate=False)
+
+            loop.set_cleanup_code(cleanup)
+
+        return qubits, results
+
     def sdk_create_epr_measure(
         self, params: EntRequestParams
-    ) -> List[EprMeasureResult]:
+    ) -> list[EprMeasureResult]:
         """Build commands for a 'create and measure' EPR operation and return the
         result futures."""
         return self.sdk_epr_measure(role=EPRRole.CREATE, params=params)
 
-    def sdk_recv_epr_measure(self, params: EntRequestParams) -> List[EprMeasureResult]:
+    def sdk_recv_epr_measure(self, params: EntRequestParams) -> list[EprMeasureResult]:
         """Build commands for a 'receive and measure' EPR operation and return the
         result futures."""
         return self.sdk_epr_measure(role=EPRRole.RECV, params=params)
 
-    def sdk_create_epr_rsp(self, params: EntRequestParams) -> List[EprMeasureResult]:
-        """Build commands for a 'create remote state preperation' EPR operation
+    def sdk_create_epr_rsp(self, params: EntRequestParams) -> list[EprMeasureResult]:
+        """Build commands for a 'create remote state preparation' EPR operation
         and return the result futures."""
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                results = self.sdk_epr_rsp_create(params=params)
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-
-            return results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             return self.sdk_epr_rsp_create(params=params)
+
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            results = self.sdk_epr_rsp_create(params=params)
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+
+        return results
 
     def sdk_recv_epr_rsp(
         self, params: EntRequestParams
-    ) -> Tuple[List[Qubit], List[EprKeepResult]]:
+    ) -> tuple[list[Qubit], list[EprKeepResult]]:
         """Build commands for a 'receive remote state preparation' EPR operation
         and return the created qubits and result futures."""
-
-        if params.min_fidelity_all_at_end is not None:
-            # If a min-fidelity constraint is specified, wrap the operation in a loop
-            assert params.max_tries is not None
-            with self.sdk_new_loop_until_context(params.max_tries) as loop:
-                qubits, results = self.sdk_epr_rsp_recv(params=params)
-                duration = results[-1].generation_duration
-                max_time = NVEprCompiler.get_max_time_for_fidelity(
-                    params.min_fidelity_all_at_end
-                )
-                loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
-            return qubits, results
-        else:
-            # otherwise, just do the operation once
+        if params.min_fidelity_all_at_end is None:
             return self.sdk_epr_rsp_recv(params=params)
+
+        # If a min-fidelity constraint is specified, wrap the operation in a loop
+        assert params.max_tries is not None
+        with self.sdk_new_loop_until_context(params.max_tries) as loop:
+            qubits, results = self.sdk_epr_rsp_recv(params=params)
+            duration = results[-1].generation_duration
+            max_time = NVEprCompiler.get_max_time_for_fidelity(
+                params.min_fidelity_all_at_end
+            )
+            loop.set_exit_condition(ValueAtMostConstraint(duration, max_time))
+        return qubits, results
 
     @contextmanager
     def sdk_loop_context(
@@ -2189,7 +2162,7 @@ class Builder:
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[Union[operand.Register, str]] = None,
+        loop_register: operand.Register | str | None = None,
     ) -> Iterator[operand.Register]:
         """Build commands for a 'loop' context and return the context object."""
         try:
@@ -2214,7 +2187,7 @@ class Builder:
         stop: int,
         start: int = 0,
         step: int = 1,
-        loop_register: Optional[Union[operand.Register, str]] = None,
+        loop_register: operand.Register | str | None = None,
     ) -> None:
         """Build commands for looping the code in the specified body."""
         self._build_cmds_loop_body(body, stop, start, step, loop_register)
@@ -2244,7 +2217,7 @@ class Builder:
         self._build_cmds_if_stmt(GenericInstr.BNZ, op0, op1=None, body=body)
 
     def sdk_new_if_context(
-        self, condition: GenericInstr, op0: T_CValue, op1: Optional[T_CValue]
+        self, condition: GenericInstr, op0: T_CValue, op1: T_CValue | None
     ) -> SdkIfContext:
         """Build commands for an 'if' context and return the context object."""
         id = self._next_context_id
@@ -2304,7 +2277,7 @@ class Builder:
     @contextmanager
     def sdk_create_epr_context(
         self, params: EntRequestParams
-    ) -> Iterator[Tuple[FutureQubit, RegFuture]]:
+    ) -> Iterator[tuple[FutureQubit, RegFuture]]:
         """Build commands for an EPR context and return an iterator over
         the EPR qubits and indices created in this context."""
         try:

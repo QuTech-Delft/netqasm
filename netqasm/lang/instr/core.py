@@ -545,6 +545,120 @@ class MeasBasisInstruction(base.RegRegImm4Instruction):
 
 
 @dataclass
+class MeasBasisYZYInstruction(base.RegRegImm4Instruction):
+    id: int = 48
+    mnemonic: str = "meas_basis_yzy"
+
+    def writes_to(self) -> List[Register]:
+        return [self.creg]
+
+    @property
+    def qreg(self):
+        return self.reg0
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def creg(self):
+        return self.reg1
+
+    @creg.setter
+    def creg(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def angle_num_y1(self):
+        return self.imm0
+
+    @angle_num_y1.setter
+    def angle_num_y1(self, new_val: Immediate):
+        self.imm0 = new_val
+
+    @property
+    def angle_num_z(self):
+        return self.imm1
+
+    @angle_num_z.setter
+    def angle_num_z(self, new_val: Immediate):
+        self.imm1 = new_val
+
+    @property
+    def angle_num_y2(self):
+        return self.imm2
+
+    @angle_num_y2.setter
+    def angle_num_y2(self, new_val: Immediate):
+        self.imm2 = new_val
+
+    @property
+    def angle_denom(self):
+        return self.imm3
+
+    @angle_denom.setter
+    def angle_denom(self, new_val: Immediate):
+        self.imm3 = new_val
+
+
+@dataclass
+class MeasBasisZXZInstruction(base.RegRegImm4Instruction):
+    id: int = 49
+    mnemonic: str = "meas_basis_zxz"
+
+    def writes_to(self) -> List[Register]:
+        return [self.creg]
+
+    @property
+    def qreg(self):
+        return self.reg0
+
+    @qreg.setter
+    def qreg(self, new_val: Register):
+        self.reg0 = new_val
+
+    @property
+    def creg(self):
+        return self.reg1
+
+    @creg.setter
+    def creg(self, new_val: Register):
+        self.reg1 = new_val
+
+    @property
+    def angle_num_z1(self):
+        return self.imm0
+
+    @angle_num_z1.setter
+    def angle_num_z1(self, new_val: Immediate):
+        self.imm0 = new_val
+
+    @property
+    def angle_num_x(self):
+        return self.imm1
+
+    @angle_num_x.setter
+    def angle_num_x(self, new_val: Immediate):
+        self.imm1 = new_val
+
+    @property
+    def angle_num_z2(self):
+        return self.imm2
+
+    @angle_num_z2.setter
+    def angle_num_z2(self, new_val: Immediate):
+        self.imm2 = new_val
+
+    @property
+    def angle_denom(self):
+        return self.imm3
+
+    @angle_denom.setter
+    def angle_denom(self, new_val: Immediate):
+        self.imm3 = new_val
+
+
+@dataclass
 class CreateEPRInstruction(base.Reg5Instruction):
     id: int = 33
     mnemonic: str = "create_epr"

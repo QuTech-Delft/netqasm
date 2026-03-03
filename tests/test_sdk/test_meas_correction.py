@@ -2,6 +2,7 @@ from netqasm.qlink_compat import BellState
 from netqasm.sdk.build_epr import EprMeasBasis, EprMeasureResult, basis_to_rotation
 from netqasm.sdk.connection import DebugConnection
 from netqasm.sdk.futures import Future
+from netqasm.sdk.qubit import QubitMeasureAxes
 
 
 def create_measure_result(
@@ -26,12 +27,14 @@ def create_measure_result(
 
     return EprMeasureResult(
         raw_measurement_outcome=raw_outcome,
-        measurement_basis_local=basis_to_rotation(basis),
-        measurement_basis_remote=basis_to_rotation(basis),
+        measurement_basis_local=basis_to_rotation(basis, QubitMeasureAxes.XYX),
+        measurement_basis_remote=basis_to_rotation(basis, QubitMeasureAxes.XYX),
         post_process=expect_phi_plus,
         remote_node_id=remote_node,
         generation_duration=duration,
         raw_bell_state=raw_bell_state,
+        rotation_axes_local=QubitMeasureAxes.XYX,
+        rotation_axes_remote=QubitMeasureAxes.XYX,
     )
 
 
