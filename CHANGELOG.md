@@ -1,6 +1,22 @@
 CHANGELOG
 =========
 
+2026-03-10 (2.3.0)
+------------------
+- Bugfix: Add a MOV instruction when creating an EPR pair only when there is a qubit
+  memory available.
+- Bugfix: Do not immediately deactivate EPR qubits when creating them using the
+  "min_fidelity_all_at_end" option.
+- Add the option to select the axes that a particular pre-measurement gate should
+  rotate around. This helps performance in platform where rotations perform better
+  around certain axes.
+- Add two new variants of the "measure" instruction: "meas_basis_yzy" and "meas_basis_zxz".
+  The default "meas" instruction still performs a measurement using the XYX basis.
+  The new instructions allow measuring a qubit in YZY and ZXZ bases without breaking
+  backwards compatibility with old code.
+- Add two extra options to the EPR-create-and-measure operation to specify the local
+  and remote axes to perform rotations before performing the measurement.
+
 2025-11-20 (2.2.0)
 ------------------
 - Remove MOV instruction due to incompatibility with NetQASM's memory management paradigm.
