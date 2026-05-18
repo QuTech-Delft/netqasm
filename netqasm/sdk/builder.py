@@ -63,6 +63,7 @@ from netqasm.sdk.memmgr import MemoryManager
 from netqasm.sdk.qubit import FutureQubit, Qubit, QubitMeasureAxes, QubitMeasureBasis
 from netqasm.sdk.toolbox import get_angle_spec_from_float
 from netqasm.sdk.transpile import NVSubroutineTranspiler, SubroutineTranspiler
+from netqasm.sdk.algebraic_transpiler import optimize_subroutine  # <--- INJECTED
 from netqasm.typedefs import T_Cmd
 from netqasm.util.log import LineTracker
 
@@ -337,6 +338,13 @@ class Builder:
     def subrt_compile_subroutine(self, pre_subroutine: ProtoSubroutine) -> Subroutine:
         """Convert a ProtoSubroutine into a Subroutine."""
         subroutine: Subroutine = assemble_subroutine(pre_subroutine)
+        
+        # --- ALGEBRAIC REDUCTION PASS ---
+        # Map contiguous single-qubit vanilla gates into minimal native NV geometry
+        # to suppress T1/T2 vector space contraction.
+        subroutine.instructions = optimize_subroutine(subroutine.instructions)
+        # --------------------------------
+        
         if self._compiler is not None:
             subroutine = self._compiler(subroutine=subroutine).transpile()
         if self._track_lines:

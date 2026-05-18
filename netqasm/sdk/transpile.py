@@ -336,16 +336,14 @@ class NVSubroutineTranspiler(SubroutineTranspiler):
         self,
         instr: Union[core.SingleQubitInstruction, core.RotationInstruction],
     ) -> List[NetQASMInstruction]:
+        
+        # --- ALGEBRAIC TRANSPILER BYPASS ---
+        # If the instruction is already compiled to NV geometry, map it as the identity
+        if isinstance(instr, (nv.RotXInstruction, nv.RotYInstruction, nv.RotZInstruction)):
+            return [instr]
+        # -----------------------------------
+        
         if isinstance(instr, vanilla.GateXInstruction):
-            return [
-                nv.RotXInstruction(
-                    lineno=instr.lineno,
-                    reg=instr.reg,
-                    imm0=Immediate(16),
-                    imm1=Immediate(4),
-                )
-            ]
-        elif isinstance(instr, vanilla.GateYInstruction):
             return [
                 nv.RotYInstruction(
                     lineno=instr.lineno,
